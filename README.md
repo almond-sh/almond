@@ -21,8 +21,8 @@ distribution, and then running
 `ipython --version` should then return a value >= 3.0.
 
 Download the Jupyter Scala binaries for
-[Scala 2.10](http://) or
-[Scala 2.11](http://), and unpack them in a safe place, `~/opt`
+[Scala 2.10](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.10/0.2.0-SNAPSHOT/jupyter-scala-cli_2.10-0.2.0-SNAPSHOT.tar.gz) or
+[Scala 2.11](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.11/0.2.0-SNAPSHOT/jupyter-scala-cli_2.11-0.2.0-SNAPSHOT.tar.gz), and unpack them in a safe place, `~/opt`
 for example.
 Then run the `jupyter-scala` command-line program it contains with
 the `--kernel-spec` option, like
