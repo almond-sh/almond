@@ -71,3 +71,5 @@ Build your own binaries from the sources with
 This will generate a tar archive like `jupyter-scala-cli-0.2.0-SNAPSHOT.tar.gz` in `cli/target/`. See the instructions above for how to set it up then.
 
 Released under the Apache 2.0 license, see LICENSE for more details.
+
+Initially released as [jove-scala](https://github.com/jove-sh/jove-scala).
