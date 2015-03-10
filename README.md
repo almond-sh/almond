@@ -6,6 +6,8 @@ being easily embeddable in other apps / libraries and being based
 on the fantastic wrapper around the scalac internals from
 [Ammonite](https://github.com/lihaoyi/Ammonite/).
 
+[![Build Status](https://travis-ci.org/alexarchambault/jupyter-scala.svg?branch=master)](https://travis-ci.org/alexarchambault/jupyter-scala)
+
 ## Quick start
 
 Ensure you have [IPython](http://ipython.org/) 3 installed.
