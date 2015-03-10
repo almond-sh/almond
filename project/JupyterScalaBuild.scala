@@ -88,5 +88,6 @@ object JupyterScalaBuild extends Build {
     .dependsOn(kernel)
 
   lazy val root = Project(id = "jupyter-scala", base = file("."))
+    .settings(commonSettings: _*)
     .aggregate(kernel, cli)
 }
