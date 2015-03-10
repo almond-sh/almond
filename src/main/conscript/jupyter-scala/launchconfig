@@ -1,0 +1,15 @@
+[app]
+  version: 0.1.0
+  org: com.github.alexarchambault.jupyter
+  name: jupyter-scala-cli
+  class: jupyter.scala.JupyterScalaConscriptLaunch
+[scala]
+  version: 2.11.6
+[repositories]
+  local
+  sonatype-releases: https://oss.sonatype.org/content/repositories/releases/
+  typesafe-ivy-releases: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
+  maven-central
+  scalaz-bintray-repo: http://dl.bintray.com/scalaz/releases/
+[boot]
+  directory: ${user.home}/.conscript/boot

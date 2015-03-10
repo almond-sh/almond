@@ -1,0 +1,9 @@
+language: scala
+scala:
+- 2.11.6
+- 2.10.5
+jdk:
+- oraclejdk7
+- oraclejdk8
+script: sbt ++${TRAVIS_SCALA_VERSION} cli/pack $(if [[ "${TRAVIS_PULL_REQUEST}" == "false" && ${JAVA_HOME} == $(jdk_switcher home oraclejdk7) && "${TRAVIS_BRANCH}" == "master" ]]; then echo "publish"; fi)
+sudo: false
