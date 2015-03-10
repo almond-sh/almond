@@ -58,5 +58,14 @@ Jupyter Scala is a simple bridge between
 and the Jupyter kernel facilities provided by
 [Jupyter kernel](https://github.com/alexarchambault/jupyter-kernel).
 
+## Compiling it
+
+Build your own binaries from the sources with
+
+    $ git clone https://github.com/alexarchambault/jupyter-scala.git
+    $ cd jupyter-scala
+    $ sbt cli/packArchive
+
+This will generate a tar archive like `jupyter-scala-cli-0.2.0-SNAPSHOT.tar.gz` in `cli/target/`. See the instructions above for how to set it up then.
 
 Released under the Apache 2.0 license, see LICENSE for more details.
