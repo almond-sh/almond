@@ -32,7 +32,9 @@ object JupyterScalaBuild extends Build {
         case _ =>
           Credentials(Path.userHome / ".ivy2" / ".credentials")
       }
-    }
+    },
+    ReleaseKeys.versionBump := sbtrelease.Version.Bump.Bugfix,
+    ReleaseKeys.publishArtifactsAction := PgpKeys.publishSigned.value
   )
 
   private val commonSettings = Seq(
@@ -46,9 +48,7 @@ object JupyterScalaBuild extends Build {
       Resolver.sonatypeRepo("releases"),
       Resolver.sonatypeRepo("snapshots")
     ),
-    scalacOptions += "-target:jvm-1.7",
-    ReleaseKeys.versionBump := sbtrelease.Version.Bump.Bugfix,
-    ReleaseKeys.publishArtifactsAction := PgpKeys.publishSigned.value
+    scalacOptions += "-target:jvm-1.7"
   ) ++ publishSettings
 
   lazy val kernel = Project(id = "kernel", base = file("kernel"))
