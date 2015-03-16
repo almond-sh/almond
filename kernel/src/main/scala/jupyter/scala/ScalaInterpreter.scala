@@ -87,34 +87,34 @@ object ScalaInterpreter {
         if (useClassWrapper)
           // The class definition must be in last position here, for the AmmonitePlugin to find it
           s"""$previousImportBlock
-              |
-              |object $wrapperName {
-              |  val $bootstrapSymbol = new $wrapperName
-              |}
-              |
-              |class $wrapperName extends Serializable {
-              |  $code
-              |  def $$main(): Seq[$NS.DisplayData] = {
-              |    Seq[Any](${defined mkString ", "}) .map {
-              |      case d: $NS.DisplayData => d
-              |      case v => $NS.DisplayData.RawData(v)
-              |    }
-              |  }
-              |}
-             """.stripMargin
+
+              object $wrapperName {
+                val $bootstrapSymbol = new $wrapperName
+              }
+
+              class $wrapperName extends Serializable {
+                $code
+                def $$main(): Seq[$NS.DisplayData] = {
+                  Seq[Any](${defined mkString ", "}) .map {
+                    case d: $NS.DisplayData => d
+                    case v => $NS.DisplayData.RawData(v)
+                  }
+                }
+              }
+           """
         else
           s"""$previousImportBlock
-              |
-              |object $wrapperName {
-              |  $code
-              |  def $$main(): Seq[$NS.DisplayData] = {
-              |    Seq[Any](${defined mkString ", "}) .map {
-              |      case d: $NS.DisplayData => d
-              |      case v => $NS.DisplayData.RawData(v)
-              |    }
-              |  }
-              |}
-             """.stripMargin
+
+              object $wrapperName {
+                $code
+                def $$main(): Seq[$NS.DisplayData] = {
+                  Seq[Any](${defined mkString ", "}) .map {
+                    case d: $NS.DisplayData => d
+                    case v => $NS.DisplayData.RawData(v)
+                  }
+                }
+              }
+           """
       }
 
       def namesFor(t: Type): Set[String] = {
@@ -126,8 +126,8 @@ object ScalaInterpreter {
       }
 
       val previousImports =
-        namesFor(typeOf[T]).toList.map(n => n -> ImportData(n, "", s"$bridgeHolderHandle.bridge")) ++ // FIXME Should be typeOf[T]
-          namesFor(typeOf[IvyConstructor]).toList.map(n => n -> ImportData(n, "", "_root_.jupyter.bridge.IvyConstructor"))
+        namesFor(typeOf[T]).toList.map(n => n -> ImportData(n, n, "", s"$bridgeHolderHandle.bridge")) ++ // FIXME Should be typeOf[T]
+          namesFor(typeOf[IvyConstructor]).toList.map(n => n -> ImportData(n, n, "", "_root_.jupyter.bridge.IvyConstructor"))
 
       private var bridge: T = _
 
@@ -140,6 +140,7 @@ object ScalaInterpreter {
         (_, _) => (),
         Console.out.println,
         Nil,
+        previousImports,
         f => CustomPreprocessor(f()).apply,
         wrap,
         s"object $bridgeHolderHandle extends $bridgeHolderTypePath {}",
@@ -151,14 +152,13 @@ object ScalaInterpreter {
             bridgeSet(cls, bridge)
         },
         jarDeps,
-        dirDeps,
-        previousImports
+        dirDeps
       )
 
       def executionCount = underlying.history.length
 
       def interpret(line: String, output: Option[(String => Unit, String => Unit)], storeHistory: Boolean) =
-        underlying.processLine(line, _(_), f => Capture(output.map(_._1) getOrElse Console.out.print, output.map(_._2) getOrElse Console.err.print)(f()), useClassWrapper) match {
+        underlying.processLine(line, _(_), f => Capture(output.map(_._1) getOrElse Console.out.print, output.map(_._2) getOrElse Console.err.print)(f), useClassWrapper) match {
           case res @ Res.Success(ev0) =>
             val ev =
               if (useClassWrapper)
