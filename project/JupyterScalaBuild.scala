@@ -57,7 +57,7 @@ object JupyterScalaBuild extends Build {
       name := "jupyter-scala",
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
-        "com.github.alexarchambault.tmp" %% "ammonite-repl" % "0.2.7-SNAPSHOT",
+        "com.github.alexarchambault.tmp" %% "ammonite-repl" % "0.2.7-SNAPSHOT" cross CrossVersion.full,
         "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % version.value
       ),
       unmanagedSourceDirectories in Compile += (sourceDirectory in Compile).value / s"scala-${scalaBinaryVersion.value}"
