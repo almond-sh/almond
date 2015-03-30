@@ -11,7 +11,7 @@ object EmbeddedScalaKernel extends InterpreterKernel {
     ScalaInterpreter(
       Classpath.jarDeps,
       Classpath.dirDeps,
-      classLoader getOrElse Bridge.classLoader,
+      classLoader getOrElse getClass.getClassLoader,
       ScalaKernel.resolvers
     )
   }
