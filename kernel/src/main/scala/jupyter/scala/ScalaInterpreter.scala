@@ -2,20 +2,20 @@ package jupyter.scala
 
 import java.io.File
 
-import ammonite.interpreter.Preprocessor.PreprocessorParser
-import ammonite.interpreter._
 import ammonite.pprint
-import ammonite.shell.util.ColorSet
+import ammonite.interpreter._
+import ammonite.interpreter.api.{ImportData, BridgeConfig}
 import ammonite.shell._
-import com.github.alexarchambault.ivylight.ResolverHelpers
+import ammonite.shell.util.ColorSet
+
 import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.DisplayData
 import jupyter.kernel.interpreter.Interpreter.Result
 import jupyter.kernel.interpreter.helpers.Capture
 import jupyter.kernel.protocol.Output.LanguageInfo
-import org.apache.ivy.plugins.resolver.DependencyResolver
 
-import scala.tools.nsc.Global
+import com.github.alexarchambault.ivylight.ResolverHelpers
+import org.apache.ivy.plugins.resolver.DependencyResolver
 
 object ScalaInterpreter {
 
@@ -25,47 +25,35 @@ object ScalaInterpreter {
     startResolvers: Seq[DependencyResolver] = Seq(ResolverHelpers.localRepo, ResolverHelpers.defaultMaven),
     pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
     colors: ColorSet = ColorSet.Default
-  ): BridgeConfig[Preprocessor.Output, Iterator[Iterator[String]]] =
+  ): BridgeConfig =
     BridgeConfig(
-    "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
-    "ReplBridge",
-    {
-      _ =>
+      "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
+      "ReplBridge",
+      NamesFor[ReplAPI with ShellReplAPI].map{case (n, isImpl) => ImportData(n, n, "", "ReplBridge.shell", isImpl)}.toSeq ++
+        NamesFor[IvyConstructor.type].map{case (n, isImpl) => ImportData(n, n, "", "ammonite.shell.IvyConstructor", isImpl)}.toSeq,
+      _.asInstanceOf[Iterator[String]].foreach(print)
+    ) {
         val _pprintConfig = pprintConfig
         val _colors = colors
         var replApi: ReplAPI with FullShellReplAPI = null
 
-        (intp, cls, stdout) =>
+        (intp, cls) =>
           if (replApi == null)
-            replApi = new ReplAPIImpl[Iterator[Iterator[String]]](intp, s => stdout(s + "\n"), startJars, startIvys, startResolvers) with ShellReplAPIImpl {
+            replApi = new ReplAPIImpl(intp, startJars, startIvys, startResolvers) with ShellReplAPIImpl {
               def shellPrompt0 = throw new IllegalArgumentException("No shell prompt from Jupyter")
-              def pprintConfig = _pprintConfig
+              var pprintConfig = _pprintConfig
               def colors = _colors
+              def reset() = ()
             }
 
           ReplAPIHolder.initReplBridge(
             cls.asInstanceOf[Class[ReplAPIHolder]],
             replApi
           )
+    }
 
-          BridgeHandle {
-            replApi.power.stop()
-          }
-    },
-    Evaluator.namesFor[ReplAPI with ShellReplAPI].map(n => n -> ImportData(n, n, "", "ReplBridge.shell")).toSeq ++
-      Evaluator.namesFor[IvyConstructor].map(n => n -> ImportData(n, n, "", "ammonite.shell.IvyConstructor")).toSeq
-    )
-
-  val preprocessor: (Unit => (String => Either[String, scala.Seq[Global#Tree]])) => (String, String) => Res[Preprocessor.Output] =
-    f => new PreprocessorParser(f(()), new WebDisplay {}) .apply
-
-  def mergePrinters(printers: Seq[String]) = s"Iterator[Iterator[String]](${printers mkString ", "})"
-
-  def classWrap(instanceSymbol: String): (Preprocessor.Output, String, String) => String =
-    (p, previousImportBlock, wrapperName) =>
-      Wrap.cls(p.code, mergePrinters(p.printer), previousImportBlock, wrapperName, instanceSymbol)
-
-  val classWrapperInstanceSymbol = "INSTANCE"
+  val wrap =
+    Wrap(_.map(WebDisplay(_)).reduceOption(_ + "++ Iterator(\"\\n\") ++" + _).getOrElse("Iterator()"), classWrap = true)
 
   def apply(
     startJars: Seq[File],
@@ -76,21 +64,11 @@ object ScalaInterpreter {
     pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
     colors: ColorSet = ColorSet.Default
   ) = new interpreter.Interpreter {
-    val underlying = new Interpreter[Preprocessor.Output, Iterator[Iterator[String]]](
-      bridgeConfig(startJars = startJars, startIvys = startIvys, startResolvers = startResolvers, pprintConfig = pprintConfig, colors = colors),
-      preprocessor,
-      classWrap(classWrapperInstanceSymbol),
-      handleResult = {
-        val transform = Wrap.classWrapImportsTransform(classWrapperInstanceSymbol) _
-        (buf, r) => transform(r)
-      },
-      printer = _.foreach(print),
-      stdout = s => Console.out.println(s),
-      initialHistory = Nil,
-      predef = "",
-      classes = new DefaultClassesImpl(startClassLoader, startJars, startDirs),
-      useClassWrapper = true,
-      classWrapperInstance = Some(classWrapperInstanceSymbol)
+    val underlying = new Interpreter(
+      bridgeConfig = bridgeConfig(startJars = startJars, startIvys = startIvys, startResolvers = startResolvers, pprintConfig = pprintConfig, colors = colors),
+      wrapper = wrap,
+      imports = new ammonite.interpreter.Imports(useClassWrapper = true),
+      classes = new Classes(startClassLoader, (startJars, startDirs))
     )
 
     def interpret(line: String, output: Option[((String) => Unit, (String) => Unit)], storeHistory: Boolean): Result = {
@@ -103,7 +81,7 @@ object ScalaInterpreter {
         }
 
       capture {
-        underlying.processLine(line, _(_), it => new DisplayData.RawData(it.map(_.mkString).mkString("\n"))) match {
+        underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).mkString("\n"))) match {
           case Res.Buffer(s) =>
             interpreter.Interpreter.Incomplete
           case Res.Exit =>
@@ -120,7 +98,7 @@ object ScalaInterpreter {
     }
 
     def complete(code: String, pos: Int): (Int, Seq[String]) = {
-      val (pos0, completions, _) = underlying.pressy.complete(pos, underlying.eval.previousImportBlock, code)
+      val (pos0, completions, _) = underlying.complete(pos, code)
       (pos0, completions)
     }
 

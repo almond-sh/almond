@@ -60,7 +60,7 @@ object JupyterScalaBuild extends Build {
     fork in (Test, testOnly) := true
   )
 
-  private val ammoniteVersion = "0.3.0-SNAPSHOT"
+  private val ammoniteVersion = "0.3.1-SNAPSHOT"
 
   lazy val kernel = Project(id = "kernel", base = file("kernel"))
     .settings(commonSettings ++ testSettings: _*)

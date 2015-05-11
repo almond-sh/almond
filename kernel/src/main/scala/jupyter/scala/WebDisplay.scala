@@ -1,23 +1,25 @@
 package jupyter.scala
 
-import ammonite.interpreter.Preprocessor.Display
+import ammonite.interpreter.api.DisplayItem
+import ammonite.interpreter.api.DisplayItem.{Import, LazyIdentity, Identity, Definition}
 
-trait WebDisplay extends Display {
+object WebDisplay {
 
-  def definition(definitionLabel: String, name: String) =
-    s"""Iterator(ReplBridge.shell.shellPrintDef("$definitionLabel", "$name"))"""
+  /* For now, identical to ammonite.shell.ShellDisplay */
 
   def pprintSignature(ident: String) = s"""Iterator(ReplBridge.shell.shellPPrint($$user.$ident, "$ident"))"""
 
-  def identity(ident: String) = {
-    pprintSignature(ident) +
-      s""" ++ Iterator(" = ") ++ ammonite.pprint.PPrint($$user.$ident)"""
-  }
-
-  def lazyIdentity(ident: String) =
-    s"""${pprintSignature(ident)} ++ Iterator(" = <lazy>")"""
-
-  def displayImport(imported: String) =
-    s"""Iterator(ReplBridge.shell.shellPrintImport("$imported"))"""
+  def apply(d: DisplayItem): String =
+    d match {
+      case Definition(label, name) =>
+        s"""Iterator(ReplBridge.shell.shellPrintDef("$label", "$name"))"""
+      case Identity(ident) =>
+        pprintSignature(ident) +
+          s""" ++ Iterator(" = ") ++ ammonite.pprint.PPrint($$user.$ident)"""
+      case LazyIdentity(ident) =>
+        s"""${pprintSignature(ident)} ++ Iterator(" = <lazy>")"""
+      case Import(imported) =>
+        s"""Iterator(ReplBridge.shell.shellPrintImport("$imported"))"""
+    }
 
 }

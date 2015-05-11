@@ -1,7 +1,6 @@
 package jupyter.scala.config
 
 import jupyter.kernel.config.Module
-import jupyter.kernel.protocol.Output.LanguageInfo
 import jupyter.kernel.{KernelInfo, Kernel}
 
 object ScalaModule extends Module {

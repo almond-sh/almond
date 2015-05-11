@@ -12,7 +12,6 @@ import scalaz.\/
 
 object ScalaKernel extends InterpreterKernel with LazyLogging {
   val scalaVersion = scala.util.Properties.versionNumberString
-  val scalaBinaryVersion = scalaVersion.split('.').take(2).mkString(".")
 
   val dependencies = Seq(
     ("org.scala-lang", "scala-library", scalaVersion),
