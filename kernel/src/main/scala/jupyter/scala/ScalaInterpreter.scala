@@ -26,7 +26,7 @@ object ScalaInterpreter {
                    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
                    colors: ColorSet = ColorSet.Default): BridgeConfig =
     BridgeConfig(
-      "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
+      "object ReplBridge extends jupyter.scala.APIHolder",
       "ReplBridge",
       NamesFor[API].map{case (n, isImpl) => ImportData(n, n, "", "ReplBridge.shell", isImpl)}.toSeq ++
         NamesFor[IvyConstructor.type].map{case (n, isImpl) => ImportData(n, n, "", "ammonite.api.IvyConstructor", isImpl)}.toSeq,

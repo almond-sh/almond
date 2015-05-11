@@ -110,7 +110,7 @@ object JupyterScalaBuild extends Build {
     .settings(
       name := "jupyter-scala-cli",
       libraryDependencies ++= Seq(
-        "com.github.alexarchambault" %% "case-app" % "0.2.1",
+        "com.github.alexarchambault" %% "case-app" % "0.2.2",
         "ch.qos.logback" % "logback-classic" % "1.0.13"
       ),
       libraryDependencies ++= {
