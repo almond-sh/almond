@@ -11,6 +11,7 @@ import com.github.alexarchambault.ivylight.ResolverHelpers
 import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.DisplayData
 import jupyter.kernel.interpreter.Interpreter.Result
+import jupyter.kernel.interpreter.helpers.Capture
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
 import scala.tools.nsc.Global
@@ -91,20 +92,31 @@ object ScalaInterpreter {
       classWrapperInstance = Some(classWrapperInstanceSymbol)
     )
 
-    def interpret(line: String, output: Option[((String) => Unit, (String) => Unit)], storeHistory: Boolean): Result =
-      underlying.processLine(line, (_, _) => (), it => new DisplayData.RawData(it.map(_.mkString).mkString("\n"))) match {
-        case Res.Buffer(s) =>
-          interpreter.Interpreter.Incomplete
-        case Res.Exit =>
-          interpreter.Interpreter.Error("Close this notebook to exit")
-        case Res.Failure(reason) =>
-          interpreter.Interpreter.Error(reason)
-        case Res.Skip =>
-          interpreter.Interpreter.NoValue
-        case r @ Res.Success(ev) =>
-          underlying.handleOutput(r)
-          interpreter.Interpreter.Value(ev.value)
+    def interpret(line: String, output: Option[((String) => Unit, (String) => Unit)], storeHistory: Boolean): Result = {
+      def capture[T](t: => T): T =
+        output match {
+          case Some((out, err)) =>
+            Capture(out, err)(t)
+          case None =>
+            t
+        }
+
+      capture {
+        underlying.processLine(line, (_, _) => (), it => new DisplayData.RawData(it.map(_.mkString).mkString("\n"))) match {
+          case Res.Buffer(s) =>
+            interpreter.Interpreter.Incomplete
+          case Res.Exit =>
+            interpreter.Interpreter.Error("Close this notebook to exit")
+          case Res.Failure(reason) =>
+            interpreter.Interpreter.Error(reason)
+          case Res.Skip =>
+            interpreter.Interpreter.NoValue
+          case r @ Res.Success(ev) =>
+            underlying.handleOutput(r)
+            interpreter.Interpreter.Value(ev.value)
+        }
       }
+    }
 
     def complete(code: String, pos: Int): (Int, Seq[String]) = {
       val (pos0, completions, _) = underlying.pressy.complete(pos, underlying.eval.previousImportBlock, code)
