@@ -3,8 +3,8 @@ package config
 
 import java.io.File
 
-import ammonite.shell.ReplAPI
-import com.github.alexarchambault.ivylight.{IvyHelper, ResolverHelpers}
+import ammonite.interpreter.Classes
+import com.github.alexarchambault.ivylight.{ClasspathFilter, IvyHelper, Resolver}
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import jupyter.kernel.interpreter._
 
@@ -15,38 +15,31 @@ object ScalaKernel extends InterpreterKernel with LazyLogging {
 
   val dependencies = Seq(
     ("org.scala-lang", "scala-library", scalaVersion),
-    ("com.github.alexarchambault", s"ammonite-shell-api_$scalaVersion", BuildInfo.ammoniteVersion),
-    ("com.github.alexarchambault", s"ammonite-shell_$scalaVersion", BuildInfo.ammoniteVersion)
+    ("com.github.alexarchambault", s"ammonite-shell-api_$scalaVersion", BuildInfo.ammoniteVersion)
   )
-
 
   val resolvers = Seq(
-    ResolverHelpers.localRepo,
-    ResolverHelpers.sonatypeRepo("releases"),
-    ResolverHelpers.sonatypeRepo("snapshots"),
-    ResolverHelpers.mavenLocal,
-    ResolverHelpers.defaultMaven
+    Resolver.localRepo,
+    Resolver.defaultMaven
   )
 
-  lazy val bootClassPath =
-    System.getProperty("sun.boot.class.path")
-      .split(File.pathSeparator).map(new File(_))
+  /*
+   * Same hack as in ammonite-shell, see the comment there
+   */
+  lazy val packJarMap = Classes.defaultClassPath()._1.map(f => f.getName -> f).toMap
+  def jarMap(f: File) = packJarMap.getOrElse(f.getName, f)
 
-  lazy val baseClassPath =
-    IvyHelper.resolve(dependencies, resolvers) .distinct
-
-  lazy val (startJarClassPath, startFileClassPath) =
-    (bootClassPath ++ baseClassPath)
+  lazy val (startJars, startDirs) =
+    IvyHelper.resolve(dependencies, resolvers).toList
+      .map(jarMap)
+      .distinct
       .filter(_.exists())
       .partition(_.getName endsWith ".jar")
 
-  def interpreter(classLoader: Option[ClassLoader]) = \/.fromTryCatchNonFatal {
-    ScalaInterpreter(
-      startJarClassPath,
-      startFileClassPath,
-      dependencies,
-      resolvers,
-      classLoader getOrElse classOf[ReplAPI].getClassLoader
-    )
+  lazy val startClassLoader: ClassLoader =
+    new ClasspathFilter(Thread.currentThread().getContextClassLoader, (Classes.bootClasspath ++ startJars ++ startDirs).toSet)
+
+  def apply() = \/.fromTryCatchNonFatal {
+    ScalaInterpreter(startJars, startDirs, dependencies, jarMap, resolvers, startClassLoader)
   }
 }

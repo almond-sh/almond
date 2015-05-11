@@ -2,7 +2,7 @@ package jupyter.scala
 
 import ammonite.pprint
 import ammonite.shell.util.ColorSet
-import ammonite.shell.{ReplAPI, Checker}
+import ammonite.shell.Checker
 import jupyter.kernel.interpreter.Interpreter
 import jupyter.scala.config.ScalaKernel
 
@@ -11,6 +11,8 @@ import utest._
 class InterpreterChecker(intp: Interpreter) extends Checker {
 
   var allOutput = ""
+
+  var captureOut = false
 
   def session(sess: String): Unit = {
     val margin = sess.lines.filter(_.trim != "").map(_.takeWhile(' '.==).length).min
@@ -34,7 +36,7 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
       }
 
       if (expected startsWith "error: ")
-        fail(inc + commandText.last, _ contains expected.stripSuffix("error: "))
+        fail(inc + commandText.last, _ contains expected.stripPrefix("error: "))
       else
         apply(inc + commandText.last, if (expected.isEmpty) null else expected)
     }
@@ -98,11 +100,12 @@ object ScalaInterpreterChecker {
   def apply(): InterpreterChecker =
     new InterpreterChecker({
       ScalaInterpreter(
-        ScalaKernel.startJarClassPath,
-        ScalaKernel.startFileClassPath,
-        ScalaKernel.dependencies,
+        ScalaKernel.startJars,
+        ScalaKernel.startDirs,
+        Nil,
+        identity,
         ScalaKernel.resolvers,
-        classOf[ReplAPI].getClassLoader,
+        Thread.currentThread().getContextClassLoader,
         pprintConfig = pprint.Config.Defaults.PPrintConfig,
         colors = ColorSet.BlackWhite
       )

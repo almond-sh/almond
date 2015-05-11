@@ -14,18 +14,17 @@ import jupyter.kernel.interpreter.Interpreter.Result
 import jupyter.kernel.interpreter.helpers.Capture
 import jupyter.kernel.protocol.Output.LanguageInfo
 
-import com.github.alexarchambault.ivylight.ResolverHelpers
+import com.github.alexarchambault.ivylight.Resolver
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
 object ScalaInterpreter {
 
-  def bridgeConfig(
-    startJars: Seq[File] = Nil,
-    startIvys: Seq[(String, String, String)] = Nil,
-    startResolvers: Seq[DependencyResolver] = Seq(ResolverHelpers.localRepo, ResolverHelpers.defaultMaven),
-    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
-    colors: ColorSet = ColorSet.Default
-  ): BridgeConfig =
+  def bridgeConfig(startJars: Seq[File] = Nil,
+                   startIvys: Seq[(String, String, String)] = Nil,
+                   jarMap: File => File = identity,
+                   startResolvers: Seq[DependencyResolver] = Seq(Resolver.localRepo, Resolver.defaultMaven),
+                   pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
+                   colors: ColorSet = ColorSet.Default): BridgeConfig =
     BridgeConfig(
       "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
       "ReplBridge",
@@ -33,13 +32,13 @@ object ScalaInterpreter {
         NamesFor[IvyConstructor.type].map{case (n, isImpl) => ImportData(n, n, "", "ammonite.shell.IvyConstructor", isImpl)}.toSeq,
       _.asInstanceOf[Iterator[String]].foreach(print)
     ) {
-        val _pprintConfig = pprintConfig
-        val _colors = colors
+        def _pprintConfig = pprintConfig
+        def _colors = colors
         var replApi: ReplAPI with FullShellReplAPI = null
 
         (intp, cls) =>
           if (replApi == null)
-            replApi = new ReplAPIImpl(intp, startJars, startIvys, startResolvers) with ShellReplAPIImpl {
+            replApi = new ReplAPIImpl(intp, startJars, startIvys, jarMap, startResolvers) with ShellReplAPIImpl {
               def shellPrompt0 = throw new IllegalArgumentException("No shell prompt from Jupyter")
               var pprintConfig = _pprintConfig
               def colors = _colors
@@ -59,13 +58,14 @@ object ScalaInterpreter {
     startJars: Seq[File],
     startDirs: Seq[File],
     startIvys: Seq[(String, String, String)],
+    jarMap: File => File,
     startResolvers: Seq[DependencyResolver],
     startClassLoader: ClassLoader,
     pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
     colors: ColorSet = ColorSet.Default
   ) = new interpreter.Interpreter {
     val underlying = new Interpreter(
-      bridgeConfig = bridgeConfig(startJars = startJars, startIvys = startIvys, startResolvers = startResolvers, pprintConfig = pprintConfig, colors = colors),
+      bridgeConfig = bridgeConfig(startJars = startJars, startIvys = startIvys, jarMap = jarMap, startResolvers = startResolvers, pprintConfig = pprintConfig, colors = colors),
       wrapper = wrap,
       imports = new ammonite.interpreter.Imports(useClassWrapper = true),
       classes = new Classes(startClassLoader, (startJars, startDirs))
@@ -81,7 +81,7 @@ object ScalaInterpreter {
         }
 
       capture {
-        underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).mkString("\n"))) match {
+        underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[String]].mkString)) match {
           case Res.Buffer(s) =>
             interpreter.Interpreter.Incomplete
           case Res.Exit =>
