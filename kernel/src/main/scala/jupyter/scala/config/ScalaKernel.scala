@@ -16,7 +16,7 @@ object ScalaKernel extends InterpreterKernel with LazyLogging {
 
   val dependencies = Seq(
     ("org.scala-lang", "scala-library", scalaVersion),
-    ("com.github.alexarchambault.jupyter", s"jupyter-bridge_$scalaBinaryVersion", ???)
+    ("com.github.alexarchambault.jupyter", s"jupyter-bridge_$scalaBinaryVersion", BuildInfo.version)
   )
 
 

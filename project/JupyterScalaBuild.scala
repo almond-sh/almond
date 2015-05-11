@@ -1,5 +1,6 @@
 import language.implicitConversions
 import sbt._, Keys._
+import sbtbuildinfo.Plugin._
 import sbtrelease.ReleasePlugin._
 import com.typesafe.sbt.pgp.PgpKeys
 
@@ -64,6 +65,12 @@ object JupyterScalaBuild extends Build {
       crossVersion := CrossVersion.full,
       crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5", "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6"),
       ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
+    )
+    .settings(buildInfoSettings: _*)
+    .settings(
+      sourceGenerators in Compile <+= buildInfo,
+      buildInfoKeys := Seq[BuildInfoKey](version),
+      buildInfoPackage := "jupyter.scala.config"
     )
 
   lazy val cli = Project(id = "cli", base = file("cli"))
