@@ -11,13 +11,6 @@ object ScalaModule extends Module {
   val kernel = ScalaKernel
   val kernelInfo = KernelInfo(s"Scala $scalaBinaryVersion", "scala")
 
-  val languageInfo = LanguageInfo(
-    name="scala",
-    codemirror_mode = "text/x-scala",
-    file_extension = "scala",
-    mimetype = "text/x-scala"
-  )
-
   def kernels: Map[String, (Kernel, KernelInfo)] =
     Map(kernelId -> (kernel, kernelInfo))
 }

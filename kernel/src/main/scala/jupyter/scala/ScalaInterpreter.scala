@@ -12,6 +12,7 @@ import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.DisplayData
 import jupyter.kernel.interpreter.Interpreter.Result
 import jupyter.kernel.interpreter.helpers.Capture
+import jupyter.kernel.protocol.Output.LanguageInfo
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
 import scala.tools.nsc.Global
@@ -22,7 +23,8 @@ object ScalaInterpreter {
     startJars: Seq[File] = Nil,
     startIvys: Seq[(String, String, String)] = Nil,
     startResolvers: Seq[DependencyResolver] = Seq(ResolverHelpers.localRepo, ResolverHelpers.defaultMaven),
-    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig
+    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
+    colors: ColorSet = ColorSet.Default
   ): BridgeConfig[Preprocessor.Output, Iterator[Iterator[String]]] =
     BridgeConfig(
     "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
@@ -30,6 +32,7 @@ object ScalaInterpreter {
     {
       _ =>
         val _pprintConfig = pprintConfig
+        val _colors = colors
         var replApi: ReplAPI with FullShellReplAPI = null
 
         (intp, cls, stdout) =>
@@ -37,7 +40,7 @@ object ScalaInterpreter {
             replApi = new ReplAPIImpl[Iterator[Iterator[String]]](intp, s => stdout(s + "\n"), startJars, startIvys, startResolvers) with ShellReplAPIImpl {
               def shellPrompt0 = throw new IllegalArgumentException("No shell prompt from Jupyter")
               def pprintConfig = _pprintConfig
-              def colors = ColorSet.Default
+              def colors = _colors
             }
 
           ReplAPIHolder.initReplBridge(
@@ -58,10 +61,6 @@ object ScalaInterpreter {
 
   def mergePrinters(printers: Seq[String]) = s"Iterator[Iterator[String]](${printers mkString ", "})"
 
-  val wrap: (Preprocessor.Output, String, String) => String =
-    (p, previousImportBlock, wrapperName) =>
-      Wrap.obj(p.code, mergePrinters(p.printer), previousImportBlock, wrapperName)
-
   def classWrap(instanceSymbol: String): (Preprocessor.Output, String, String) => String =
     (p, previousImportBlock, wrapperName) =>
       Wrap.cls(p.code, mergePrinters(p.printer), previousImportBlock, wrapperName, instanceSymbol)
@@ -73,10 +72,12 @@ object ScalaInterpreter {
     startDirs: Seq[File],
     startIvys: Seq[(String, String, String)],
     startResolvers: Seq[DependencyResolver],
-    startClassLoader: ClassLoader
+    startClassLoader: ClassLoader,
+    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
+    colors: ColorSet = ColorSet.Default
   ) = new interpreter.Interpreter {
     val underlying = new Interpreter[Preprocessor.Output, Iterator[Iterator[String]]](
-      bridgeConfig(startJars = startJars, startIvys = startIvys, startResolvers = startResolvers),
+      bridgeConfig(startJars = startJars, startIvys = startIvys, startResolvers = startResolvers, pprintConfig = pprintConfig, colors = colors),
       preprocessor,
       classWrap(classWrapperInstanceSymbol),
       handleResult = {
@@ -124,6 +125,13 @@ object ScalaInterpreter {
     }
 
     def executionCount = underlying.history.length
+
+    val languageInfo = LanguageInfo(
+      name="scala",
+      codemirror_mode = "text/x-scala",
+      file_extension = "scala",
+      mimetype = "text/x-scala"
+    )
   }
 
 }
