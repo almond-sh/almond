@@ -15,14 +15,14 @@ object ScalaKernel extends InterpreterKernel with LazyLogging {
 
   val dependencies = Seq(
     ("org.scala-lang", "scala-library", scalaVersion),
-    ("com.github.alexarchambault", s"jupyter-scala-api_$scalaVersion", BuildInfo.ammoniteVersion)
+    ("com.github.alexarchambault.jupyter", s"jupyter-scala-api_$scalaVersion", BuildInfo.version)
   )
 
   val resolvers = Seq(
     Resolver.localRepo,
     Resolver.defaultMaven
   ) ++ {
-    if (BuildInfo.ammoniteVersion endsWith "-SNAPSHOT")
+    if (BuildInfo.version endsWith "-SNAPSHOT")
       Seq(Resolver.sonatypeRepo("snapshots"))
     else
       Seq()
