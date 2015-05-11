@@ -1,4 +1,4 @@
-package jupyter.scala
+package jupyter.api
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
@@ -48,9 +48,6 @@ trait API {
   implicit def publish: jupyter.api.Publish[Evidence]
 }
 
-/**
- * Things that are part of the API that aren't really "public"
- */
 trait FullAPI extends API {
   def shellPPrint[T: WeakTypeTag](value: => T, ident: String): String
   def shellPrintDef(definitionLabel: String, ident: String): String
@@ -75,4 +72,4 @@ object APIHolder {
  * Opaque container of a Jupyter message. Opaque not to add
  * extra dependencies.
  */
-final class Evidence private[scala] (private[scala] val underlying: Any)
+final class Evidence private[jupyter] (private[jupyter] val underlying: Any)

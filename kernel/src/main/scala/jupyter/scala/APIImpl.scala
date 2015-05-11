@@ -2,7 +2,7 @@ package jupyter.scala
 
 import ammonite.interpreter._
 import ammonite.pprint
-import jupyter.api.Publish
+import jupyter.api._
 import jupyter.kernel.protocol.ParsedMessage
 
 import org.apache.ivy.plugins.resolver.DependencyResolver
