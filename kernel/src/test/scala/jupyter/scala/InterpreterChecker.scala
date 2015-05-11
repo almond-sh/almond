@@ -48,7 +48,7 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
     buffer =
       if (buffer.isEmpty) input
       else buffer + "\n" + input
-    val res = intp.interpret(buffer, Some(f, f), storeHistory = true)
+    val res = intp.interpret(buffer, Some(f, f), storeHistory = true, None)
 
     res match {
       case Interpreter.Value(d) =>

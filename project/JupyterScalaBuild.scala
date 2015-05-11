@@ -64,6 +64,7 @@ object JupyterScalaBuild extends Build {
   )
 
   private val ammoniteVersion = "0.3.1-SNAPSHOT"
+  private val jupyterKernelVersion = "0.2.0-SNAPSHOT"
 
   lazy val api = Project(id = "api", base = file("api"))
     .settings(commonSettings: _*)
@@ -71,6 +72,7 @@ object JupyterScalaBuild extends Build {
       name := "jupyter-scala-api",
       libraryDependencies ++= Seq(
         "com.github.alexarchambault" %% "ammonite-api" % ammoniteVersion cross CrossVersion.full,
+        "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "com.lihaoyi" %% "ammonite-pprint" % "0.3.0"
       )
@@ -91,11 +93,11 @@ object JupyterScalaBuild extends Build {
     .settings(
       name := "jupyter-scala",
       libraryDependencies ++= Seq(
-        "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % "0.2.0-SNAPSHOT",
+        "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
         "com.github.alexarchambault" %% "ammonite-interpreter" % ammoniteVersion cross CrossVersion.full
       ),
       libraryDependencies ++= Seq(
-        "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % "0.2.0-SNAPSHOT",
+        "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
         "com.github.alexarchambault" %% "ammonite-shell" % ammoniteVersion cross CrossVersion.full,
         "com.github.alexarchambault" %% "ammonite-spark_1.3" % ammoniteVersion cross CrossVersion.full
       ).map(_ % "test" classifier "tests")

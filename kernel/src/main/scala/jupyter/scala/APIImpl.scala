@@ -2,6 +2,8 @@ package jupyter.scala
 
 import ammonite.interpreter._
 import ammonite.pprint
+import jupyter.api.Publish
+import jupyter.kernel.protocol.ParsedMessage
 
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
@@ -10,16 +12,16 @@ import java.io.File
 import scala.reflect.runtime.universe._
 
 
-/**
- * A set of colors used to highlight the miscellanious bits of the REPL.
- */
+// Cut-n-pasted here from ammonite-shell not add depend on it
 case class ColorSet(prompt: String, ident: String, `type`: String, reset: String)
-object ColorSet{
+object ColorSet {
   val Default = ColorSet(Console.MAGENTA, Console.CYAN, Console.GREEN, Console.RESET)
   val BlackWhite = ColorSet("", "", "", "")
 }
 
 class APIImpl(intp: ammonite.api.Interpreter,
+              publish0: => Option[Publish[Evidence]],
+              currentMessage: => Option[ParsedMessage[_]],
               startJars: Seq[File],
               startIvys: Seq[(String, String, String)],
               jarMap: File => File,
@@ -43,4 +45,10 @@ class APIImpl(intp: ammonite.api.Interpreter,
   }
 
   def show[T](a: T, lines: Int = 0) = ammonite.pprint.Show(a, lines)
+
+  def evidence = new Evidence(
+    currentMessage.getOrElse(throw new IllegalStateException("Not processing a Jupyter message")))
+
+  def publish = publish0
+    .getOrElse(throw new IllegalStateException("Interpreter is not connected to a front-end"))
 }

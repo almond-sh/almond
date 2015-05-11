@@ -29,6 +29,23 @@ trait API {
    * a number of lines to print.
    */
   def show[T](value: T, lines: Int = 0): ammonite.pprint.Show[T]
+
+
+  /**
+   * Opaque container of the currently processed Jupyter message.
+   *
+   * Required to send display data or Jupyter comm messages. Opaque
+   * not to add extra dependencies.
+   */
+  implicit def evidence: Evidence
+
+  /**
+   * Jupyter publishing helper
+   *
+   * Allows to push display items to the front-end or to communicate with
+   * widgets through Jupyter comms
+   */
+  implicit def publish: jupyter.api.Publish[Evidence]
 }
 
 /**
@@ -53,3 +70,9 @@ object APIHolder {
       .get
       .invoke(null, api)
 }
+
+/**
+ * Opaque container of a Jupyter message. Opaque not to add
+ * extra dependencies.
+ */
+final class Evidence private[scala] (private[scala] val underlying: Any)
