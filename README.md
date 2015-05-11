@@ -53,6 +53,8 @@ or run IPython Notebook with
 and create `Scala 2.11` notebooks by choosing `Scala 2.11` in the
 dropdown in the upper right of the IPython Notebook start page.
 
+**More detailed explanations and examples to come**
+
 ## Internals
 
 Jupyter Scala is a bridge between
