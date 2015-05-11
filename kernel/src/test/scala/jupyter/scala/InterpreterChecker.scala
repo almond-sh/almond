@@ -117,14 +117,9 @@ object ScalaInterpreterChecker {
   def apply(): InterpreterChecker =
     new InterpreterChecker({
       ScalaInterpreter(
-        ScalaKernel.startJars,
-        ScalaKernel.startDirs,
-        Nil,
-        identity,
-        ScalaKernel.resolvers,
-        Thread.currentThread().getContextClassLoader,
         pprintConfig = pprint.Config.Defaults.PPrintConfig.copy(lines = 15),
-        colors = ColorSet.BlackWhite
+        colors = ColorSet.BlackWhite,
+        filterUnitResults = false
       )
     })
 }

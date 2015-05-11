@@ -12,7 +12,7 @@ import jupyter.kernel.interpreter.DisplayData
 import jupyter.kernel.protocol.Output.LanguageInfo
 import jupyter.kernel.protocol.ParsedMessage
 
-import com.github.alexarchambault.ivylight.Resolver
+import com.github.alexarchambault.ivylight.{ClasspathFilter, Ivy, Resolver}
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
 object ScalaInterpreter {
@@ -44,14 +44,63 @@ object ScalaInterpreter {
   val wrap =
     Wrap(l => "Iterator(" + l.map(WebDisplay(_)).mkString(", ") + ")", classWrap = true)
 
-  def apply(startJars: Seq[File],
-            startDirs: Seq[File],
-            startIvys: Seq[(String, String, String)],
-            jarMap: File => File,
-            startResolvers: Seq[DependencyResolver],
-            startClassLoader: ClassLoader,
+  val scalaVersion = scala.util.Properties.versionNumberString
+
+  val startIvys = Seq(
+    ("org.scala-lang", "scala-library", scalaVersion),
+    ("com.github.alexarchambault.jupyter", s"jupyter-scala-api_$scalaVersion", BuildInfo.version)
+  )
+
+  val startMacroIvys = startIvys ++ Seq(
+    ("org.scala-lang", "scala-compiler", scalaVersion)
+  )
+
+  val startResolvers = Seq(
+    Resolver.localRepo,
+    Resolver.defaultMaven
+  ) ++ {
+    if (BuildInfo.version endsWith "-SNAPSHOT")
+      Seq(Resolver.sonatypeRepo("snapshots"))
+    else
+      Seq()
+  }
+
+  /*
+   * Same hack as in ammonite-shell, see the comment there
+   */
+  lazy val packJarMap = Classes.defaultClassPath()._1.map(f => f.getName -> f).toMap
+  def jarMap(f: File) = packJarMap.getOrElse(f.getName, f)
+
+  lazy val (startJars, startDirs) =
+    Ivy.resolve(startIvys, startResolvers).toList
+      .map(jarMap)
+      .distinct
+      .filter(_.exists())
+      .partition(_.getName endsWith ".jar")
+
+  lazy val (startMacroJars, startMacroDirs) =
+    Ivy.resolve(startMacroIvys, startResolvers).toList
+      .map(jarMap)
+      .distinct
+      .filter(_.exists())
+      .partition(_.getName endsWith ".jar")
+
+  lazy val startClassLoader: ClassLoader =
+    new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startJars ++ startDirs).toSet)
+
+  lazy val startMacroClassLoader: ClassLoader =
+    new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startMacroJars ++ startMacroDirs).toSet)
+
+  def apply(startJars: Seq[File] = startJars,
+            startDirs: Seq[File] = startDirs,
+            startIvys: Seq[(String, String, String)] = startIvys,
+            jarMap: File => File = jarMap,
+            startResolvers: Seq[DependencyResolver] = startResolvers,
+            startClassLoader: ClassLoader = startClassLoader,
+            startMacroClassLoader: ClassLoader = startMacroClassLoader,
             pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
-            colors: ColorSet = ColorSet.Default): interpreter.Interpreter =
+            colors: ColorSet = ColorSet.Default,
+            filterUnitResults: Boolean = true): interpreter.Interpreter =
     new interpreter.Interpreter {
       var currentPublish = Option.empty[Publish[Evidence]]
       var currentMessage = Option.empty[ParsedMessage[_]]
@@ -69,7 +118,7 @@ object ScalaInterpreter {
         ),
         wrapper = wrap,
         imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-        classes = new Classes(startClassLoader, (startJars, startDirs))
+        classes = new Classes(startClassLoader, (startJars, startDirs), startMacroClassLoader = startMacroClassLoader)
       )
 
       // Displaying results directly, not under Jupyter "Out" prompt
@@ -79,7 +128,11 @@ object ScalaInterpreter {
         currentMessage = current
 
         // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
-        def resFilter(s: String) = !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
+        def resFilter(s: String) =
+          if (filterUnitResults)
+            !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
+          else
+            true
 
         try {
           underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).filter(resFilter) mkString "\n"), stdout = output.map(_._1), stderr = output.map(_._2)) match {
