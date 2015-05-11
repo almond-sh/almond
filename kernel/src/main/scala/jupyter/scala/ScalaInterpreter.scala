@@ -72,6 +72,9 @@ object ScalaInterpreter {
         classes = new Classes(startClassLoader, (startJars, startDirs))
       )
 
+      // Displaying results directly, not under Jupyter "Out" prompt
+      override def resultDisplay = true
+
       def interpret(line: String, output: Option[(String => Unit, String => Unit)], storeHistory: Boolean, current: Option[ParsedMessage[_]]) = {
         currentMessage = current
 
