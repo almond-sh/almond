@@ -92,15 +92,15 @@ object ScalaInterpreter {
     )
 
     def interpret(line: String, output: Option[((String) => Unit, (String) => Unit)], storeHistory: Boolean): Result =
-      underlying.processLine(line, (_, _) => (), it => ??? : DisplayData) match {
+      underlying.processLine(line, (_, _) => (), it => new DisplayData.RawData(it.map(_.mkString).mkString("\n"))) match {
         case Res.Buffer(s) =>
           interpreter.Interpreter.Incomplete
         case Res.Exit =>
-          ???
+          interpreter.Interpreter.Error("Close this notebook to exit")
         case Res.Failure(reason) =>
-          ???
+          interpreter.Interpreter.Error(reason)
         case Res.Skip =>
-          ???
+          interpreter.Interpreter.NoValue
         case r @ Res.Success(ev) =>
           underlying.handleOutput(r)
           interpreter.Interpreter.Value(ev.value)
@@ -112,9 +112,6 @@ object ScalaInterpreter {
     }
 
     def executionCount = underlying.history.length
-
-    def stop(): Unit = ???
-    def reset(): Unit = ???
   }
 
 }
