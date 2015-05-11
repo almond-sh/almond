@@ -30,7 +30,7 @@ object ScalaInterpreter {
       "ReplBridge",
       NamesFor[API].map{case (n, isImpl) => ImportData(n, n, "", "ReplBridge.shell", isImpl)}.toSeq ++
         NamesFor[IvyConstructor.type].map{case (n, isImpl) => ImportData(n, n, "", "ammonite.api.IvyConstructor", isImpl)}.toSeq,
-      _.asInstanceOf[Iterator[String]].foreach(print)
+      _.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).foreach(println)
     ) {
         var api: FullAPI = null
 
@@ -42,7 +42,7 @@ object ScalaInterpreter {
     }
 
   val wrap =
-    Wrap(_.map(WebDisplay(_)).reduceOption(_ + "++ Iterator(\"\\n\") ++" + _).getOrElse("Iterator()"), classWrap = true)
+    Wrap(l => "Iterator(" + l.map(WebDisplay(_)).mkString(", ") + ")", classWrap = true)
 
   def apply(startJars: Seq[File],
             startDirs: Seq[File],
@@ -78,8 +78,11 @@ object ScalaInterpreter {
       def interpret(line: String, output: Option[(String => Unit, String => Unit)], storeHistory: Boolean, current: Option[ParsedMessage[_]]) = {
         currentMessage = current
 
+        // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
+        def resFilter(s: String) = !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
+
         try {
-          underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[String]].mkString), stdout = output.map(_._1), stderr = output.map(_._2)) match {
+          underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).filter(resFilter) mkString "\n"), stdout = output.map(_._1), stderr = output.map(_._2)) match {
             case Res.Buffer(s) =>
               interpreter.Interpreter.Incomplete
             case Res.Exit =>
