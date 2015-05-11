@@ -4,7 +4,7 @@ import sbtrelease.ReleasePlugin._
 import com.typesafe.sbt.pgp.PgpKeys
 
 object JupyterScalaBuild extends Build {
-  private val publishSettings = xerial.sbt.Sonatype.sonatypeSettings ++ com.atlassian.labs.gitstamp.GitStampPlugin.gitStampSettings ++ Seq(
+  private val publishSettings = com.atlassian.labs.gitstamp.GitStampPlugin.gitStampSettings ++ Seq(
     publishMavenStyle := true,
     publishTo := {
       val nexus = "https://oss.sonatype.org/"
@@ -40,12 +40,8 @@ object JupyterScalaBuild extends Build {
   private val commonSettings = Seq(
     organization := "com.github.alexarchambault.jupyter",
     scalaVersion := "2.11.6",
-    crossVersion := CrossVersion.full,
-    crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5", "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6"),
-    ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
     resolvers ++= Seq(
-      "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
       "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
       Resolver.sonatypeRepo("releases"),
       Resolver.sonatypeRepo("snapshots")
@@ -59,16 +55,17 @@ object JupyterScalaBuild extends Build {
       name := "jupyter-scala",
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
-        "com.github.alexarchambault.tmp" %% "ammonite-repl" % "0.2.7-SNAPSHOT" cross CrossVersion.full,
+        "com.github.alexarchambault" %% "ammonite-interpreter" % "0.3.0-SNAPSHOT" cross CrossVersion.full,
         "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % version.value
       ),
-      unmanagedSourceDirectories in Compile += (sourceDirectory in Compile).value / s"scala-${scalaBinaryVersion.value}"
+      crossVersion := CrossVersion.full,
+      crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5", "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6"),
+      ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
     )
 
   lazy val cli = Project(id = "cli", base = file("cli"))
     .settings(commonSettings: _*)
-    .settings(conscript.Harness.conscriptSettings: _*)
-    .settings(xerial.sbt.Pack.packSettings ++ xerial.sbt.Pack.publishPackArchive: _*)
+    .settings(xerial.sbt.Pack.packSettings ++ xerial.sbt.Pack.publishPackZipArchive: _*)
     .settings(
       name := "jupyter-scala-cli",
       libraryDependencies ++= Seq(
@@ -80,12 +77,7 @@ object JupyterScalaBuild extends Build {
           Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
         else
           Seq()
-      },
-      // Should not be necessary with the next release of sbt-pack (> 0.6.5)
-      xerial.sbt.Pack.packMain := Map(
-        "jupyter-scala" -> "jupyter.scala.JupyterScala",
-        "jupyter-scala-embedded" -> "jupyter.scala.JupyterScalaEmbedded"
-      )
+      }
     )
     .dependsOn(kernel)
 
