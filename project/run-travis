@@ -1,0 +1,13 @@
+#!/bin/bash
+set -ev
+
+PWD="$(cd "$(dirname "$0")"; pwd)"
+SBT="sbt ++${TRAVIS_SCALA_VERSION:-2.11.6}"
+
+$SBT publish-local
+
+"$PWD/run-tests"
+
+if [ "$TRAVIS_PULL_REQUEST" == "false" -a "$JAVA_HOME" == "$1" -a "$TRAVIS_BRANCH" == "master" ]; then
+  $SBT publish
+fi
