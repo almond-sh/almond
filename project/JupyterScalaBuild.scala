@@ -62,19 +62,7 @@ object JupyterScalaBuild extends Build {
     libraryDependencies ++= Seq(
       "com.lihaoyi" %% "utest" % "0.3.0" % "test"
     ),
-    testFrameworks += new TestFramework("utest.runner.Framework"),
-    testOptions in Test := {
-      sys.env.get("SPARK_HOME") match {
-        case None => Seq(Tests.Filter(s => s != "jupyter.scala.LocalClusterSparkTests" && s != "jupyter.scala.StandAloneClusterSparkTests"))
-        case _ =>
-          // FIXME This does not really work, if a docker container with hostname master exists, it will be found
-          // (even if we're not running from docker)
-          if (Try(java.net.InetAddress.getByName("master")).toOption.isEmpty)
-            Seq(Tests.Filter(s => s != "jupyter.scala.StandAloneClusterSparkTests"))
-          else
-            Seq()
-      }
-    }
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
   private val ammoniteVersion = "0.3.1-SNAPSHOT"
