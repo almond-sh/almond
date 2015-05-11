@@ -1,8 +1,10 @@
 package jupyter.scala
 
+import ammonite.interpreter.{Evaluated, Res}
 import ammonite.pprint
 import ammonite.shell.util.ColorSet
 import ammonite.shell.Checker
+import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.Interpreter
 import jupyter.scala.config.ScalaKernel
 
@@ -24,36 +26,30 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
 
       val expected = resultLines.mkString("\n").trim
 
-      var inc = ""
       for (line <- commandText.init) {
         allOutput += "\n@ " + line
-        val (res, _) = run(inc + line)
+        val (res, _) = run0(line)
 
         if (!line.startsWith("//"))
           failLoudly(assert(res == Interpreter.Incomplete))
-
-        inc += line + "\n"
       }
 
       if (expected startsWith "error: ")
-        fail(inc + commandText.last, _ contains expected.stripPrefix("error: "))
+        fail(commandText.last, _ contains expected.stripPrefix("error: "))
       else
-        apply(inc + commandText.last, if (expected.isEmpty) null else expected)
+        apply(commandText.last, if (expected.isEmpty) null else expected)
     }
   }
 
   var buffer = ""
 
-  def apply(input: String, expected: String = null) = {
-    val (_, printed) = run(input)
-    if (expected != null)
-      failLoudly(assert(printed == expected.trim))
-  }
-
-  def run(input: String): (Interpreter.Result, String) = {
+  def run0(input: String): (Interpreter.Result, String) = {
     val msg = collection.mutable.Buffer.empty[String]
     val f = { (s: String) => msg.synchronized(msg.append(s)) }
-    val res = intp.interpret(buffer + input, Some(f, f), storeHistory = true)
+    buffer =
+      if (buffer.isEmpty) input
+      else buffer + "\n" + input
+    val res = intp.interpret(buffer, Some(f, f), storeHistory = true)
 
     res match {
       case Interpreter.Value(d) =>
@@ -64,13 +60,35 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
       case _ =>
     }
 
+    if (res != Interpreter.Incomplete)
+      buffer = ""
+
     val msgs = msg.mkString
     allOutput += msgs + "\n"
     (res, msgs)
   }
 
+  def run(input: String): (Res[Evaluated[Unit]], Res[String]) = {
+    val (res0, output) = run0(input)
+
+    val res = res0 match {
+      case interpreter.Interpreter.Incomplete =>
+        Res.Buffer(buffer)
+      case interpreter.Interpreter.Error("Close this notebook to exit") =>
+        Res.Exit
+      case interpreter.Interpreter.Error(reason) =>
+        Res.Failure(reason)
+      case interpreter.Interpreter.NoValue =>
+        Res.Skip
+      case interpreter.Interpreter.Value(v) =>
+        Res.Success(Evaluated("", Nil, ()))
+    }
+
+    (res, res.map(_ => output))
+  }
+
   def fail(input: String, failureCheck: String => Boolean = _ => true): Unit = {
-    val (res, printed) = run(input)
+    val (res, printed) = run0(input)
 
     res match{
       case Interpreter.Error(err) =>
@@ -106,7 +124,7 @@ object ScalaInterpreterChecker {
         identity,
         ScalaKernel.resolvers,
         Thread.currentThread().getContextClassLoader,
-        pprintConfig = pprint.Config.Defaults.PPrintConfig,
+        pprintConfig = pprint.Config.Defaults.PPrintConfig.copy(lines = 15),
         colors = ColorSet.BlackWhite
       )
     })
