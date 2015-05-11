@@ -50,6 +50,8 @@ object JupyterScalaBuild extends Build {
     scalacOptions += "-target:jvm-1.7"
   ) ++ publishSettings
 
+  private val ammoniteVersion = "0.3.0-SNAPSHOT"
+
   lazy val kernel = Project(id = "kernel", base = file("kernel"))
     .settings(commonSettings: _*)
     .settings(
@@ -57,10 +59,10 @@ object JupyterScalaBuild extends Build {
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
         "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % version.value,
-        "com.github.alexarchambault" %% "ammonite-interpreter" % "0.3.0-SNAPSHOT" cross CrossVersion.full,
+        "com.github.alexarchambault" %% "ammonite-interpreter" % ammoniteVersion cross CrossVersion.full,
         // FIXME These two bring unnecessary dependencies
-        "com.github.alexarchambault" %% "ammonite-shell-api" % "0.3.0-SNAPSHOT" cross CrossVersion.full,
-        "com.github.alexarchambault" %% "ammonite-shell" % "0.3.0-SNAPSHOT" cross CrossVersion.full
+        "com.github.alexarchambault" %% "ammonite-shell-api" % ammoniteVersion cross CrossVersion.full,
+        "com.github.alexarchambault" %% "ammonite-shell" % ammoniteVersion cross CrossVersion.full
       ),
       crossVersion := CrossVersion.full,
       crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5", "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6"),
@@ -69,13 +71,16 @@ object JupyterScalaBuild extends Build {
     .settings(buildInfoSettings: _*)
     .settings(
       sourceGenerators in Compile <+= buildInfo,
-      buildInfoKeys := Seq[BuildInfoKey](version),
+      buildInfoKeys := Seq[BuildInfoKey](
+        version,
+        "ammoniteVersion" -> ammoniteVersion
+      ),
       buildInfoPackage := "jupyter.scala.config"
     )
 
   lazy val cli = Project(id = "cli", base = file("cli"))
     .settings(commonSettings: _*)
-    .settings(xerial.sbt.Pack.packSettings ++ xerial.sbt.Pack.publishPackZipArchive: _*)
+    .settings(xerial.sbt.Pack.packAutoSettings ++ xerial.sbt.Pack.publishPackTxzArchive ++ xerial.sbt.Pack.publishPackZipArchive: _*)
     .settings(
       name := "jupyter-scala-cli",
       libraryDependencies ++= Seq(

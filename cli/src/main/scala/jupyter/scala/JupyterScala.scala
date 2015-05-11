@@ -21,7 +21,7 @@ case class JupyterScala(
       progName
     }
 
-  ServerApp(ScalaModule.kernelId, ScalaModule.kernel, ScalaModule.kernelInfo, progPath, options)
+  ServerApp(ScalaModule.kernelId, ScalaModule.kernel, ScalaModule.kernelInfo, ScalaModule.languageInfo, progPath, options)
 }
 
 object JupyterScala extends AppOf[JupyterScala] {

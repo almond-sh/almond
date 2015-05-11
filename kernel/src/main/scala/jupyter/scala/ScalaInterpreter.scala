@@ -22,7 +22,7 @@ object ScalaInterpreter {
     startJars: Seq[File] = Nil,
     startIvys: Seq[(String, String, String)] = Nil,
     startResolvers: Seq[DependencyResolver] = Seq(ResolverHelpers.localRepo, ResolverHelpers.defaultMaven),
-    pprintConfig: pprint.Config = pprint.Config.Defaults.PPrintConfig
+    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig
   ): BridgeConfig[Preprocessor.Output, Iterator[Iterator[String]]] =
     BridgeConfig(
     "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
@@ -37,7 +37,7 @@ object ScalaInterpreter {
             replApi = new ReplAPIImpl[Iterator[Iterator[String]]](intp, s => stdout(s + "\n"), startJars, startIvys, startResolvers) with ShellReplAPIImpl {
               def shellPrompt0 = throw new IllegalArgumentException("No shell prompt from Jupyter")
               def pprintConfig = _pprintConfig
-              def colors = ColorSet.BlackWhite
+              def colors = ColorSet.Default
             }
 
           ReplAPIHolder.initReplBridge(
@@ -102,7 +102,7 @@ object ScalaInterpreter {
         }
 
       capture {
-        underlying.processLine(line, (_, _) => (), it => new DisplayData.RawData(it.map(_.mkString).mkString("\n"))) match {
+        underlying.processLine(line, _(_), it => new DisplayData.RawData(it.map(_.mkString).mkString("\n"))) match {
           case Res.Buffer(s) =>
             interpreter.Interpreter.Incomplete
           case Res.Exit =>
