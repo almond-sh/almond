@@ -53,7 +53,12 @@ object ScalaInterpreter {
 
   val startMacroIvys = startIvys ++ Seq(
     ("org.scala-lang", "scala-compiler", scalaVersion)
-  )
+  ) ++ {
+    if (scalaVersion startsWith "2.10.")
+      Seq(("org.scalamacros", s"paradise_$scalaVersion", "2.0.1"))
+    else
+      Seq()
+  }
 
   val startResolvers = Seq(
     Resolver.localRepo,
