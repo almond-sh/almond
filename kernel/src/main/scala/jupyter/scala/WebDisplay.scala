@@ -1,6 +1,6 @@
 package jupyter.scala
 
-import ammonite.interpreter.api.DisplayItem, DisplayItem._
+import ammonite.api.DisplayItem, DisplayItem._
 
 object WebDisplay {
 

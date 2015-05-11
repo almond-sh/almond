@@ -2,7 +2,6 @@ package jupyter.scala
 
 import ammonite.interpreter.{Evaluated, Res}
 import ammonite.pprint
-import ammonite.shell.util.ColorSet
 import ammonite.shell.Checker
 import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.Interpreter
