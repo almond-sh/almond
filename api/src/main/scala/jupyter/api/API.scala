@@ -1,6 +1,7 @@
 package jupyter.api
 
 import scala.reflect.runtime.universe.WeakTypeTag
+import scala.xml.Elem
 
 trait API {
   /**
@@ -46,6 +47,8 @@ trait API {
    * widgets through Jupyter comms
    */
   implicit def publish: jupyter.api.Publish[Evidence]
+
+  val display: Display = new Display {}
 }
 
 trait FullAPI extends API {
@@ -73,3 +76,54 @@ object APIHolder {
  * extra dependencies.
  */
 final class Evidence private[jupyter] (private[jupyter] val underlying: Any)
+
+trait Display {
+  import Base64._
+
+  /*
+   * FIXME The publish.display method only accepts data of type String.
+   * Support should be added for Seq[String] (base64 encoded data looks better
+   * this way) and Json.
+   */
+
+  def html(html: String)
+          (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "text/html" -> html)
+  }
+  def html(node: scala.xml.Node)
+          (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    html(node.toString())
+  }
+  def markdown(md: String)
+              (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "text/markdown" -> md)
+  }
+  def md(md: String)
+        (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    markdown(md)
+  }
+  def svg(svg: String)
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "image/svg+xml" -> svg)
+  }
+  def svg(node: scala.xml.Node)
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    svg(node.toString())
+  }
+  def png(data: Array[Byte])
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "image/png" -> data.toBase64)
+  }
+  def jpg(data: Array[Byte])
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "image/jpeg" -> data.toBase64)
+  }
+  def latex(latex: String)
+           (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "text/latex" -> latex)
+  }
+  def pdf(data: Array[Byte])
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "application/pdf" -> data.toBase64)
+  }
+}

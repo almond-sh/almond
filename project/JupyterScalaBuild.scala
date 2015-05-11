@@ -75,7 +75,15 @@ object JupyterScalaBuild extends Build {
         "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "com.lihaoyi" %% "ammonite-pprint" % "0.3.0"
-      )
+      ),
+      libraryDependencies ++= {
+        if (scalaVersion.value startsWith "2.10.")
+          Seq()
+        else
+          Seq(
+            "org.scala-lang.modules" %% "scala-xml" % "1.0.3"
+          )
+      }
     )
     .settings(buildInfoSettings: _*)
     .settings(
