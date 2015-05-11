@@ -55,8 +55,11 @@ object JupyterScalaBuild extends Build {
       name := "jupyter-scala",
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+        "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % version.value,
         "com.github.alexarchambault" %% "ammonite-interpreter" % "0.3.0-SNAPSHOT" cross CrossVersion.full,
-        "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % version.value
+        // FIXME These two bring unnecessary dependencies
+        "com.github.alexarchambault" %% "ammonite-shell-api" % "0.3.0-SNAPSHOT" cross CrossVersion.full,
+        "com.github.alexarchambault" %% "ammonite-shell" % "0.3.0-SNAPSHOT" cross CrossVersion.full
       ),
       crossVersion := CrossVersion.full,
       crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5", "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6"),
@@ -72,7 +75,7 @@ object JupyterScalaBuild extends Build {
         "com.github.alexarchambault" %% "case-app" % "0.2.1",
         "ch.qos.logback" % "logback-classic" % "1.0.13"
       ),
-      libraryDependencies <++= Def.setting {
+      libraryDependencies ++= {
         if (scalaVersion.value startsWith "2.10.")
           Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
         else

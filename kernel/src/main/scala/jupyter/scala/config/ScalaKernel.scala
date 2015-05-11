@@ -1,21 +1,22 @@
-package jupyter
-package scala
+package jupyter.scala
+package config
 
 import java.io.File
 
+import ammonite.shell.ReplAPI
+import com.github.alexarchambault.ivylight.{IvyHelper, ResolverHelpers}
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import bridge.Bridge
-import kernel.interpreter._
-import kernel.BuildInfo
+import jupyter.kernel.interpreter._
 
 import scalaz.\/
 
 object ScalaKernel extends InterpreterKernel with LazyLogging {
-  val scalaBinaryVersion = BuildInfo.scalaVersion.split('.').take(2).mkString(".")
+  val scalaVersion = scala.util.Properties.versionNumberString
+  val scalaBinaryVersion = scalaVersion.split('.').take(2).mkString(".")
 
   val dependencies = Seq(
-    ("org.scala-lang", "scala-library", BuildInfo.scalaVersion),
-    ("com.github.alexarchambault.jupyter", s"jupyter-bridge_$scalaBinaryVersion", BuildInfo.version)
+    ("org.scala-lang", "scala-library", scalaVersion),
+    ("com.github.alexarchambault.jupyter", s"jupyter-bridge_$scalaBinaryVersion", ???)
   )
 
 
@@ -32,10 +33,7 @@ object ScalaKernel extends InterpreterKernel with LazyLogging {
       .split(File.pathSeparator).map(new File(_))
 
   lazy val baseClassPath =
-    dependencies.flatMap {
-      case (org, name, rev) =>
-        IvyHelper.resolveArtifact(org, name, rev, resolvers)
-    } .distinct
+    IvyHelper.resolve(dependencies, resolvers) .distinct
 
   lazy val (startJarClassPath, startFileClassPath) =
     (bootClassPath ++ baseClassPath)
@@ -46,8 +44,9 @@ object ScalaKernel extends InterpreterKernel with LazyLogging {
     ScalaInterpreter(
       startJarClassPath,
       startFileClassPath,
-      classLoader getOrElse Bridge.classLoader,
-      resolvers
+      dependencies,
+      resolvers,
+      classLoader getOrElse classOf[ReplAPI].getClassLoader
     )
   }
 }

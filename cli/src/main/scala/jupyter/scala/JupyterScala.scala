@@ -1,9 +1,11 @@
 package jupyter
 package scala
 
+import jupyter.kernel.server.{ ServerApp, ServerAppOptions }
+import jupyter.scala.config.ScalaModule
+
 import caseapp._
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import kernel.server.{ ServerApp, ServerAppOptions }
 
 case class JupyterScala(
   options: ServerAppOptions
@@ -24,17 +26,4 @@ case class JupyterScala(
 
 object JupyterScala extends AppOf[JupyterScala] {
   val parser = default
-}
-
-class JupyterScalaConscriptLaunch extends _root_.xsbti.AppMain {
-  def run(config: _root_.xsbti.AppConfiguration) =
-    try {
-      JupyterScala.main(config.arguments)
-      Exit(0)
-    } catch {
-      case _: Exception =>
-        Exit(1)
-    }
-
-  case class Exit(code: Int) extends _root_.xsbti.Exit
 }

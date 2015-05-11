@@ -1,197 +1,120 @@
-package jupyter
-package scala
+package jupyter.scala
 
 import java.io.File
-import ammonite.repl._
-import bridge.{BridgeHolder, Load, Bridge, DisplayData, IvyConstructor}
-import com.typesafe.scalalogging.slf4j.LazyLogging
-import jupyter.kernel.interpreter.helpers.Capture
+
+import ammonite.interpreter.Preprocessor.PreprocessorParser
+import ammonite.interpreter._
+import ammonite.pprint
+import ammonite.shell.util.ColorSet
+import ammonite.shell._
+import com.github.alexarchambault.ivylight.ResolverHelpers
+import jupyter.kernel.interpreter
+import jupyter.kernel.interpreter.DisplayData
+import jupyter.kernel.interpreter.Interpreter.Result
 import org.apache.ivy.plugins.resolver.DependencyResolver
-import jupyter.kernel.interpreter.Interpreter
 
-import _root_.scala.reflect.runtime.universe._
-
-class ScalaBridge(
-  underlying: ammonite.repl.interp.Interpreter[_, _]
-) extends Bridge {
-  import _root_.scala.reflect.runtime.universe.{ Try => _, _ }
-
-  def clear(): Unit = ()
-  def history: Seq[String] = underlying.history
-
-  def typeOf[T: WeakTypeTag]: Type = weakTypeOf[T]
-  def typeOf[T: WeakTypeTag](t: => T): Type = weakTypeOf[T]
-
-  // FIXME Move in Load
-  private var _resolvers = Seq.empty[DependencyResolver]
-  private[scala] def setResolvers(resolvers: Seq[DependencyResolver]) = {
-    _resolvers = resolvers
-  }
-
-  def load: Load = new Load {
-    def apply(line: String): Unit = ???
-
-    def handleJar(jar: File): Unit = {
-      underlying.extraJars = underlying.extraJars ++ Seq(jar)
-      underlying.eval.addJar(jar.toURI.toURL)
-    }
-    def jar(jar: File): Unit = {
-      underlying.eval.newClassloader()
-      underlying.extraJars = underlying.extraJars :+ jar
-      handleJar(jar)
-      underlying.init()
-    }
-    def ivy(coordinates: (String, String, String)): Unit = {
-      val (groupId, artifactId, version) = coordinates
-      val jars = IvyHelper.resolveArtifact(groupId, artifactId, version, _resolvers)
-
-      underlying.eval.newClassloader()
-      underlying.extraJars ++= jars
-      jars.foreach(handleJar)
-      underlying.init()
-    }
-  }
-
-  def newCompiler(): Unit = underlying.init()
-}
+import scala.tools.nsc.Global
 
 object ScalaInterpreter {
-  def apply(jarDeps: Seq[File], dirDeps: Seq[File], classLoader: ClassLoader, resolvers: Seq[DependencyResolver]): Interpreter  =
-    underlying[ScalaBridge](jarDeps, dirDeps, classLoader, resolvers, "_root_.jupyter.bridge.BridgeHolder", (cls, bridge) => Bridge.init(cls.asInstanceOf[Class[BridgeHolder]], bridge), new ScalaBridge(_))
 
-  // FIXME Should be just <: Bridge
-  def underlying[T <: ScalaBridge : TypeTag](
-    jarDeps: Seq[File],
-    dirDeps: Seq[File],
-    classLoader: ClassLoader,
-    resolvers: Seq[DependencyResolver],
-    bridgeHolderTypePath: String,
-    bridgeSet: (Class[_], T) => Unit,
-    bridgeCreate: ammonite.repl.interp.Interpreter[CustomPreprocessor.Output, Seq[DisplayData]] => T,
-    useClassWrapper: Boolean = false
-  ): Interpreter =
-    new Interpreter with LazyLogging { intp =>
+  def bridgeConfig(
+    startJars: Seq[File] = Nil,
+    startIvys: Seq[(String, String, String)] = Nil,
+    startResolvers: Seq[DependencyResolver] = Seq(ResolverHelpers.localRepo, ResolverHelpers.defaultMaven),
+    pprintConfig: pprint.Config = pprint.Config.Defaults.PPrintConfig
+  ): BridgeConfig[Preprocessor.Output, Iterator[Iterator[String]]] =
+    BridgeConfig(
+    "object ReplBridge extends ammonite.shell.ReplAPIHolder{}",
+    "ReplBridge",
+    {
+      _ =>
+        val _pprintConfig = pprintConfig
+        var replApi: ReplAPI with FullShellReplAPI = null
 
-      logger debug s"Jar deps: ${jarDeps.map(_.toString).sorted mkString "\n"}"
-      logger debug s"Dir deps: ${dirDeps.map(_.toString).sorted mkString "\n"}"
+        (intp, cls, stdout) =>
+          if (replApi == null)
+            replApi = new ReplAPIImpl[Iterator[Iterator[String]]](intp, s => stdout(s + "\n"), startJars, startIvys, startResolvers) with ShellReplAPIImpl {
+              def shellPrompt0 = throw new IllegalArgumentException("No shell prompt from Jupyter")
+              def pprintConfig = _pprintConfig
+              def colors = ColorSet.BlackWhite
+            }
 
-      val bridgeHolderHandle = "$BridgeHolder"
+          ReplAPIHolder.initReplBridge(
+            cls.asInstanceOf[Class[ReplAPIHolder]],
+            replApi
+          )
 
-      val NS = "_root_.jupyter.bridge"
+          BridgeHandle {
+            replApi.power.stop()
+          }
+    },
+    Evaluator.namesFor[ReplAPI with ShellReplAPI].map(n => n -> ImportData(n, n, "", "ReplBridge.shell")).toSeq ++
+      Evaluator.namesFor[IvyConstructor].map(n => n -> ImportData(n, n, "", "ammonite.shell.IvyConstructor")).toSeq
+    )
 
-      val bootstrapSymbol = "bootstrap"
+  val preprocessor: (Unit => (String => Either[String, scala.Seq[Global#Tree]])) => (String, String) => Res[Preprocessor.Output] =
+    f => new PreprocessorParser(f(()), new WebDisplay {}) .apply
 
-      def wrap(codeDefined: CustomPreprocessor.Output, previousImportBlock: String, wrapperName: String) = {
-        val (code, defined) = (codeDefined.code, codeDefined.defined)
+  def mergePrinters(printers: Seq[String]) = s"Iterator[Iterator[String]](${printers mkString ", "})"
 
-        if (useClassWrapper)
-          // The class definition must be in last position here, for the AmmonitePlugin to find it
-          s"""$previousImportBlock
+  val wrap: (Preprocessor.Output, String, String) => String =
+    (p, previousImportBlock, wrapperName) =>
+      Wrap.obj(p.code, mergePrinters(p.printer), previousImportBlock, wrapperName)
 
-              object $wrapperName {
-                val $bootstrapSymbol = new $wrapperName
-              }
+  def classWrap(instanceSymbol: String): (Preprocessor.Output, String, String) => String =
+    (p, previousImportBlock, wrapperName) =>
+      Wrap.cls(p.code, mergePrinters(p.printer), previousImportBlock, wrapperName, instanceSymbol)
 
-              class $wrapperName extends Serializable {
-                $code
-                def $$main(): Seq[$NS.DisplayData] = {
-                  Seq[Any](${defined mkString ", "}) .map {
-                    case d: $NS.DisplayData => d
-                    case v => $NS.DisplayData.RawData(v)
-                  }
-                }
-              }
-           """
-        else
-          s"""$previousImportBlock
+  val classWrapperInstanceSymbol = "INSTANCE"
 
-              object $wrapperName {
-                $code
-                def $$main(): Seq[$NS.DisplayData] = {
-                  Seq[Any](${defined mkString ", "}) .map {
-                    case d: $NS.DisplayData => d
-                    case v => $NS.DisplayData.RawData(v)
-                  }
-                }
-              }
-           """
+  def apply(
+    startJars: Seq[File],
+    startDirs: Seq[File],
+    startIvys: Seq[(String, String, String)],
+    startResolvers: Seq[DependencyResolver],
+    startClassLoader: ClassLoader
+  ) = new interpreter.Interpreter {
+    val underlying = new Interpreter[Preprocessor.Output, Iterator[Iterator[String]]](
+      bridgeConfig(startJars = startJars, startIvys = startIvys, startResolvers = startResolvers),
+      preprocessor,
+      classWrap(classWrapperInstanceSymbol),
+      handleResult = {
+        val transform = Wrap.classWrapImportsTransform(classWrapperInstanceSymbol) _
+        (buf, r) => transform(r)
+      },
+      printer = _.foreach(print),
+      stdout = s => Console.out.println(s),
+      initialHistory = Nil,
+      predef = "",
+      classes = new DefaultClassesImpl(startClassLoader, startJars, startDirs),
+      useClassWrapper = true,
+      classWrapperInstance = Some(classWrapperInstanceSymbol)
+    )
+
+    def interpret(line: String, output: Option[((String) => Unit, (String) => Unit)], storeHistory: Boolean): Result =
+      underlying.processLine(line, (_, _) => (), it => ??? : DisplayData) match {
+        case Res.Buffer(s) =>
+          interpreter.Interpreter.Incomplete
+        case Res.Exit =>
+          ???
+        case Res.Failure(reason) =>
+          ???
+        case Res.Skip =>
+          ???
+        case r @ Res.Success(ev) =>
+          underlying.handleOutput(r)
+          interpreter.Interpreter.Value(ev.value)
       }
 
-      def namesFor(t: Type): Set[String] = {
-        // See https://issues.scala-lang.org/browse/SI-5736 and
-        // http://stackoverflow.com/questions/17244180/how-to-recognize-scala-constructor-parameter-fields-with-no-underlying-java-fi/17248174#17248174
-        val yours = t.members.collect{ case m if m.isPublic && !m.name.decoded.endsWith(nme.LOCAL_SUFFIX_STRING) => m.name.toString }.toSet
-        val default = typeOf[Object].members.map(_.name.toString)
-        yours -- default
-      }
-
-      val previousImports =
-        namesFor(typeOf[T]).toList.map(n => n -> ImportData(n, n, "", s"$bridgeHolderHandle.bridge")) ++ // FIXME Should be typeOf[T]
-          namesFor(typeOf[IvyConstructor]).toList.map(n => n -> ImportData(n, n, "", "_root_.jupyter.bridge.IvyConstructor"))
-
-      private var bridge: T = _
-
-      def initBridge(underlying: ammonite.repl.interp.Interpreter[CustomPreprocessor.Output, Seq[DisplayData]]) = {
-        bridge = bridgeCreate(underlying)
-        bridge.setResolvers(resolvers)
-      }
-
-      private val underlying = new ammonite.repl.interp.Interpreter[CustomPreprocessor.Output, Seq[DisplayData]](
-        (_, _) => (),
-        Console.out.println,
-        Nil,
-        previousImports,
-        f => CustomPreprocessor(f()).apply,
-        wrap,
-        s"object $bridgeHolderHandle extends $bridgeHolderTypePath {}",
-        bridgeHolderHandle,
-        {
-          (intp, cls) =>
-            if (bridge == null) initBridge(intp)
-
-            bridgeSet(cls, bridge)
-        },
-        jarDeps,
-        dirDeps
-      )
-
-      def executionCount = underlying.history.length
-
-      def interpret(line: String, output: Option[(String => Unit, String => Unit)], storeHistory: Boolean) =
-        underlying.processLine(line, _(_), f => Capture(output.map(_._1) getOrElse Console.out.print, output.map(_._2) getOrElse Console.err.print)(f), useClassWrapper) match {
-          case res @ Res.Success(ev0) =>
-            val ev =
-              if (useClassWrapper)
-                ev0.copy(imports = ev0.imports.map(d => d.copy(prefix = d.prefix + "." + bootstrapSymbol)))
-              else
-                ev0
-
-            underlying.handleOutput(Res.Success(ev))
-            Interpreter.Value(ev.value.headOption getOrElse DisplayData.EmptyData)
-          case Res.Failure(desc) =>
-            Interpreter.Error(desc)
-          case res @ Res.Buffer(_) =>
-            underlying.handleOutput(res)
-            Interpreter.Incomplete
-          case Res.Skip =>
-            Interpreter.Cancelled
-          case Res.Exit =>
-            // Should not happen to us
-            ???
-        }
-
-      def complete(code: String, pos: Int) =
-        underlying.pressy.complete(pos, underlying.eval.previousImportBlock, code)
-
-      def reset() = {
-        underlying.history.clear()
-        underlying.eval.newClassloader()
-        // FIXME We should do that
-        // underlying.eval.previousImports.clear()
-      }
-
-      def stop() = {
-        ???
-      }
+    def complete(code: String, pos: Int): (Int, Seq[String]) = {
+      val (pos0, completions, _) = underlying.pressy.complete(pos, underlying.eval.previousImportBlock, code)
+      (pos0, completions)
     }
+
+    def executionCount = underlying.history.length
+
+    def stop(): Unit = ???
+    def reset(): Unit = ???
+  }
+
 }
