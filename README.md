@@ -3,8 +3,8 @@
 Jupyter Scala is a Scala kernel for [Jupyter / IPython](http://ipython.org/).
 It's a lightweight alternative to [IScala](https://github.com/mattpap/IScala),
 being easily embeddable in other apps / libraries and being based
-on the fantastic wrapper around the scalac internals from
-[Ammonite](https://github.com/lihaoyi/Ammonite/).
+on the great wrapper around the scalac internals from
+[Ammonite](https://github.com/lihaoyi/Ammonite/) (my [fork of it](https://github.com/alexarchambault/ammonite-shell) actually).
 
 [![Build Status](https://travis-ci.org/alexarchambault/jupyter-scala.svg?branch=master)](https://travis-ci.org/alexarchambault/jupyter-scala)
 
@@ -45,7 +45,7 @@ Then run either IPython console with
 
     $ ipython console --kernel scala-2.11
 
-and start using the Jupyter Scala kernel straightawayt,
+and start using the Jupyter Scala kernel straightaway,
 or run IPython Notebook with
 
     $ ipython notebook
@@ -55,9 +55,10 @@ dropdown in the upper right of the IPython Notebook start page.
 
 ## Internals
 
-Jupyter Scala is a simple bridge between
+Jupyter Scala is a bridge between
+(my [fork](https://github.com/alexarchambault/ammonite-shell) of the)
 [Ammonite](https://github.com/lihaoyi/Ammonite)'s wrappers around the Scala compiler,
-and the Jupyter kernel facilities provided by
+and the Jupyter kernel facilities put in
 [Jupyter kernel](https://github.com/alexarchambault/jupyter-kernel).
 
 ## Compiling it
@@ -71,5 +72,3 @@ Build your own binaries from the sources with
 This will generate a tar archive like `jupyter-scala-cli-0.2.0-SNAPSHOT.tar.gz` in `cli/target/`. See the instructions above for how to set it up then.
 
 Released under the Apache 2.0 license, see LICENSE for more details.
-
-Initially released as [jove-scala](https://github.com/jove-sh/jove-scala).
