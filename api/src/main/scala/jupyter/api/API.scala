@@ -1,7 +1,6 @@
 package jupyter.api
 
 import scala.reflect.runtime.universe.WeakTypeTag
-import scala.xml.Elem
 
 trait API {
   /**
@@ -44,7 +43,7 @@ trait API {
    * Jupyter publishing helper
    *
    * Allows to push display items to the front-end or to communicate with
-   * widgets through Jupyter comms
+   * widgets through Jupyter comms (WIP)
    */
   implicit def publish: jupyter.api.Publish[Evidence]
 
