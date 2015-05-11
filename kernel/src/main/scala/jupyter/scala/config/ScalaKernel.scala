@@ -21,7 +21,12 @@ object ScalaKernel extends InterpreterKernel with LazyLogging {
   val resolvers = Seq(
     Resolver.localRepo,
     Resolver.defaultMaven
-  )
+  ) ++ {
+    if (BuildInfo.ammoniteVersion endsWith "-SNAPSHOT")
+      Seq(Resolver.sonatypeRepo("snapshots"))
+    else
+      Seq()
+  }
 
   /*
    * Same hack as in ammonite-shell, see the comment there

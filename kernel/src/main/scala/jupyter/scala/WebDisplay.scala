@@ -1,7 +1,6 @@
 package jupyter.scala
 
-import ammonite.interpreter.api.DisplayItem
-import ammonite.interpreter.api.DisplayItem.{Import, LazyIdentity, Identity, Definition}
+import ammonite.interpreter.api.DisplayItem, DisplayItem._
 
 object WebDisplay {
 
