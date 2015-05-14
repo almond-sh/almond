@@ -70,11 +70,8 @@ object ScalaInterpreter {
       Seq()
   }
 
-  /*
-   * Same hack as in ammonite-shell, see the comment there
-   */
-  lazy val packJarMap = Classes.defaultClassPath()._1.map(f => f.getName -> f).toMap
-  def jarMap(f: File) = packJarMap.getOrElse(f.getName, f)
+
+  lazy val jarMap = Classes.jarMap(getClass.getClassLoader)
 
   lazy val (startJars, startDirs) =
     Ivy.resolve(startIvys, startResolvers).toList
@@ -96,13 +93,13 @@ object ScalaInterpreter {
   lazy val startMacroClassLoader: ClassLoader =
     new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startMacroJars ++ startMacroDirs).toSet)
 
-  def apply(startJars: Seq[File] = startJars,
-            startDirs: Seq[File] = startDirs,
-            startIvys: Seq[(String, String, String)] = startIvys,
-            jarMap: File => File = jarMap,
-            startResolvers: Seq[DependencyResolver] = startResolvers,
-            startClassLoader: ClassLoader = startClassLoader,
-            startMacroClassLoader: ClassLoader = startMacroClassLoader,
+  def apply(startJars: => Seq[File] = startJars,
+            startDirs: => Seq[File] = startDirs,
+            startIvys: => Seq[(String, String, String)] = startIvys,
+            jarMap: => File => File = jarMap,
+            startResolvers: => Seq[DependencyResolver] = startResolvers,
+            startClassLoader: => ClassLoader = startClassLoader,
+            startMacroClassLoader: => ClassLoader = startMacroClassLoader,
             pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
             colors: ColorSet = ColorSet.Default,
             filterUnitResults: Boolean = true): interpreter.Interpreter =
@@ -110,21 +107,33 @@ object ScalaInterpreter {
       var currentPublish = Option.empty[Publish[Evidence]]
       var currentMessage = Option.empty[ParsedMessage[_]]
 
-      val underlying = new Interpreter(
-        bridgeConfig = bridgeConfig(
-          currentPublish,
-          currentMessage,
-          startJars = startJars,
-          startIvys = startIvys,
-          jarMap = jarMap,
-          startResolvers = startResolvers,
-          pprintConfig = pprintConfig,
-          colors = colors
-        ),
-        wrapper = wrap,
-        imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-        classes = new Classes(startClassLoader, (startJars, startDirs), startMacroClassLoader = startMacroClassLoader)
-      )
+      lazy val underlying = {
+        val intp =
+          new Interpreter(
+            bridgeConfig = bridgeConfig(
+              currentPublish,
+              currentMessage,
+              startJars = startJars,
+              startIvys = startIvys,
+              jarMap = jarMap,
+              startResolvers = startResolvers,
+              pprintConfig = pprintConfig,
+              colors = colors
+            ),
+            wrapper = wrap,
+            imports = new ammonite.interpreter.Imports(useClassWrapper = true),
+            classes = new Classes(startClassLoader, (startJars, startDirs), startMacroClassLoader = startMacroClassLoader)
+          )
+        initialized0 = true
+        intp
+      }
+
+      var initialized0 = false
+      override def initialized = initialized0
+
+      override def init(): Unit = {
+        underlying
+      }
 
       // Displaying results directly, not under Jupyter "Out" prompt
       override def resultDisplay = true
@@ -171,10 +180,17 @@ object ScalaInterpreter {
 
       val languageInfo = LanguageInfo(
         name="scala",
+        version = scalaVersion,
         codemirror_mode = "text/x-scala",
         file_extension = "scala",
         mimetype = "text/x-scala"
       )
+
+      override val implementation = ("jupyter-scala", s"${BuildInfo.version} (scala $scalaVersion)")
+      override val banner =
+       s"""Jupyter Scala ${BuildInfo.version} (Ammonite ${BuildInfo.ammoniteVersion}) (Scala $scalaVersion)
+          |Start dependencies: ${startIvys.map{case (org, name, ver) => s"  $org:$name:$ver"}.mkString("\n", "\n", "")}
+        """.stripMargin
     }
 
 }
