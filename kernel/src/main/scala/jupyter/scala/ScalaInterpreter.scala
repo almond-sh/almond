@@ -73,23 +73,49 @@ object ScalaInterpreter {
 
   lazy val jarMap = Classes.jarMap(getClass.getClassLoader)
 
-  lazy val (startJars, startDirs) =
-    Ivy.resolve(startIvys, startResolvers).toList
-      .map(jarMap)
-      .distinct
-      .filter(_.exists())
-      .partition(_.getName endsWith ".jar")
+  def fromClasspath(deps: String): Either[Seq[(String, String, String)], Seq[File]] = {
+    val classpathJars = Classes.defaultClassPath(getClass.getClassLoader)._1
 
+    val deps0 = deps.split(',').map(_.split(':')).map {
+      case Array(org, name, rev) => (org, name, rev)
+    }
+
+    val files = deps0.map{ case (org, name, rev) =>
+      val nameVer = s"$name-$rev.jar"
+      val nameShort = s"$name.jar"
+
+      (org, name, rev) ->
+        (classpathJars.find(_.getName == nameVer) orElse classpathJars.find(_.getName == nameShort))
+    }
+
+    if (files.forall(_._2.nonEmpty))
+      Right(files.map(_._2.get))
+    else
+      Left(files.collect{case ((org, name, rev), None) => (org, name, rev) })
+  }
+
+
+  def classPathOrIvy(allDeps: String, ivys: Seq[(String, String, String)]) =
+    fromClasspath(allDeps) match {
+      case Right(jars) => (jars.toSeq, Nil)
+
+      case Left(missing) =>
+        println(s"Cannot find the following dependencies on the classpath:\n${missing.mkString("\n")}")
+        println("Resolving shared dependencies with Ivy")
+        Ivy.resolve(ivys, startResolvers).toList
+          .map(jarMap)
+          .distinct
+          .filter(_.exists())
+          .partition(_.getName endsWith ".jar")
+    }
+
+  lazy val (startJars, startDirs) =
+    classPathOrIvy(KernelBuildInfo.apiDeps, startIvys)
   lazy val (startMacroJars, startMacroDirs) =
-    Ivy.resolve(startMacroIvys, startResolvers).toList
-      .map(jarMap)
-      .distinct
-      .filter(_.exists())
-      .partition(_.getName endsWith ".jar")
+    classPathOrIvy(KernelBuildInfo.compilerDeps, startMacroIvys)
 
   lazy val startClassLoader: ClassLoader =
     new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startJars ++ startDirs).toSet)
-
   lazy val startMacroClassLoader: ClassLoader =
     new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startMacroJars ++ startMacroDirs).toSet)
 

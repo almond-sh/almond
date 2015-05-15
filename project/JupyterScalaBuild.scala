@@ -68,6 +68,35 @@ object JupyterScalaBuild extends Build {
   private val ammoniteVersion = "0.3.1-SNAPSHOT"
   private val jupyterKernelVersion = "0.2.0-SNAPSHOT"
 
+  def computeModuleDeps(report: UpdateReport,
+                        scalaVersion: String,
+                        scalaBinaryVersion: String,
+                        modules: (String, String, String)*): String = {
+
+    def get(m: ModuleID) = (m.organization, m.name, m.revision)
+
+    def normalize(m: ModuleID): ModuleID =
+      m.crossVersion match {
+        case f: CrossVersion.Full =>
+          m.copy(name = m.name + "_" + scalaVersion, crossVersion = CrossVersion.Disabled)
+        case b: CrossVersion.Binary =>
+          m.copy(name = m.name + "_" + scalaBinaryVersion, crossVersion = CrossVersion.Disabled)
+        case _: CrossVersion.Disabled.type =>
+          m
+      }
+
+    val configReport = report.configuration("compile").get
+    val repModules = configReport.modules
+    val m = repModules.flatMap(m => m.callers.map(c => get(normalize(c.caller)) -> get(normalize(m.module)))).groupBy(_._1).mapValues(_.map(_._2))
+
+    val deps = modules ++ modules.flatMap(module => m.getOrElse(module, Nil))
+
+    deps.sorted.distinct.map{ case (org, name, rev) => s"$org:$name:$rev" }.mkString(",")
+  }
+
+  val apiDeps = TaskKey[String]("apiDeps")
+  val compilerDeps = TaskKey[String]("compilerDeps")
+
   lazy val api = Project(id = "api", base = file("api"))
     .settings(commonSettings: _*)
     .settings(
@@ -111,6 +140,33 @@ object JupyterScalaBuild extends Build {
         "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
         "com.github.alexarchambault" %% "ammonite-shell" % ammoniteVersion cross CrossVersion.full
       ).map(_ % "test" classifier "tests")
+    )
+    .settings(
+      apiDeps := {
+        computeModuleDeps(update.value, scalaVersion.value, scalaBinaryVersion.value,
+          (organization.value, s"jupyter-scala-api_${scalaVersion.value}", version.value))
+      },
+      compilerDeps := {
+        val modules = List(
+          (organization.value, s"jupyter-scala-api_${scalaVersion.value}", version.value),
+          ("org.scala-lang", "scala-compiler", scalaVersion.value)
+        ) ++ {
+          if (scalaVersion.value.startsWith("2.10.")) Seq(("org.scalamacros", s"paradise_$scalaVersion", "2.0.1"))
+          else Seq()
+        }
+
+        computeModuleDeps(update.value, scalaVersion.value, scalaBinaryVersion.value, modules: _*)
+      }
+    )
+    .settings(buildInfoSettings: _*)
+    .settings(
+      sourceGenerators in Compile <+= buildInfo,
+      buildInfoKeys := Seq[BuildInfoKey](
+        apiDeps,
+        compilerDeps
+      ),
+      buildInfoPackage := "jupyter.scala",
+      buildInfoObject := "KernelBuildInfo"
     )
 
   lazy val cli = Project(id = "cli", base = file("cli"))
