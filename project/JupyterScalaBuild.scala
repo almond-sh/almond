@@ -151,7 +151,7 @@ object JupyterScalaBuild extends Build {
           (organization.value, s"jupyter-scala-api_${scalaVersion.value}", version.value),
           ("org.scala-lang", "scala-compiler", scalaVersion.value)
         ) ++ {
-          if (scalaVersion.value.startsWith("2.10.")) Seq(("org.scalamacros", s"paradise_$scalaVersion", "2.0.1"))
+          if (scalaVersion.value.startsWith("2.10.")) Seq(("org.scalamacros", s"paradise_${scalaVersion.value}", "2.0.1"))
           else Seq()
         }
 
@@ -175,6 +175,7 @@ object JupyterScalaBuild extends Build {
     .settings(xerial.sbt.Pack.packAutoSettings ++ xerial.sbt.Pack.publishPackTxzArchive ++ xerial.sbt.Pack.publishPackZipArchive: _*)
     .settings(
       name := "jupyter-scala-cli",
+      xerial.sbt.Pack.packArchivePrefix := s"jupyter-scala_${scalaVersion.value}",
       libraryDependencies ++= Seq(
         "com.github.alexarchambault" %% "case-app" % "0.2.2",
         "ch.qos.logback" % "logback-classic" % "1.0.13"
