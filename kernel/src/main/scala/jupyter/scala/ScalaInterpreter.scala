@@ -45,6 +45,7 @@ object ScalaInterpreter {
     Wrap(l => "Iterator(" + l.map(WebDisplay(_)).mkString(", ") + ")", classWrap = true)
 
   val scalaVersion = scala.util.Properties.versionNumberString
+  val scalaBinaryVersion = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
   val startIvys = Seq(
     ("org.scala-lang", "scala-library", scalaVersion),
@@ -205,16 +206,17 @@ object ScalaInterpreter {
       def executionCount = underlying.history.length
 
       val languageInfo = LanguageInfo(
-        name="scala",
+        name=s"scala${scalaBinaryVersion.filterNot(_ == '.')}",
         version = scalaVersion,
         codemirror_mode = "text/x-scala",
         file_extension = "scala",
-        mimetype = "text/x-scala"
+        mimetype = "text/x-scala",
+        pygments_lexer = "scala"
       )
 
       override val implementation = ("jupyter-scala", s"${BuildInfo.version} (scala $scalaVersion)")
       override val banner =
-       s"""Jupyter Scala ${BuildInfo.version} (Ammonite ${BuildInfo.ammoniteVersion}) (Scala $scalaVersion)
+       s"""Jupyter Scala ${BuildInfo.version} (Ammonite ${BuildInfo.ammoniteVersion} fork) (Scala $scalaVersion)
           |Start dependencies: ${startIvys.map{case (org, name, ver) => s"  $org:$name:$ver"}.mkString("\n", "\n", "")}
         """.stripMargin
     }
