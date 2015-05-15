@@ -3,15 +3,16 @@ package scala
 
 import java.io.{ByteArrayOutputStream, InputStream}
 
+import jupyter.kernel.interpreter.InterpreterKernel
 import jupyter.kernel.server.{ ServerApp, ServerAppOptions }
 import jupyter.scala.config.ScalaModule
 
 import caseapp._
 import com.typesafe.scalalogging.slf4j.LazyLogging
 
-case class JupyterScala(
-  options: ServerAppOptions
-) extends App with LazyLogging {
+import scalaz.\/
+
+case class JupyterScala(options: ServerAppOptions) extends App with LazyLogging {
 
   // FIXME Shouldn't sbt-pack put this in system property "prog.name"?
   val progName = "jupyter-scala"
@@ -59,7 +60,9 @@ case class JupyterScala(
 
   ServerApp(
     ScalaModule.kernelId,
-    ScalaModule.kernel,
+    new InterpreterKernel {
+      def apply() = \/.fromTryCatchNonFatal(ScalaInterpreter())
+    },
     ScalaModule.kernelInfo,
     progPath,
     options,

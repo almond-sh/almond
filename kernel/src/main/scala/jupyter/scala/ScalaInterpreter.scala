@@ -52,52 +52,22 @@ object ScalaInterpreter {
     ("com.github.alexarchambault.jupyter", s"jupyter-scala-api_$scalaVersion", BuildInfo.version)
   )
 
-  val startMacroIvys = startIvys ++ Seq(
-    ("org.scala-lang", "scala-compiler", scalaVersion)
-  ) ++ {
-    if (scalaVersion startsWith "2.10.")
-      Seq(("org.scalamacros", s"paradise_$scalaVersion", "2.0.1"))
-    else
-      Seq()
-  }
+  val startCompilerIvys =
+    startIvys ++ Seq(("org.scala-lang", "scala-compiler", scalaVersion)) ++ {
+      if (scalaVersion startsWith "2.10.") Seq(("org.scalamacros", s"paradise_$scalaVersion", "2.0.1")) else Seq()
+    }
 
-  val startResolvers = Seq(
-    Resolver.localRepo,
-    Resolver.defaultMaven
-  ) ++ {
-    if (BuildInfo.version endsWith "-SNAPSHOT")
-      Seq(Resolver.sonatypeRepo("snapshots"))
-    else
-      Seq()
-  }
+  val startResolvers = 
+    Seq(Resolver.localRepo, Resolver.defaultMaven) ++ {
+      if (BuildInfo.version endsWith "-SNAPSHOT") Seq(Resolver.sonatypeRepo("snapshots")) else Seq()
+    }
 
 
   lazy val jarMap = Classes.jarMap(getClass.getClassLoader)
 
-  def fromClasspath(deps: String): Either[Seq[(String, String, String)], Seq[File]] = {
-    val classpathJars = Classes.defaultClassPath(getClass.getClassLoader)._1
-
-    val deps0 = deps.split(',').map(_.split(':')).map {
-      case Array(org, name, rev) => (org, name, rev)
-    }
-
-    val files = deps0.map{ case (org, name, rev) =>
-      val nameVer = s"$name-$rev.jar"
-      val nameShort = s"$name.jar"
-
-      (org, name, rev) ->
-        (classpathJars.find(_.getName == nameVer) orElse classpathJars.find(_.getName == nameShort))
-    }
-
-    if (files.forall(_._2.nonEmpty))
-      Right(files.map(_._2.get))
-    else
-      Left(files.collect{case ((org, name, rev), None) => (org, name, rev) })
-  }
-
 
   def classPathOrIvy(allDeps: String, ivys: Seq[(String, String, String)]) =
-    fromClasspath(allDeps) match {
+    Classes.fromClasspath(allDeps, getClass.getClassLoader) match {
       case Right(jars) => (jars.toSeq, Nil)
 
       case Left(missing) =>
@@ -112,13 +82,13 @@ object ScalaInterpreter {
 
   lazy val (startJars, startDirs) =
     classPathOrIvy(KernelBuildInfo.apiDeps, startIvys)
-  lazy val (startMacroJars, startMacroDirs) =
-    classPathOrIvy(KernelBuildInfo.compilerDeps, startMacroIvys)
+  lazy val (startCompilerJars, startCompilerDirs) =
+    classPathOrIvy(KernelBuildInfo.compilerDeps, startCompilerIvys)
 
   lazy val startClassLoader: ClassLoader =
     new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startJars ++ startDirs).toSet)
-  lazy val startMacroClassLoader: ClassLoader =
-    new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startMacroJars ++ startMacroDirs).toSet)
+  lazy val startCompilerClassLoader: ClassLoader =
+    new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ startCompilerJars ++ startCompilerDirs).toSet)
 
   def apply(startJars: => Seq[File] = startJars,
             startDirs: => Seq[File] = startDirs,
@@ -126,8 +96,8 @@ object ScalaInterpreter {
             jarMap: => File => File = jarMap,
             startResolvers: => Seq[DependencyResolver] = startResolvers,
             startClassLoader: => ClassLoader = startClassLoader,
-            startMacroClassLoader: => ClassLoader = startMacroClassLoader,
-            pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig,
+            startCompilerClassLoader: => ClassLoader = startCompilerClassLoader,
+            pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig.copy(lines = 15),
             colors: ColorSet = ColorSet.Default,
             filterUnitResults: Boolean = true): interpreter.Interpreter =
     new interpreter.Interpreter {
@@ -135,22 +105,21 @@ object ScalaInterpreter {
       var currentMessage = Option.empty[ParsedMessage[_]]
 
       lazy val underlying = {
-        val intp =
-          new Interpreter(
-            bridgeConfig = bridgeConfig(
-              currentPublish,
-              currentMessage,
-              startJars = startJars,
-              startIvys = startIvys,
-              jarMap = jarMap,
-              startResolvers = startResolvers,
-              pprintConfig = pprintConfig,
-              colors = colors
-            ),
-            wrapper = wrap,
-            imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-            classes = new Classes(startClassLoader, (startJars, startDirs), startMacroClassLoader = startMacroClassLoader)
-          )
+        val intp = new Interpreter(
+          bridgeConfig = bridgeConfig(
+            currentPublish,
+            currentMessage,
+            startJars = startJars,
+            startIvys = startIvys,
+            jarMap = jarMap,
+            startResolvers = startResolvers,
+            pprintConfig = pprintConfig,
+            colors = colors
+          ),
+          wrapper = wrap,
+          imports = new ammonite.interpreter.Imports(useClassWrapper = true),
+          classes = new Classes(startClassLoader, (startJars, startDirs), startCompilerClassLoader = startCompilerClassLoader)
+        )
         initialized0 = true
         intp
       }
@@ -168,12 +137,10 @@ object ScalaInterpreter {
       def interpret(line: String, output: Option[(String => Unit, String => Unit)], storeHistory: Boolean, current: Option[ParsedMessage[_]]) = {
         currentMessage = current
 
-        // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
         def resFilter(s: String) =
-          if (filterUnitResults)
-            !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
-          else
-            true
+          // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
+          if (filterUnitResults) !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
+          else true
 
         try {
           underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).filter(resFilter) mkString "\n"), stdout = output.map(_._1), stderr = output.map(_._2)) match {

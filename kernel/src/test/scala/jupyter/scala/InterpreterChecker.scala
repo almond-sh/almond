@@ -5,7 +5,6 @@ import ammonite.pprint
 import ammonite.shell.Checker
 import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.Interpreter
-import jupyter.scala.config.ScalaKernel
 
 import utest._
 
