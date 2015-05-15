@@ -21,14 +21,9 @@ distribution, and then running
 `ipython --version` should then return a value >= 3.0.
 
 Download the Jupyter Scala binaries for
-[Scala 2.10](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.10.5/0.2.0-SNAPSHOT/jupyter-scala-cli_2.10.5-0.2.0-SNAPSHOT.tar.xz) or
-[Scala 2.11](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.11.6/0.2.0-SNAPSHOT/jupyter-scala-cli_2.11.6-0.2.0-SNAPSHOT.tar.xz), and unpack them in a safe place, `~/opt`
-for example.
-Then run the `jupyter-scala` command-line program it contains with
-the `--kernel-spec` option, like
-
-    $ ~/opt/jupyter-scala-0.2.0-SNAPSHOT/bin/jupyter-scala --kernel-spec
-
+Scala 2.10 ([txz](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.10.5/0.2.0-SNAPSHOT/jupyter-scala-cli_2.10.5-0.2.0-SNAPSHOT.tar.xz) or [zip](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.10.5/0.2.0-SNAPSHOT/jupyter-scala-cli_2.10.5-0.2.0-SNAPSHOT.zip)) or
+Scala 2.11 ([txz](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.11.6/0.2.0-SNAPSHOT/jupyter-scala-cli_2.11.6-0.2.0-SNAPSHOT.tar.xz) or [zip](https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_2.11.6/0.2.0-SNAPSHOT/jupyter-scala-cli_2.11.6-0.2.0-SNAPSHOT.zip)), and unpack them in a safe place.
+Then run once the `jupyter-scala` program (or `jupyter-scala.bat` on Windows) it contains.
 That will set-up the Jupyter Scala kernel for the current user.
 
 Check that IPython knows about Jupyter Scala by running
@@ -37,13 +32,13 @@ Check that IPython knows about Jupyter Scala by running
 
 This should print, among others, a line like
 ```
-scala-2.11
+scala211
 ```
-(or `2.10` dependending on the Scala version you chose).
+(or `scala210` dependending on the Scala version you chose).
 
 Then run either IPython console with
 
-    $ ipython console --kernel scala-2.11
+    $ ipython console --kernel scala211
 
 and start using the Jupyter Scala kernel straightaway,
 or run IPython Notebook with
