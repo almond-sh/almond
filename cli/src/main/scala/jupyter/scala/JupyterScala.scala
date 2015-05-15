@@ -55,7 +55,7 @@ case class JupyterScala(
     }
   }
 
-  val scalaBinaryVersion = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+  val scalaBinaryVersion = _root_.scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
   ServerApp(
     ScalaModule.kernelId,
