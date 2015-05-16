@@ -102,7 +102,7 @@ object JupyterScalaBuild extends Build {
     .settings(
       name := "jupyter-scala-api",
       libraryDependencies ++= Seq(
-        "com.github.alexarchambault" %% "ammonite-api" % ammoniteVersion cross CrossVersion.full,
+        "com.github.alexarchambault" % "ammonite-api" % ammoniteVersion cross CrossVersion.full,
         "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "com.lihaoyi" %% "ammonite-pprint" % "0.3.0"
