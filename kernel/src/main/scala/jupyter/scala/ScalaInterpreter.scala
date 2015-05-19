@@ -52,10 +52,7 @@ object ScalaInterpreter {
     ("com.github.alexarchambault.jupyter", s"jupyter-scala-api_$scalaVersion", BuildInfo.version)
   )
 
-  val startCompilerIvys =
-    startIvys ++ Seq(("org.scala-lang", "scala-compiler", scalaVersion)) ++ {
-      if (scalaVersion startsWith "2.10.") Seq(("org.scalamacros", s"paradise_$scalaVersion", "2.0.1")) else Seq()
-    }
+  val startCompilerIvys = startIvys ++ Seq(("org.scala-lang", "scala-compiler", scalaVersion))
 
   val startResolvers = 
     Seq(Resolver.localRepo, Resolver.defaultMaven) ++ {
