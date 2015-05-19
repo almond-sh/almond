@@ -93,6 +93,8 @@ object ScalaInterpreter {
             jarMap: => File => File = jarMap,
             startResolvers: => Seq[DependencyResolver] = startResolvers,
             startClassLoader: => ClassLoader = startClassLoader,
+            startCompilerJars: => Seq[File] = startCompilerJars,
+            startCompilerDirs: => Seq[File] = startCompilerDirs,
             startCompilerClassLoader: => ClassLoader = startCompilerClassLoader,
             pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig.copy(lines = 15),
             colors: ColorSet = ColorSet.Default,
@@ -115,7 +117,7 @@ object ScalaInterpreter {
           ),
           wrapper = wrap,
           imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-          classes = new Classes(startClassLoader, (startJars, startDirs), startCompilerClassLoader = startCompilerClassLoader)
+          classes = new Classes(startClassLoader, (startJars, startDirs), startCompilerClassLoader = startCompilerClassLoader, startCompilerDeps = (startCompilerJars, startCompilerDirs))
         )
         initialized0 = true
         intp
