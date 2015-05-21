@@ -48,7 +48,13 @@ or run IPython Notebook with
 and create `Scala 2.11` notebooks by choosing `Scala 2.11` in the
 dropdown in the upper right of the IPython Notebook start page.
 
-**More detailed explanations and examples to come**
+## Examples
+
+Some example notebooks can be found in the [examples](https://github.com/alexarchambault/jupyter-scala/tree/master/examples)
+directory: you can follow [macrology 201](https://github.com/alexarchambault/jupyter-scala/blob/master/examples/tutorials/Macrology.ipynb) in a notebook,
+use compiler plugins like [simulacrum](https://github.com/alexarchambault/jupyter-scala/blob/master/examples/libraries/Simulacrum.ipynb) from notebooks,
+use a type level library like [PureCSV](https://github.com/alexarchambault/jupyter-scala/blob/master/examples/libraries/PureCSV.ipynb), etc. **More to come.**
+
 
 ## Internals
 
