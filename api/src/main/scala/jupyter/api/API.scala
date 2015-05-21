@@ -125,4 +125,12 @@ trait Display {
          (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
     publish.display("", "application/pdf" -> data.toBase64)
   }
+  def javascript(code: String)
+                (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    publish.display("", "application/javascript" -> code)
+  }
+  def js(code: String)
+        (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    javascript(code)
+  }
 }

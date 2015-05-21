@@ -42,7 +42,7 @@ object ScalaInterpreter {
     }
 
   val wrap =
-    Wrap(l => "Iterator(" + l.map(WebDisplay(_)).mkString(", ") + ")", classWrap = true)
+    Wrap(l => "_root_.scala.collection.Iterator(" + l.map(WebDisplay(_)).mkString(", ") + ")", classWrap = true)
 
   val scalaVersion = scala.util.Properties.versionNumberString
   val scalaBinaryVersion = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")

@@ -3,6 +3,7 @@ import sbt._, Keys._
 import sbtbuildinfo.Plugin._
 import sbtrelease.ReleasePlugin._
 import com.typesafe.sbt.pgp.PgpKeys
+import xerial.sbt.Pack._
 
 import scala.util.Try
 
@@ -172,10 +173,16 @@ object JupyterScalaBuild extends Build {
   lazy val cli = Project(id = "cli", base = file("cli"))
     .dependsOn(kernel)
     .settings(commonSettings: _*)
-    .settings(xerial.sbt.Pack.packAutoSettings ++ xerial.sbt.Pack.publishPackTxzArchive ++ xerial.sbt.Pack.publishPackZipArchive: _*)
+    .settings(packAutoSettings ++ publishPackTxzArchive ++ publishPackZipArchive: _*)
+    .settings(
+      // overriding these three settings so that the directory name in the published packages matches the package file names.
+      // e.g. directory jupyter-scala_2.11.6-0.2.0 in package jupyter-scala_2.11.6-0.2.0.tar.xz
+      packArchivePrefix := s"jupyter-scala_${scalaVersion.value}",
+      packArchiveTxzArtifact := Artifact("jupyter-scala", "arch", "tar.xz"),
+      packArchiveZipArtifact := Artifact("jupyter-scala", "arch", "zip")
+    )
     .settings(
       name := "jupyter-scala-cli",
-      xerial.sbt.Pack.packArchivePrefix := s"jupyter-scala_${scalaVersion.value}",
       libraryDependencies ++= Seq(
         "com.github.alexarchambault" %% "case-app" % "0.2.2",
         "ch.qos.logback" % "logback-classic" % "1.0.13"
