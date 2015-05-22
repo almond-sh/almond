@@ -1,7 +1,4 @@
 target/
-target-play2.3/
 /.idea/
 /.idea_modules/
-logs/
-notebook/notebooks/
-/notebooks
+.ipynb_checkpoints/
