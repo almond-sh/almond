@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+SCALA_VERSION="2.11.6"
+#SCALA_VERSION="2.10.5"
+
+PASSWORD="pass"
+USE_HTTP="1"
+
+cd "$(dirname "$0")/.."
+sbt ++$SCALA_VERSION cli/pack
+exec docker run -it --rm  -e "PASSWORD=$PASSWORD" -e "USE_HTTP=$USE_HTTP" -v "$(pwd)/cli/target/pack:/jupyter-scala" jupyter_scala/dev
