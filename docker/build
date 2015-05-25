@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+docker build -t jupyter_scala/base base
+docker build -t jupyter_scala/main main
+docker build -t jupyter_scala/dev dev

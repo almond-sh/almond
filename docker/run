@@ -1,0 +1,6 @@
+#!/bin/bash
+
+PASSWORD="pass"
+USE_HTTP="1"
+
+exec docker run -it --rm  -e "PASSWORD=$PASSWORD" -e "USE_HTTP=$USE_HTTP" jupyter_scala/main
