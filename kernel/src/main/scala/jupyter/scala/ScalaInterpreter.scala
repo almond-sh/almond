@@ -17,6 +17,25 @@ import org.apache.ivy.plugins.resolver.DependencyResolver
 
 object ScalaInterpreter {
 
+  trait InterpreterDefaults extends interpreter.Interpreter {
+    override def resultDisplay = true // Displaying results directly, not under Jupyter "Out" prompt
+
+    val languageInfo = LanguageInfo(
+      name=s"scala${scalaBinaryVersion.filterNot(_ == '.')}",
+      version = scalaVersion,
+      codemirror_mode = "text/x-scala",
+      file_extension = "scala",
+      mimetype = "text/x-scala",
+      pygments_lexer = "scala"
+    )
+
+    override val implementation = ("jupyter-scala", s"${BuildInfo.version} (scala $scalaVersion)")
+    override val banner =
+      s"""Jupyter Scala ${BuildInfo.version} (Ammonite ${BuildInfo.ammoniteVersion} fork) (Scala $scalaVersion)
+         |Start dependencies: ${startIvys.map{case (org, name, ver) => s"  $org:$name:$ver"}.mkString("\n", "\n", "")}
+       """.stripMargin
+  }
+
   def bridgeConfig(publish: => Option[Publish[Evidence]],
                    currentMessage: => Option[ParsedMessage[_]],
                    startJars: Seq[File] = Nil,
@@ -98,67 +117,50 @@ object ScalaInterpreter {
             startCompilerClassLoader: => ClassLoader = startCompilerClassLoader,
             pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig.copy(lines = 15),
             colors: ColorSet = ColorSet.Default,
-            filterUnitResults: Boolean = true): interpreter.Interpreter =
-    new interpreter.Interpreter {
-      var currentPublish = Option.empty[Publish[Evidence]]
-      var currentMessage = Option.empty[ParsedMessage[_]]
+            filterUnitResults: Boolean = true): interpreter.Interpreter = {
 
-      lazy val underlying = {
-        val intp = new Interpreter(
-          bridgeConfig = bridgeConfig(
-            currentPublish,
-            currentMessage,
-            startJars = startJars,
-            startIvys = startIvys,
-            jarMap = jarMap,
-            startResolvers = startResolvers,
-            pprintConfig = pprintConfig,
-            colors = colors
-          ),
-          wrapper = wrap,
-          imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-          classes = new Classes(startClassLoader, (startJars, startDirs), startCompilerClassLoader = startCompilerClassLoader, startCompilerDeps = (startCompilerJars, startCompilerDirs))
+    var currentPublish = Option.empty[Publish[Evidence]]
+    var currentMessage = Option.empty[ParsedMessage[_]]
+
+    var initialized0 = false
+
+    lazy val underlying = {
+      val intp = new Interpreter(
+        bridgeConfig = bridgeConfig(
+          currentPublish,
+          currentMessage,
+          startJars = startJars,
+          startIvys = startIvys,
+          jarMap = jarMap,
+          startResolvers = startResolvers,
+          pprintConfig = pprintConfig,
+          colors = colors
+        ),
+        wrapper = wrap,
+        imports = new ammonite.interpreter.Imports(useClassWrapper = true),
+        classes = new Classes(
+          startClassLoader,
+          (startJars, startDirs),
+          startCompilerClassLoader = startCompilerClassLoader,
+          startCompilerDeps = (startCompilerJars, startCompilerDirs)
         )
-        initialized0 = true
-        intp
-      }
+      )
+      initialized0 = true
+      intp
+    }
 
-      var initialized0 = false
+    /** Filters out Unit results */
+    def resFilter(s: String) =
+    // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
+      if (filterUnitResults) !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
+      else true
+
+
+    new interpreter.Interpreter with InterpreterDefaults {
+
       override def initialized = initialized0
-
-      override def init(): Unit = {
-        underlying
-      }
-
-      // Displaying results directly, not under Jupyter "Out" prompt
-      override def resultDisplay = true
-
-      def interpret(line: String, output: Option[(String => Unit, String => Unit)], storeHistory: Boolean, current: Option[ParsedMessage[_]]) = {
-        currentMessage = current
-
-        def resFilter(s: String) =
-          // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
-          if (filterUnitResults) !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
-          else true
-
-        try {
-          underlying(line, _(_), it => new DisplayData.RawData(it.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).filter(resFilter) mkString "\n"), stdout = output.map(_._1), stderr = output.map(_._2)) match {
-            case Res.Buffer(s) =>
-              interpreter.Interpreter.Incomplete
-            case Res.Exit =>
-              interpreter.Interpreter.Error("Close this notebook to exit")
-            case Res.Failure(reason) =>
-              interpreter.Interpreter.Error(reason)
-            case Res.Skip =>
-              interpreter.Interpreter.NoValue
-            case r @ Res.Success(ev) =>
-              underlying.handleOutput(r)
-              interpreter.Interpreter.Value(ev.value)
-          }
-        }
-        finally
-          currentMessage = None
-      }
+      override def init() = underlying
+      def executionCount = underlying.history.length
 
       override def publish(publish: Publish[ParsedMessage[_]]) = {
         currentPublish = Some(publish.contramap[Evidence](e => e.underlying.asInstanceOf[ParsedMessage[_]]))
@@ -169,22 +171,42 @@ object ScalaInterpreter {
         (pos0, completions)
       }
 
-      def executionCount = underlying.history.length
+      def interpret(line: String,
+                    output: Option[(String => Unit, String => Unit)],
+                    storeHistory: Boolean,
+                    current: Option[ParsedMessage[_]]) = {
 
-      val languageInfo = LanguageInfo(
-        name=s"scala${scalaBinaryVersion.filterNot(_ == '.')}",
-        version = scalaVersion,
-        codemirror_mode = "text/x-scala",
-        file_extension = "scala",
-        mimetype = "text/x-scala",
-        pygments_lexer = "scala"
-      )
+        currentMessage = current
 
-      override val implementation = ("jupyter-scala", s"${BuildInfo.version} (scala $scalaVersion)")
-      override val banner =
-       s"""Jupyter Scala ${BuildInfo.version} (Ammonite ${BuildInfo.ammoniteVersion} fork) (Scala $scalaVersion)
-          |Start dependencies: ${startIvys.map{case (org, name, ver) => s"  $org:$name:$ver"}.mkString("\n", "\n", "")}
-        """.stripMargin
+        try {
+          val res = underlying(
+            line,
+            _(_),
+            it => new DisplayData.RawData(
+              it.asInstanceOf[Iterator[Iterator[String]]]
+                .map(_.mkString)
+                .filter(resFilter) // Don't display Unit results
+                .mkString("\n")
+            ),
+            stdout = output.map(_._1),
+            stderr = output.map(_._2)
+          )
+
+          res match {
+            case Res.Buffer(s) => interpreter.Interpreter.Incomplete
+            case Res.Exit => interpreter.Interpreter.Error("Close this notebook to exit")
+            case Res.Failure(reason) => interpreter.Interpreter.Error(reason)
+            case Res.Skip => interpreter.Interpreter.NoValue
+
+            case r @ Res.Success(ev) =>
+              underlying.handleOutput(r)
+              interpreter.Interpreter.Value(ev.value)
+          }
+        }
+        finally
+          currentMessage = None
+      }
     }
+  }
 
 }
