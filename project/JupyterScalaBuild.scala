@@ -140,7 +140,13 @@ object JupyterScalaBuild extends Build {
       libraryDependencies ++= Seq(
         "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
         "com.github.alexarchambault" %% "ammonite-shell" % ammoniteVersion cross CrossVersion.full
-      ).map(_ % "test" classifier "tests")
+      ).map(_ % "test" classifier "tests"),
+      libraryDependencies ++= {
+        if (scalaVersion.value startsWith "2.10.")
+          Seq("org.scalamacros" % "paradise" % "2.0.1" % "plugin->default(compile)" cross CrossVersion.full)
+        else
+          Seq()
+      }
     )
     .settings(
       apiDeps := {
