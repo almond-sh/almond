@@ -1,0 +1,14 @@
+#!/bin/bash
+set -ev
+
+PWD="$(cd "$(dirname "$0")"; pwd)"
+
+# SPARK_HOME="/opt/spark-1.1_2.10" sbt ++2.10.5 "kernel/test-only jupyter.scala.LocalClusterSpark11Tests"
+# SPARK_HOME="/opt/spark-1.2_2.10" sbt ++2.10.5 "kernel/test-only jupyter.scala.LocalClusterSpark12Tests"
+SPARK_HOME="/opt/spark-1.2_2.11" sbt "kernel/test-only jupyter.scala.LocalClusterSpark12Tests"
+# SPARK_HOME="/opt/spark-1.3_2.10" sbt ++2.10.5 "kernel/test-only jupyter.scala.LocalClusterSpark13Tests"
+SPARK_HOME="/opt/spark-1.3_2.11" sbt "kernel/test-only jupyter.scala.LocalClusterSpark13Tests"
+
+# SPARK_VERSION="1.1" "$PWD/../ammonite-shell/spark/src/test/resources/docker/scripts/run" . ++2.10.5 "spark-11/test-only ammonite.spark.StandAloneClusterTests"
+# SPARK_VERSION="1.2" "$PWD/../ammonite-shell/spark/src/test/resources/docker/scripts/run" . ++2.10.5 "spark-12/test-only ammonite.spark.StandAloneClusterTests"
+# SPARK_VERSION="1.3" "$PWD/../ammonite-shell/spark/src/test/resources/docker/scripts/run" . ++2.10.5 "spark-13/test-only ammonite.spark.StandAloneClusterTests"

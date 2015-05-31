@@ -11,14 +11,7 @@ done
 
 # Disabling Spark tests (even local ones) for lack of memory
 if [ "$TRAVIS_SCALA_VERSION" = "" ]; then
-  for SV in 12 13; do
-    $SBT "kernel/test-only jupyter.scala.LocalSpark${SV}Tests"
-
-    if [ "$SPARK_HOME" != "" ]; then
-      for TEST in LocalClusterSpark StandAloneClusterSpark; do
-        $SBT "kernel/test-only jupyter.scala.$TEST${SV}Tests"
-      done
-    fi
-  done
+  $SBT "kernel/test-only jupyter.scala.LocalSpark12Tests"
+  $SBT "kernel/test-only jupyter.scala.LocalSpark13Tests"
 fi
 
