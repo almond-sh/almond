@@ -106,7 +106,7 @@ object JupyterScalaBuild extends Build {
         "com.github.alexarchambault" % "ammonite-api" % ammoniteVersion cross CrossVersion.full,
         "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "com.lihaoyi" %% "ammonite-pprint" % "0.3.0"
+        "com.lihaoyi" %% "ammonite-pprint" % "0.3.2"
       ),
       libraryDependencies ++= {
         if (scalaVersion.value startsWith "2.10.")
