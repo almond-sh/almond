@@ -49,7 +49,7 @@ object ScalaInterpreter {
       "ReplBridge",
       NamesFor[API].map{case (n, isImpl) => ImportData(n, n, "", "ReplBridge.shell", isImpl)}.toSeq ++
         NamesFor[IvyConstructor.type].map{case (n, isImpl) => ImportData(n, n, "", "ammonite.api.IvyConstructor", isImpl)}.toSeq,
-      _.asInstanceOf[Iterator[Iterator[String]]].map(_.mkString).foreach(println)
+      it => println(it.asInstanceOf[Iterator[String]].mkString)
     ) {
         var api: FullAPI = null
 
@@ -61,7 +61,7 @@ object ScalaInterpreter {
     }
 
   val wrap =
-    Wrap(l => "_root_.scala.collection.Iterator(" + l.map(WebDisplay(_)).mkString(", ") + ")", classWrap = true)
+    Wrap(decls => s"ReplBridge.shell.Internal.combinePrints(${decls.map(WebDisplay(_)).mkString(", ")})", classWrap = true)
 
   val scalaVersion = scala.util.Properties.versionNumberString
   val scalaBinaryVersion = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
@@ -179,28 +179,32 @@ object ScalaInterpreter {
         currentMessage = current
 
         try {
-          val res = underlying(
-            line,
-            _(_),
-            it => new DisplayData.RawData(
-              it.asInstanceOf[Iterator[Iterator[String]]]
-                .map(_.mkString)
-                .filter(resFilter) // Don't display Unit results
-                .mkString("\n")
-            ),
-            stdout = output.map(_._1),
-            stderr = output.map(_._2)
-          )
+          Parsers.Splitter.parse(line) match {
+            case fastparse.core.Result.Failure(_, index) if line.drop(index).trim() == "" =>
+              interpreter.Interpreter.Incomplete
+            case f: fastparse.core.Result.Failure =>
+              interpreter.Interpreter.Error(SyntaxError.msg(f.input, f.parser, f.index))
+            case fastparse.core.Result.Success(split, _) =>
 
-          res match {
-            case Res.Buffer(s) => interpreter.Interpreter.Incomplete
-            case Res.Exit => interpreter.Interpreter.Error("Close this notebook to exit")
-            case Res.Failure(reason) => interpreter.Interpreter.Error(reason)
-            case Res.Skip => interpreter.Interpreter.NoValue
+              val res = underlying(
+                split,
+                _(_),
+                it => new DisplayData.RawData(
+                  it.asInstanceOf[Iterator[String]].mkString
+                ),
+                stdout = output.map(_._1),
+                stderr = output.map(_._2)
+              )
 
-            case r @ Res.Success(ev) =>
-              underlying.handleOutput(r)
-              interpreter.Interpreter.Value(ev.value)
+              res match {
+                case Res.Exit => interpreter.Interpreter.Error("Close this notebook to exit")
+                case Res.Failure(reason) => interpreter.Interpreter.Error(reason)
+                case Res.Skip => interpreter.Interpreter.NoValue
+
+                case r @ Res.Success(ev) =>
+                  underlying.handleOutput(r)
+                  interpreter.Interpreter.Value(ev.value)
+              }
           }
         }
         finally

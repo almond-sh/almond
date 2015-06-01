@@ -43,7 +43,7 @@ object JupyterScalaBuild extends Build {
 
   private val commonSettings = Seq(
     organization := "com.github.alexarchambault.jupyter",
-    scalaVersion := "2.11.6",
+    scalaVersion := "2.10.5",
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
     resolvers ++= Seq(
       "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
@@ -52,7 +52,7 @@ object JupyterScalaBuild extends Build {
     ),
     scalacOptions += "-target:jvm-1.7",
     crossVersion := CrossVersion.full,
-    crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5", "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6"),
+    crossScalaVersions := Seq("2.10.3", "2.10.4", "2.10.5"),
     ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
     fork in test := true,
     fork in (Test, test) := true,
