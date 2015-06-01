@@ -70,6 +70,12 @@ object Notebook {
 
         val res = intp.interpret(cell.source.mkString("\n"), Some((stdout _, stderr _)), true, None)
 
+        def filterErr(s: String) = s
+          .replaceAll("""(?m)\((.*\Q.\Ejava):[0-9]*\)$""", "($1:*)")
+          .replaceAll("""(?m)\((.*\Q.\Escala):[0-9]*\)$""", "($1:*)")
+          .replaceAll("\u001B\\[[;\\d]*m", "")
+          .replaceAll("""(?m)^Main\Q.\Escala:[0-9]*:""", "Main.scala:*:")
+
         res match {
           case Interpreter.Value(data) =>
             outputs0 += DisplayDataOutput(Map.empty, data.data.map{case (k, v) =>
@@ -79,7 +85,7 @@ object Notebook {
               })
             }.toMap)
           case Interpreter.Error(error) =>
-            outputs0 += ErrorOutput("", "", error.split('\n'))
+            outputs0 += ErrorOutput("", "", filterErr(error).split('\n'))
           case other =>
             println(s"Warning: ignoring result $other")
         }
@@ -105,7 +111,7 @@ object Notebook {
 
         if (!ignore) {
           val outputs = outputs0.result()
-          for (((got, exp), idx) <- outputs.zip(cell.outputs).zipWithIndex) {
+          for (((got, exp), idx) <- outputs.zip(cell.outputs.map{ case ErrorOutput("", "", err) => ErrorOutput("", "", err.map(filterErr)); case c => c }).zipWithIndex) {
             if (exp != got) {
               if (ignoreStdErr && isStdErr(exp) && isStdErr(got))
                 println(s"Ignoring different stderr output $idx at cell $cellIdx")
