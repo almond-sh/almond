@@ -1,0 +1,95 @@
+#!/bin/bash
+set -e
+
+VERSION="$(wget -q -O - "https://raw.githubusercontent.com/alexarchambault/jupyter-scala/master/version.sbt" | sed 's/version in ThisBuild := "\(.*\)"/\1/')"
+
+echo "Version is '$VERSION'"
+
+SCALA_VERSION="${1:-"2.11"}"
+
+case "$SCALA_VERSION" in
+  "2.11")
+    SCALA_VERSION="2.11.6"
+    ;;
+
+  "2.10")
+    SCALA_VERSION="2.10.5"
+    ;;
+
+  *)
+esac
+
+echo "Scala version is $SCALA_VERSION"
+
+# cygwin test from sbt-pack launch scripts
+cygwin=false
+case "$(uname)" in
+    CYGWIN*) cygwin=true
+      ;;
+esac
+
+if [ "$USERPROFILE" != "" ] && $cygwin; then
+  # Can't get ipython locate to return the right directory when run from cygwin
+  # It keeps returning the .ipython dir from the cygwin home, not the one from
+  # USERPROFILE.
+  # TMP="$(mktemp)"
+  # cygstart cmd /c ipython locate \> "$(cygpath -w "$TMP")"
+  # IPYTHON_BASE="$(cat "$TMP" | dos2unix)" # | head -n1 ?
+  # rm -f "$TMP"
+
+  IPYTHON_BASE="$(cygpath "$USERPROFILE")/.ipython"
+else
+  IPYTHON_BASE="$(ipython locate)"
+fi
+
+
+if echo "$SCALA_VERSION" | grep "^2\.11"; then
+  KERNEL_DIR="$IPYTHON_BASE/kernels/scala211"
+else
+  KERNEL_DIR="$IPYTHON_BASE/kernels/scala210"
+fi
+
+mkdir -p "$KERNEL_DIR"
+cd "$KERNEL_DIR"
+
+
+BASE="jupyter-scala_$SCALA_VERSION-$VERSION"
+FILE="$BASE.tar.xz"
+URL="https://oss.sonatype.org/content/repositories/snapshots/com/github/alexarchambault/jupyter/jupyter-scala-cli_$SCALA_VERSION/$VERSION/$FILE"
+
+if [ -e "archives/$FILE" ]; then
+  st_mtime_orig="$(stat -c "%Y" "archives/$FILE" 2>/dev/null || stat -f "%m" "archives/$FILE")"
+else
+  st_mtime_orig="0"
+fi
+
+
+mkdir -p archives
+echo "Checking for new package"
+cd archives
+wget -c -N "$URL"
+cd ..
+
+st_mtime="$(stat -c "%Y" "archives/$FILE" 2>/dev/null || stat -f "%m" "archives/$FILE")"
+
+if [ "$st_mtime_orig" -lt "$st_mtime" ]; then
+  if [ -e "$BASE" ]; then
+    mkdir -p bak
+    DEST="bak/$BASE.$st_mtime_orig"
+    i=0
+    while [ -e "$DEST" ]; do
+      i=$(( $i + 1 ))
+      DEST="bak/$BASE.$st_mtime_orig.$i"
+    done
+    mv "$BASE" "$DEST"
+  fi
+
+  tar -Jxf "archives/$FILE"
+  if $cygwin; then
+    "$BASE/bin/jupyter-scala.bat" --force
+  else
+    "$BASE/bin/jupyter-scala" --force
+  fi
+else
+  echo "Last package already installed."
+fi
