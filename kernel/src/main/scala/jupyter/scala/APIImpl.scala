@@ -2,6 +2,7 @@ package jupyter.scala
 
 import ammonite.interpreter._
 import ammonite.pprint
+import ammonite.pprint.{Config, PPrint, TPrint}
 import jupyter.api._
 import jupyter.kernel.protocol.ParsedMessage
 
@@ -33,15 +34,33 @@ class APIImpl(intp: ammonite.api.Interpreter,
   def interpreter = intp
   def history = intp.history.toVector.dropRight(1)
 
-  def shellPPrint[T: WeakTypeTag](value: => T, ident: String) = {
-    colors.ident + ident + colors.reset + ": " +
-      colors.`type` + weakTypeOf[T].toString + colors.reset
-  }
-  def shellPrintDef(definitionLabel: String, ident: String) = {
-    s"defined ${colors.`type`}$definitionLabel ${colors.ident}$ident${colors.reset}"
-  }
-  def shellPrintImport(imported: String) = {
-    s"${colors.`type`}import ${colors.ident}$imported${colors.reset}"
+  object Internal extends jupyter.api.Internal{
+    def combinePrints(iters: Iterator[String]*) = {
+      iters.toIterator
+        .filter(!_.isEmpty)
+        .flatMap(Iterator("\n") ++ _)
+        .drop(1)
+    }
+    def print[T: TPrint: PPrint: WeakTypeTag](value: => T, ident: String, custom: Option[String])(implicit cfg: Config) = {
+      if (weakTypeOf[T] =:= weakTypeOf[Unit]) Iterator()
+      else {
+        val pprint = implicitly[PPrint[T]]
+        val rhs = custom match {
+          case None => pprint.render(value)
+          case Some(s) => Iterator(pprint.cfg.color.literal(s))
+        }
+        Iterator(
+          colors.ident, ident, colors.reset, ": ",
+          implicitly[TPrint[T]].render(cfg), " = "
+        ) ++ rhs
+      }
+    }
+    def printDef(definitionLabel: String, ident: String) = {
+      Iterator("defined ", colors.`type`, definitionLabel, " ", colors.ident, ident, colors.reset)
+    }
+    def printImport(imported: String) = {
+      Iterator(colors.`type`, "import ", colors.ident, imported, colors.reset)
+    }
   }
 
   def show[T](a: T, lines: Int = 0) = ammonite.pprint.Show(a, lines)

@@ -1,5 +1,7 @@
 package jupyter.api
 
+import ammonite.pprint.{Config, PPrint, TPrint}
+
 import scala.reflect.runtime.universe.WeakTypeTag
 
 trait API {
@@ -50,10 +52,15 @@ trait API {
   val display: Display = new Display {}
 }
 
+trait Internal{
+  def combinePrints(iters: Iterator[String]*): Iterator[String]
+  def print[T: TPrint: PPrint: WeakTypeTag](value: => T, ident: String, custom: Option[String])(implicit cfg: Config): Iterator[String]
+  def printDef(definitionLabel: String, ident: String): Iterator[String]
+  def printImport(imported: String): Iterator[String]
+}
+
 trait FullAPI extends API {
-  def shellPPrint[T: WeakTypeTag](value: => T, ident: String): String
-  def shellPrintDef(definitionLabel: String, ident: String): String
-  def shellPrintImport(imported: String): String
+  def Internal: Internal
 }
 
 class APIHolder {

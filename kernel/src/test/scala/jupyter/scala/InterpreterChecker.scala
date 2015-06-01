@@ -24,18 +24,28 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
 
       val expected = resultLines.mkString("\n").trim
 
-      for (line <- commandText.init) {
-        allOutput += "\n@ " + line
-        val (res, _) = run0(line)
+      allOutput += commandText.map("\n@ " + _).mkString("\n")
 
-        if (!line.startsWith("//"))
-          failLoudly(assert(res == Interpreter.Incomplete))
+      def filtered(err: String) = {
+        err.replaceAll(" *\n", "\n").replaceAll("(?m)^Main\\Q.\\Escala:[0-9]*:", "Main.scala:*:")
       }
 
       if (expected startsWith "error: ")
-        fail(commandText.last, _ contains expected.stripPrefix("error: "))
+        fail(commandText.mkString("\n"), {
+          err =>
+            val got = filtered(err.replaceAll("\u001B\\[[;\\d]*m", ""))
+            val exp = filtered(expected.stripPrefix("error: "))
+            val res = got contains exp
+            if (!res) {
+              val _got = got.split('\n').toList
+              val _exp = exp.split('\n').toList
+              println((_got zip _exp).map{case (g, e) => (g, e, g == e)})
+              println(s"Got:\n$got\nExpected:\n$exp\n")
+            }
+            res
+        })
       else
-        apply(commandText.last, if (expected.isEmpty) null else expected)
+        apply(commandText.mkString("\n"), if (expected.isEmpty) null else expected)
     }
   }
 
@@ -70,8 +80,6 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
     val (res0, output) = run0(input)
 
     val res = res0 match {
-      case interpreter.Interpreter.Incomplete =>
-        Res.Buffer(buffer)
       case interpreter.Interpreter.Error("Close this notebook to exit") =>
         Res.Exit
       case interpreter.Interpreter.Error(reason) =>
