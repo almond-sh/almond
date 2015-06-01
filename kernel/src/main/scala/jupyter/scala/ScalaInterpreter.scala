@@ -149,12 +149,6 @@ object ScalaInterpreter {
       intp
     }
 
-    /** Filters out Unit results */
-    def resFilter(s: String) =
-    // ANSI color stripping cut-n-pasted from Ammonite JLineFrontend
-      if (filterUnitResults) !s.replaceAll("\u001B\\[[;\\d]*m", "").endsWith(": Unit = ()")
-      else true
-
 
     new interpreter.Interpreter with InterpreterDefaults {
 
