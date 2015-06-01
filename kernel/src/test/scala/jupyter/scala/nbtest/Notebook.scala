@@ -129,6 +129,8 @@ object Notebook {
         }
       }
     }
+
+    intp.stop()
   }
 
 }
