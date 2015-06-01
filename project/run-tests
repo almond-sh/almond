@@ -5,7 +5,8 @@ set -ev
 export SBT_OPTS="-J-Xmx512m -J-Xms512m"
 SBT="sbt ++${TRAVIS_SCALA_VERSION:-2.11.6}"
 
-for TEST in AdvancedTests AutocompleteTests EulerTests EvaluatorTests FailureTests SerializationTests nbtest.NbTest; do
+# Temporary disabled: AutocompleteTests 
+for TEST in AdvancedTests EulerTests EvaluatorTests FailureTests SerializationTests nbtest.NbTest; do
   $SBT "kernel/test-only jupyter.scala.$TEST"
 done
 
