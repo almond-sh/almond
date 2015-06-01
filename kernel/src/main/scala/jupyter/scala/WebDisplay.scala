@@ -11,9 +11,9 @@ object WebDisplay {
       case Definition(label, name) =>
         s"""ReplBridge.shell.Internal.printDef("$label", "$name")"""
       case Identity(ident) =>
-        s"""ReplBridge.shell.Internal.print($$user.$ident, "$ident", None)"""
+        s"""ReplBridge.shell.Internal.print($$user.$ident, "$ident", _root_.scala.None)"""
       case LazyIdentity(ident) =>
-        s"""ReplBridge.shell.Internal.print($$user.$ident, "$ident", Some("<lazy>"))"""
+        s"""ReplBridge.shell.Internal.print($$user.$ident, "$ident", _root_.scala.Some("<lazy>"))"""
       case Import(imported) =>
         s"""ReplBridge.shell.Internal.printImport("$imported")"""
     }
