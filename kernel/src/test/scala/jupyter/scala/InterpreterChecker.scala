@@ -26,8 +26,24 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
 
       allOutput += commandText.map("\n@ " + _).mkString("\n")
 
+      def filtered(err: String) = {
+        err.replaceAll(" *\n", "\n").replaceAll("(?m)^Main\\Q.\\Escala:[0-9]*:", "Main.scala:*:")
+      }
+
       if (expected startsWith "error: ")
-        fail(commandText.mkString("\n"), _ contains expected.stripPrefix("error: "))
+        fail(commandText.mkString("\n"), {
+          err =>
+            val got = filtered(err.replaceAll("\u001B\\[[;\\d]*m", ""))
+            val exp = filtered(expected.stripPrefix("error: "))
+            val res = got contains exp
+            if (!res) {
+              val _got = got.split('\n').toList
+              val _exp = exp.split('\n').toList
+              println((_got zip _exp).map{case (g, e) => (g, e, g == e)})
+              println(s"Got:\n$got\nExpected:\n$exp\n")
+            }
+            res
+        })
       else
         apply(commandText.mkString("\n"), if (expected.isEmpty) null else expected)
     }
