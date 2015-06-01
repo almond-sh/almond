@@ -68,9 +68,23 @@ object Notebook {
           }
         }
 
+        println(s"Interpreting\n${cell.source.map("  " + _).mkString("\n")}")
+
         val res = intp.interpret(cell.source.mkString("\n"), Some((stdout _, stderr _)), true, None)
 
-        def filterErr(s: String) = s
+        val ignoreErrMessage =
+          cell.metadata.exists {
+            case ("ignore_err_message", b) if b == Json.jBool(true) => true
+            case _ => false
+          }
+
+        def transformErr(err: ErrorOutput): ErrorOutput =
+          if (ignoreErrMessage && err.traceback.nonEmpty)
+            err.copy(traceback = err.traceback.head.replaceAll("(?m)^([^:]*):.*$", "$1:*") +: err.traceback.tail)
+          else
+            err
+
+        def filterErrTrace(s: String) = s
           .replaceAll("""(?m)\((.*\Q.\Ejava):[0-9]*\)$""", "($1:*)")
           .replaceAll("""(?m)\((.*\Q.\Escala):[0-9]*\)$""", "($1:*)")
           .replaceAll("\u001B\\[[;\\d]*m", "")
@@ -85,7 +99,7 @@ object Notebook {
               })
             }.toMap)
           case Interpreter.Error(error) =>
-            outputs0 += ErrorOutput("", "", filterErr(error).split('\n'))
+            outputs0 += transformErr(ErrorOutput("", "", filterErrTrace(error).split('\n')))
           case other =>
             println(s"Warning: ignoring result $other")
         }
@@ -104,6 +118,12 @@ object Notebook {
             case _ => false
           }
 
+        val dropSourceStdErr =
+          cell.metadata.exists {
+            case ("test_drop_stderr", b) if b == Json.jBool(true) => true
+            case _ => false
+          }
+
         def isStdErr(output: Output) = output match {
           case StreamOutput("stderr", _) => true
           case _ => false
@@ -111,7 +131,8 @@ object Notebook {
 
         if (!ignore) {
           val outputs = outputs0.result()
-          for (((got, exp), idx) <- outputs.zip(cell.outputs.map{ case ErrorOutput("", "", err) => ErrorOutput("", "", err.map(filterErr)); case c => c }).zipWithIndex) {
+          val cellOutputs = cell.outputs.filter(o => !dropSourceStdErr || !isStdErr(o))
+          for (((got, exp), idx) <- outputs.zip(cellOutputs.map{ case ErrorOutput("", "", err) => transformErr(ErrorOutput("", "", err.map(filterErrTrace))); case c => c }).zipWithIndex) {
             if (exp != got) {
               if (ignoreStdErr && isStdErr(exp) && isStdErr(got))
                 println(s"Ignoring different stderr output $idx at cell $cellIdx")
@@ -123,8 +144,8 @@ object Notebook {
             }
           }
 
-          if (outputs.length != cell.outputs.length) {
-            throw new Exception(s"Cell $cellIdx: got wrong output count: ${outputs.length} (expected ${cell.outputs.length})")
+          if (outputs.length != cellOutputs.length) {
+            throw new Exception(s"Cell $cellIdx: got wrong output count: ${outputs.length} (expected ${cellOutputs.length})")
           }
         }
       }
