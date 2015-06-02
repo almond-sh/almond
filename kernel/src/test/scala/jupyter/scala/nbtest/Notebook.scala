@@ -118,7 +118,7 @@ object Notebook {
             case _ => false
           }
 
-        val dropSourceStdErr =
+        val dropStdErr =
           cell.metadata.exists {
             case ("test_drop_stderr", b) if b == Json.jBool(true) => true
             case _ => false
@@ -130,8 +130,8 @@ object Notebook {
         }
 
         if (!ignore) {
-          val outputs = outputs0.result()
-          val cellOutputs = cell.outputs.filter(o => !dropSourceStdErr || !isStdErr(o))
+          val outputs = outputs0.result().filter(o => !dropStdErr || !isStdErr(o))
+          val cellOutputs = cell.outputs.filter(o => !dropStdErr || !isStdErr(o))
           for (((got, exp), idx) <- outputs.zip(cellOutputs.map{ case ErrorOutput("", "", err) => transformErr(ErrorOutput("", "", err.map(filterErrTrace))); case c => c }).zipWithIndex) {
             if (exp != got) {
               if (ignoreStdErr && isStdErr(exp) && isStdErr(got))
