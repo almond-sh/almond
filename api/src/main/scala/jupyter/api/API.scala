@@ -52,24 +52,13 @@ trait API {
   val display: Display = new Display {}
 }
 
-trait Internal{
-  def combinePrints(iters: Iterator[String]*): Iterator[String]
-  def print[T: TPrint: PPrint: WeakTypeTag](value: => T, ident: String, custom: Option[String])(implicit cfg: Config): Iterator[String]
-  def printDef(definitionLabel: String, ident: String): Iterator[String]
-  def printImport(imported: String): Iterator[String]
-}
-
-trait FullAPI extends API {
-  def Internal: Internal
-}
-
 class APIHolder {
-  @transient var shell0: FullAPI = null
+  @transient var shell0: API = null
   @transient lazy val shell = shell0
 }
 
 object APIHolder {
-  def initReplBridge(holder: Class[APIHolder], api: FullAPI) =
+  def initReplBridge(holder: Class[APIHolder], api: API) =
     holder
       .getDeclaredMethods
       .find(_.getName == "shell0_$eq")

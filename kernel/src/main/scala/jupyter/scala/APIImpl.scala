@@ -1,12 +1,12 @@
 package jupyter.scala
 
+import ammonite.api.ClassLoaderType
 import ammonite.interpreter._
 import ammonite.pprint
 import ammonite.pprint.{Config, PPrint, TPrint}
+import coursier.core.Repository
 import jupyter.api._
 import jupyter.kernel.protocol.ParsedMessage
-
-import org.apache.ivy.plugins.resolver.DependencyResolver
 
 import java.io.File
 
@@ -20,48 +20,22 @@ object ColorSet {
   val BlackWhite = ColorSet("", "", "", "")
 }
 
-class APIImpl(intp: ammonite.api.Interpreter,
-              publish0: => Option[Publish[Evidence]],
-              currentMessage: => Option[ParsedMessage[_]],
-              startJars: Seq[File],
-              startIvys: Seq[(String, String, String)],
-              jarMap: File => File,
-              startResolvers: Seq[DependencyResolver],
-              colors: ColorSet,
-              var pprintConfig: pprint.Config) extends FullAPI {
+class APIImpl(
+  intp: Interpreter,
+  publish0: => Option[Publish[Evidence]],
+  currentMessage: => Option[ParsedMessage[_]],
+  startJars: Map[ClassLoaderType, Seq[File]],
+  startIvys: Map[ClassLoaderType, Seq[(String, String, String)]],
+  jarMap: File => File,
+  startResolvers: Seq[Repository],
+  colors: ColorSet,
+  var pprintConfig: pprint.Config,
+  history0: => Seq[String]
+) extends API {
 
   val load = new Load(intp, startJars, startIvys, jarMap, startResolvers)
   def interpreter = intp
-  def history = intp.history.toVector.dropRight(1)
-
-  object Internal extends jupyter.api.Internal{
-    def combinePrints(iters: Iterator[String]*) = {
-      iters.toIterator
-        .filter(!_.isEmpty)
-        .flatMap(Iterator("\n") ++ _)
-        .drop(1)
-    }
-    def print[T: TPrint: PPrint: WeakTypeTag](value: => T, ident: String, custom: Option[String])(implicit cfg: Config) = {
-      if (weakTypeOf[T] =:= weakTypeOf[Unit]) Iterator()
-      else {
-        val pprint = implicitly[PPrint[T]]
-        val rhs = custom match {
-          case None => pprint.render(value)
-          case Some(s) => Iterator(pprint.cfg.color.literal(s))
-        }
-        Iterator(
-          colors.ident, ident, colors.reset, ": ",
-          implicitly[TPrint[T]].render(cfg), " = "
-        ) ++ rhs
-      }
-    }
-    def printDef(definitionLabel: String, ident: String) = {
-      Iterator("defined ", colors.`type`, definitionLabel, " ", colors.ident, ident, colors.reset)
-    }
-    def printImport(imported: String) = {
-      Iterator(colors.`type`, "import ", colors.ident, imported, colors.reset)
-    }
-  }
+  def history = history0
 
   def show[T](a: T, lines: Int = 0) = ammonite.pprint.Show(a, lines)
 
