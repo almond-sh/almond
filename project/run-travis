@@ -8,6 +8,6 @@ $SBT publish-local
 
 "$PWD/run-tests"
 
-if [ "$TRAVIS_PULL_REQUEST" == "false" -a "$JAVA_HOME" == "$1" -a "$TRAVIS_BRANCH" == "master" ]; then
+if [ "$TRAVIS_PULL_REQUEST" == "false" -a "$JAVA_HOME" == "$1" -a "$TRAVIS_BRANCH" == "0.2.x" ]; then
   $SBT publish
 fi
