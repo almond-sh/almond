@@ -120,9 +120,25 @@ trait Display {
          (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
     publish.display("", "image/png" -> data.toBase64)
   }
+  def png(data: java.awt.image.BufferedImage)
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    import java.io.ByteArrayOutputStream
+    import javax.imageio.ImageIO
+    val baos: ByteArrayOutputStream = new ByteArrayOutputStream()
+    ImageIO.write(data, "png", baos)
+    png(baos.toByteArray)
+  }
   def jpg(data: Array[Byte])
          (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
     publish.display("", "image/jpeg" -> data.toBase64)
+  }
+  def jpg(data: java.awt.image.BufferedImage)
+         (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
+    import java.io.ByteArrayOutputStream
+    import javax.imageio.ImageIO
+    val baos: ByteArrayOutputStream = new ByteArrayOutputStream()
+    ImageIO.write(data, "jpg", baos)
+    jpg(baos.toByteArray)
   }
   def latex(latex: String)
            (implicit publish: jupyter.api.Publish[Evidence], ev: Evidence): Unit = {
