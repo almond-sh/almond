@@ -24,7 +24,7 @@ object ScalaInterpreter {
       name=s"scala${scalaBinaryVersion.filterNot(_ == '.')}",
       version = scalaVersion,
       codemirror_mode = "text/x-scala",
-      file_extension = "scala",
+      file_extension = ".scala",
       mimetype = "text/x-scala",
       pygments_lexer = "scala"
     )
