@@ -10,7 +10,7 @@ trait API {
   /**
    * Tools related to loading external scripts and code
    */
-  implicit def load: ammonite.api.Load
+  implicit def classpath: ammonite.api.Classpath
 
   implicit def eval: Eval
 

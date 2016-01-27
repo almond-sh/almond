@@ -21,7 +21,7 @@ class APIImpl(
   var pprintConfig: pprint.Config
 ) extends API {
 
-  def load: ammonite.api.Load = intp.load
+  def classpath: ammonite.api.Classpath = intp.classpath
   def interpreter = intp
 
   val eval: Eval = new Eval {

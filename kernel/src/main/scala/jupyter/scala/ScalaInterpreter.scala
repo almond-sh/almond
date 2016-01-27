@@ -2,7 +2,7 @@ package jupyter.scala
 
 import ammonite.api._
 import ammonite.Interpreter
-import ammonite.util.Load
+import ammonite.util.Classpath
 import ammonite.interpreter._
 
 import jupyter.api._
@@ -65,8 +65,8 @@ object ScalaInterpreter {
 
   val defaultLoader = Thread.currentThread().getContextClassLoader
 
-  val compileLoader = Load.isolatedLoader(defaultLoader, "jupyter-scala-compile").getOrElse(defaultLoader)
-  val macroLoader = Load.isolatedLoader(defaultLoader, "jupyter-scala-macro").getOrElse(compileLoader)
+  val compileLoader = Classpath.isolatedLoader(defaultLoader, "jupyter-scala-compile").getOrElse(defaultLoader)
+  val macroLoader = Classpath.isolatedLoader(defaultLoader, "jupyter-scala-macro").getOrElse(compileLoader)
 
   lazy val classLoaders0 = Map(
     "runtime" -> compileLoader,
@@ -98,7 +98,7 @@ object ScalaInterpreter {
       s""" Iterator[Iterator[String]](${items.map(WebDisplay(_, colors)).mkString(", ")}).filter(_.nonEmpty).flatMap(_ ++ Iterator("\\n")) """
 
     lazy val underlying = {
-      lazy val load: Load = new Load(
+      lazy val classpath: Classpath = new Classpath(
         initialRepositories,
         initialDependencies,
         classLoaders0,
@@ -108,7 +108,7 @@ object ScalaInterpreter {
 
       lazy val intp = new Interpreter(
         imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-        load = load
+        classpath = classpath
       ) {
         def hasObjWrapSpecialImport(d: ParsedCode): Boolean =
           d.items.exists {
