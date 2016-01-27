@@ -59,13 +59,14 @@ trait API {
 
   val display: Display = new Display {}
 
-  def printValue[T](
+  def printValue[T, U](
     value: => T,
+    dummy: => U,
     ident: String,
     custom: Option[String]
   )(implicit
     cfg: Config,
-    tprint: TPrint[T],
+    tprint: TPrint[U],
     pprint: PPrint[T],
     tpe: WeakTypeTag[T]
   ): Iterator[String]

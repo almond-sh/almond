@@ -56,13 +56,14 @@ class APIImpl(
     .getOrElse(throw new IllegalStateException("Interpreter is not connected to a front-end"))
 
 
-  def printValue[T](
+  def printValue[T, U](
     value: => T,
+    dummy: => U,
     ident: String,
     custom: Option[String]
   )(implicit
     cfg: Config,
-    tprint: TPrint[T],
+    tprint: TPrint[U],
     pprint: PPrint[T],
     tpe: WeakTypeTag[T]
   ): Iterator[String] =
@@ -76,7 +77,7 @@ class APIImpl(
 
       Iterator(
         colors.ident() + ident + colors.reset(), ": " +
-          implicitly[TPrint[T]].render(cfg) + " = "
+          implicitly[TPrint[U]].render(cfg) + " = "
       ) ++ rhs
     }
 
