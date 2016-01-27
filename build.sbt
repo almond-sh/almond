@@ -40,11 +40,11 @@ lazy val kernel = project
     libraryDependencies ++= Seq(
       "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
       "com.github.alexarchambault" %% "ammonite-interpreter" % ammoniteVersion cross CrossVersion.full,
-      "com.github.alexarchambault" %% "ammonite-shell" % ammoniteVersion % "test" cross CrossVersion.full
+      "com.github.alexarchambault" %% "ammonite-shell-tests" % ammoniteVersion % "test" cross CrossVersion.full
     ),
     libraryDependencies ++= Seq(
       "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
-      "com.github.alexarchambault" %% "ammonite-shell" % ammoniteVersion cross CrossVersion.full
+      "com.github.alexarchambault" %% "ammonite-shell-tests" % ammoniteVersion cross CrossVersion.full
     ).map(_ % "test" classifier "tests"),
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.10.")
