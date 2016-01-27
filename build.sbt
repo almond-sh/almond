@@ -7,10 +7,10 @@ lazy val api = project
   .settings(
     name := "jupyter-scala-api",
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" % "ammonite-api" % ammoniteVersion cross CrossVersion.full,
+      "com.github.alexarchambault.ammonium" % "interpreter-api" % ammoniteVersion cross CrossVersion.full,
       "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.github.alexarchambault" % "ammonite-tprint" % ammoniteVersion cross CrossVersion.full,
+      "com.github.alexarchambault.ammonium" % "tprint" % ammoniteVersion cross CrossVersion.full,
       "com.lihaoyi" %% "pprint" % "0.3.6"
     ),
     libraryDependencies ++= {
@@ -39,14 +39,15 @@ lazy val kernel = project
     name := "jupyter-scala",
     libraryDependencies ++= Seq(
       "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
-      "com.github.alexarchambault" %% "ammonite-interpreter" % ammoniteVersion cross CrossVersion.full,
-      "com.github.alexarchambault" %% "ammonite-shell-tests" % ammoniteVersion % "test" cross CrossVersion.full
+      "com.github.alexarchambault.ammonium" % "interpreter" % ammoniteVersion cross CrossVersion.full,
+      "com.github.alexarchambault.ammonium" % "shell-tests" % ammoniteVersion % "test" cross CrossVersion.full,
+      "org.slf4j" % "slf4j-nop" % "1.7.7"
     ),
     libraryDependencies ++= Seq(
       "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion
     ).map(_ % "test" classifier "tests"),
     libraryDependencies ++= {
-      if (scalaVersion.value startsWith "2.10.")
+      if (scalaBinaryVersion.value == "2.10")
         Seq("org.scalamacros" % "paradise" % "2.0.1" % "plugin->default(compile)" cross CrossVersion.full)
       else
         Seq()
@@ -62,7 +63,7 @@ lazy val kernel = project
         (organization.value, s"jupyter-scala-api_${scalaVersion.value}", version.value),
         ("org.scala-lang", "scala-compiler", scalaVersion.value)
       ) ++ {
-        if (scalaVersion.value.startsWith("2.10.")) Seq(("org.scalamacros", s"paradise_${scalaVersion.value}", "2.0.1"))
+        if (scalaBinaryVersion.value == "2.10") Seq(("org.scalamacros", s"paradise_${scalaVersion.value}", "2.0.1"))
         else Seq()
       }
 
@@ -91,7 +92,7 @@ lazy val cli = project
       "ch.qos.logback" % "logback-classic" % "1.0.13"
     ),
     libraryDependencies ++= {
-      if (scalaVersion.value startsWith "2.10.")
+      if (scalaBinaryVersion.value == "2.10")
         Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
       else
         Seq()
@@ -119,7 +120,6 @@ lazy val commonSettings = Seq(
   scalacOptions += "-target:jvm-1.7",
   crossVersion := CrossVersion.full,
   scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6", "2.11.7"),
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   fork in test := true,
   fork in (Test, test) := true,

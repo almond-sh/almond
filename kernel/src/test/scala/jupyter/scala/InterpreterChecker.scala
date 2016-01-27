@@ -51,13 +51,17 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
 
   var buffer = ""
 
-  def run0(input: String): (Interpreter.Result, String) = {
+  def run0(input: String, captureOut: Boolean): (Interpreter.Result, String) = {
     val msg = collection.mutable.Buffer.empty[String]
-    val f = { (s: String) => msg.synchronized(msg.append(s)) }
+    val f: String => Unit =
+      if (captureOut)
+        s => msg.synchronized(msg.append(s))
+      else
+        _ => ()
     buffer =
       if (buffer.isEmpty) input
       else buffer + "\n" + input
-    val res = intp.interpret(buffer, Some(f, f), storeHistory = true, None)
+    val res = intp.interpret(buffer, Some(f, _ => ()), storeHistory = true, None)
 
     res match {
       case Interpreter.Value(d) =>
@@ -77,11 +81,11 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
   }
 
   def run(input: String, captureOut: Boolean): (Either[InterpreterError, Evaluated[Unit]], Either[InterpreterError, String]) = {
-    val (res0, output) = run0(input)
+    val (res0, output) = run0(input, captureOut)
 
     res0 match {
       case e: interpreter.Interpreter.Error =>
-        val ex = InterpreterError.UserException(new Exception(e.message))
+        val ex = InterpreterError.UserException(new Exception(e.message), stopClass = "")
         (Left(ex), Left(ex))
       case interpreter.Interpreter.Value(v) =>
         (Right(Evaluated("", Nil, ())), Right(output))
@@ -89,7 +93,7 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
   }
 
   def fail(input: String, failureCheck: String => Boolean = _ => true): Unit = {
-    val (res, printed) = run0(input)
+    val (res, printed) = run0(input, captureOut)
 
     res match{
       case Interpreter.Error(err) =>
