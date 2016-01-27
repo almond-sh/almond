@@ -1,6 +1,6 @@
 
 val ammoniteVersion = "0.4.0-SNAPSHOT"
-val jupyterKernelVersion = "0.2.0-SNAPSHOT"
+val jupyterKernelVersion = "0.3.0-SNAPSHOT"
 
 lazy val api = project
   .settings(commonSettings: _*)
