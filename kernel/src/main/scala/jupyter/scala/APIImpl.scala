@@ -1,17 +1,14 @@
 package jupyter.scala
 
-import ammonite.api.{Eval, ClassLoaderType}
+import ammonite.api.Eval
 import ammonite.interpreter._
 import ammonite.tprint.TPrint
-import ammonite.util.Load
 import ammonite.Interpreter
-import coursier.core.Repository
+
 import jupyter.api._
 import jupyter.kernel.protocol.ParsedMessage
 
-import java.io.File
-
-import pprint.{PPrint, Config}
+import pprint.{ PPrint, Config }
 
 import scala.reflect.runtime.universe._
 
@@ -20,15 +17,11 @@ class APIImpl(
   intp: Interpreter,
   publish0: => Option[Publish[Evidence]],
   currentMessage: => Option[ParsedMessage[_]],
-  startJars: Map[ClassLoaderType, Seq[File]],
-  startIvys: Map[ClassLoaderType, Seq[(String, String, String)]],
-  jarMap: File => File,
-  startResolvers: Seq[Repository],
   colors: Colors,
   var pprintConfig: pprint.Config
 ) extends API {
 
-  val load = new Load(intp, startJars, startIvys, jarMap, startResolvers)
+  def load: ammonite.api.Load = intp.load
   def interpreter = intp
 
   val eval: Eval = new Eval {
