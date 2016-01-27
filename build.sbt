@@ -10,7 +10,8 @@ lazy val api = project
       "com.github.alexarchambault" % "ammonite-api" % ammoniteVersion cross CrossVersion.full,
       "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.lihaoyi" %% "ammonite-pprint" % "0.3.2"
+      "com.github.alexarchambault" % "ammonite-tprint" % ammoniteVersion cross CrossVersion.full,
+      "com.lihaoyi" %% "pprint" % "0.3.6"
     ),
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.10.")
@@ -83,14 +84,7 @@ lazy val kernel = project
 lazy val cli = project
   .dependsOn(kernel)
   .settings(commonSettings: _*)
-  .settings(packAutoSettings ++ publishPackTxzArchive ++ publishPackZipArchive: _*)
-  .settings(
-    // overriding these three settings so that the directory name in the published packages matches the package file names.
-    // e.g. directory jupyter-scala_2.11.6-0.2.0 in package jupyter-scala_2.11.6-0.2.0.tar.xz
-    packArchivePrefix := s"jupyter-scala_${scalaVersion.value}",
-    packArchiveTxzArtifact := Artifact("jupyter-scala", "arch", "tar.xz"),
-    packArchiveZipArtifact := Artifact("jupyter-scala", "arch", "zip")
-  )
+  .settings(packAutoSettings: _*)
   .settings(
     name := "jupyter-scala-cli",
     libraryDependencies ++= Seq(

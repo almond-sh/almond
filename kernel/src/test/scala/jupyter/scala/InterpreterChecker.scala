@@ -1,7 +1,7 @@
 package jupyter.scala
 
-import ammonite.interpreter.{Evaluated, Res}
-import ammonite.pprint
+import ammonite.api.{InterpreterError, Evaluated}
+import ammonite.interpreter.Colors
 import ammonite.shell.Checker
 import jupyter.kernel.interpreter
 import jupyter.kernel.interpreter.Interpreter
@@ -14,7 +14,7 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
 
   var captureOut = false
 
-  def session(sess: String): Unit = {
+  def session(sess: String, captureOut: Boolean): Unit = {
     val margin = sess.lines.filter(_.trim != "").map(_.takeWhile(' '.==).length).min
     val steps = sess.replace("\n" + margin, "\n").split("\n\n")
 
@@ -72,25 +72,20 @@ class InterpreterChecker(intp: Interpreter) extends Checker {
       buffer = ""
 
     val msgs = msg.mkString
-    allOutput += msgs + "\n"
+    allOutput += msgs
     (res, msgs)
   }
 
-  def run(input: String): (Res[Evaluated[Unit]], Res[String]) = {
+  def run(input: String, captureOut: Boolean): (Either[InterpreterError, Evaluated[Unit]], Either[InterpreterError, String]) = {
     val (res0, output) = run0(input)
 
-    val res = res0 match {
-      case interpreter.Interpreter.Error("Close this notebook to exit") =>
-        Res.Exit
-      case interpreter.Interpreter.Error(reason) =>
-        Res.Failure(reason)
-      case interpreter.Interpreter.NoValue =>
-        Res.Skip
+    res0 match {
+      case e: interpreter.Interpreter.Error =>
+        val ex = InterpreterError.UserException(new Exception(e.message))
+        (Left(ex), Left(ex))
       case interpreter.Interpreter.Value(v) =>
-        Res.Success(Evaluated("", Nil, ()))
+        (Right(Evaluated("", Nil, ())), Right(output))
     }
-
-    (res, res.map(_ => output))
   }
 
   def fail(input: String, failureCheck: String => Boolean = _ => true): Unit = {
@@ -124,8 +119,8 @@ object ScalaInterpreterChecker {
   def apply(): InterpreterChecker =
     new InterpreterChecker({
       ScalaInterpreter(
-        pprintConfig = pprint.Config.Defaults.PPrintConfig.copy(lines = 15),
-        colors = ColorSet.BlackWhite,
+        pprintConfig = pprint.Config.Defaults.PPrintConfig.copy(width = 80, height = 20),
+        colors = Colors.BlackWhite,
         filterUnitResults = false
       )
     })

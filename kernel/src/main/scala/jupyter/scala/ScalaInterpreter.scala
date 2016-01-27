@@ -4,11 +4,12 @@ import java.io.File
 
 import ammonite.api._
 import ammonite.interpreter.Classes
-import ammonite.interpreter.Interpreter
-import ammonite.interpreter.Load
-import ammonite.pprint
+import ammonite.Interpreter
+import ammonite.util.Load
 import ammonite.interpreter._
-import coursier.core.{MavenRepository, Repository}
+import coursier.core.Repository
+import coursier.maven.MavenRepository
+import coursier.util.ClasspathFilter
 
 import jupyter.api._
 import jupyter.kernel.interpreter
@@ -57,7 +58,7 @@ object ScalaInterpreter {
   )
 
   val repositories =
-    Seq(coursier.Repository.ivy2Local, coursier.Repository.mavenCentral) ++ {
+    Seq(coursier.Cache.ivy2Local, MavenRepository("https://repo1.maven.org/maven2")) ++ {
       if (BuildInfo.version endsWith "-SNAPSHOT")
         Seq(MavenRepository("https://oss.sonatype.org/content/repositories/snapshots"))
       else
@@ -75,7 +76,7 @@ object ScalaInterpreter {
   }
 
   lazy val classLoaders0 = paths0.map { case (tpe, paths) =>
-    tpe -> new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ paths).toSet)
+    tpe -> new ClasspathFilter(getClass.getClassLoader, (Classes.bootClasspath ++ paths).toSet, exclude = false)
   }
 
   def classes0 =
@@ -106,8 +107,8 @@ object ScalaInterpreter {
     pathMap: => File => File = pathMap,
     repositories0: => Seq[Repository] = repositories,
     classLoaders: => Map[ClassLoaderType, ClassLoader] = classLoaders0,
-    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig.copy(lines = 15),
-    colors: ColorSet = ColorSet.Default,
+    pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig.copy(width = 80, height = 20),
+    colors: Colors = Colors.Default,
     filterUnitResults: Boolean = true
   ): interpreter.Interpreter { def stop(): Unit } = {
 
@@ -149,7 +150,7 @@ object ScalaInterpreter {
         }
       }
 
-      val init = InterpreterAction.init(
+      val init = Interpreter.init(
         new BridgeConfig(
           currentPublish,
           currentMessage,
@@ -177,7 +178,8 @@ object ScalaInterpreter {
 
       override def initialized = initialized0
       override def init() = underlying
-      def executionCount = underlying.history.length
+      var executionCount0 = 0
+      def executionCount = executionCount0
 
       override def publish(publish: Publish[ParsedMessage[_]]) = {
         currentPublish = Some(publish.contramap[Evidence](e => e.underlying.asInstanceOf[ParsedMessage[_]]))
@@ -198,19 +200,19 @@ object ScalaInterpreter {
         currentMessage = current
 
         try {
-          val run = InterpreterAction.run(
+          val run = Interpreter.run(
             line,
-            ???,
+            { executionCount0 += 1 },
             output.map(_._1),
             output.map(_._2),
             it => new DisplayData.RawData(
-              it.asInstanceOf[Iterator[String]].mkString
+              it.asInstanceOf[Iterator[String]].mkString.stripSuffix("\n")
             )
           )
 
           run(underlying) match {
             case Left(err) =>
-              interpreter.Interpreter.Error(err.toString)
+              interpreter.Interpreter.Error(err.msg)
             case Right(Evaluated(_, _, data)) =>
               interpreter.Interpreter.Value(data)
           }

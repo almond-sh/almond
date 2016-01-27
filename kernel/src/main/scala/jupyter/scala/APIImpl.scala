@@ -1,24 +1,20 @@
 package jupyter.scala
 
-import ammonite.api.ClassLoaderType
+import ammonite.api.{Eval, ClassLoaderType}
 import ammonite.interpreter._
-import ammonite.pprint
-import ammonite.pprint.{Config, PPrint, TPrint}
+import ammonite.tprint.TPrint
+import ammonite.util.Load
+import ammonite.Interpreter
 import coursier.core.Repository
 import jupyter.api._
 import jupyter.kernel.protocol.ParsedMessage
 
 import java.io.File
 
+import pprint.{PPrint, Config}
+
 import scala.reflect.runtime.universe._
 
-
-// Cut-n-pasted here from ammonite-shell not add depend on it
-case class ColorSet(prompt: String, ident: String, `type`: String, reset: String)
-object ColorSet {
-  val Default = ColorSet(Console.MAGENTA, Console.CYAN, Console.GREEN, Console.RESET)
-  val BlackWhite = ColorSet("", "", "", "")
-}
 
 class APIImpl(
   intp: Interpreter,
@@ -28,20 +24,60 @@ class APIImpl(
   startIvys: Map[ClassLoaderType, Seq[(String, String, String)]],
   jarMap: File => File,
   startResolvers: Seq[Repository],
-  colors: ColorSet,
-  var pprintConfig: pprint.Config,
-  history0: => Seq[String]
+  colors: Colors,
+  var pprintConfig: pprint.Config
 ) extends API {
 
   val load = new Load(intp, startJars, startIvys, jarMap, startResolvers)
   def interpreter = intp
-  def history = history0
 
-  def show[T](a: T, lines: Int = 0) = ammonite.pprint.Show(a, lines)
+  val eval: Eval = new Eval {
+    def apply(code: String) =
+      Interpreter.run(code, (), None, None, _ => ())(intp)
+  }
+
+  def show[T](
+    t: T,
+    width: Integer = null,
+    height: Integer = 0,
+    indent: Integer = null,
+    colors: _root_.pprint.Colors = null
+  )(implicit
+    cfg: Config = Config.Defaults.PPrintConfig,
+    pprint0: PPrint[T]
+  ): Unit = {
+    pprint.tokenize(t, width, height, indent, colors)(implicitly[PPrint[T]], cfg).foreach(scala.Predef.print)
+  }
 
   def evidence = new Evidence(
     currentMessage.getOrElse(throw new IllegalStateException("Not processing a Jupyter message")))
 
   def publish = publish0
     .getOrElse(throw new IllegalStateException("Interpreter is not connected to a front-end"))
+
+
+  def printValue[T](
+    value: => T,
+    ident: String,
+    custom: Option[String]
+  )(implicit
+    cfg: Config,
+    tprint: TPrint[T],
+    pprint: PPrint[T],
+    tpe: WeakTypeTag[T]
+  ): Iterator[String] =
+    if (weakTypeOf[T] =:= weakTypeOf[Unit])
+      Iterator()
+    else {
+      val rhs = custom match {
+        case None => implicitly[PPrint[T]].render(value, cfg)
+        case Some(s) => Iterator(colors.literal() + s + colors.reset())
+      }
+
+      Iterator(
+        colors.ident() + ident + colors.reset(), ": " +
+          implicitly[TPrint[T]].render(cfg) + " = "
+      ) ++ rhs
+    }
+
 }

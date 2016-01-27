@@ -1,19 +1,18 @@
 package jupyter.api
 
-import ammonite.pprint.{Config, PPrint, TPrint}
+import ammonite.api.Eval
+import ammonite.tprint.TPrint
+import _root_.pprint.{ PPrint, Config }
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
 trait API {
   /**
-   * History of commands that have been entered
-   */
-  def history: Seq[String]
-
-  /**
    * Tools related to loading external scripts and code
    */
   implicit def load: ammonite.api.Load
+
+  implicit def eval: Eval
 
   /**
    * Exposes some internals of the current interpreter
@@ -24,13 +23,22 @@ trait API {
   /**
    * Controls how things are pretty-printed
    */
-  implicit var pprintConfig: ammonite.pprint.Config
+  implicit var pprintConfig: Config
 
   /**
    * Prettyprint the given `value` with no truncation. Optionally takes
    * a number of lines to print.
    */
-  def show[T](value: T, lines: Int = 0): ammonite.pprint.Show[T]
+  def show[T](
+    t: T,
+    width: Integer = null,
+    height: Integer = 0,
+    indent: Integer = null,
+    colors: _root_.pprint.Colors = null
+  )(implicit
+    cfg: Config = Config.Defaults.PPrintConfig,
+    pprint: PPrint[T]
+  ): Unit
 
 
   /**
@@ -50,6 +58,17 @@ trait API {
   implicit def publish: jupyter.api.Publish[Evidence]
 
   val display: Display = new Display {}
+
+  def printValue[T](
+    value: => T,
+    ident: String,
+    custom: Option[String]
+  )(implicit
+    cfg: Config,
+    tprint: TPrint[T],
+    pprint: PPrint[T],
+    tpe: WeakTypeTag[T]
+  ): Iterator[String]
 }
 
 class APIHolder {
