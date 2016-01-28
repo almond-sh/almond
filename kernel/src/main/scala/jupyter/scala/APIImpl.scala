@@ -57,8 +57,7 @@ class APIImpl(
   )(implicit
     cfg: Config,
     tprint: TPrint[U],
-    pprint: PPrint[T],
-    tpe: WeakTypeTag[T]
+    pprint: PPrint[T]
   ): Iterator[String] =
     if (weakTypeOf[T] =:= weakTypeOf[Unit])
       Iterator()

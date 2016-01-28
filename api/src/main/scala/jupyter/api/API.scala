@@ -4,8 +4,6 @@ import ammonite.api.Eval
 import ammonite.tprint.TPrint
 import _root_.pprint.{ PPrint, Config }
 
-import scala.reflect.runtime.universe.WeakTypeTag
-
 trait API {
   /**
    * Tools related to loading external scripts and code
@@ -67,8 +65,7 @@ trait API {
   )(implicit
     cfg: Config,
     tprint: TPrint[U],
-    pprint: PPrint[T],
-    tpe: WeakTypeTag[T]
+    pprint: PPrint[T]
   ): Iterator[String]
 }
 
