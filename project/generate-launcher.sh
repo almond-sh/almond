@@ -5,14 +5,14 @@ VERSION=0.3.0-M1
 if [ "$1" = "--2.10" ]; then
   SCALA_VERSION=2.10.6
   OUTPUT=jupyter-scala-2.10
-  EXTRA=
-else
-  SCALA_VERSION=2.11.7
-  OUTPUT=jupyter-scala
   EXTRA="
     -I jupyter-scala-compile:org.scala-lang:scala-compiler:$SCALA_VERSION \
     -I jupyter-scala-compile:org.scalamacros:quasiquotes_2.10:2.0.1 \
   "
+else
+  SCALA_VERSION=2.11.7
+  OUTPUT=jupyter-scala
+  EXTRA=
 fi
 
 "$(dirname "$0")/../coursier" bootstrap \
