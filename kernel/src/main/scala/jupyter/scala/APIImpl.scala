@@ -24,6 +24,12 @@ class APIImpl(
   def classpath: ammonite.api.Classpath = intp.classpath
   def interpreter = intp
 
+  val setup: ammonite.api.Setup =
+    new ammonite.util.Setup(classpath, eval, Map(
+      "ammonium.version" -> BuildInfo.ammoniumVersion,
+      "jupyter-scala.version" -> BuildInfo.version
+    ))
+
   val eval: Eval = new Eval {
     def apply(code: String) =
       Interpreter.run(code, (), None, None, _ => ())(intp)

@@ -1,6 +1,6 @@
 package jupyter.api
 
-import ammonite.api.Eval
+import ammonite.api.{ Eval, Setup }
 import ammonite.tprint.TPrint
 import _root_.pprint.{ PPrint, Config }
 
@@ -11,6 +11,8 @@ trait API {
    * Tools related to loading external scripts and code
    */
   implicit def classpath: ammonite.api.Classpath
+
+  implicit def setup: Setup
 
   implicit def eval: Eval
 
