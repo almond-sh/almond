@@ -122,6 +122,8 @@ object ScalaInterpreter {
           unfilteredImports: String,
           wrapper: String
         ) = {
+          // FIXME More or less the same thing in ammonium...
+
           val (doClassWrap, decls0) =
             if (decls.exists(hasObjWrapSpecialImport))
               (false, decls.filterNot(hasObjWrapSpecialImport))
@@ -131,7 +133,7 @@ object ScalaInterpreter {
           if (doClassWrap)
             Interpreter.classWrap(print0(_, colors), decls0, imports, unfilteredImports, wrapper)
           else
-            Interpreter.wrap(print0(_, colors), decls0, imports, unfilteredImports, wrapper)
+            Interpreter.wrap(print0(_, colors), decls0, imports, unfilteredImports, "special" + wrapper)
         }
       }
 
