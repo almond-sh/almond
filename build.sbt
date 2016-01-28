@@ -91,7 +91,11 @@ lazy val commonSettings = Seq(
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   fork in test := true,
   fork in (Test, test) := true,
-  fork in (Test, testOnly) := true
+  fork in (Test, testOnly) := true,
+  javaOptions in Test ++= Seq(
+    "-Xmx3172M",
+    "-Xms3172M"
+  )
 ) ++ publishSettings
 
 lazy val testSettings = Seq(
