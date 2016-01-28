@@ -1,19 +1,20 @@
 package jupyter.api
 
-import ammonite.pprint.{Config, PPrint, TPrint}
+import ammonite.api.{ Eval, Setup }
+import ammonite.tprint.TPrint
+import _root_.pprint.{ PPrint, Config }
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
 trait API {
   /**
-   * History of commands that have been entered
-   */
-  def history: Seq[String]
-
-  /**
    * Tools related to loading external scripts and code
    */
-  implicit def load: ammonite.api.Load
+  implicit def classpath: ammonite.api.Classpath
+
+  implicit def setup: Setup
+
+  implicit def eval: Eval
 
   /**
    * Exposes some internals of the current interpreter
@@ -24,13 +25,22 @@ trait API {
   /**
    * Controls how things are pretty-printed
    */
-  implicit var pprintConfig: ammonite.pprint.Config
+  implicit var pprintConfig: Config
 
   /**
    * Prettyprint the given `value` with no truncation. Optionally takes
    * a number of lines to print.
    */
-  def show[T](value: T, lines: Int = 0): ammonite.pprint.Show[T]
+  def show[T](
+    t: T,
+    width: Integer = null,
+    height: Integer = 0,
+    indent: Integer = null,
+    colors: _root_.pprint.Colors = null
+  )(implicit
+    cfg: Config = Config.Defaults.PPrintConfig,
+    pprint: PPrint[T]
+  ): Unit
 
 
   /**
@@ -50,26 +60,27 @@ trait API {
   implicit def publish: jupyter.api.Publish[Evidence]
 
   val display: Display = new Display {}
-}
 
-trait Internal{
-  def combinePrints(iters: Iterator[String]*): Iterator[String]
-  def print[T: TPrint: PPrint: WeakTypeTag](value: => T, ident: String, custom: Option[String])(implicit cfg: Config): Iterator[String]
-  def printDef(definitionLabel: String, ident: String): Iterator[String]
-  def printImport(imported: String): Iterator[String]
-}
-
-trait FullAPI extends API {
-  def Internal: Internal
+  def printValue[T, U](
+    value: => T,
+    dummy: => U,
+    ident: String,
+    custom: Option[String]
+  )(implicit
+    cfg: Config,
+    tprint: TPrint[U],
+    pprint: PPrint[T],
+    tpe: WeakTypeTag[T]
+  ): Iterator[String]
 }
 
 class APIHolder {
-  @transient var shell0: FullAPI = null
+  @transient var shell0: API = null
   @transient lazy val shell = shell0
 }
 
 object APIHolder {
-  def initReplBridge(holder: Class[APIHolder], api: FullAPI) =
+  def initReplBridge(holder: Class[APIHolder], api: API) =
     holder
       .getDeclaredMethods
       .find(_.getName == "shell0_$eq")

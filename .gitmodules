@@ -1,3 +1,0 @@
-[submodule "docker/ubuntu"]
-	path = docker/base/ubuntu
-	url = https://github.com/dockerfile/ubuntu.git

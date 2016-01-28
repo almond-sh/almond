@@ -1,37 +1,19 @@
 package jupyter
 package scala
 
-import java.io.{ByteArrayOutputStream, InputStream}
+import java.io.{ ByteArrayOutputStream, InputStream }
 
 import jupyter.kernel.interpreter.InterpreterKernel
 import jupyter.kernel.server.{ ServerApp, ServerAppOptions }
 import jupyter.scala.config.ScalaModule
 
 import caseapp._
+
 import com.typesafe.scalalogging.slf4j.LazyLogging
 
 import scalaz.\/
 
 case class JupyterScala(options: ServerAppOptions) extends App with LazyLogging {
-
-  // FIXME Shouldn't sbt-pack put this in system property "prog.name"?
-  val progName = "jupyter-scala"
-
-  lazy val isWindows: Boolean =
-    Option(System.getProperty("os.name")).exists(_ startsWith "Windows")
-
-  lazy val progSuffix =
-    if (isWindows) ".bat"
-    else ""
-
-  def progPath =
-    Option(System getProperty "prog.home").filterNot(_.isEmpty)
-      .map(List(_, "bin", progName + progSuffix).mkString(java.io.File.separator))
-      .getOrElse {
-        Console.err println "Cannot get program home dir, it is likely we are not run through pre-packaged binaries."
-        Console.err println "Please edit the generated file below, and ensure the first item of the 'argv' list points to the path of this program."
-        progName
-      }
 
   def readFully(is: InputStream) = {
     val buffer = new ByteArrayOutputStream()
@@ -58,14 +40,39 @@ case class JupyterScala(options: ServerAppOptions) extends App with LazyLogging 
 
   val scalaBinaryVersion = _root_.scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
+  val mainJar = sys.props.get("coursier.mainJar").getOrElse {
+    Console.err.println("Cannot get main JAR path. Is jupyter-scala launched via its launcher?")
+    sys.exit(1)
+  }
+
+  val mainArgs0 = Stream.from(0)
+    .map(i => s"coursier.main.arg-$i")
+    .map(sys.props.get)
+    .takeWhile(_.nonEmpty)
+    .collect { case Some(arg) => arg }
+    .toVector
+
+  val mainArgs =
+    if (options.force) {
+      // hack-hack not to be called with --force from kernel.json
+      val forceIdx = mainArgs0.lastIndexOf("--force")
+      if (forceIdx >= 0)
+        mainArgs0.take(forceIdx) ++ mainArgs0.drop(forceIdx + 1)
+      else
+        mainArgs0
+    } else
+      mainArgs0
+
   ServerApp(
     ScalaModule.kernelId,
     new InterpreterKernel {
       def apply() = \/.fromTryCatchNonFatal(ScalaInterpreter())
     },
     ScalaModule.kernelInfo,
-    progPath,
+    mainJar,
+    isJar = true,
     options,
+    extraProgArgs = mainArgs,
     logos = Seq(
       resource(s"kernel/scala-$scalaBinaryVersion/resources/logo-64x64.png").map((64, 64) -> _),
       resource(s"kernel/scala-$scalaBinaryVersion/resources/logo-32x32.png").map((32, 32) -> _)

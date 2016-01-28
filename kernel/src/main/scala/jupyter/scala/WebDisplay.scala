@@ -1,21 +1,22 @@
 package jupyter.scala
 
-import ammonite.api.DisplayItem, DisplayItem._
+import ammonite.api.CodeItem, CodeItem._
+import ammonite.interpreter.Colors
 
 object WebDisplay {
 
   /* For now, identical to ammonite.shell.ShellDisplay */
 
-  def apply(d: DisplayItem): String =
+  def apply(d: CodeItem, colors: Colors): String =
     d match {
       case Definition(label, name) =>
-        s"""ReplBridge.shell.Internal.printDef("$label", "$name")"""
+        s""" Iterator("defined ", "${colors.`type`()}", "$label", " ", "${colors.ident()}", "$name", "${colors.reset()}") """
       case Identity(ident) =>
-        s"""ReplBridge.shell.Internal.print($$user.$ident, "$ident", _root_.scala.None)"""
+        s"""BridgeHolder.shell.printValue($$user.$ident, $$user.$ident, "$ident", _root_.scala.None)"""
       case LazyIdentity(ident) =>
-        s"""ReplBridge.shell.Internal.print($$user.$ident, "$ident", _root_.scala.Some("<lazy>"))"""
+        s"""BridgeHolder.shell.printValue($$user.$ident, $$user.$ident, "$ident", _root_.scala.Some("<lazy>"))"""
       case Import(imported) =>
-        s"""ReplBridge.shell.Internal.printImport("$imported")"""
+        s""" Iterator("${colors.`type`()}", "import ", "${colors.ident()}", "$imported", "${colors.reset()}") """
     }
 
 }
