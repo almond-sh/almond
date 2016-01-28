@@ -59,7 +59,6 @@ object LocalSpark16Tests extends tests.LocalSparkTests(
 
 object ReflectionTests extends tests.ReflectionTests(
   ScalaInterpreterChecker(),
-  wrapper = wrapper,
   classWrap = true
 )
 
