@@ -47,12 +47,24 @@ object ScalaInterpreter {
 
   val initialDependencies = Seq(
     "compile" -> Dependency(
-      Module("com.github.alexarchambault.jupyter", s"jupyter-scala-api_$scalaVersion"), BuildInfo.version
+      Module("com.github.alexarchambault.jupyter", s"scala-api_$scalaVersion"), BuildInfo.version
     ),
     "macro" -> Dependency(
       Module("org.scala-lang", "scala-compiler"), scalaVersion
     )
-  )
+  ) ++ {
+    if (scalaVersion.startsWith("2.10."))
+      Seq(
+        "compile" -> Dependency(
+          Module("org.scalamacros", "quasiquotes_2.10"), "2.0.1"
+        ),
+        "compile" -> Dependency(
+          Module("org.scala-lang", "scala-compiler"), scalaVersion
+        )
+      )
+    else
+      Seq()
+  }
 
   val initialRepositories = Seq(
     coursier.Cache.ivy2Local,
