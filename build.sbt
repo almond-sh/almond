@@ -1,6 +1,6 @@
 
-val ammoniumVersion = "0.4.0-SNAPSHOT"
-val jupyterKernelVersion = "0.3.0-SNAPSHOT"
+val ammoniumVersion = "0.4.0-M1"
+val jupyterKernelVersion = "0.3.0-M1"
 
 lazy val `scala-api` = project.in(file("api"))
   .settings(commonSettings)
@@ -82,8 +82,7 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases"),
-    Resolver.sonatypeRepo("snapshots")
+    Resolver.sonatypeRepo("releases")
   ),
   scalacOptions += "-target:jvm-1.7",
   crossVersion := CrossVersion.full,
