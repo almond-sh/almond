@@ -69,9 +69,10 @@ case class JupyterScala(options: ServerAppOptions) extends App with LazyLogging 
       def apply() = \/.fromTryCatchNonFatal(ScalaInterpreter())
     },
     ScalaModule.kernelInfo,
-    "java",
+    mainJar,
+    isJar = true,
     options,
-    extraProgArgs = Seq("-jar", mainJar) ++ mainArgs,
+    extraProgArgs = mainArgs,
     logos = Seq(
       resource(s"kernel/scala-$scalaBinaryVersion/resources/logo-64x64.png").map((64, 64) -> _),
       resource(s"kernel/scala-$scalaBinaryVersion/resources/logo-32x32.png").map((32, 32) -> _)
