@@ -34,7 +34,7 @@ object ScalaInterpreter {
 
     override val implementation = ("jupyter-scala", s"${BuildInfo.version} (scala $scalaVersion)")
     override val banner =
-      s"""Jupyter Scala ${BuildInfo.version} (Ammonite ${BuildInfo.ammoniteVersion} fork) (Scala $scalaVersion)
+      s"""Jupyter Scala ${BuildInfo.version} (Ammonium ${BuildInfo.ammoniumVersion}) (Scala $scalaVersion)
          |Initial dependencies:
          |${initialDependencies0.map("  "+_).mkString("\n")}
        """.stripMargin

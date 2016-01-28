@@ -1,16 +1,15 @@
 
-val ammoniteVersion = "0.4.0-SNAPSHOT"
+val ammoniumVersion = "0.4.0-SNAPSHOT"
 val jupyterKernelVersion = "0.3.0-SNAPSHOT"
 
-lazy val api = project
-  .settings(commonSettings: _*)
+lazy val `scala-api` = project.in(file("api"))
+  .settings(commonSettings)
   .settings(
-    name := "jupyter-scala-api",
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault.ammonium" % "interpreter-api" % ammoniteVersion cross CrossVersion.full,
-      "com.github.alexarchambault.jupyter" %% "jupyter-api" % jupyterKernelVersion,
+      "com.github.alexarchambault.ammonium" % "interpreter-api" % ammoniumVersion cross CrossVersion.full,
+      "com.github.alexarchambault.jupyter" %% "kernel-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.github.alexarchambault.ammonium" % "tprint" % ammoniteVersion cross CrossVersion.full,
+      "com.github.alexarchambault.ammonium" % "tprint" % ammoniumVersion cross CrossVersion.full,
       "com.lihaoyi" %% "pprint" % "0.3.6"
     ),
     libraryDependencies ++= {
@@ -22,29 +21,29 @@ lazy val api = project
         )
     }
   )
-  .settings(buildInfoSettings: _*)
+  .settings(buildInfoSettings)
   .settings(
     sourceGenerators in Compile <+= buildInfo,
     buildInfoKeys := Seq[BuildInfoKey](
       version,
-      "ammoniteVersion" -> ammoniteVersion
+      "ammoniumVersion" -> ammoniumVersion
     ),
     buildInfoPackage := "jupyter.scala"
   )
 
-lazy val kernel = project
-  .dependsOn(api)
-  .settings(commonSettings ++ testSettings: _*)
+lazy val `scala-kernel` = project.in(file("kernel"))
+  .dependsOn(`scala-api`)
+  .settings(commonSettings)
+  .settings(testSettings)
   .settings(
-    name := "jupyter-scala",
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion,
-      "com.github.alexarchambault.ammonium" % "interpreter" % ammoniteVersion cross CrossVersion.full,
-      "com.github.alexarchambault.ammonium" % "shell-tests" % ammoniteVersion % "test" cross CrossVersion.full,
+      "com.github.alexarchambault.jupyter" %% "kernel" % jupyterKernelVersion,
+      "com.github.alexarchambault.ammonium" % "interpreter" % ammoniumVersion cross CrossVersion.full,
+      "com.github.alexarchambault.ammonium" % "shell-tests" % ammoniumVersion % "test" cross CrossVersion.full,
       "org.slf4j" % "slf4j-nop" % "1.7.7"
     ),
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault.jupyter" %% "jupyter-kernel" % jupyterKernelVersion
+      "com.github.alexarchambault.jupyter" %% "kernel" % jupyterKernelVersion
     ).map(_ % "test" classifier "tests"),
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.10")
@@ -53,40 +52,12 @@ lazy val kernel = project
         Seq()
     }
   )
-  .settings(
-    apiDeps := {
-      computeModuleDeps(update.value, scalaVersion.value, scalaBinaryVersion.value,
-        (organization.value, s"jupyter-scala-api_${scalaVersion.value}", version.value))
-    },
-    compilerDeps := {
-      val modules = List(
-        (organization.value, s"jupyter-scala-api_${scalaVersion.value}", version.value),
-        ("org.scala-lang", "scala-compiler", scalaVersion.value)
-      ) ++ {
-        if (scalaBinaryVersion.value == "2.10") Seq(("org.scalamacros", s"paradise_${scalaVersion.value}", "2.0.1"))
-        else Seq()
-      }
 
-      computeModuleDeps(update.value, scalaVersion.value, scalaBinaryVersion.value, modules: _*)
-    }
-  )
-  .settings(buildInfoSettings: _*)
+lazy val  `scala-cli` = project.in(file("cli"))
+  .dependsOn(`scala-kernel`)
+  .settings(commonSettings)
+  .settings(packAutoSettings)
   .settings(
-    sourceGenerators in Compile <+= buildInfo,
-    buildInfoKeys := Seq[BuildInfoKey](
-      apiDeps,
-      compilerDeps
-    ),
-    buildInfoPackage := "jupyter.scala",
-    buildInfoObject := "KernelBuildInfo"
-  )
-
-lazy val cli = project
-  .dependsOn(kernel)
-  .settings(commonSettings: _*)
-  .settings(packAutoSettings: _*)
-  .settings(
-    name := "jupyter-scala-cli",
     libraryDependencies ++= Seq(
       "com.github.alexarchambault" %% "case-app" % "0.2.2",
       "ch.qos.logback" % "logback-classic" % "1.0.13"
@@ -102,11 +73,8 @@ lazy val cli = project
 lazy val `jupyter-scala` = project.in(file("."))
   .settings(commonSettings)
   .settings(noPublishSettings)
-  .aggregate(api, kernel, cli)
-  .dependsOn(api, kernel, cli)
-  .settings(
-    name := "jupyter-scala-root"
-  )
+  .aggregate(`scala-api`, `scala-kernel`, `scala-cli`)
+  .dependsOn(`scala-api`, `scala-kernel`, `scala-cli`)
 
 
 lazy val commonSettings = Seq(
@@ -127,43 +95,11 @@ lazy val commonSettings = Seq(
 ) ++ publishSettings
 
 lazy val testSettings = Seq(
-  libraryDependencies ++= Seq(
-    "com.lihaoyi" %% "utest" % "0.3.0" % "test"
-  ),
+  libraryDependencies += "com.lihaoyi" %% "utest" % "0.3.0" % "test",
   testFrameworks += new TestFramework("utest.runner.Framework")
 )
 
-def computeModuleDeps(
-  report: UpdateReport,
-  scalaVersion: String,
-  scalaBinaryVersion: String,
-  modules: (String, String, String)*
-): String = {
-  def get(m: ModuleID) = (m.organization, m.name, m.revision)
-
-  def normalize(m: ModuleID): ModuleID =
-    m.crossVersion match {
-      case f: CrossVersion.Full =>
-        m.copy(name = m.name + "_" + scalaVersion, crossVersion = CrossVersion.Disabled)
-      case b: CrossVersion.Binary =>
-        m.copy(name = m.name + "_" + scalaBinaryVersion, crossVersion = CrossVersion.Disabled)
-      case _: CrossVersion.Disabled.type =>
-        m
-    }
-
-  val configReport = report.configuration("compile").get
-  val repModules = configReport.modules
-  val m = repModules.flatMap(m => m.callers.map(c => get(normalize(c.caller)) -> get(normalize(m.module)))).groupBy(_._1).mapValues(_.map(_._2))
-
-  val deps = modules ++ modules.flatMap(module => m.getOrElse(module, Nil))
-
-  deps.sorted.distinct.map{ case (org, name, rev) => s"$org:$name:$rev" }.mkString(",")
-}
-
-lazy val apiDeps = TaskKey[String]("apiDeps")
-lazy val compilerDeps = TaskKey[String]("compilerDeps")
-
-lazy val publishSettings = com.atlassian.labs.gitstamp.GitStampPlugin.gitStampSettings ++ Seq(
+lazy val publishSettings = Seq(
   publishMavenStyle := true,
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
@@ -174,26 +110,20 @@ lazy val publishSettings = com.atlassian.labs.gitstamp.GitStampPlugin.gitStampSe
   },
   licenses := Seq("Apache License" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
   scmInfo := Some(ScmInfo(url("https://github.com/alexarchambault/jupyter-scala"), "git@github.com:alexarchambault/jupyter-scala.git")),
+  homepage := Some(url("https://github.com/alexarchambault/jupyter-scala")),
   pomExtra := {
-    <url>https://github.com/alexarchambault/jupyter-scala</url>
-      <developers>
-        <developer>
-          <id>alexarchambault</id>
-          <name>Alexandre Archambault</name>
-          <url>https://github.com/alexarchambault</url>
-        </developer>
-      </developers>
+    <developers>
+      <developer>
+        <id>alexarchambault</id>
+        <name>Alexandre Archambault</name>
+        <url>https://github.com/alexarchambault</url>
+      </developer>
+    </developers>
   },
-  credentials += {
-    Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
-      case Seq(Some(user), Some(pass)) =>
-        Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass)
-      case _ =>
-        Credentials(Path.userHome / ".ivy2" / ".credentials")
-    }
-  },
-  ReleaseKeys.versionBump := sbtrelease.Version.Bump.Bugfix,
-  ReleaseKeys.publishArtifactsAction := PgpKeys.publishSigned.value
+  credentials ++= {
+    for (user <- sys.env.get("SONATYPE_USER"); pass <- sys.env.get("SONATYPE_PASS"))
+      yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass)
+  }.toSeq
 )
 
 lazy val noPublishSettings = Seq(
