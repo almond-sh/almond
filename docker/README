@@ -1,2 +1,0 @@
-base/ubuntu is a git submodule. Initialize it with
-git submodule update --recursive
