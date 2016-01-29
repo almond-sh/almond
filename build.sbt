@@ -39,8 +39,7 @@ lazy val `scala-kernel` = project.in(file("kernel"))
     libraryDependencies ++= Seq(
       "com.github.alexarchambault.jupyter" %% "kernel" % jupyterKernelVersion,
       "com.github.alexarchambault.ammonium" % "interpreter" % ammoniumVersion cross CrossVersion.full,
-      "com.github.alexarchambault.ammonium" % "shell-tests" % ammoniumVersion % "test" cross CrossVersion.full,
-      "org.slf4j" % "slf4j-nop" % "1.7.7"
+      "com.github.alexarchambault.ammonium" % "shell-tests" % ammoniumVersion % "test" cross CrossVersion.full
     ),
     libraryDependencies ++= Seq(
       "com.github.alexarchambault.jupyter" %% "kernel" % jupyterKernelVersion
