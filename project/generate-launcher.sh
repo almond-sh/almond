@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=0.3.0-M1
+VERSION=0.3.0-M2
 
 if [ "$1" = "--2.10" ]; then
   SCALA_VERSION=2.10.6
