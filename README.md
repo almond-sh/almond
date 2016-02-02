@@ -8,6 +8,12 @@ on the great wrapper around the scalac internals from
 
 [![Build Status](https://travis-ci.org/alexarchambault/jupyter-scala.svg?branch=master)](https://travis-ci.org/alexarchambault/jupyter-scala)
 
+
+
+**This README is being updated, taking into account things recently pushed. You can have a look at [its updated draft](https://github.com/alexarchambault/jupyter-scala/tree/topic/update-readme). Below is the now deprecated README of the previous main development branch.**
+
+---
+
 ## Quick start
 
 Ensure you have [IPython](http://ipython.org/) 3 installed.
