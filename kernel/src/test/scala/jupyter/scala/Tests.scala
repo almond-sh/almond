@@ -33,27 +33,27 @@ object FailureTests extends tests.FailureTests(
 
 object LocalSpark12Tests extends tests.LocalSparkTests(
   ScalaInterpreterChecker(),
-  (1, 2),
+  "1.2.2",
   wrapper = wrapper
 )
 object LocalSpark13Tests extends tests.LocalSparkTests(
   ScalaInterpreterChecker(),
-  (1, 3),
+  "1.3.1",
   wrapper = wrapper
 )
 object LocalSpark14Tests extends tests.LocalSparkTests(
   ScalaInterpreterChecker(),
-  (1, 4),
+  "1.4.1",
   wrapper = wrapper
 )
 object LocalSpark15Tests extends tests.LocalSparkTests(
   ScalaInterpreterChecker(),
-  (1, 5),
+  "1.5.2",
   wrapper = wrapper
 )
 object LocalSpark16Tests extends tests.LocalSparkTests(
   ScalaInterpreterChecker(),
-  (1, 6),
+  "1.6.0",
   wrapper = wrapper
 )
 
