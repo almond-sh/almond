@@ -1,6 +1,6 @@
 
 val ammoniumVersion = "0.4.0-M1"
-val jupyterKernelVersion = "0.3.0-M2"
+val jupyterKernelVersion = "0.3.0-M3"
 
 lazy val `scala-api` = project.in(file("api"))
   .settings(commonSettings)
