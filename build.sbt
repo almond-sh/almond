@@ -10,7 +10,7 @@ lazy val `scala-api` = project.in(file("api"))
       "com.github.alexarchambault.jupyter" %% "kernel-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "com.github.alexarchambault.ammonium" % "tprint" % ammoniumVersion cross CrossVersion.full,
-      "com.lihaoyi" %% "pprint" % "0.3.6"
+      "com.lihaoyi" %% "pprint" % "0.3.8"
     ),
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.10.")
