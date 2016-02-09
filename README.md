@@ -4,7 +4,7 @@ Jupyter Scala is a Scala kernel for [Jupyter / IPython](http://ipython.org/).
 It's a lightweight alternative to [IScala](https://github.com/mattpap/IScala),
 being easily embeddable in other apps / libraries and being based
 on the great wrapper around the scalac internals from
-[Ammonite](https://github.com/lihaoyi/Ammonite/) (my [fork of it](https://github.com/alexarchambault/ammonite-shell) actually).
+[Ammonite](https://github.com/lihaoyi/Ammonite/) (my [fork of it](https://github.com/alexarchambault/ammonium) actually).
 
 [![Build Status](https://travis-ci.org/alexarchambault/jupyter-scala.svg?branch=master)](https://travis-ci.org/alexarchambault/jupyter-scala)
 
@@ -19,7 +19,7 @@ on the great wrapper around the scalac internals from
 Ensure you have [IPython](http://ipython.org/) 3 installed.
 `ipython --version` should return a value >= 3.0. If it's
 not the case, a quick way of setting it up consists
-in installing the [Anaconda](http://continuum.io/downloads) Python
+in installing the [Anaconda](https://www.continuum.io/downloads) Python
 distribution, and then running
 
     $ pip install --upgrade "ipython[all]"
