@@ -25,7 +25,8 @@ class APIImpl(
   def interpreter = intp
 
   val eval: Eval = new Eval {
-    def apply(code: String) =
+    def apply(code: String, silent: Boolean) =
+      // FIXME silent to false is ignored for now
       Interpreter.run(code, (), None, None, _ => ())(intp)
   }
 
