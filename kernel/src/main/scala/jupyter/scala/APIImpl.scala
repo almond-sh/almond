@@ -25,9 +25,26 @@ class APIImpl(
   def interpreter = intp
 
   val eval: Eval = new Eval {
-    def apply(code: String, silent: Boolean) =
-      // FIXME silent to false is ignored for now
-      Interpreter.run(code, (), None, None, _ => ())(intp)
+    def apply(code: String, silent: Boolean) = {
+
+      val (stdout, stderr): (Option[String => Unit], Option[String => Unit]) =
+        if (silent)
+          (None, None)
+        else
+          (Some(System.out.print), Some(System.out.print))
+
+      val process: AnyRef => Unit =
+        if (silent)
+          _ => ()
+        else {
+          it =>
+            val it0 = it.asInstanceOf[Iterator[String]]
+            if (it0.hasNext)
+              System.out.println(it0.mkString.stripSuffix("\n"))
+        }
+
+      Interpreter.run(code, (), stdout, stderr, process)(intp)
+    }
   }
 
   val setup: ammonite.api.Setup =
