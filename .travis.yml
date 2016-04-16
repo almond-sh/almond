@@ -1,5 +1,6 @@
 language: scala
 scala:
+- 2.11.8
 - 2.11.7
 #- 2.11.6
 #- 2.11.5
@@ -13,7 +14,7 @@ scala:
 #- 2.10.3
 jdk:
 - oraclejdk8
-script: project/run-travis
+script: project/run-travis ${TRAVIS_SCALA_VERSION} ${TRAVIS_PULL_REQUEST} ${TRAVIS_BRANCH}
 sudo: false
 cache:
   directories:

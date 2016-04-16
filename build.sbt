@@ -1,5 +1,5 @@
 
-val ammoniumVersion = "0.4.0-M3"
+val ammoniumVersion = "0.4.0-M5"
 val jupyterKernelVersion = "0.3.0-M3"
 
 lazy val `scala-api` = project.in(file("api"))
@@ -85,7 +85,7 @@ lazy val commonSettings = Seq(
   ),
   scalacOptions += "-target:jvm-1.7",
   crossVersion := CrossVersion.full,
-  scalaVersion := "2.11.7",
+  scalaVersion := "2.11.8",
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   fork in test := true,
   fork in (Test, test) := true,
