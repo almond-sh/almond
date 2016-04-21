@@ -3,10 +3,10 @@
 VERSION=0.3.0-SNAPSHOT
 
 exec "$(dirname "$0")/coursier" launch \
-  com.github.alexarchambault.jupyter:scala-cli_2.11.7:$VERSION \
+  com.github.alexarchambault.jupyter:scala-cli_2.11.8:$VERSION \
   -r https://dl.bintray.com/scalaz/releases \
-  -I jupyter-scala-compile:com.github.alexarchambault.jupyter:scala-api_2.11.7:$VERSION \
-  -I jupyter-scala-macro:org.scala-lang:scala-compiler:2.11.7 \
+  -I jupyter-scala-compile:com.github.alexarchambault.jupyter:scala-api_2.11.8:$VERSION \
+  -I jupyter-scala-macro:org.scala-lang:scala-compiler:2.11.8 \
   -i jupyter-scala-compile,jupyter-scala-macro \
   -M jupyter.scala.JupyterScala \
   -- -- "$@"
