@@ -78,7 +78,7 @@ Build your own binaries from the sources with
 
     $ git clone https://github.com/alexarchambault/jupyter-scala.git
     $ cd jupyter-scala
-    $ sbt cli/packArchive
+    $ sbt cli:packArchive
 
 This will generate a tar archive like `jupyter-scala-cli-0.2.0-SNAPSHOT.tar.gz` in `cli/target/`. See the instructions above for how to set it up then.
 
