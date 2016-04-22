@@ -1,6 +1,6 @@
 
-val ammoniumVersion = "0.4.0-M5"
-val jupyterKernelVersion = "0.3.0-M3"
+val ammoniumVersion = "0.4.0-M6"
+val jupyterKernelVersion = "0.3.0-M4"
 
 lazy val `scala-api` = project.in(file("api"))
   .settings(commonSettings)
@@ -10,14 +10,14 @@ lazy val `scala-api` = project.in(file("api"))
       "com.github.alexarchambault.jupyter" %% "kernel-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "com.github.alexarchambault.ammonium" % "tprint" % ammoniumVersion cross CrossVersion.full,
-      "com.lihaoyi" %% "pprint" % "0.3.8"
+      "com.lihaoyi" %% "pprint" % "0.3.9"
     ),
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.10.")
         Seq()
       else
         Seq(
-          "org.scala-lang.modules" %% "scala-xml" % "1.0.3"
+          "org.scala-lang.modules" %% "scala-xml" % "1.0.4"
         )
     }
   )
@@ -58,8 +58,8 @@ lazy val  `scala-cli` = project.in(file("cli"))
   .settings(packAutoSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "0.2.2",
-      "ch.qos.logback" % "logback-classic" % "1.0.13"
+      "com.github.alexarchambault" %% "case-app" % "1.0.0-RC2",
+      "ch.qos.logback" % "logback-classic" % "1.1.7"
     ),
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.10")

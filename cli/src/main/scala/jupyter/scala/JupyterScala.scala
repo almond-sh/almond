@@ -13,7 +13,10 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
 
 import scalaz.\/
 
-case class JupyterScala(options: ServerAppOptions) extends App with LazyLogging {
+case class JupyterScalaApp(
+  @Recurse
+    options: ServerAppOptions
+) extends App with LazyLogging {
 
   def readFully(is: InputStream) = {
     val buffer = new ByteArrayOutputStream()
@@ -80,6 +83,4 @@ case class JupyterScala(options: ServerAppOptions) extends App with LazyLogging 
   )
 }
 
-object JupyterScala extends AppOf[JupyterScala] {
-  val parser = default
-}
+object JupyterScala extends AppOf[JupyterScalaApp]
