@@ -14,6 +14,8 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
 import scalaz.\/
 
 case class JupyterScalaApp(
+  id: String,
+  name: String,
   @Recurse
     options: ServerAppOptions
 ) extends App with LazyLogging {
@@ -67,11 +69,13 @@ case class JupyterScalaApp(
       mainArgs0
 
   ServerApp(
-    ScalaModule.kernelId,
+    if (id.isEmpty) ScalaModule.kernelId else id,
     new InterpreterKernel {
       def apply() = \/.fromTryCatchNonFatal(ScalaInterpreter())
     },
-    ScalaModule.kernelInfo,
+    ScalaModule.kernelInfo.copy(
+      name = if (name.isEmpty) ScalaModule.kernelInfo.name else name
+    ),
     mainJar,
     isJar = true,
     options,
