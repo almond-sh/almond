@@ -97,6 +97,8 @@ object ScalaInterpreter {
 
 
   def apply(
+    extraRepositories: Seq[Repository] = Nil,
+    extraDependencies: Seq[(String, Dependency)] = Nil,
     pprintConfig: pprint.Config = pprint.Config.Colors.PPrintConfig.copy(width = 80, height = 20),
     colors: Colors = Colors.Default,
     filterUnitResults: Boolean = true
@@ -111,8 +113,8 @@ object ScalaInterpreter {
       s""" Iterator[Iterator[String]](${items.map(WebDisplay(_, colors)).mkString(", ")}).filter(_.nonEmpty).flatMap(_ ++ Iterator("\\n")) """
 
     lazy val underlying = {
-      lazy val classpath: Classpath = new Classpath(
-        initialRepositories,
+      lazy val classpath0: Classpath = new Classpath(
+        initialRepositories ++ extraRepositories,
         initialDependencies,
         classLoaders0,
         configs,
@@ -121,8 +123,15 @@ object ScalaInterpreter {
 
       lazy val intp = new Interpreter(
         imports = new ammonite.interpreter.Imports(useClassWrapper = true),
-        classpath = classpath
+        classpath = classpath0
       ) {
+
+        // only done here not to run into a call cycle intp -> classpath0 -> intp -> ...
+        if (extraDependencies.nonEmpty)
+          // Errors are simply printed in the console, then ignored, here
+          classpath0.update(extraDependencies)
+
+
         def hasObjWrapSpecialImport(d: ParsedCode): Boolean =
           d.items.exists {
             case CodeItem.Import("special.wrap.obj") => true

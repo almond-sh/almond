@@ -31,7 +31,7 @@ class APIImpl(
         if (silent)
           (None, None)
         else
-          (Some(System.out.print), Some(System.out.print))
+          (Some(publish.stdout(_)(evidence)), Some(publish.stderr(_)(evidence)))
 
       val process: AnyRef => Unit =
         if (silent)
@@ -39,8 +39,13 @@ class APIImpl(
         else {
           it =>
             val it0 = it.asInstanceOf[Iterator[String]]
+
             if (it0.hasNext)
-              System.out.println(it0.mkString.stripSuffix("\n"))
+              for {
+                publish <- publish0
+                msg <- currentMessage
+              }
+                publish.stdout(it0.mkString.stripSuffix("\n"))(new Evidence(msg))
         }
 
       Interpreter.run(code, (), stdout, stderr, process)(intp)

@@ -12,4 +12,7 @@ exec "$(dirname "$0")/coursier" launch \
   -I jupyter-scala-compile:org.scalamacros:quasiquotes_2.10:2.0.1 \
   -i jupyter-scala-compile,jupyter-scala-macro \
   -M jupyter.scala.JupyterScala \
-  -- -- "$@"
+  -V org.scala-lang:scala-library:$SCALA_VERSION \
+  -V org.scala-lang:scala-compiler:$SCALA_VERSION \
+  -V org.scala-lang:scala-reflect:$SCALA_VERSION \
+  -- "$@"
