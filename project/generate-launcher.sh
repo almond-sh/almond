@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=0.3.0-M2
+VERSION=0.3.0-M3
 
 if [ "$1" = "--2.10" ]; then
   SCALA_VERSION=2.10.6
@@ -10,7 +10,7 @@ if [ "$1" = "--2.10" ]; then
     -I jupyter-scala-compile:org.scalamacros:quasiquotes_2.10:2.0.1 \
   "
 else
-  SCALA_VERSION=2.11.7
+  SCALA_VERSION=2.11.8
   OUTPUT=jupyter-scala
   EXTRA=
 fi
@@ -25,6 +25,6 @@ fi
   -r central \
   -r sonatype:releases \
   -r https://dl.bintray.com/scalaz/releases \
-  -D "\${user.home}/.jupyter-scala/bootstrap" \
+  -d "\${user.home}/.jupyter-scala/bootstrap" \
   -f -o "$OUTPUT" \
   -M jupyter.scala.JupyterScala

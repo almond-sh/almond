@@ -1,11 +1,12 @@
 #!/bin/bash
 
-VERSION=0.3.0-SNAPSHOT
+VERSION=0.3.0-M3
 SCALA_VERSION=2.11.8
 
 exec "$(dirname "$0")/coursier" launch \
   com.github.alexarchambault.jupyter:scala-cli_$SCALA_VERSION:$VERSION \
   -r https://dl.bintray.com/scalaz/releases \
+  $(if echo "$VERSION" | grep "-SNAPSHOT\$"; then echo "-r sonatype:snapshots"; fi) \
   -I jupyter-scala-compile:com.github.alexarchambault.jupyter:scala-api_$SCALA_VERSION:$VERSION \
   -I jupyter-scala-macro:org.scala-lang:scala-compiler:$SCALA_VERSION \
   -i jupyter-scala-compile,jupyter-scala-macro \
