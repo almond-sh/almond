@@ -3,6 +3,10 @@
 VERSION=0.3.0-M3
 SCALA_VERSION=2.10.6
 
+if [ ! -e "$(dirname "$0")/coursier" ]; then
+  curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help >/dev/null
+fi
+
 exec "$(dirname "$0")/coursier" launch \
   com.github.alexarchambault.jupyter:scala-cli_$SCALA_VERSION:$VERSION \
   -E com.chuusai:shapeless_2.10.4 \
