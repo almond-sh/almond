@@ -7,7 +7,7 @@ exec "$(dirname "$0")/coursier" launch \
   com.github.alexarchambault.jupyter:scala-cli_$SCALA_VERSION:$VERSION \
   -E com.chuusai:shapeless_2.10.4 \
   -r https://dl.bintray.com/scalaz/releases \
-  $(if echo "$VERSION" | grep "-SNAPSHOT\$"; then echo "-r sonatype:snapshots"; fi) \
+  $(if echo "$VERSION" | grep -- "-SNAPSHOT\$"; then echo "-r sonatype:snapshots"; fi) \
   -I jupyter-scala-compile:com.github.alexarchambault.jupyter:scala-api_$SCALA_VERSION:$VERSION \
   -I jupyter-scala-compile:org.scala-lang:scala-compiler:$SCALA_VERSION \
   -I jupyter-scala-compile:org.scalamacros:quasiquotes_2.10:2.0.1 \
