@@ -1,5 +1,7 @@
 # Jupyter Scala
 
+[![Join the chat at https://gitter.im/alexarchambault/jupyter-scala](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/jupyter-scala?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Jupyter Scala is a Scala kernel for [Jupyter / IPython](http://ipython.org/).
 It's a lightweight alternative to [IScala](https://github.com/mattpap/IScala),
 being easily embeddable in other apps / libraries and being based
