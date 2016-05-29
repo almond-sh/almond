@@ -356,4 +356,19 @@ or `0.4.0-SNAPSHOT`), reload the SBT compiling / publishing jupyter-scala (type 
 build / publish locally jupyter-scala again (`sbt publishLocal`). That will make the locally published artifacts of
 jupyter-scala depend on the locally published ones of ammonium or jupyter-kernel.
 
+To generate a launcher using these modified ammonium / jupyter-kernel / jupyter-scala, run
+```bash
+$ VERSION=0.3.0-SNAPSHOT project/generate-launcher.sh -s
+```
+The `VERSION` environment variable tells the script to use the locally published jupyter-scala version. The `-s` option
+makes it generate a *standalone* launcher, rather than a thin one. A thin launcher requires the ammonium / jupyter-kernel /
+jupyter-scala versions it uses to be published on a (Maven) repository accessible to the users. It is the case for the
+launcher in the jupyter-scala repository, but it's likely not the case if you just modified the sources. A standalone
+launcher embeds all the JARs it needs, including the one you locally published on your machine - at the cost of an
+increased size (~40 MBA). Note that as this solution is a bit hackish, you shouldn't change the version of the
+versions of the locally published projects (these should stay the default `0.x.y-SNAPSHOT`), so that the dependency
+management in the kernel still can find public corresponding artifacts - although the embedded ones will have the priority
+in practice.
+
+
 Released under the Apache 2.0 license, see LICENSE for more details.
