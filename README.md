@@ -67,12 +67,12 @@ There are already a few notebook UIs or Jupyter kernels for Scala out there:
 - the ones originating from [scala-notebook](https://github.com/Bridgewater/scala-notebook),
   - [scala-notebook](https://github.com/Bridgewater/scala-notebook) itself, and
   - [spark-notebook](https://github.com/andypetrella/spark-notebook) that updated / reworked various parts of it and added Spark support to it, and
-- [Apache Toree](https://github.com/apache/incubator-toree) - formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel)), a Jupyter kernel to do Spark calculations in Scala.
+- [Apache Toree](https://github.com/apache/incubator-toree) (formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel)), a Jupyter kernel to do Spark calculations in Scala.
 
 [zeppelin](https://github.com/apache/incubator-zeppelin) is worth noticing too. Although not a Jupyter kernel, it provides similar features to Jupyter itself, and has some support for Spark, Flink, Scalding in particular.
 
-Most of them usually target one single use - like Spark calculations (and you have to have Spark around!), or just Scala
-calculations (and no Spark). They share no code with each other, so that features can typically be added to only one single
+Most of them usually target one single use - like Spark calculations (and you have to have Spark around if you just do bare Scala!), or just Scala
+calculations (and no way of adding Spark on-the-fly). They share no code with each other, so that features can typically be added to only one single
 kernel or project, and need to be re-implemented in the ones targetting other usages. That also makes it hard to share code
 between these various uses.
 
@@ -364,8 +364,8 @@ The `VERSION` environment variable tells the script to use the locally published
 makes it generate a *standalone* launcher, rather than a thin one. A thin launcher requires the ammonium / jupyter-kernel /
 jupyter-scala versions it uses to be published on a (Maven) repository accessible to the users. It is the case for the
 launcher in the jupyter-scala repository, but it's likely not the case if you just modified the sources. A standalone
-launcher embeds all the JARs it needs, including the one you locally published on your machine - at the cost of an
-increased size (~40 MBA). Note that as this solution is a bit hackish, you shouldn't change the version of the
+launcher embeds all the JARs it needs, including the ones you locally published on your machine - at the cost of an
+increased size (~40 MB). Note that as this solution is a bit hackish, you shouldn't change the version of the
 versions of the locally published projects (these should stay the default `0.x.y-SNAPSHOT`), so that the dependency
 management in the kernel still can find public corresponding artifacts - although the embedded ones will have the priority
 in practice.
