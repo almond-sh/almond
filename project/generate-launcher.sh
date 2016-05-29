@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=0.3.0-M3
+VERSION=${VERSION:-0.3.0-M3}
 
 if [ "$1" = "--2.10" ]; then
   SCALA_VERSION=2.10.6
@@ -21,10 +21,10 @@ fi
   -I jupyter-scala-macro:org.scala-lang:scala-compiler:$SCALA_VERSION \
   $EXTRA \
   -i jupyter-scala-compile,jupyter-scala-macro \
-  --no-default \
   -r central \
   -r sonatype:releases \
   -r https://dl.bintray.com/scalaz/releases \
   -d "\${user.home}/.jupyter-scala/bootstrap" \
   -f -o "$OUTPUT" \
-  -M jupyter.scala.JupyterScala
+  -M jupyter.scala.JupyterScala \
+  "$@"
