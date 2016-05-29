@@ -51,7 +51,7 @@ Some options can be passed to the `jupyter-scala` (or `jupyter-scala-2.10`) laun
 - The kernel ID (`scala211`) can be changed with `--id custom` (allows to install the kernel alongside already installed Scala kernels).
 - The kernel name, that appears in the Jupyter Notebook UI, can be changed with `--name "Custom name"`.
 - If a kernel with the same ID is already installed and should be erased, the `--force` option should be specified.
-- Some dependencies can be added in the session based on this kernel, with `-d org:name:version`.
+- Some dependencies can be added in all the sessions based on this kernel, with `-d org:name:version`.
 - Some repositories can be added for the dependencies added via `-d` and during the session, with `-r https://repo.com/base`.
 
 You can check that a kernel is installed with
@@ -71,7 +71,7 @@ There are already a few notebook UIs or Jupyter kernels for Scala out there:
   - [spark-notebook](https://github.com/andypetrella/spark-notebook) that updated / reworked various parts of it and added Spark support to it, and
 - [Apache Toree](https://github.com/apache/incubator-toree) (formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel)), a Jupyter kernel to do Spark calculations in Scala.
 
-[zeppelin](https://github.com/apache/incubator-zeppelin) is worth noticing too. Although not a Jupyter kernel, it provides similar features to Jupyter itself, and has some support for Spark, Flink, Scalding in particular.
+([zeppelin](https://github.com/apache/incubator-zeppelin) is worth noticing too. Although not a Jupyter kernel, it provides similar features to Jupyter itself, and has some support for Spark, Flink, Scalding in particular.)
 
 Most of them usually target one single use - like Spark calculations (and you have to have Spark around if you just do bare Scala!), or just Scala
 calculations (and no way of adding Spark on-the-fly). They share no code with each other, so that features can typically be added to only one single
