@@ -22,7 +22,7 @@ notebook UIs.
 ## Quick start
 
 First ensure you have [Jupyter](http://jupyter.org/) installed.
-Running `jupyter --version` should print a value >= 4.0. See [#jupyter-installation]
+Running `jupyter --version` should print a value >= 4.0. See [Jupyter installation](#jupyter-installation)
 if it's not the case.
 
 Then download and run the Jupyter Scala launcher with
