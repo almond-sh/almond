@@ -175,7 +175,8 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
   ),
   scalacOptions += "-target:jvm-1.7",
   scalaVersion := "2.11.8",
