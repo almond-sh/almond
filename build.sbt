@@ -69,14 +69,45 @@ lazy val `scala-cli` = project.in(file("cli"))
     }
   )
 
+lazy val `spark-stubs-1` = project
+  .in(file("spark/stubs-1.x"))
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-sql" % "1.3.1" % "provided"
+    )
+  )
+
+lazy val `spark-stubs-2` = project
+  .in(file("spark/stubs-2.x"))
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-sql" % "2.0.0" % "provided"
+    )
+  )
+
 lazy val spark = project
-  .dependsOn(`scala-api`)
+  .in(file("spark/core"))
+  .dependsOn(`scala-api` % "provided")
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql" % "1.6.2" % "provided",
       "org.eclipse.jetty" % "jetty-server" % "8.1.14.v20131031",
-      "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-7"
+      "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9"
+    )
+  )
+
+lazy val `spark-tests` = project
+  .dependsOn(`scala-api`)
+  .in(file("spark/tests"))
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(testSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.jupyter-scala" % "ammonite" % ammoniumVersion % "compile->test" cross CrossVersion.full
     )
   )
 
@@ -111,7 +142,10 @@ lazy val `jupyter-scala` = project
     `scala-api`,
     `scala-kernel`,
     `scala-cli`,
+    `spark-stubs-1`,
+    `spark-stubs-2`,
     spark,
+    `spark-tests`,
     flink,
     `flink-yarn`
   )
@@ -127,19 +161,19 @@ lazy val commonSettings = Seq(
   scalacOptions += "-target:jvm-1.7",
   scalaVersion := "2.11.8",
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
+  resolvers += Resolver.jcenterRepo
+) ++ publishSettings
+
+lazy val testSettings = Seq(
+  libraryDependencies += "com.lihaoyi" %% "utest" % "0.4.4" % "test",
+  testFrameworks += new TestFramework("utest.runner.Framework"),
   fork in test := true,
   fork in (Test, test) := true,
   fork in (Test, testOnly) := true,
   javaOptions in Test ++= Seq(
     "-Xmx3172M",
     "-Xms3172M"
-  ),
-  resolvers += Resolver.jcenterRepo
-) ++ publishSettings
-
-lazy val testSettings = Seq(
-  libraryDependencies += "com.lihaoyi" %% "utest" % "0.4.4" % "test",
-  testFrameworks += new TestFramework("utest.runner.Framework")
+  )
 )
 
 lazy val publishSettings = Seq(
