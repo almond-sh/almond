@@ -8,6 +8,7 @@ import fastparse.core.Parsed
 import jupyter.api.{JupyterApi, Publish}
 import jupyter.kernel.protocol.ShellReply.KernelInfo.LanguageInfo
 import jupyter.kernel.protocol.ParsedMessage
+import jupyter.kernel.interpreter.Interpreter.IsComplete
 
 import scala.util.Try
 
@@ -163,7 +164,22 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     publishFunc = Some(publish)
   }
 
-  def complete(code: String, pos: Int): (Int, Int, Seq[String]) = {
+  override def isComplete(code: String): Some[IsComplete] = {
+
+    val res = Parsers.Splitter.parse(code) match {
+      case Parsed.Success(value, idx) =>
+        IsComplete.Complete
+      case Parsed.Failure(_, index, extra) if code.drop(index).trim() == "" =>
+        val indent = code.split('\n').last.takeWhile(_.isSpaceChar)
+        IsComplete.Incomplete(indent)
+      case Parsed.Failure(_, _, _) =>
+        IsComplete.Invalid
+    }
+
+    Some(res)
+  }
+
+  override def complete(code: String, pos: Int): (Int, Int, Seq[String]) = {
 
     val (newPos, completions0, details) = interp.pressy.complete(
       pos,
