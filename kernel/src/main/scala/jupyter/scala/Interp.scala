@@ -31,10 +31,9 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
       s => currentPublish.foreach(_.stderr(s)),
       s => currentPublish.foreach(_.stdout(s))
     ),
-    Storage.InMemory(),
+    new Storage.Folder(ammonite.ops.home / ".jupyter-scala" / "ammonite-cache" / jupyter.scala.BuildInfo.version),
     Seq(
       Name("HardcodedPredef") -> Interp.pprintPredef,
-      // Name("ArgsPredef") -> argString,
       Name("predef") -> augmentedPredef
     ),
     i => {
@@ -80,6 +79,7 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     ("org.jupyter-scala", "scala-api_" + scala.util.Properties.versionNumberString, BuildInfo.version)
   )
 
+  interp.init()
 
 
   def interpret(
