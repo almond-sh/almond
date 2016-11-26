@@ -5,6 +5,7 @@ val jupyterKernelVersion = "0.4.0-SNAPSHOT"
 lazy val `scala-api` = project.in(file("api"))
   .settings(commonSettings)
   .settings(
+    crossVersion := CrossVersion.full,
     libraryDependencies ++= Seq(
       "org.jupyter-scala" % "ammonite-runtime" % ammoniumVersion cross CrossVersion.full,
       "org.jupyter-scala" %% "kernel-api" % jupyterKernelVersion,
@@ -35,6 +36,7 @@ lazy val `scala-kernel` = project.in(file("kernel"))
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
+    crossVersion := CrossVersion.full,
     libraryDependencies ++= Seq(
       "org.jupyter-scala" %% "kernel" % jupyterKernelVersion,
       "org.jupyter-scala" % "ammonite-compiler" % ammoniumVersion cross CrossVersion.full
@@ -52,6 +54,7 @@ lazy val `scala-cli` = project.in(file("cli"))
   .settings(commonSettings)
   .settings(packAutoSettings)
   .settings(
+    crossVersion := CrossVersion.full,
     libraryDependencies ++= Seq(
       "com.github.alexarchambault" %% "case-app" % "1.1.2",
       "ch.qos.logback" % "logback-classic" % "1.1.7"
@@ -90,7 +93,6 @@ lazy val commonSettings = Seq(
     Resolver.sonatypeRepo("releases")
   ),
   scalacOptions += "-target:jvm-1.7",
-  crossVersion := CrossVersion.full,
   scalaVersion := "2.11.8",
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   fork in test := true,
