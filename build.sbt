@@ -133,6 +133,24 @@ lazy val `flink-yarn` = project
     )
   )
 
+lazy val scio = project
+  .dependsOn(`scala-api` % "provided")
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= {
+      Seq(
+        "org.slf4j" % "slf4j-simple" % "1.7.21",
+        "jline" % "jline" % scalaBinaryVersion.value,
+        "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+        "com.nrinaudo" %% "kantan.csv" % "0.1.12",
+        "org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full,
+        "com.spotify" %% "scio-core" % "0.2.6",
+        "com.spotify" %% "scio-extra" % "0.2.6"
+      )
+    }
+  )
+
 
 lazy val `jupyter-scala` = project
   .in(file("."))
@@ -147,7 +165,8 @@ lazy val `jupyter-scala` = project
     spark,
     `spark-tests`,
     flink,
-    `flink-yarn`
+    `flink-yarn`,
+    scio
   )
 
 
