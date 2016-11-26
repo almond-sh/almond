@@ -5,7 +5,7 @@ import ammonite.runtime._
 import ammonite.util._
 import com.typesafe.scalalogging.LazyLogging
 import fastparse.core.Parsed
-import jupyter.api.{Evidence, JupyterApi, Publish}
+import jupyter.api.{JupyterApi, Publish}
 import jupyter.kernel.protocol.ShellReply.KernelInfo.LanguageInfo
 import jupyter.kernel.protocol.ParsedMessage
 
@@ -81,6 +81,11 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
 
   interp.init()
 
+  private def capturingOutput[T](t: => T): T =
+    Capture(
+      currentPublish.map(p => p.stdout(_)),
+      currentPublish.map(p => p.stderr(_))
+    )(t)
 
   def interpret(
     line: String,
@@ -97,19 +102,23 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     } yield f(m)
 
     try {
-      val res = for {
-        (code, stmts) <- Parsers.Splitter.parse(line) match {
-          case Parsed.Success(value, idx) =>
-            Res.Success((line, value))
-          case Parsed.Failure(_, index, extra) => Res.Failure(
-            None,
-            fastparse.core.ParseError.msg(extra.input, extra.traced.expected, index)
-          )
-        }
-        evRes = interp.processLine(code, stmts, s"cmd${interp.eval.getCurrentLine}.sc")
-        _ = interp.handleOutput(evRes)
-        ev <- evRes
-      } yield ev
+      val res =
+        for {
+          (code, stmts) <- Parsers.Splitter.parse(line) match {
+            case Parsed.Success(value, idx) =>
+              Res.Success((line, value))
+            case Parsed.Failure(_, index, extra) => Res.Failure(
+              None,
+              fastparse.core.ParseError.msg(extra.input, extra.traced.expected, index)
+            )
+          }
+          evRes = capturingOutput {
+            val r = interp.processLine(code, stmts, s"cmd${interp.eval.getCurrentLine}.sc")
+            interp.handleOutput(r)
+            r
+          }
+          ev <- evRes
+        } yield ev
 
       res match {
         case Res.Success(ev) =>
