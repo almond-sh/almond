@@ -157,8 +157,28 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     publishFunc = Some(publish)
   }
 
-  def complete(code: String, pos: Int): (Int, Seq[String]) = {
-    ???
+  def complete(code: String, pos: Int): (Int, Int, Seq[String]) = {
+
+    val (newPos, completions0, details) = interp.pressy.complete(
+      pos,
+      Preprocessor.importBlock(interp.eval.frames.head.imports),
+      code,
+      replaceMode = true
+    )
+
+    if (sys.env.contains("DEBUG"))
+      // output typically not captured during completion requests
+      sys.props("jupyter-scala.completion.result") =
+        s"""newPos = $newPos
+           |completions =
+           |${completions0.map("  '" + _ + "'").mkString("\n")}
+           |details =
+           |${details.map("  '" + _ + "'").mkString("\n")}
+         """.stripMargin
+
+    val completions = completions0.filter(!_.contains("$"))
+
+    (if (completions.isEmpty) pos else newPos, pos, completions.map(_.trim).distinct)
   }
 
   def executionCount: Int =
