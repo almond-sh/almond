@@ -2,6 +2,8 @@
 val ammoniumVersion = "0.8.1-SNAPSHOT"
 val jupyterKernelVersion = "0.4.0-SNAPSHOT"
 
+val flinkVersion = "1.1.3"
+
 lazy val `scala-api` = project.in(file("api"))
   .settings(commonSettings)
   .settings(
@@ -78,11 +80,41 @@ lazy val spark = project
     )
   )
 
+lazy val flink = project
+  .dependsOn(`scala-api` % "provided")
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.flink" %% "flink-runtime" % flinkVersion,
+      "org.apache.flink" %% "flink-clients" % flinkVersion,
+      "org.apache.flink" %% "flink-scala" % flinkVersion,
+      "org.ow2.asm" % "asm-all" % "5.0.4" // don't know why we have to manually pull this one
+    )
+  )
+
+lazy val `flink-yarn` = project
+  .dependsOn(flink, `scala-api` % "provided")
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9",
+      "org.apache.flink" %% "flink-yarn" % flinkVersion
+    )
+  )
+
+
 lazy val `jupyter-scala` = project
   .in(file("."))
   .settings(commonSettings)
   .settings(noPublishSettings)
-  .aggregate(`scala-api`, `scala-kernel`, `scala-cli`, spark)
+  .aggregate(
+    `scala-api`,
+    `scala-kernel`,
+    `scala-cli`,
+    spark,
+    flink,
+    `flink-yarn`
+  )
 
 
 lazy val commonSettings = Seq(
