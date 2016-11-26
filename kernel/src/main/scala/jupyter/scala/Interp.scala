@@ -72,6 +72,14 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     override def printBridge = "_root_.jupyter.api.JupyterAPIHolder.value"
   }
 
+  interp.interpApi.load.ivy(
+    ("org.jupyter-scala", "ammonite-runtime_" + scala.util.Properties.versionNumberString, BuildInfo.ammoniumVersion)
+  )
+
+  interp.interpApi.load.ivy(
+    ("org.jupyter-scala", "scala-api_" + scala.util.Properties.versionNumberString, BuildInfo.version)
+  )
+
 
 
   def interpret(
