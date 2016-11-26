@@ -3,19 +3,5 @@ set -ev
 
 # On Travis, this leaves more memory to the forked JVM where tests are run
 export SBT_OPTS="-J-Xmx512m -J-Xms512m"
-SBT="sbt ++${TRAVIS_SCALA_VERSION:-2.11.8}"
-
-# Temporary disabled: AutocompleteTests
-for TEST in AdvancedTests EulerTests EvaluatorTests FailureTests ReflectionTests SerializationTests; do
-  $SBT "scala-kernel/test-only jupyter.scala.$TEST"
-done
-
-# Disabling Spark tests (even local ones) for lack of memory
-if [ "$TRAVIS_SCALA_VERSION" = "" ]; then
-  $SBT "scala-kernel/test-only jupyter.scala.LocalSpark12Tests"
-  $SBT "scala-kernel/test-only jupyter.scala.LocalSpark13Tests"
-  $SBT "scala-kernel/test-only jupyter.scala.LocalSpark14Tests"
-  $SBT "scala-kernel/test-only jupyter.scala.LocalSpark15Tests"
-  $SBT "scala-kernel/test-only jupyter.scala.LocalSpark16Tests"
-fi
+sbt ++${TRAVIS_SCALA_VERSION:-2.11.8} test
 

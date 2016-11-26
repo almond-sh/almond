@@ -1,16 +1,15 @@
 
-val ammoniumVersion = "0.4.0"
-val jupyterKernelVersion = "0.3.0"
+val ammoniumVersion = "0.8.1-SNAPSHOT"
+val jupyterKernelVersion = "0.4.0-SNAPSHOT"
 
 lazy val `scala-api` = project.in(file("api"))
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault.ammonium" % "interpreter-api" % ammoniumVersion cross CrossVersion.full,
-      "com.github.alexarchambault.jupyter" %% "kernel-api" % jupyterKernelVersion,
+      "org.jupyter-scala" % "ammonite-runtime" % ammoniumVersion cross CrossVersion.full,
+      "org.jupyter-scala" %% "kernel-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.github.alexarchambault.ammonium" % "tprint" % ammoniumVersion cross CrossVersion.full,
-      "com.lihaoyi" %% "pprint" % "0.3.9"
+      "com.lihaoyi" %% "pprint" % "0.4.2"
     ),
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.10.")
@@ -37,47 +36,54 @@ lazy val `scala-kernel` = project.in(file("kernel"))
   .settings(testSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault.jupyter" %% "kernel" % jupyterKernelVersion,
-      "com.github.alexarchambault.ammonium" % "interpreter" % ammoniumVersion cross CrossVersion.full,
-      "com.github.alexarchambault.ammonium" % "shell-tests" % ammoniumVersion % "test" cross CrossVersion.full
+      "org.jupyter-scala" %% "kernel" % jupyterKernelVersion,
+      "org.jupyter-scala" % "ammonite-compiler" % ammoniumVersion cross CrossVersion.full
     ),
-    libraryDependencies ++= Seq(
-      "com.github.alexarchambault.jupyter" %% "kernel" % jupyterKernelVersion
-    ).map(_ % "test" classifier "tests"),
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.10")
-        Seq("org.scalamacros" % "paradise" % "2.0.1" % "plugin->default(compile)" cross CrossVersion.full)
+        Seq("org.scalamacros" % "paradise" % "2.1.0" % "plugin->default(compile)" cross CrossVersion.full)
       else
         Seq()
     }
   )
 
-lazy val  `scala-cli` = project.in(file("cli"))
+lazy val `scala-cli` = project.in(file("cli"))
   .dependsOn(`scala-kernel`)
   .settings(commonSettings)
   .settings(packAutoSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-RC2",
+      "com.github.alexarchambault" %% "case-app" % "1.1.2",
       "ch.qos.logback" % "logback-classic" % "1.1.7"
     ),
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.10")
-        Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
+        Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
       else
         Seq()
     }
   )
 
-lazy val `jupyter-scala` = project.in(file("."))
+lazy val spark = project
+  .dependsOn(`scala-api`)
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-sql" % "1.6.2" % "provided",
+      "org.eclipse.jetty" % "jetty-server" % "8.1.14.v20131031",
+      "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-7"
+    )
+  )
+
+lazy val `jupyter-scala` = project
+  .in(file("."))
   .settings(commonSettings)
   .settings(noPublishSettings)
-  .aggregate(`scala-api`, `scala-kernel`, `scala-cli`)
-  .dependsOn(`scala-api`, `scala-kernel`, `scala-cli`)
+  .aggregate(`scala-api`, `scala-kernel`, `scala-cli`, spark)
 
 
 lazy val commonSettings = Seq(
-  organization := "com.github.alexarchambault.jupyter",
+  organization := "org.jupyter-scala",
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
@@ -93,11 +99,12 @@ lazy val commonSettings = Seq(
   javaOptions in Test ++= Seq(
     "-Xmx3172M",
     "-Xms3172M"
-  )
+  ),
+  resolvers += Resolver.jcenterRepo
 ) ++ publishSettings
 
 lazy val testSettings = Seq(
-  libraryDependencies += "com.lihaoyi" %% "utest" % "0.3.0" % "test",
+  libraryDependencies += "com.lihaoyi" %% "utest" % "0.4.4" % "test",
   testFrameworks += new TestFramework("utest.runner.Framework")
 )
 
