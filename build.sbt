@@ -99,6 +99,7 @@ lazy val spark = project
     )
   )
 
+val ammoniteTestsDependency = "org.jupyter-scala" % "ammonite" % ammoniumVersion cross CrossVersion.full
 lazy val `spark-tests` = project
   .dependsOn(`scala-api`)
   .in(file("spark/tests"))
@@ -107,7 +108,11 @@ lazy val `spark-tests` = project
   .settings(testSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.jupyter-scala" % "ammonite" % ammoniumVersion % "compile->test" cross CrossVersion.full
+      // FIXME Going hoops and loops to get that one (because of coursier?),
+      // to be fine when pulling artifacts from both sonatype and ~/.ivy2/local
+      ammoniteTestsDependency,
+      ammoniteTestsDependency % "compile->test",
+      ammoniteTestsDependency classifier "tests"
     )
   )
 
