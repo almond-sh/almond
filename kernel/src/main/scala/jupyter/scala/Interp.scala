@@ -87,6 +87,13 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
       currentPublish.map(p => p.stderr(_))
     )(t)
 
+  private def error(exOpt: Option[Throwable], msg: String) =
+    jupyter.kernel.interpreter.Interpreter.Error(
+      msg + exOpt.fold("")(ex => Interp.showException(
+        ex, colors().error(), fansi.Attr.Reset, colors().literal()
+      ))
+    )
+
   def interpret(
     line: String,
     output: Option[(String => Unit, String => Unit)],
@@ -135,14 +142,13 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
         case Res.Failure(exOpt, msg) =>
           for (ex <- exOpt)
             logger.warn(s"failed to run user code (${ex.getMessage})", ex)
-          jupyter.kernel.interpreter.Interpreter.Error(
-            s"${exOpt.mkString} $msg"
-          )
+
+          error(exOpt, msg)
+
         case Res.Exception(ex, msg) =>
           logger.warn(s"exception in user code (${ex.getMessage})", ex)
-          jupyter.kernel.interpreter.Interpreter.Error(
-            s"$ex $msg"
-          )
+          error(Some(ex), msg)
+
         case Res.Skip =>
           jupyter.kernel.interpreter.Interpreter.NoValue
         case Res.Exit(_) =>
@@ -216,6 +222,42 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
 object Interp {
 
   // these come from Ammonite
+  // exception display was tweaked a bit (too much red for notebooks else)
+
+  def highlightFrame(f: StackTraceElement,
+                     highlightError: fansi.Attrs,
+                     source: fansi.Attrs) = {
+    val src =
+      if (f.isNativeMethod) source("Native Method")
+      else if (f.getFileName == null) source("Unknown Source")
+      else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
+
+    val prefix :+ clsName = f.getClassName.split('.').toSeq
+    val prefixString = prefix.map(_+'.').mkString("")
+    val clsNameString = clsName //.replace("$", error("$"))
+    val method =
+    fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
+      highlightError(f.getMethodName)
+
+    fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
+  }
+  def showException(ex: Throwable,
+                    error: fansi.Attrs,
+                    highlightError: fansi.Attrs,
+                    source: fansi.Attrs) = {
+    import ammonite.util.Util.newLine
+
+    val cutoff = Set("$main", "evaluatorRunPrinter")
+    val traces = Ex.unapplySeq(ex).get.map(exception =>
+      error(exception.toString) + newLine +
+        exception
+          .getStackTrace
+          .takeWhile(x => !cutoff(x.getMethodName))
+          .map(highlightFrame(_, highlightError, source))
+          .mkString(newLine)
+    )
+    traces.mkString(newLine)
+  }
 
   val pprintPredef =
     "import _root_.jupyter.api.JupyterAPIHolder.value.{pprintConfig, derefPPrint}"
