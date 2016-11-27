@@ -3,5 +3,11 @@ set -ev
 
 # On Travis, this leaves more memory to the forked JVM where tests are run
 export SBT_OPTS="-J-Xmx512m -J-Xms512m"
-sbt ++${TRAVIS_SCALA_VERSION:-2.11.8} test
+
+function testOnly() {
+  sbt ++${TRAVIS_SCALA_VERSION:-2.11.8} "testOnly $@"
+}
+
+testOnly jupyter.Spark16Tests
+testOnly jupyter.Spark20Tests
 
