@@ -1,6 +1,6 @@
 
-val ammoniumVersion = "0.8.1-SNAPSHOT"
-val jupyterKernelVersion = "0.4.0-SNAPSHOT"
+val ammoniumVersion = "0.8.0"
+val jupyterKernelVersion = "0.4.0-RC1"
 
 val flinkVersion = "1.1.3"
 
