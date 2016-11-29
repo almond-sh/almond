@@ -25,6 +25,8 @@ First ensure you have [Jupyter](http://jupyter.org/) installed.
 Running `jupyter --version` should print a value >= 4.0. See [Jupyter installation](#jupyter-installation)
 if it's not the case.
 
+You also need [coursier](https://github.com/alexarchambault/coursier) installed.
+
 Then download and run the Jupyter Scala launcher with
 ```
 $ curl -L -o jupyter-scala https://git.io/vrHhi && chmod +x jupyter-scala && ./jupyter-scala && rm -f jupyter-scala
