@@ -46,8 +46,6 @@ Some options can be passed to the `jupyter-scala` script / launcher.
 - The kernel ID (`scala`) can be changed with `--id custom` (allows to install the kernel alongside already installed Scala kernels).
 - The kernel name, that appears in the Jupyter Notebook UI, can be changed with `--name "Custom name"`.
 - If a kernel with the same ID is already installed and should be erased, the `--force` option should be specified.
-- Some dependencies can be added in all the sessions based on this kernel, with `-d org:name:version`.
-- Some repositories can be added for the dependencies added via `-d` and during the session, with `-r https://repo.com/base`.
 
 ## Comparison to alternatives
 
