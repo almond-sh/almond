@@ -224,7 +224,28 @@ Like for big data frameworks, support for plotting libraries can be added on-the
 
 [Vegas](https://github.com/vegas-viz/Vegas) is a Scala wrapper for [Vega-Lite](https://vega.github.io/vega-lite/)
 
-`TOWRITE`
+Use like
+```scala
+import $ivy.`org.vegas-viz::vegas:0.3.6`
+
+import vegas._
+import vegas.render.HTMLRenderer._
+
+implicit val displayer: String => Unit = publish.html(_)
+
+Vegas("Country Pop").
+  withData(
+    Seq(
+      Map("country" -> "USA", "population" -> 314),
+      Map("country" -> "UK", "population" -> 64),
+      Map("country" -> "DK", "population" -> 80)
+    )
+  ).
+  encodeX("country", Nom).
+  encodeY("population", Quant).
+  mark(Bar).
+  show
+```
 
 ### plotly-scala
 
