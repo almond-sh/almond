@@ -156,7 +156,7 @@ Status: POC
 Use like
 
 ```scala
-import $ivy.`org.jupyter-scala::scio:0.4.0-SNAPSHOT`
+import $ivy.`org.jupyter-scala::scio:0.4.0-RC1`
 import jupyter.scio._
 
 import com.spotify.scio._
