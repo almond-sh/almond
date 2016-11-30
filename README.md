@@ -21,10 +21,13 @@ The current version is available for Scala 2.11. Support for Scala 2.10 could be
   2. [Flink](#flink)
   3. [Scio / Beam](#scio--beam)
   4. [Scalding](#scalding)
-6. [Special commands / API](#special-commands--api)
-7. [Jupyter installation](#jupyter-installation)
-8. [Internals](#internals)
-9. [Compiling it](#compiling-it)
+6. [Plotting](#plotting)
+  1. [Vegas](#vegas)
+  2. [plotly-scala](#plotly-scala)
+7. [Special commands / API](#special-commands--api)
+8. [Jupyter installation](#jupyter-installation)
+9. [Internals](#internals)
+10. [Compiling it](#compiling-it)
 
 ## Quick start
 
