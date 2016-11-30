@@ -251,7 +251,25 @@ Vegas("Country Pop").
 
 [plotly-scala](http://plotly-scala.org) is a Scala wrapper for [plotly.js](https://plot.ly/javascript/).
 
-`TOWRITE`
+Use like
+```scala
+import $ivy.`org.plotly-scala::plotly-jupyter-scala:0.3.0`
+
+import plotly._
+import plotly.element._
+import plotly.layout._
+import plotly.JupyterScala._
+
+plotly.JupyterScala.init()
+
+val (x, y) = Seq(
+  "Banana" -> 10,
+  "Apple" -> 8,
+  "Grapefruit" -> 5
+).unzip
+
+Bar(x, y).plot()
+```
 
 ## Jupyter installation
 
