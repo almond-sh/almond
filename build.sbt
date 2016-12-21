@@ -25,7 +25,7 @@ lazy val `scala-api` = project.in(file("api"))
   )
   .settings(buildInfoSettings)
   .settings(
-    sourceGenerators in Compile <+= buildInfo,
+    sourceGenerators in Compile += buildInfo.taskValue,
     buildInfoKeys := Seq[BuildInfoKey](
       version,
       "ammoniumVersion" -> ammoniumVersion
