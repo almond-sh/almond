@@ -5,7 +5,7 @@ import ammonite.runtime._
 import ammonite.util._
 import com.typesafe.scalalogging.LazyLogging
 import fastparse.core.Parsed
-import jupyter.api.{JupyterApi, Publish}
+import jupyter.api.{CommChannelMessage, JupyterApi, Publish}
 import jupyter.kernel.protocol.ShellReply.KernelInfo.LanguageInfo
 import jupyter.kernel.protocol.ParsedMessage
 import jupyter.kernel.interpreter.Interpreter.IsComplete
@@ -24,6 +24,18 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
 
   var publishFunc = Option.empty[ParsedMessage[_] => Publish]
   var currentPublish = Option.empty[Publish]
+  val currentPublish0 = new Publish {
+    def commHandler(target: String)(handler: (CommChannelMessage) => Unit) =
+      currentPublish.get.commHandler(target)(handler)
+    def comm(id: String) =
+      currentPublish.get.comm(id)
+    def stdout(text: String) =
+      currentPublish.get.stdout(text)
+    def stderr(text: String) =
+      currentPublish.get.stderr(text)
+    def display(items: (String, String)*) =
+      currentPublish.get.display(items: _*)
+  }
 
   val interp: Interpreter = new Interpreter(
     Printer(
@@ -47,7 +59,7 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
         new SessionApiImpl(i.eval),
         Nil
       ) with JupyterApi {
-        def publish = currentPublish.get
+        def publish = currentPublish0
       }
       Seq(("jupyter.api.JupyterAPIHolder", "kernel", kernelApi))
     },
