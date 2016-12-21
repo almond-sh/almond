@@ -1,5 +1,6 @@
 package jupyter.scala
 
+import ammonite.interp.{Interpreter, Parsers, Preprocessor}
 import ammonite.repl.{RuntimeApiImpl, SessionApiImpl}
 import ammonite.runtime._
 import ammonite.util._
