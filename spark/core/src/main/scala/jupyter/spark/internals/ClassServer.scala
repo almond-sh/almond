@@ -1,7 +1,7 @@
-package jupyter.spark
+package jupyter.spark.internals
 
 import java.io.File
-import java.net.{InetAddress, InetSocketAddress, URI}
+import java.net.{InetAddress, InetSocketAddress, ServerSocket, URI}
 import java.nio.file.Files
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 
@@ -9,12 +9,21 @@ import ammonite.runtime.Frame
 import org.eclipse.jetty.server.{Request, Server}
 import org.eclipse.jetty.server.handler.AbstractHandler
 
-private[spark] class ClassServer(frames: => List[Frame]) {
+object ClassServer {
+  def randomPort(): Int = {
+    val s = new ServerSocket(0)
+    val port = s.getLocalPort
+    s.close()
+    port
+  }
+}
+
+class ClassServer(frames: => List[Frame]) {
 
   private lazy val host =
     sys.env.getOrElse("HOST", InetAddress.getLocalHost.getHostAddress)
 
-  private val socketAddress = InetSocketAddress.createUnresolved(host, Spark.randomPort())
+  private val socketAddress = InetSocketAddress.createUnresolved(host, ClassServer.randomPort())
 
   private val handler = new AbstractHandler {
     def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {

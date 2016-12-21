@@ -1,5 +1,5 @@
 
-val ammoniumVersion = "0.8.0"
+val ammoniumVersion = "0.8.1"
 val jupyterKernelVersion = "0.4.0-RC1"
 
 val flinkVersion = "1.1.3"
@@ -23,15 +23,7 @@ lazy val `scala-api` = project.in(file("api"))
         )
     }
   )
-  .settings(buildInfoSettings)
-  .settings(
-    sourceGenerators in Compile <+= buildInfo,
-    buildInfoKeys := Seq[BuildInfoKey](
-      version,
-      "ammoniumVersion" -> ammoniumVersion
-    ),
-    buildInfoPackage := "jupyter.scala"
-  )
+  .settings(jupyterScalaBuildInfoSettingsIn("jupyter.scala"))
 
 lazy val `scala-kernel` = project.in(file("kernel"))
   .dependsOn(`scala-api`)
@@ -98,6 +90,7 @@ lazy val spark = project
       "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9"
     )
   )
+  .settings(jupyterScalaBuildInfoSettingsIn("jupyter.spark.internals"))
 
 val ammoniteTestsDependency = "org.jupyter-scala" % "ammonite" % ammoniumVersion cross CrossVersion.full
 lazy val `spark-tests` = project
@@ -189,16 +182,20 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.jcenterRepo
 ) ++ publishSettings
 
+val testJavaOptions = Seq(
+  "-Xmx3172M",
+  "-Xms3172M"
+)
+
 lazy val testSettings = Seq(
   libraryDependencies += "com.lihaoyi" %% "utest" % "0.4.4" % "test",
   testFrameworks += new TestFramework("utest.runner.Framework"),
   fork in test := true,
   fork in (Test, test) := true,
   fork in (Test, testOnly) := true,
-  javaOptions in Test ++= Seq(
-    "-Xmx3172M",
-    "-Xms3172M"
-  )
+  javaOptions in Test ++= testJavaOptions,
+  javaOptions in (Test, test) ++= testJavaOptions,
+  javaOptions in (Test, testOnly) ++= testJavaOptions
 )
 
 lazy val publishSettings = Seq(
@@ -232,4 +229,13 @@ lazy val noPublishSettings = Seq(
   publish := (),
   publishLocal := (),
   publishArtifact := false
+)
+
+def jupyterScalaBuildInfoSettingsIn(packageName: String) = buildInfoSettings ++ Seq(
+  sourceGenerators in Compile += buildInfo.taskValue,
+  buildInfoKeys := Seq[BuildInfoKey](
+    version,
+    "ammoniumVersion" -> ammoniumVersion
+  ),
+  buildInfoPackage := packageName
 )
