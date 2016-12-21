@@ -182,16 +182,20 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.jcenterRepo
 ) ++ publishSettings
 
+val testJavaOptions = Seq(
+  "-Xmx3172M",
+  "-Xms3172M"
+)
+
 lazy val testSettings = Seq(
   libraryDependencies += "com.lihaoyi" %% "utest" % "0.4.4" % "test",
   testFrameworks += new TestFramework("utest.runner.Framework"),
   fork in test := true,
   fork in (Test, test) := true,
   fork in (Test, testOnly) := true,
-  javaOptions in Test ++= Seq(
-    "-Xmx3172M",
-    "-Xms3172M"
-  )
+  javaOptions in Test ++= testJavaOptions,
+  javaOptions in (Test, test) ++= testJavaOptions,
+  javaOptions in (Test, testOnly) ++= testJavaOptions
 )
 
 lazy val publishSettings = Seq(
