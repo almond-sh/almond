@@ -23,15 +23,7 @@ lazy val `scala-api` = project.in(file("api"))
         )
     }
   )
-  .settings(buildInfoSettings)
-  .settings(
-    sourceGenerators in Compile += buildInfo.taskValue,
-    buildInfoKeys := Seq[BuildInfoKey](
-      version,
-      "ammoniumVersion" -> ammoniumVersion
-    ),
-    buildInfoPackage := "jupyter.scala"
-  )
+  .settings(jupyterScalaBuildInfoSettingsIn("jupyter.scala"))
 
 lazy val `scala-kernel` = project.in(file("kernel"))
   .dependsOn(`scala-api`)
@@ -98,6 +90,7 @@ lazy val spark = project
       "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9"
     )
   )
+  .settings(jupyterScalaBuildInfoSettingsIn("jupyter.spark.internals"))
 
 val ammoniteTestsDependency = "org.jupyter-scala" % "ammonite" % ammoniumVersion cross CrossVersion.full
 lazy val `spark-tests` = project
@@ -232,4 +225,13 @@ lazy val noPublishSettings = Seq(
   publish := (),
   publishLocal := (),
   publishArtifact := false
+)
+
+def jupyterScalaBuildInfoSettingsIn(packageName: String) = buildInfoSettings ++ Seq(
+  sourceGenerators in Compile += buildInfo.taskValue,
+  buildInfoKeys := Seq[BuildInfoKey](
+    version,
+    "ammoniumVersion" -> ammoniumVersion
+  ),
+  buildInfoPackage := packageName
 )

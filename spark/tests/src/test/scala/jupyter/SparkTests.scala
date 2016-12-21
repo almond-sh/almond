@@ -42,18 +42,16 @@ class SparkTests(sparkVersion: String) extends TestSuite {
           @ import jupyter.spark._
           import jupyter.spark._
 
-          @ sparkInit()
+          @ @transient val sparkConf = new org.apache.spark.SparkConf().
+          @   setAppName("test").
+          @   setMaster("local")
+
+          @ @transient val sc = new JupyterSparkContext(sparkConf)
+
+          @ val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
           @ import sqlContext.implicits._
           import sqlContext.implicits._
-
-          @ {
-          @   sparkConf
-          @     .setAppName("test")
-          @     .setMaster("local")
-          @ }
-
-          @ sc
 
       """
 
