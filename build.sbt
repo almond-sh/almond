@@ -50,7 +50,7 @@ lazy val `scala-cli` = project.in(file("cli"))
   .settings(
     crossVersion := CrossVersion.full,
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "1.1.2",
+      "com.github.alexarchambault" %% "case-app" % "1.1.3",
       "ch.qos.logback" % "logback-classic" % "1.1.7"
     ),
     libraryDependencies ++= {
@@ -69,6 +69,7 @@ lazy val `spark-stubs-1` = project
       "org.apache.spark" %% "spark-sql" % "1.3.1" % "provided"
     )
   )
+  .settings(disableScalaVersion("2.12"))
 
 lazy val `spark-stubs-2` = project
   .in(file("spark/stubs-2.x"))
@@ -78,6 +79,7 @@ lazy val `spark-stubs-2` = project
       "org.apache.spark" %% "spark-sql" % "2.0.0" % "provided"
     )
   )
+  .settings(disableScalaVersion("2.12"))
 
 lazy val spark = project
   .in(file("spark/core"))
@@ -90,6 +92,7 @@ lazy val spark = project
       "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9"
     )
   )
+  .settings(disableScalaVersion("2.12"))
   .settings(jupyterScalaBuildInfoSettingsIn("jupyter.spark.internals"))
 
 val ammoniteTestsDependency = "org.jupyter-scala" % "ammonite" % ammoniumVersion cross CrossVersion.full
@@ -120,6 +123,7 @@ lazy val flink = project
       "org.ow2.asm" % "asm-all" % "5.0.4" // don't know why we have to manually pull this one
     )
   )
+  .settings(disableScalaVersion("2.12"))
 
 lazy val `flink-yarn` = project
   .dependsOn(flink, `scala-api` % "provided")
@@ -130,6 +134,7 @@ lazy val `flink-yarn` = project
       "org.apache.flink" %% "flink-yarn" % flinkVersion
     )
   )
+  .settings(disableScalaVersion("2.12"))
 
 lazy val scio = project
   .dependsOn(`scala-api` % "provided")
@@ -148,6 +153,7 @@ lazy val scio = project
       )
     }
   )
+  .settings(disableScalaVersion("2.12"))
 
 
 lazy val `jupyter-scala` = project
@@ -229,6 +235,39 @@ lazy val noPublishSettings = Seq(
   publish := (),
   publishLocal := (),
   publishArtifact := false
+)
+
+def disableScalaVersion(sbv: String*) = Seq(
+  baseDirectory := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      baseDirectory.value / "dummy"
+    else
+      baseDirectory.value
+  },
+  libraryDependencies := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      Nil
+    else
+      libraryDependencies.value
+  },
+  publish := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      ()
+    else
+      publish.value
+  },
+  publishLocal := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      ()
+    else
+      publishLocal.value
+  },
+  publishArtifact := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      false
+    else
+      publishArtifact.value
+  }
 )
 
 def jupyterScalaBuildInfoSettingsIn(packageName: String) = buildInfoSettings ++ Seq(
