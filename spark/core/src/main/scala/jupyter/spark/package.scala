@@ -98,13 +98,10 @@ package object spark {
           case Some(sparkHome) =>
             conf.set("spark.home", sparkHome)
           case None =>
-            if (isSpark2) {
-              if (conf.getOption("spark.yarn.jars").isEmpty)
-                conf.set("spark.yarn.jars", Spark.sparkAssemblyJars().mkString(","))
-            } else {
-              if (conf.getOption("spark.yarn.jar").isEmpty)
-                conf.set("spark.yarn.jar", Spark.sparkAssembly())
-            }
+            if (isSpark2)
+              conf.setIfMissingLazy("spark.yarn.jars", Spark.sparkAssemblyJars().mkString(","))
+            else
+              conf.setIfMissingLazy("spark.yarn.jar", Spark.sparkAssembly())
         }
 
       conf
@@ -150,7 +147,7 @@ package object spark {
 
     JupyterSparkContext.addConfHook { conf =>
       conf
-        .setMaster("yarn-client")
+        .setIfMissing("spark.master", "yarn-client")
     }
   }
 
@@ -167,9 +164,9 @@ package object spark {
 
     JupyterSparkContext.addConfHook { conf =>
       if (isSpark2)
-        conf.set("spark.yarn.jars", Spark.sparkAssemblyJars(extraDependencies: _*).mkString(","))
+        conf.setIfMissingLazy("spark.yarn.jars", Spark.sparkAssemblyJars(extraDependencies).mkString(","))
       else
-        conf.set("spark.yarn.jar", Spark.sparkAssembly(extraDependencies: _*))
+        conf.setIfMissingLazy("spark.yarn.jar", Spark.sparkAssembly(extraDependencies))
     }
   }
 
