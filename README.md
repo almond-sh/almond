@@ -86,30 +86,37 @@ Status: some specific uses (Spark on YARN) well tested in particular contexts (e
 Use like
 
 ```scala
-import $exclude.`org.slf4j:slf4j-log4j12`, $ivy.`org.slf4j:slf4j-nop:1.7.21`, $ivy.`org.slf4j:log4j-over-slf4j:1.7.21` // for cleaner logs
+import $exclude.`org.slf4j:slf4j-log4j12` // for cleaner logs
 import $ivy.`org.apache.spark::spark-sql:2.0.2` // adjust spark version - spark >= 1.6 should be fine, possibly >= 1.3 too
-import $ivy.`org.jupyter-scala::spark:0.4.0-RC1` // allows to create SparkContext-s aware of the jupyter-scala kernel
+import $ivy.`org.jupyter-scala::spark:0.4.0-RC3` // JupyterSparkContext-s (SparkContext aware of the jupyter-scala kernel)
 
+import org.apache.spark._
+import org.apache.spark.sql._
 import jupyter.spark._
-import sqlContext.implicits._
 
-sparkInit() // allows org.jupyter-scala::spark to get a handle towards some kernel API classes 
-
-// for Spark on YARN - argument is the path too the Yarn config (directory, should contain yarn-site.xml in particular)
-// sparkYarn("/etc/hadoop/conf")
-// if on AWS ElasticMapReduce - argument is the Hadoop version
-// sparkEmr("2.7.3")
-
-// the conf can be tweaked a bit before use - comes from the jupyter.spark namespace
-sparkConf.
+// The conf can be tweaked a bit before use.
+// Mark it transient to prevent serialization issues.
+@transient val sparkConf = new SparkConf().
   setAppName("SBTB").
   setMaster("local") // change to "yarn-client" on YARN
   // set("spark.executor.count", "4").
   // set("spark.executor.memory", "2g").
   // set("spark.driver.memory", "2g")
 
-// first call to sc - from the jupyter.spark namespace - initializes the SparkContext
-sc
+// For Spark on YARN - argument is the path too the Yarn config (directory, should contain yarn-site.xml in particular)
+// This loads the hadoop config in the classpath, and loads the spark-yarn module.
+// sparkYarn("/etc/hadoop/conf")
+// If on AWS ElasticMapReduce - argument is the Hadoop version
+// This adds extra hadoop / aws related dependencies in the spark jar list (via the spark.yarn.jar
+// or spark.yarn.jars Spark conf entry)
+// sparkEmr("2.7.3")
+
+// Important - do NOT create a simple SparkContext, always use JupyterSparkContext,
+// which is aware of the jupyter-scala kernel.
+// Marked transient too to prevent serialization issues.
+@transient val sc = new JupyterSparkContext(sparkConf)
+
+val sqlContext = new SQLContext(sc)
 ```
 
 Important: `SparkContext`s should *not* be manually created. Only the ones from the `org.jupyter-scala::spark` library
@@ -129,7 +136,7 @@ Use like
 
 ```scala
 import $exclude.`org.slf4j:slf4j-log4j12`, $ivy.`org.slf4j:slf4j-nop:1.7.21`, $ivy.`org.slf4j:log4j-over-slf4j:1.7.21` // for cleaner logs
-import $ivy.`org.jupyter-scala::flink-yarn:0.4.0-RC1`
+import $ivy.`org.jupyter-scala::flink-yarn:0.4.0-RC3`
 
 import jupyter.flink._
 
@@ -159,7 +166,7 @@ Status: POC
 Use like
 
 ```scala
-import $ivy.`org.jupyter-scala::scio:0.4.0-RC1`
+import $ivy.`org.jupyter-scala::scio:0.4.0-RC3`
 import jupyter.scio._
 
 import com.spotify.scio._

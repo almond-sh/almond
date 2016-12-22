@@ -1,8 +1,8 @@
 #!/bin/bash
 
-VERSION=0.4.0-RC1
-AMMONIUM_VERSION=0.8.0
-SCALA_VERSION=2.11.8
+VERSION=0.4.0-RC3
+AMMONIUM_VERSION=0.8.1
+SCALA_VERSION=2.11.8 # Set to 2.12.1 for Scala 2.12
 
 exec coursier launch \
   -r sonatype:releases -r sonatype:snapshots \
