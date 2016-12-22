@@ -20,7 +20,11 @@ object Spark {
       .orElse(sys.props.get("HADOOP_VERSION"))
       .getOrElse("2.7.3")
 
-  def sparkAssembly(extraDependencies: String*): String =
+  def sparkAssembly(
+    extraDependencies: Seq[String] = Nil,
+    exclusions: Seq[String] = Nil,
+    profiles: Seq[String] = Nil
+  ): String =
     coursier.cli.spark.Assembly.spark(
       scalaBinaryVersion,
       sparkVersion,
@@ -28,6 +32,8 @@ object Spark {
       default = true,
       extraDependencies.toList,
       options = CommonOptions(
+        exclude = exclusions.toList,
+        profile = profiles.toList,
         checksum = List("SHA-1") // should not be required with coursier > 1.0.0-M14-9
       )
     ) match {
@@ -58,13 +64,23 @@ object Spark {
     ) ++ extra
   }
 
-  def sparkAssemblyJars(extraDependencies: String*) = {
+  def sparkAssemblyJars(
+    extraDependencies: Seq[String] = Nil,
+    exclusions: Seq[String] = Nil,
+    profiles: Seq[String] = Nil
+  ) = {
 
     val base = sparkBaseDependencies(
       scalaBinaryVersion,
       sparkVersion
     )
-    val helper = new Helper(CommonOptions(), extraDependencies ++ base)
+    val helper = new Helper(
+      CommonOptions(
+        exclude = exclusions.toList,
+        profile = profiles.toList
+      ),
+      extraDependencies ++ base
+    )
 
     helper.fetch(sources = false, javadoc = false, artifactTypes = Set("jar"))
       .map(_.getAbsolutePath)
