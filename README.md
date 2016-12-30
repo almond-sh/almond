@@ -86,7 +86,7 @@ Status: some specific uses (Spark on YARN) well tested in particular contexts (e
 Use like
 
 ```scala
-import $exclude.`org.slf4j:slf4j-log4j12` // for cleaner logs
+import $ivy.`org.slf4j:slf4j-nop:1.7.12` // for cleaner logs
 import $ivy.`org.apache.spark::spark-sql:2.0.2` // adjust spark version - spark >= 1.6 should be fine, possibly >= 1.3 too
 import $ivy.`org.jupyter-scala::spark:0.4.0-RC3` // JupyterSparkContext-s (SparkContext aware of the jupyter-scala kernel)
 
