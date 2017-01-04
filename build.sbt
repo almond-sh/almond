@@ -182,7 +182,12 @@ lazy val commonSettings = Seq(
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")
   ),
-  scalacOptions += "-target:jvm-1.7",
+  scalacOptions ++= {
+    if (scalaBinaryVersion.value == "2.12")
+      Seq()
+    else
+      Seq("-target:jvm-1.7")
+  },
   scalaVersion := "2.11.8",
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   resolvers += Resolver.jcenterRepo
