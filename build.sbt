@@ -15,7 +15,7 @@ lazy val `scala-api` = project.in(file("api"))
       "com.lihaoyi" %% "pprint" % "0.4.2"
     ),
     libraryDependencies ++= {
-      if (scalaVersion.value startsWith "2.10.")
+      if (scalaBinaryVersion.value == "2.10")
         Seq()
       else
         Seq(
@@ -25,7 +25,8 @@ lazy val `scala-api` = project.in(file("api"))
   )
   .settings(jupyterScalaBuildInfoSettingsIn("jupyter.scala"))
 
-lazy val `scala-kernel` = project.in(file("kernel"))
+lazy val `scala-kernel` = project
+  .in(file("kernel"))
   .dependsOn(`scala-api`)
   .settings(commonSettings)
   .settings(testSettings)
@@ -43,7 +44,8 @@ lazy val `scala-kernel` = project.in(file("kernel"))
     }
   )
 
-lazy val `scala-cli` = project.in(file("cli"))
+lazy val `scala-cli` = project
+  .in(file("cli"))
   .dependsOn(`scala-kernel`)
   .settings(commonSettings)
   .settings(packAutoSettings)
@@ -96,6 +98,7 @@ lazy val spark = project
   .settings(jupyterScalaBuildInfoSettingsIn("jupyter.spark.internals"))
 
 val ammoniteTestsDependency = "org.jupyter-scala" % "ammonite" % ammoniumVersion cross CrossVersion.full
+
 lazy val `spark-tests` = project
   .dependsOn(`scala-api`)
   .in(file("spark/tests"))
