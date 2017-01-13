@@ -103,7 +103,7 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
 
   private def error(exOpt: Option[Throwable], msg: String) =
     jupyter.kernel.interpreter.Interpreter.Error(
-      msg + exOpt.fold("")(ex => Interp.showException(
+      msg + exOpt.fold("")(ex => (if (msg.isEmpty) "" else "\n") + Interp.showException(
         ex, colors().error(), fansi.Attr.Reset, colors().literal()
       ))
     )
@@ -123,6 +123,9 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     } yield f(m)
 
     try {
+
+      var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
+
       val res =
         for {
           (code, stmts) <- Parsers.Splitter.parse(line) match {
@@ -133,12 +136,16 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
               fastparse.core.ParseError.msg(extra.input, extra.traced.expected, index)
             )
           }
-          evRes = capturingOutput {
+          currentThread = Thread.currentThread()
+          _ <- Signaller("INT") {
+            interruptedStackTraceOpt = Some(currentThread.getStackTrace)
+            currentThread.stop()
+          }
+          ev <- capturingOutput {
             val r = interp.processLine(code, stmts, s"cmd${interp.eval.getCurrentLine}.sc")
             interp.handleOutput(r)
             r
           }
-          ev <- evRes
         } yield ev
 
       res match {
@@ -157,7 +164,20 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
           for (ex <- exOpt)
             logger.warn(s"failed to run user code (${ex.getMessage})", ex)
 
-          error(exOpt, msg)
+          interruptedStackTraceOpt match {
+            case None => error(exOpt, msg)
+            case Some(st) =>
+
+              val cutoff = Set("$main", "evaluatorRunPrinter")
+
+              jupyter.kernel.interpreter.Interpreter.Error(
+                (
+                  "Interrupted!" +: st
+                    .takeWhile(x => !cutoff(x.getMethodName))
+                    .map(Interp.highlightFrame(_, fansi.Attr.Reset, colors().literal()))
+                ).mkString(ammonite.util.Util.newLine)
+              )
+          }
 
         case Res.Exception(ex, msg) =>
           logger.warn(s"exception in user code (${ex.getMessage})", ex)
