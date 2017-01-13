@@ -98,10 +98,19 @@ package object spark {
           case Some(sparkHome) =>
             conf.set("spark.home", sparkHome)
           case None =>
+
+            def profiles = interpApi.load.profiles.toSeq.sorted
+
             if (isSpark2)
-              conf.setIfMissingLazy("spark.yarn.jars", Spark.sparkAssemblyJars().mkString(","))
+              conf.setIfMissingLazy(
+                "spark.yarn.jars",
+                Spark.sparkAssemblyJars(profiles = profiles).mkString(",")
+              )
             else
-              conf.setIfMissingLazy("spark.yarn.jar", Spark.sparkAssembly())
+              conf.setIfMissingLazy(
+                "spark.yarn.jar",
+                Spark.sparkAssembly(profiles = profiles)
+              )
         }
 
       conf
@@ -162,11 +171,19 @@ package object spark {
       "xerces:xercesImpl:2.11.0"
     )
 
+    def profiles = interpApi.load.profiles.toSeq.sorted
+
     JupyterSparkContext.addConfHook { conf =>
       if (isSpark2)
-        conf.setIfMissingLazy("spark.yarn.jars", Spark.sparkAssemblyJars(extraDependencies).mkString(","))
+        conf.setIfMissingLazy(
+          "spark.yarn.jars",
+          Spark.sparkAssemblyJars(extraDependencies, profiles = profiles).mkString(",")
+        )
       else
-        conf.setIfMissingLazy("spark.yarn.jar", Spark.sparkAssembly(extraDependencies))
+        conf.setIfMissingLazy(
+          "spark.yarn.jar",
+          Spark.sparkAssembly(extraDependencies, profiles = profiles)
+        )
     }
   }
 
