@@ -249,7 +249,7 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
     version = scalaVersion,
     mimetype = "text/x-scala",
     file_extension = ".scala",
-    nbconvert_exporter = "scala", // ???
+    nbconvert_exporter = "script",
     pygments_lexer = Some("scala"),
     codemirror_mode = Some("text/x-scala")
   )
