@@ -34,6 +34,16 @@ object JupyterSparkContext {
     withHooks(conf)
   }
 
+  private val dependencyHooks = new mutable.ListBuffer[Seq[String] => Seq[String]]
+  def addSparkDependencyHook(f: Seq[String] => Seq[String]): Unit =
+    dependencyHooks += f
+  def addSparkDependencies(dependencies: String*): Unit =
+    addSparkDependencyHook { current =>
+      current ++ dependencies
+    }
+  def applySparkDependencyHooks(dependencies: Seq[String]): Seq[String] =
+    dependencyHooks.foldLeft(dependencies) { (deps, f) => f(deps) }
+
   private val contextHooks = new mutable.ListBuffer[SparkContext => Unit]
   def addContextHook(f: SparkContext => Unit): Unit =
     contextHooks += f

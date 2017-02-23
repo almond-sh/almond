@@ -98,16 +98,33 @@ package object spark {
           case Some(sparkHome) =>
             conf.set("spark.home", sparkHome)
           case None =>
+
+            def profiles = interpApi.load.profiles.toSeq.sorted
+
+            def extraDependencies = JupyterSparkContext.applySparkDependencyHooks(Seq())
+
             if (isSpark2)
-              conf.setIfMissingLazy("spark.yarn.jars", Spark.sparkAssemblyJars().mkString(","))
+              conf.setIfMissingLazy(
+                "spark.yarn.jars",
+                Spark.sparkAssemblyJars(
+                  extraDependencies = extraDependencies,
+                  profiles = profiles
+                ).mkString(",")
+              )
             else
-              conf.setIfMissingLazy("spark.yarn.jar", Spark.sparkAssembly())
+              conf.setIfMissingLazy(
+                "spark.yarn.jar",
+                Spark.sparkAssembly(
+                  extraDependencies = extraDependencies,
+                  profiles = profiles
+                )
+              )
         }
 
       conf
         .setIfMissingLazy(
           "spark.jars",
-          jars.mkString(",")
+          jars.map(_.toString).filterNot(conf.getOption("spark.yarn.jars").fold(Set.empty[String])(_.split(',').toSet)).mkString(",")
         )
         .setIfMissingLazy("spark.repl.class.uri", classServer.uri.toString)
         .setIfMissingLazy("spark.ui.port", availablePortFrom(4040).toString)
@@ -116,13 +133,17 @@ package object spark {
 
     JupyterSparkContext.addContextHook { sc =>
 
-      for (jar <- jars.map(_.getAbsolutePath))
+      val alreadyAdded =
+        sc.getConf.getOption("spark.yarn.jars").toSeq.flatMap(_.split(',')).toSet ++
+          sc.getConf.getOption("spark.jars").toSeq.flatMap(_.split(','))
+
+      for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
         sc.addJar(jar)
 
       interpApi.load.onJarAdded { jars =>
         if (!sc.isStopped)
-          for (jar <- jars)
-            sc.addJar(jar.getAbsolutePath)
+          for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
+            sc.addJar(jar)
       }
 
       runtimeApi.onExit { _ =>
@@ -153,21 +174,12 @@ package object spark {
 
   def sparkEmr(hadoopVersion: String = "2.7.3")(implicit interpApi: InterpAPI, runtimeApi: RuntimeAPI): Unit = {
 
-    if (!initialized)
-      sparkInit()
-
-    val extraDependencies = Seq(
-      s"org.apache.hadoop:hadoop-aws:$hadoopVersion",
-      s"org.apache.hadoop:hadoop-hdfs:$hadoopVersion",
-      "xerces:xercesImpl:2.11.0"
+    JupyterSparkContext.addSparkDependencies(
+      s"org.apache.hadoop:hadoop-aws:$hadoopVersion"
     )
 
-    JupyterSparkContext.addConfHook { conf =>
-      if (isSpark2)
-        conf.setIfMissingLazy("spark.yarn.jars", Spark.sparkAssemblyJars(extraDependencies).mkString(","))
-      else
-        conf.setIfMissingLazy("spark.yarn.jar", Spark.sparkAssembly(extraDependencies))
-    }
+    if (!initialized)
+      sparkInit()
   }
 
 }

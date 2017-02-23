@@ -4,7 +4,7 @@ import java.io.File
 
 import coursier.cli.{CommonOptions, Helper}
 
-import jupyter.spark.{scalaBinaryVersion, sparkVersion}
+import jupyter.spark.{scalaBinaryVersion, scalaVersion, sparkVersion}
 
 object Spark {
 
@@ -20,6 +20,12 @@ object Spark {
       .orElse(sys.props.get("HADOOP_VERSION"))
       .getOrElse("2.7.3")
 
+  private def scalaDependencies = Seq(
+    s"org.scala-lang:scala-library:$scalaVersion",
+    s"org.scala-lang:scala-reflect:$scalaVersion",
+    s"org.scala-lang:scala-compiler:$scalaVersion"
+  )
+
   def sparkAssembly(
     extraDependencies: Seq[String] = Nil,
     exclusions: Seq[String] = Nil,
@@ -30,7 +36,7 @@ object Spark {
       sparkVersion,
       hadoopVersion,
       default = true,
-      extraDependencies.toList,
+      (scalaDependencies ++ extraDependencies).toList,
       options = CommonOptions(
         exclude = exclusions.toList,
         profile = profiles.toList,
@@ -43,24 +49,24 @@ object Spark {
         assembly.getAbsolutePath
     }
 
-  def sparkBaseDependencies(scalaVersion: String, sparkVersion: String) = {
+  def sparkBaseDependencies = {
 
     val extra =
       if (sparkVersion.startsWith("2."))
         Seq()
       else
         Seq(
-          s"org.apache.spark:spark-bagel_$scalaVersion:$sparkVersion"
+          s"org.apache.spark:spark-bagel_$scalaBinaryVersion:$sparkVersion"
         )
 
-    Seq(
-      s"org.apache.spark:spark-core_$scalaVersion:$sparkVersion",
-      s"org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion",
-      s"org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion",
-      s"org.apache.spark:spark-graphx_$scalaVersion:$sparkVersion",
-      s"org.apache.spark:spark-sql_$scalaVersion:$sparkVersion",
-      s"org.apache.spark:spark-repl_$scalaVersion:$sparkVersion",
-      s"org.apache.spark:spark-yarn_$scalaVersion:$sparkVersion"
+    scalaDependencies ++ Seq(
+      s"org.apache.spark:spark-core_$scalaBinaryVersion:$sparkVersion",
+      s"org.apache.spark:spark-mllib_$scalaBinaryVersion:$sparkVersion",
+      s"org.apache.spark:spark-streaming_$scalaBinaryVersion:$sparkVersion",
+      s"org.apache.spark:spark-graphx_$scalaBinaryVersion:$sparkVersion",
+      s"org.apache.spark:spark-sql_$scalaBinaryVersion:$sparkVersion",
+      s"org.apache.spark:spark-repl_$scalaBinaryVersion:$sparkVersion",
+      s"org.apache.spark:spark-yarn_$scalaBinaryVersion:$sparkVersion"
     ) ++ extra
   }
 
@@ -70,16 +76,12 @@ object Spark {
     profiles: Seq[String] = Nil
   ) = {
 
-    val base = sparkBaseDependencies(
-      scalaBinaryVersion,
-      sparkVersion
-    )
     val helper = new Helper(
       CommonOptions(
         exclude = exclusions.toList,
         profile = profiles.toList
       ),
-      extraDependencies ++ base
+      extraDependencies ++ sparkBaseDependencies
     )
 
     helper.fetch(sources = false, javadoc = false, artifactTypes = Set("jar"))
