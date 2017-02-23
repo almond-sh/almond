@@ -133,13 +133,17 @@ package object spark {
 
     JupyterSparkContext.addContextHook { sc =>
 
-      for (jar <- jars.map(_.getAbsolutePath))
+      val alreadyAdded =
+        sc.getConf.getOption("spark.yarn.jars").toSeq.flatMap(_.split(',')).toSet ++
+          sc.getConf.getOption("spark.jars").toSeq.flatMap(_.split(','))
+
+      for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
         sc.addJar(jar)
 
       interpApi.load.onJarAdded { jars =>
         if (!sc.isStopped)
-          for (jar <- jars)
-            sc.addJar(jar.getAbsolutePath)
+          for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
+            sc.addJar(jar)
       }
 
       runtimeApi.onExit { _ =>
