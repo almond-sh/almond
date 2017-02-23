@@ -124,7 +124,7 @@ package object spark {
       conf
         .setIfMissingLazy(
           "spark.jars",
-          jars.mkString(",")
+          jars.map(_.toString).filterNot(conf.getOption("spark.yarn.jars").fold(Set.empty[String])(_.split(',').toSet)).mkString(",")
         )
         .setIfMissingLazy("spark.repl.class.uri", classServer.uri.toString)
         .setIfMissingLazy("spark.ui.port", availablePortFrom(4040).toString)
@@ -175,9 +175,7 @@ package object spark {
   def sparkEmr(hadoopVersion: String = "2.7.3")(implicit interpApi: InterpAPI, runtimeApi: RuntimeAPI): Unit = {
 
     JupyterSparkContext.addSparkDependencies(
-      s"org.apache.hadoop:hadoop-aws:$hadoopVersion",
-      s"org.apache.hadoop:hadoop-hdfs:$hadoopVersion",
-      "xerces:xercesImpl:2.11.0"
+      s"org.apache.hadoop:hadoop-aws:$hadoopVersion"
     )
 
     if (!initialized)
