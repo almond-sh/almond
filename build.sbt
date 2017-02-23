@@ -89,7 +89,7 @@ lazy val spark = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-sql" % "1.6.2" % "provided",
+      "org.apache.spark" %% "spark-sql" % "2.0.2" % "provided",
       "org.eclipse.jetty" % "jetty-server" % "8.1.14.v20131031",
       "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9"
     )
