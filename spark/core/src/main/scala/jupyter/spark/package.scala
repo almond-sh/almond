@@ -101,15 +101,23 @@ package object spark {
 
             def profiles = interpApi.load.profiles.toSeq.sorted
 
+            def extraDependencies = JupyterSparkContext.applySparkDependencyHooks(Seq())
+
             if (isSpark2)
               conf.setIfMissingLazy(
                 "spark.yarn.jars",
-                Spark.sparkAssemblyJars(profiles = profiles).mkString(",")
+                Spark.sparkAssemblyJars(
+                  extraDependencies = extraDependencies,
+                  profiles = profiles
+                ).mkString(",")
               )
             else
               conf.setIfMissingLazy(
                 "spark.yarn.jar",
-                Spark.sparkAssembly(profiles = profiles)
+                Spark.sparkAssembly(
+                  extraDependencies = extraDependencies,
+                  profiles = profiles
+                )
               )
         }
 
@@ -162,29 +170,14 @@ package object spark {
 
   def sparkEmr(hadoopVersion: String = "2.7.3")(implicit interpApi: InterpAPI, runtimeApi: RuntimeAPI): Unit = {
 
-    if (!initialized)
-      sparkInit()
-
-    val extraDependencies = Seq(
+    JupyterSparkContext.addSparkDependencies(
       s"org.apache.hadoop:hadoop-aws:$hadoopVersion",
       s"org.apache.hadoop:hadoop-hdfs:$hadoopVersion",
       "xerces:xercesImpl:2.11.0"
     )
 
-    def profiles = interpApi.load.profiles.toSeq.sorted
-
-    JupyterSparkContext.addConfHook { conf =>
-      if (isSpark2)
-        conf.setIfMissingLazy(
-          "spark.yarn.jars",
-          Spark.sparkAssemblyJars(extraDependencies, profiles = profiles).mkString(",")
-        )
-      else
-        conf.setIfMissingLazy(
-          "spark.yarn.jar",
-          Spark.sparkAssembly(extraDependencies, profiles = profiles)
-        )
-    }
+    if (!initialized)
+      sparkInit()
   }
 
 }
