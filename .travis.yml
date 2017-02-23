@@ -4,7 +4,7 @@ scala:
 - 2.12.1
 jdk:
 - oraclejdk8
-script: project/run-travis ${TRAVIS_SCALA_VERSION} ${TRAVIS_PULL_REQUEST} ${TRAVIS_BRANCH}
+script: scripts/travis.sh ${TRAVIS_SCALA_VERSION} ${TRAVIS_PULL_REQUEST} ${TRAVIS_BRANCH}
 sudo: false
 cache:
   directories:
