@@ -181,7 +181,7 @@ lazy val commonSettings = Seq(
   organization := "org.jupyter-scala",
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
   resolvers ++= Seq(
-    "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
+    "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")
   ),
