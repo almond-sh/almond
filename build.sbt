@@ -1,6 +1,6 @@
 
-val ammoniumVersion = "0.8.1"
-val jupyterKernelVersion = "0.4.0-RC1"
+val ammoniumVersion = "0.8.2"
+val jupyterKernelVersion = "0.4.0-RC2"
 
 val flinkVersion = "1.1.3"
 
@@ -12,14 +12,14 @@ lazy val `scala-api` = project.in(file("api"))
       "org.jupyter-scala" % "ammonite-runtime" % ammoniumVersion cross CrossVersion.full,
       "org.jupyter-scala" %% "kernel-api" % jupyterKernelVersion,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.lihaoyi" %% "pprint" % "0.4.2"
+      "com.lihaoyi" %% "pprint" % "0.4.4"
     ),
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.10")
         Seq()
       else
         Seq(
-          "org.scala-lang.modules" %% "scala-xml" % "1.0.4"
+          "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
         )
     }
   )
@@ -53,7 +53,7 @@ lazy val `scala-cli` = project
     crossVersion := CrossVersion.full,
     libraryDependencies ++= Seq(
       "com.github.alexarchambault" %% "case-app" % "1.1.3",
-      "ch.qos.logback" % "logback-classic" % "1.1.7"
+      "ch.qos.logback" % "logback-classic" % "1.2.1"
     ),
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.10")
@@ -78,7 +78,7 @@ lazy val `spark-stubs-2` = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-sql" % "2.0.0" % "provided"
+      "org.apache.spark" %% "spark-sql" % "2.0.2" % "provided"
     )
   )
   .settings(disableScalaVersion("2.12"))
@@ -145,14 +145,14 @@ lazy val scio = project
   .settings(
     libraryDependencies ++= {
       Seq(
-        "org.slf4j" % "slf4j-simple" % "1.7.21",
+        "org.slf4j" % "slf4j-simple" % "1.7.24",
         "jline" % "jline" % scalaBinaryVersion.value,
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "com.nrinaudo" %% "kantan.csv" % "0.1.12",
         "org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full,
-        "com.spotify" %% "scio-core" % "0.2.6",
-        "com.spotify" %% "scio-extra" % "0.2.6"
+        "com.spotify" %% "scio-core" % "0.2.12",
+        "com.spotify" %% "scio-extra" % "0.2.12"
       )
     }
   )
