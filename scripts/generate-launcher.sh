@@ -1,7 +1,7 @@
 #!/bin/bash
 
-VERSION=0.4.0-RC5
-AMMONIUM_VERSION=0.8.1
+VERSION=0.4.0-RC6
+AMMONIUM_VERSION=0.8.2
 SCALA_VERSION=2.11.8
 
 # Passing the -s option to the command below generates a launcher embedding all its dependencies,
