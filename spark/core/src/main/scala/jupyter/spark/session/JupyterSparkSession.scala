@@ -1,4 +1,5 @@
 package jupyter.spark
+package session
 
 import ammonite.repl.RuntimeAPI
 import ammonite.runtime.InterpAPI
