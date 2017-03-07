@@ -2,7 +2,7 @@ package jupyter.spark
 
 import ammonite.repl.RuntimeAPI
 import ammonite.runtime.InterpAPI
-
+import jupyter.spark.internals.Spark
 import org.apache.spark.SparkConf
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
 import org.apache.spark.sql.SparkSession
@@ -25,6 +25,16 @@ object JupyterSparkSession {
       this
     }
 
+    def yarn(conf: String = Spark.defaultYarnConf()): this.type = {
+      sparkYarn(conf)
+      this
+    }
+
+    def emr(hadoopVersion: String = "2.7.3"): this.type = {
+      sparkEmr(hadoopVersion)
+      this
+    }
+
     override def getOrCreate(): SparkSession = {
 
       jupyterConf()
@@ -42,6 +52,7 @@ object JupyterSparkSession {
     }
   }
 
-  def builder()(implicit interpApi: InterpAPI, runtimeApi: RuntimeAPI): Builder = new Builder
+  def builder()(implicit interpApi: InterpAPI, runtimeApi: RuntimeAPI): Builder =
+    new Builder
 
 }
