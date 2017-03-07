@@ -233,12 +233,9 @@ Like for big data frameworks, support for plotting libraries can be added on-the
 
 Use like
 ```scala
-import $ivy.`org.vegas-viz::vegas:0.3.6`
+import $ivy.`org.vegas-viz::vegas:0.3.8`
 
 import vegas._
-import vegas.render.HTMLRenderer._
-
-implicit val displayer: String => Unit = publish.html(_)
 
 Vegas("Country Pop").
   withData(
@@ -253,6 +250,8 @@ Vegas("Country Pop").
   mark(Bar).
   show
 ```
+
+Additional Vegas samples with jupyter-scala notebook are [here](https://github.com/vegas-viz/Vegas/blob/master/notebooks/jupyter_example.ipynb).  
 
 ### plotly-scala
 
