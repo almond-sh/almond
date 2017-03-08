@@ -86,9 +86,9 @@ Status: some specific uses (Spark on YARN) well tested in particular contexts (e
 Use like
 
 ```scala
-import $ivy.`org.slf4j:slf4j-nop:1.7.12` // for cleaner logs
-import $ivy.`org.apache.spark::spark-sql:2.0.2` // adjust spark version - spark >= 1.6 should be fine, possibly >= 1.3 too
-import $ivy.`org.jupyter-scala::spark:0.4.0-RC3` // JupyterSparkContext-s (SparkContext aware of the jupyter-scala kernel)
+import $ivy.`org.slf4j:slf4j-nop:1.7.21` // for cleaner logs
+import $ivy.`org.apache.spark::spark-sql:2.1.0` // adjust spark version - spark >= 1.6 should be fine, possibly >= 1.3 too
+import $ivy.`org.jupyter-scala::spark:0.4.0` // JupyterSparkContext-s (SparkContext aware of the jupyter-scala kernel)
 
 import org.apache.spark._
 import org.apache.spark.sql._
@@ -136,7 +136,7 @@ Use like
 
 ```scala
 import $exclude.`org.slf4j:slf4j-log4j12`, $ivy.`org.slf4j:slf4j-nop:1.7.21`, $ivy.`org.slf4j:log4j-over-slf4j:1.7.21` // for cleaner logs
-import $ivy.`org.jupyter-scala::flink-yarn:0.4.0-RC3`
+import $ivy.`org.jupyter-scala::flink-yarn:0.4.0`
 
 import jupyter.flink._
 
@@ -166,7 +166,7 @@ Status: POC
 Use like
 
 ```scala
-import $ivy.`org.jupyter-scala::scio:0.4.0-RC3`
+import $ivy.`org.jupyter-scala::scio:0.4.0`
 import jupyter.scio._
 
 import com.spotify.scio._
@@ -322,7 +322,7 @@ Compile and publish them:
 $ sbt publishLocal
 ```
 
-Edit the `jupyter-scala` script, and set `VERSION` to `0.4.0-SNAPSHOT` (the version being built / published locally). Install it:
+Edit the `jupyter-scala` script, and set `VERSION` to `0.4.1-SNAPSHOT` (the version being built / published locally). Install it:
 ```bash
 $ ./jupyter-scala --id scala-develop --name "Scala (develop)" --force
 ```
