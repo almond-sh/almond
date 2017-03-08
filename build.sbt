@@ -1,5 +1,5 @@
 
-val ammoniumVersion = "0.8.2-1"
+val ammoniumVersion = "0.8.2-2"
 val jupyterKernelVersion = "0.4.0-RC2"
 
 val flinkVersion = "1.1.3"
