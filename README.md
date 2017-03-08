@@ -86,47 +86,36 @@ Status: some specific uses (Spark on YARN) well tested in particular contexts (e
 Use like
 
 ```scala
-import $ivy.`org.slf4j:slf4j-nop:1.7.21` // for cleaner logs
-import $ivy.`org.apache.spark::spark-sql:2.1.0` // adjust spark version - spark >= 1.6 should be fine, possibly >= 1.3 too
-import $ivy.`org.jupyter-scala::spark:0.4.0` // JupyterSparkContext-s (SparkContext aware of the jupyter-scala kernel)
+import $exclude.`org.slf4j:slf4j-log4j12`, $ivy.`org.slf4j:slf4j-nop:1.7.21` // for cleaner logs
+import $profile.`hadoop-2.6`
+import $ivy.`org.apache.spark::spark-sql:2.1.0` // adjust spark version - spark >= 2.0
+import $ivy.`org.apache.hadoop:hadoop-aws:2.6.4`
+import $ivy.`org.jupyter-scala::spark:0.4.0` // for JupyterSparkSession (SparkSession aware of the jupyter-scala kernel)
 
 import org.apache.spark._
 import org.apache.spark.sql._
-import jupyter.spark._
+import jupyter.spark.session._
 
-// The conf can be tweaked a bit before use.
-// Mark it transient to prevent serialization issues.
-@transient val sparkConf = new SparkConf().
-  setAppName("SBTB").
-  setMaster("local") // change to "yarn-client" on YARN
-  // set("spark.executor.count", "4").
-  // set("spark.executor.memory", "2g").
-  // set("spark.driver.memory", "2g")
-
-// For Spark on YARN - argument is the path too the Yarn config (directory, should contain yarn-site.xml in particular)
-// This loads the hadoop config in the classpath, and loads the spark-yarn module.
-// sparkYarn("/etc/hadoop/conf")
-// If on AWS ElasticMapReduce - argument is the Hadoop version
-// This adds extra hadoop / aws related dependencies in the spark jar list (via the spark.yarn.jar
-// or spark.yarn.jars Spark conf entry)
-// sparkEmr("2.7.3")
-
-// Important - do NOT create a simple SparkContext, always use JupyterSparkContext,
-// which is aware of the jupyter-scala kernel.
-// Marked transient too to prevent serialization issues.
-@transient val sc = new JupyterSparkContext(sparkConf)
-
-val sqlContext = new SQLContext(sc)
+val sparkSession = JupyterSparkSession.builder() // important - call this rather than SparkSession.builder()
+  .jupyter() // this method must be called straightaway after builder()
+  // .yarn("/etc/hadoop/conf") // optional, for Spark on YARN - argument is the Hadoop conf directory
+  // .emr("2.6.4") // on AWS ElasticMapReduce, this adds aws-related to the spark jar list
+  // .master("local") // change to "yarn-client" on YARN
+  // .config("spark.executor.instances", "10")
+  // .config("spark.executor.memory", "3g")
+  // .config("spark.hadoop.fs.s3a.access.key", awsCredentials._1)
+  // .config("spark.hadoop.fs.s3a.secret.key", awsCredentials._2)
+  .appName("notebook")
+  .getOrCreate()
 ```
 
-Important: `SparkContext`s should *not* be manually created. Only the ones from the `org.jupyter-scala::spark` library
-are aware of the kernel, and setup the `SparkContext` accordingly (passing it the loaded dependencies, the kernel
+Important: `SparkSession`s should *not* be manually created. Only the ones from the `org.jupyter-scala::spark` library
+are aware of the kernel, and setup the `SparkSession` accordingly (passing it the loaded dependencies, the kernel
 build products, etc.).
 
-Note that no Spark distribution is required to have the kernel work. In particular, on YARN, it generates itself the
-so-called spark assembly (or list of JARs with Spark 2), that is (are) shipped to the driver and executors. To use a
-custom assembly (or list of JARs), set `"spark.yarn.jar"` (or `"spark.yarn.jars"`) to a custom value prior to calling
-`sc`. 
+Note that no Spark distribution is required to have the kernel work. In particular, on YARN, the call to `.yarn(...)` above
+generates itself the so-called spark assembly (or list of JARs with Spark 2), that is (are) shipped to the driver and
+executors.
 
 ### Flink
 
