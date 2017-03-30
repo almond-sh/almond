@@ -31,12 +31,8 @@ object JupyterSparkSession {
     }
 
     def yarn(conf: String = Spark.defaultYarnConf()): this.type = {
-
-      // setting this here, as the hook that set it too in sparkYarn is run too late for SparkSession
-      config("master", "yarn-client")
-
+      master("yarn-client")
       sparkYarn(conf)
-
       this
     }
 
