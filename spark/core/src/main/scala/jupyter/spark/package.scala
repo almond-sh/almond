@@ -3,6 +3,8 @@ package jupyter
 import java.io.IOException
 import java.net.ServerSocket
 
+import util.Try
+
 import ammonite.repl.RuntimeAPI
 import ammonite.runtime.InterpAPI
 import jupyter.spark.internals.Spark
@@ -138,12 +140,12 @@ package object spark {
           sc.getConf.getOption("spark.jars").toSeq.flatMap(_.split(','))
 
       for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
-        sc.addJar(jar)
+        Try(sc.addJar(jar))
 
       interpApi.load.onJarAdded { jars =>
         if (!sc.isStopped)
           for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
-            sc.addJar(jar)
+            Try(sc.addJar(jar))
       }
 
       runtimeApi.onExit { _ =>
