@@ -58,6 +58,7 @@ package object spark {
       .frames
       .flatMap(_.classpath)
       .filter(f => f.isFile && f.getName.endsWith(".jar"))
+      .map(_.getAbsoluteFile.toURI.toASCIIString)
 
   private def availablePortFrom(from: Int): Int = {
     var socket: ServerSocket = null
@@ -126,7 +127,7 @@ package object spark {
       conf
         .setIfMissingLazy(
           "spark.jars",
-          jars.map(_.toString).filterNot(conf.getOption("spark.yarn.jars").fold(Set.empty[String])(_.split(',').toSet)).mkString(",")
+          jars.filterNot(conf.getOption("spark.yarn.jars").fold(Set.empty[String])(_.split(',').toSet)).mkString(",")
         )
         .setIfMissingLazy("spark.repl.class.uri", classServer.uri.toString)
         .setIfMissingLazy("spark.ui.port", availablePortFrom(4040).toString)
@@ -139,13 +140,13 @@ package object spark {
         sc.getConf.getOption("spark.yarn.jars").toSeq.flatMap(_.split(',')).toSet ++
           sc.getConf.getOption("spark.jars").toSeq.flatMap(_.split(','))
 
-      for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
+      for (jar <- jars if !alreadyAdded(jar))
         Try(sc.addJar(jar))
 
       interpApi.load.onJarAdded { jars =>
         if (!sc.isStopped)
-          for (jar <- jars.map(_.getAbsolutePath) if !alreadyAdded(jar))
-            Try(sc.addJar(jar))
+          for (jar <- jars; uri = jar.getAbsoluteFile.toURI.toASCIIString if !alreadyAdded(uri))
+            Try(sc.addJar(uri))
       }
 
       runtimeApi.onExit { _ =>

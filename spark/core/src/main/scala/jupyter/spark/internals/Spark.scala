@@ -86,7 +86,7 @@ object Spark {
     )
 
     helper.fetch(sources = false, javadoc = false, artifactTypes = Set("jar"))
-      .map(_.getAbsolutePath)
+      .map(_.getAbsoluteFile.toURI.toASCIIString)
   }
 
 }
