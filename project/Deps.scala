@@ -17,7 +17,7 @@ object Deps {
   def ammoniumRuntime = ("org.jupyter-scala" % "ammonite-runtime" % Versions.ammonium).cross(CrossVersion.full)
   def asm = "org.ow2.asm" % "asm-all" % "5.0.4"
   def caseApp = "com.github.alexarchambault" %% "case-app" % "1.1.3"
-  def coursierCli = "io.get-coursier" %% "coursier-cli" % "1.0.0-M14-9"
+  def coursierCli = "io.get-coursier" %% "coursier-cli" % "1.0.0-RC1"
   def flinkClients = "org.apache.flink" %% "flink-clients" % Versions.flink
   def flinkRuntime = "org.apache.flink" %% "flink-runtime" % Versions.flink
   def flinkScala = "org.apache.flink" %% "flink-scala" % Versions.flink
