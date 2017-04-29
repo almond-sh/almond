@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-VERSION=0.4.0
-AMMONIUM_VERSION=0.8.2-2
-SCALA_VERSION=2.11.8 # Set to 2.12.1 for Scala 2.12
+VERSION=0.4.1
+AMMONIUM_VERSION=0.8.3
+SCALA_VERSION=2.11.11 # Set to 2.12.2 for Scala 2.12
 
 if which coursier >/dev/null; then
   GLOBAL_COURSIER=true
