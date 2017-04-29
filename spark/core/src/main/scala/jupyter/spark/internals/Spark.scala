@@ -41,7 +41,8 @@ object Spark {
         exclude = exclusions.toList,
         profile = profiles.toList,
         checksum = List("SHA-1") // should not be required with coursier > 1.0.0-M14-9
-      )
+      ),
+      artifactTypes = Set("jar", "bundle")
     ) match {
       case Left(err) =>
         throw new Exception(err)
