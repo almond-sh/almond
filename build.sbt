@@ -80,6 +80,7 @@ lazy val `spark-tests` = project
     shared,
     dontPublish,
     testSettings,
+    classpathTypes += "test-jar",
     libs ++= Seq(
       // FIXME Going hoops and loops to get that one (because of coursier?),
       // to be fine when pulling artifacts from both sonatype and ~/.ivy2/local
