@@ -13,7 +13,7 @@ import jupyter.kernel.interpreter.Interpreter.IsComplete
 
 import scala.util.Try
 
-class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
+class Interp(scalacOptions: List[String]) extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
 
 
   def defaultPredef = true
@@ -94,6 +94,8 @@ class Interp extends jupyter.kernel.interpreter.Interpreter with LazyLogging {
   )
 
   interp.init()
+
+  interp.compiler.compiler.settings.processArguments(scalacOptions, processAll = true)
 
   private def capturingOutput[T](t: => T): T =
     Capture(
