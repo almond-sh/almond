@@ -14,7 +14,7 @@ if which coursier >/dev/null; then
   COURSIER=coursier
 else
   GLOBAL_COURSIER=false
-  COURSIER="$(mktemp -t coursier)"
+  COURSIER="$(mktemp -t coursier.XXXXXXXX)"
   trap "{ rm -f \"$COURSIER\"; }" EXIT
   echo "Getting coursier launcher..." 2>&1
   curl -s -L -o "$COURSIER" https://github.com/coursier/coursier/raw/v1.0.0-RC1/coursier
