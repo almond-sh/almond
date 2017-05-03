@@ -13,6 +13,7 @@ import com.typesafe.scalalogging.LazyLogging
 case class JupyterScalaApp(
   id: String = "scala",
   name: String = "Scala",
+  scalacOption: List[String] = Nil,
   // @ExtraName("d")
   //   dependency: List[String],
   // @ExtraName("r")
@@ -20,7 +21,6 @@ case class JupyterScalaApp(
   @Recurse
     options: ServerAppOptions
 ) extends App with LazyLogging {
-
   def readFully(is: InputStream) = {
     val buffer = new ByteArrayOutputStream()
 
@@ -95,7 +95,7 @@ case class JupyterScalaApp(
     name = name,
     "scala",
     new InterpreterKernel {
-      def apply() = new Interp
+      def apply() = new Interp(scalacOption)
     },
     mainJar,
     isJar = true,
