@@ -6,7 +6,7 @@ object Deps {
   import Def.setting
 
   object Versions {
-    def ammonium = "0.8.3"
+    def ammonium = "0.8.3-1"
     def flink = "1.1.3"
     def jupyterKernel = "0.4.1"
     def scio = "0.2.12"
@@ -17,7 +17,7 @@ object Deps {
   def ammoniumRuntime = ("org.jupyter-scala" % "ammonite-runtime" % Versions.ammonium).cross(CrossVersion.full)
   def asm = "org.ow2.asm" % "asm-all" % "5.0.4"
   def caseApp = "com.github.alexarchambault" %% "case-app" % "1.1.3"
-  def coursierCli = "io.get-coursier" %% "coursier-cli" % "1.0.0-RC1"
+  def coursierCli = "io.get-coursier" %% "coursier-cli" % "1.0.0-RC2"
   def flinkClients = "org.apache.flink" %% "flink-clients" % Versions.flink
   def flinkRuntime = "org.apache.flink" %% "flink-runtime" % Versions.flink
   def flinkScala = "org.apache.flink" %% "flink-scala" % Versions.flink
