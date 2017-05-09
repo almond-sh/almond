@@ -87,7 +87,7 @@ import $exclude.`org.slf4j:slf4j-log4j12`, $ivy.`org.slf4j:slf4j-nop:1.7.21` // 
 import $profile.`hadoop-2.6`
 import $ivy.`org.apache.spark::spark-sql:2.1.0` // adjust spark version - spark >= 2.0
 import $ivy.`org.apache.hadoop:hadoop-aws:2.6.4`
-import $ivy.`org.jupyter-scala::spark:0.4.0` // for JupyterSparkSession (SparkSession aware of the jupyter-scala kernel)
+import $ivy.`org.jupyter-scala::spark:0.4.2` // for JupyterSparkSession (SparkSession aware of the jupyter-scala kernel)
 
 import org.apache.spark._
 import org.apache.spark.sql._
@@ -122,7 +122,7 @@ Use like
 
 ```scala
 import $exclude.`org.slf4j:slf4j-log4j12`, $ivy.`org.slf4j:slf4j-nop:1.7.21`, $ivy.`org.slf4j:log4j-over-slf4j:1.7.21` // for cleaner logs
-import $ivy.`org.jupyter-scala::flink-yarn:0.4.0`
+import $ivy.`org.jupyter-scala::flink-yarn:0.4.2`
 
 import jupyter.flink._
 
@@ -152,7 +152,7 @@ Status: POC
 Use like
 
 ```scala
-import $ivy.`org.jupyter-scala::scio:0.4.0`
+import $ivy.`org.jupyter-scala::scio:0.4.2`
 import jupyter.scio._
 
 import com.spotify.scio._
@@ -308,7 +308,7 @@ Compile and publish them:
 $ sbt publishLocal
 ```
 
-Edit the `jupyter-scala` script, and set `VERSION` to `0.4.1-SNAPSHOT` (the version being built / published locally). Install it:
+Edit the `jupyter-scala` script, and set `VERSION` to `0.4.3-SNAPSHOT` (the version being built / published locally). Install it:
 ```bash
 $ ./jupyter-scala --id scala-develop --name "Scala (develop)" --force
 ```
@@ -332,7 +332,7 @@ $ cd ammonium
 $ sbt published/publishLocal
 ```
 
-Then adjust the `ammoniumVersion` or `jupyterKernelVersion` in the `build.sbt` of jupyter-scala (set them to `0.4.1-SNAPSHOT`
+Then adjust the `ammoniumVersion` or `jupyterKernelVersion` in the `build.sbt` of jupyter-scala (set them to `0.4.3-SNAPSHOT`
 or `0.8.1-SNAPSHOT`), reload the SBT compiling / publishing jupyter-scala (type `reload`, or exit and relaunch it), and
 build / publish locally jupyter-scala again (`sbt publishLocal`). That will make the locally published artifacts of
 jupyter-scala depend on the locally published ones of ammonium or jupyter-kernel.
