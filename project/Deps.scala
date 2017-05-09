@@ -6,7 +6,7 @@ object Deps {
   import Def.setting
 
   object Versions {
-    def ammonium = "0.8.3"
+    def ammonium = "0.8.3-1"
     def flink = "1.1.3"
     def jupyterKernel = "0.4.1"
     def scio = "0.2.12"
