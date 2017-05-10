@@ -1,6 +1,9 @@
 import sbt._
 import sbt.Keys._
+
 import Aliases._
+import com.typesafe.sbt.pgp._
+import coursier.ShadingPlugin.autoImport._
 import sbtbuildinfo.Plugin._
 
 object Settings {
@@ -127,5 +130,24 @@ object Settings {
       }
     }
   }
+
+  lazy val shading =
+    inConfig(coursier.ShadingPlugin.Shading)(PgpSettings.projectSettings) ++
+       // ytf does this have to be repeated here?
+       // Can't figure out why configuration get lost without this in particular...
+      coursier.ShadingPlugin.projectSettings ++
+      Seq(
+        shadingNamespace := "jupyter.shaded",
+        publish := publish.in(Shading).value,
+        publishLocal := publishLocal.in(Shading).value,
+        PgpKeys.publishSigned := PgpKeys.publishSigned.in(Shading).value,
+        PgpKeys.publishLocalSigned := PgpKeys.publishLocalSigned.in(Shading).value
+      )
+
+  lazy val coursierNamespaces = Set(
+    "coursier",
+    "scalaz",
+    "org.jsoup"
+  )
 
 }

@@ -64,11 +64,13 @@ lazy val spark = project
   .dependsOn(api % "provided")
   .settings(
     shared,
+    shading,
     libs ++= Seq(
       Deps.sparkSql % "provided",
       Deps.jettyServer,
-      Deps.coursierCli
+      Deps.coursierCli % "shaded"
     ),
+    shadeNamespaces ++= coursierNamespaces,
     disableScalaVersion("2.12"),
     jupyterScalaBuildInfoSettingsIn("jupyter.spark.internals")
   )
@@ -107,10 +109,12 @@ lazy val `flink-yarn` = project
   .dependsOn(flink, api % "provided")
   .settings(
     shared,
+    shading,
     libs ++= Seq(
-      Deps.coursierCli,
+      Deps.coursierCli % "shaded",
       Deps.flinkYarn
     ),
+    shadeNamespaces ++= coursierNamespaces,
     disableScalaVersion("2.12")
   )
 
