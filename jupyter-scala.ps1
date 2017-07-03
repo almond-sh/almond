@@ -25,7 +25,7 @@ function Make-Temp
 $COURSIER_JAR=Make-Temp
 
 echo "Getting coursier launcher..."
-(New-Object Net.WebClient).DownloadFile('https://git.io/vgvpD', $COURSIER_JAR)
+(New-Object Net.WebClient).DownloadFile('https://github.com/coursier/coursier/raw/v1.0.0-RC1/coursier', $COURSIER_JAR)
 echo "Done"
 
 if($TYPELEVEL_SCALA) {
@@ -46,7 +46,7 @@ if($TYPELEVEL_SCALA) {
   -I "ammonite:org.jupyter-scala:scala-api_$SCALA_VERSION`:$VERSION" `
   $EXTRA_OPTS `
   "org.jupyter-scala:scala-cli_$SCALA_VERSION`:$VERSION" `
-  -- `
+  "--" `
     --id scala `
     --name "Scala" `
     $args
