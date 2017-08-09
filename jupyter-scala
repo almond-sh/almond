@@ -2,7 +2,7 @@
 set -e
 
 VERSION=0.4.2
-AMMONIUM_VERSION=0.8.3-1
+AMMONIUM_VERSION=0.8.3-2
 SCALA_VERSION=2.11.11 # Set to 2.12.2 for Scala 2.12
 
 TYPELEVEL_SCALA=false # If true, set SCALA_VERSION above to a both ammonium + TLS available version (e.g. 2.11.8)
