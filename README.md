@@ -219,7 +219,7 @@ Like for big data frameworks, support for plotting libraries can be added on-the
 
 Use like
 ```scala
-import $ivy.`org.vegas-viz::vegas:0.3.8`
+import $ivy.`org.vegas-viz::vegas:0.3.11`
 
 import vegas._
 
