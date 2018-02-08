@@ -2,6 +2,10 @@ package jupyter
 package scala
 
 import java.io.{ ByteArrayOutputStream, InputStream }
+import java.net.{ Authenticator, PasswordAuthentication }
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.{ X509TrustManager, TrustManager, SSLContext, HttpsURLConnection }
 
 import jupyter.kernel.interpreter.InterpreterKernel
 import jupyter.kernel.server.{ ServerApp, ServerAppOptions }
@@ -21,6 +25,36 @@ case class JupyterScalaApp(
   @Recurse
     options: ServerAppOptions
 ) extends App with LazyLogging {
+
+  Authenticator.setDefault(
+    new Authenticator {
+      override protected def getPasswordAuthentication: PasswordAuthentication =
+        if (getRequestorType eq Authenticator.RequestorType.PROXY) {
+          val user = Option(System.getProperty("http.proxyUser")) orElse Option(System.getProperty("https.proxyUser"))
+          val passwd = Option(System.getProperty("http.proxyPassword")) orElse Option(System.getProperty("https.proxyPassword"))
+          (user, passwd) match {
+            case (Some(u), Some(p)) => new PasswordAuthentication(u, p.toCharArray)
+            case _ => null
+          }
+        }
+        else null
+    }
+  )
+
+  private val sslVerify = System.getProperty("ssl.verify")
+  if (sslVerify == "no" || sslVerify == "false" || sslVerify == "off") {
+    val trustedAllCerts : Array[TrustManager] = Array(
+      new X509TrustManager {
+        override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+        override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+        override def getAcceptedIssuers: Array[X509Certificate] = null
+      }
+    )
+    val sc = SSLContext.getInstance("TLS")
+    sc.init(null, trustedAllCerts, new SecureRandom())
+    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory)
+  }
+
   def readFully(is: InputStream) = {
     val buffer = new ByteArrayOutputStream()
 
