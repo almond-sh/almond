@@ -3,6 +3,7 @@ package jupyter.scala
 // Extracted from IScala, and refactored a bit
 
 import java.io.{ Console => _, _ }
+import java.nio.charset.Charset
 
 object Capture {
   private def watchStream(
@@ -13,11 +14,12 @@ object Capture {
   ) =
     new Thread(name) {
       override def run() = {
-        val buffer = Array.ofDim[Byte](size)
+        val buffer = Array.ofDim[Char](size)
+        val reader = new InputStreamReader(input, Charset.defaultCharset())
 
         try {
           while (true) {
-            val n = input read buffer
+            val n = reader.read(buffer, 0, size)
             if (n > 0) fn(new String(buffer take n))
             if (n < size) Thread.sleep(50) // little delay to accumulate output
           }
