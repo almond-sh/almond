@@ -11,7 +11,7 @@ object Settings {
   private val scala212 = "2.12.6"
 
   lazy val shared = Seq(
-    scalaVersion := scala211,
+    scalaVersion := scala212,
     crossScalaVersions := Seq(scala212, scala211),
     scalacOptions ++= Seq(
       // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
