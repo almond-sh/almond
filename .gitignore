@@ -1,4 +1,3 @@
 target/
-/.idea/
-/.idea_modules/
-.ipynb_checkpoints/
+notebooks/
+secure/

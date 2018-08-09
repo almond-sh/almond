@@ -1,152 +1,148 @@
 
-import Aliases._
 import Settings._
 
-lazy val api = project
-  .settings(
-    shared,
-    scalaPrefix,
-    crossVersion := CrossVersion.full,
-    libs ++= Seq(
-      Deps.ammoniumRuntime,
-      Deps.kernelApi,
-      Deps.scalaReflect.value,
-      Deps.pprint
-    ),
-    scalaXmlIfNeeded,
-    jupyterScalaBuildInfoSettingsIn("jupyter.scala")
+inThisBuild(List(
+  organization := "sh.almond",
+  homepage := Some(url("https://github.com/almond-sh/almond")),
+  licenses := List("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
+  developers := List(
+    Developer(
+      "alexarchambault",
+      "Alexandre Archambault",
+      "alexandre.archambault@gmail.com",
+      url("https://github.com/alexarchambault")
+    )
   )
+))
 
-lazy val kernel = project
-  .dependsOn(api)
+lazy val channels = project
+  .underShared
   .settings(
     shared,
-    scalaPrefix,
     testSettings,
-    crossVersion := CrossVersion.full,
-    libs ++= Seq(
-      Deps.kernel,
-      Deps.ammoniumCompiler
+    libraryDependencies ++= Seq(
+      Deps.fs2,
+      Deps.jeromq,
+      Deps.scalaLogging
     )
   )
 
-lazy val cli = project
-  .dependsOn(kernel)
+lazy val protocol = project
+  .underShared
+  .dependsOn(channels)
   .settings(
     shared,
-    scalaPrefix,
-    packAutoSettings,
+    libraryDependencies += Deps.argonautShapeless
+  )
+
+lazy val `interpreter-api` = project
+  .underShared
+  .settings(
+    shared
+  )
+
+lazy val interpreter = project
+  .underShared
+  .dependsOn(`interpreter-api`, protocol)
+  .settings(
+    shared
+  )
+
+lazy val kernel = project
+  .underShared
+  .dependsOn(interpreter)
+  .settings(
+    shared,
+    testSettings,
+    libraryDependencies ++= Seq(
+      Deps.fs2,
+      Deps.logback % "test"
+    )
+  )
+
+lazy val `scala-kernel-api` = project
+  .underScala
+  .dependsOn(`interpreter-api`)
+  .settings(
+    shared,
     crossVersion := CrossVersion.full,
-    libs ++= Seq(
+    generatePropertyFile("almond/almond.properties"),
+    generateDependenciesFile,
+    libraryDependencies ++= Seq(
+      Deps.ammoniteRepl
+    )
+  )
+
+lazy val `scala-interpreter` = project
+  .underScala
+  .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test")
+  .settings(
+    shared,
+    crossVersion := CrossVersion.full,
+    testSettings,
+    libraryDependencies ++= Seq(
+      Deps.ammoniteRepl
+    )
+  )
+
+lazy val `scala-kernel` = project
+  .underScala
+  .dependsOn(kernel, `scala-interpreter`)
+  .settings(
+    shared,
+    crossVersion := CrossVersion.full,
+    libraryDependencies ++= Seq(
       Deps.caseApp,
       Deps.logback
     )
   )
 
-lazy val `spark-stubs-1` = project
-  .in(file("spark/stubs-1.x"))
+lazy val `echo-interpreter` = project
+  .underEcho
+  .dependsOn(kernel)
   .settings(
-    shared,
-    libs += Deps.sparkSql1 % "provided",
-    disableScalaVersion("2.12")
+    shared
   )
 
-lazy val `spark-stubs-2` = project
-  .in(file("spark/stubs-2.x"))
+lazy val `echo-kernel` = project
+  .underEcho
+  .dependsOn(`echo-interpreter`)
   .settings(
     shared,
-    libs += Deps.sparkSql % "provided",
-    disableScalaVersion("2.12")
-  )
-
-lazy val spark = project
-  .in(file("spark/core"))
-  .dependsOn(api % "provided")
-  .settings(
-    shared,
-    libs ++= Seq(
-      Deps.sparkSql % "provided",
-      Deps.jettyServer,
-      Deps.coursierCli
-    ),
-    disableScalaVersion("2.12"),
-    jupyterScalaBuildInfoSettingsIn("jupyter.spark.internals")
-  )
-
-lazy val `spark-tests` = project
-  .dependsOn(api)
-  .in(file("spark/tests"))
-  .settings(
-    shared,
-    dontPublish,
-    testSettings,
-    classpathTypes += "test-jar",
-    libs ++= Seq(
-      // FIXME Going hoops and loops to get that one (because of coursier?),
-      // to be fine when pulling artifacts from both sonatype and ~/.ivy2/local
-      Deps.ammonium,
-      Deps.ammonium % "compile->test",
-      Deps.ammonium classifier "tests"
+    libraryDependencies ++= Seq(
+      Deps.caseApp,
+      Deps.logback
     )
   )
 
-lazy val flink = project
-  .dependsOn(api % "provided")
+lazy val `almond-spark` = project
+  .underScala
+  .dependsOn(`scala-kernel-api` % "provided")
   .settings(
     shared,
-    libs ++= Seq(
-      Deps.flinkRuntime,
-      Deps.flinkClients,
-      Deps.flinkScala,
-      Deps.asm // don't know why we have to manually pull this one
+    libraryDependencies ++= Seq(
+      Deps.ammoniteRepl % "provided",
+      Deps.ammoniteSpark,
+      Deps.argonautShapeless,
+      Deps.sparkSql % "provided"
     ),
     disableScalaVersion("2.12")
   )
 
-lazy val `flink-yarn` = project
-  .dependsOn(flink, api % "provided")
-  .settings(
-    shared,
-    libs ++= Seq(
-      Deps.coursierCli,
-      Deps.flinkYarn
-    ),
-    disableScalaVersion("2.12")
-  )
-
-lazy val scio = project
-  .dependsOn(api % "provided")
-  .settings(
-    shared,
-    libs ++= {
-      Seq(
-        Deps.slf4jSimple,
-        Deps.jline.value,
-        Deps.scalaCompiler.value,
-        Deps.scalaReflect.value,
-        Deps.kantanCsv,
-        Deps.macroParadise,
-        Deps.scioCore,
-        Deps.scioExtra
-      )
-    },
-    disableScalaVersion("2.12")
-  )
-
-
-lazy val `jupyter-scala` = project
-  .in(root)
+lazy val almond = project
+  .in(file("."))
   .aggregate(
-    api,
+    `almond-spark`,
+    channels,
+    `echo-interpreter`,
+    `echo-kernel`,
+    `interpreter-api`,
+    interpreter,
     kernel,
-    cli,
-    `spark-stubs-1`,
-    `spark-stubs-2`,
-    spark,
-    `spark-tests`,
-    flink,
-    `flink-yarn`,
-    scio
+    protocol,
+    `scala-interpreter`,
+    `scala-kernel-api`,
+    `scala-kernel`
   )
   .settings(
     shared,

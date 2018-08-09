@@ -1,76 +1,30 @@
+
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+
 import sbt._
 import sbt.Keys._
-import Aliases._
-import sbtbuildinfo.Plugin._
 
 object Settings {
 
+  private val scala211 = "2.11.12"
+  private val scala212 = "2.12.6"
+
   lazy val shared = Seq(
-    organization := "org.jupyter-scala",
-    scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
-    resolvers ++= Seq(
-      "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases",
-      Resolver.sonatypeRepo("releases"),
-      Resolver.sonatypeRepo("snapshots")
+    scalaVersion := scala211,
+    crossScalaVersions := Seq(scala212, scala211),
+    scalacOptions ++= Seq(
+      // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
+      "-deprecation",
+      "-feature",
+      "-explaintypes",
+      "-encoding", "utf-8",
+      "-language:higherKinds",
+      "-unchecked"
     ),
-    scalacOptions ++= {
-      if (scalaBinaryVersion.value == "2.12")
-        Seq()
-      else
-        Seq("-target:jvm-1.7")
-    },
-    ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
-    resolvers += Resolver.jcenterRepo,
-    libs ++= {
-      scalaBinaryVersion.value match {
-        case "2.10" =>
-          Seq(compilerPlugin(Deps.macroParadise))
-        case _ => Nil
-      }
-    }
-  ) ++ publishSettings
-
-  val testJavaOptions = Seq(
-    "-Xmx3172M",
-    "-Xms3172M"
-  )
-
-  lazy val testSettings = Seq(
-    libs += "com.lihaoyi" %% "utest" % "0.4.4" % "test",
-    testFrameworks += new TestFramework("utest.runner.Framework"),
-    fork in test := true,
-    fork in (Test, test) := true,
-    fork in (Test, testOnly) := true,
-    javaOptions in Test ++= testJavaOptions,
-    javaOptions in (Test, test) ++= testJavaOptions,
-    javaOptions in (Test, testOnly) ++= testJavaOptions
-  )
-
-  lazy val publishSettings = Seq(
-    publishMavenStyle := true,
-    publishTo := {
-      val nexus = "https://oss.sonatype.org/"
-      if (isSnapshot.value)
-        Some("snapshots" at nexus + "content/repositories/snapshots")
-      else
-        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-    },
-    licenses := Seq("Apache License" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scmInfo := Some(ScmInfo(url("https://github.com/alexarchambault/jupyter-scala"), "git@github.com:alexarchambault/jupyter-scala.git")),
-    homepage := Some(url("https://github.com/alexarchambault/jupyter-scala")),
-    pomExtra := {
-      <developers>
-        <developer>
-          <id>alexarchambault</id>
-          <name>Alexandre Archambault</name>
-          <url>https://github.com/alexarchambault</url>
-        </developer>
-      </developers>
-    },
-    credentials ++= {
-      for (user <- sys.env.get("SONATYPE_USER"); pass <- sys.env.get("SONATYPE_PASS"))
-        yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass)
-    }.toSeq
+    sources.in(Compile, doc) := Nil,
+    publishArtifact.in(Compile, packageDoc) := false,
+    publishArtifact.in(Compile, packageSrc) := false
   )
 
   lazy val dontPublish = Seq(
@@ -86,45 +40,97 @@ object Settings {
       else
         baseDirectory.value
     },
-    libs := {
+    libraryDependencies := {
       if (sbv.contains(scalaBinaryVersion.value))
         Nil
       else
-        libs.value
-    },
-    publish := {
-      if (!sbv.contains(scalaBinaryVersion.value))
-        publish.value
-    },
-    publishLocal := {
-      if (!sbv.contains(scalaBinaryVersion.value))
-        publishLocal.value
+        libraryDependencies.value
     },
     publishArtifact := {
       !sbv.contains(scalaBinaryVersion.value) && publishArtifact.value
     }
   )
 
-  def jupyterScalaBuildInfoSettingsIn(packageName: String) = buildInfoSettings ++ Seq(
-    sourceGenerators in Compile += buildInfo.taskValue,
-    buildInfoKeys := Seq[BuildInfoKey](
-      version,
-      "ammoniumVersion" -> Deps.Versions.ammonium
-    ),
-    buildInfoPackage := packageName
+  def generatePropertyFile(path: String) =
+    resourceGenerators.in(Compile) += Def.task {
+      import sys.process._
+
+      val dir = classDirectory.in(Compile).value
+      val ver = version.value
+
+      val f = path.split('/').foldLeft(dir)(_ / _)
+      f.getParentFile.mkdirs()
+
+      val p = new java.util.Properties
+
+      p.setProperty("version", ver)
+      p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
+
+      val w = new java.io.FileOutputStream(f)
+      p.store(w, "Almond properties")
+      w.close()
+
+      state.value.log.info(s"Wrote $f")
+
+      Seq(f)
+    }
+
+  lazy val generateDependenciesFile =
+    resourceGenerators.in(Compile) += Def.task {
+
+      val dir = classDirectory.in(Compile).value / "almond"
+      val res = coursier.CoursierPlugin.autoImport.coursierResolutions
+        .value
+        .collectFirst {
+          case (scopes, r) if scopes("compile") =>
+            r
+        }
+        .getOrElse(
+          sys.error("compile coursier resolution not found")
+        )
+
+      val content = res
+        .minDependencies
+        .toVector
+        .map { d =>
+          (d.module.organization, d.module.name, d.version)
+        }
+        .sorted
+        .map {
+          case (org, name, ver) =>
+          s"$org:$name:$ver"
+        }
+        .mkString("\n")
+
+      val f = dir / "almond-user-dependencies.txt"
+      dir.mkdirs()
+
+      Files.write(f.toPath, content.getBytes(UTF_8))
+
+      state.value.log.info(s"Wrote $f")
+
+      Seq(f)
+    }
+
+  lazy val testSettings = Seq(
+    fork.in(Test) := true, // Java serialization goes awry without that
+    testFrameworks += new TestFramework("utest.runner.Framework"),
+    javaOptions.in(Test) ++= Seq("-Xmx3g", "-Dfoo=bzz"),
+    libraryDependencies += Deps.utest % "test"
   )
 
-  lazy val scalaPrefix = {
-    name := "scala-" + name.value
-  }
-
-  lazy val scalaXmlIfNeeded = {
-    libs ++= {
-      scalaBinaryVersion.value match {
-        case "2.10" => Nil
-        case _ =>
-          Seq(Deps.scalaXml)
-      }
+  implicit class ProjectOps(val project: Project) extends AnyVal {
+    def underEcho: Project = {
+      val base = project.base.getParentFile / "modules" / "echo" / project.base.getName
+      project.in(base)
+    }
+    def underScala: Project = {
+      val base = project.base.getParentFile / "modules" / "scala" / project.base.getName
+      project.in(base)
+    }
+    def underShared: Project = {
+      val base = project.base.getParentFile / "modules" / "shared" / project.base.getName
+      project.in(base)
     }
   }
 
