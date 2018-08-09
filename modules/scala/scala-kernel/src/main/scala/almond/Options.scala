@@ -7,17 +7,17 @@ import almond.kernel.install.{Options => InstallOptions}
 import caseapp._
 
 final case class Options(
-  connectionFile: Option[String] = None,
+  install: Boolean = false,
+  @Recurse
+    installOptions: InstallOptions = InstallOptions(),
   extraRepository: List[String] = Nil,
   banner: Option[String] = None,
   link: List[String] = Nil,
   predef: String = "",
   autoDependency: List[String] = Nil,
-  @HelpMessage("Enable logging - if enabled, logging goes to a file named scala-kernel.log in the current directory")
+  @HelpMessage("Enable logging - if enabled, logging goes to a file with the passed name in the directory where the kernel runs")
     logTo: Option[String] = None,
-  install: Boolean = false,
-  @Recurse
-    installOptions: InstallOptions = InstallOptions(),
+  connectionFile: Option[String] = None,
   @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
     specialLoader: Option[String] = None
 ) {
