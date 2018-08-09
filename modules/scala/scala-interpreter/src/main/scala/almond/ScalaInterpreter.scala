@@ -32,7 +32,8 @@ final class ScalaInterpreter(
   predef: String = "",
   automaticDependencies: Map[String, Seq[String]] = Map(),
   codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
-  initialColors: Colors = Colors.Default
+  initialColors: Colors = Colors.Default,
+  initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader
 ) extends Interpreter { scalaInterp =>
 
   private val log = OptionalLogger(getClass)

@@ -17,7 +17,9 @@ final case class Options(
     logTo: Option[String] = None,
   install: Boolean = false,
   @Recurse
-    installOptions: InstallOptions = InstallOptions()
+    installOptions: InstallOptions = InstallOptions(),
+  @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
+    specialLoader: Option[String] = None
 ) {
 
   def autoDependencyMap(): Map[String, Seq[String]] =

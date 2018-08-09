@@ -7,9 +7,34 @@ import almond.util.OptionalLogger
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
 
+import scala.language.reflectiveCalls
+
 object ScalaKernel extends CaseApp[Options] {
 
   private lazy val log = OptionalLogger(getClass)
+
+  private def loaderWithName(name: String, cl: ClassLoader): Option[ClassLoader] =
+    if (cl == null)
+      None
+    else {
+
+      val targetFound =
+        try {
+          val t = cl.asInstanceOf[ {
+            def getIsolationTargets: Array[String]
+          }].getIsolationTargets
+
+          t.contains(name)
+        } catch {
+          case _: NoSuchMethodException =>
+            false
+        }
+
+      if (targetFound)
+        Some(cl)
+      else
+        loaderWithName(name, cl.getParent)
+    }
 
   def run(options: Options, args: RemainingArgs): Unit = {
 
@@ -69,6 +94,20 @@ object ScalaKernel extends CaseApp[Options] {
     val zeromqThreads = ZeromqThreads.create("scala-kernel")
     val kernelThreads = KernelThreads.create("scala-kernel")
 
+    val initialClassLoader = {
+
+      val defaultLoader = Thread.currentThread().getContextClassLoader
+
+      options.specialLoader match {
+        case None => defaultLoader
+        case Some(name) =>
+          loaderWithName(name, defaultLoader).getOrElse {
+            log.warn(s"--special-loader set to $name, but no classloader with that name can be found")
+            defaultLoader
+          }
+      }
+    }
+
     log.info("Creating interpreter")
 
     val interpreter = new ScalaInterpreter(
@@ -77,7 +116,8 @@ object ScalaKernel extends CaseApp[Options] {
       extraBannerOpt = options.banner,
       extraLinks = extraLinks,
       predef = options.predef,
-      automaticDependencies = autoDependencies
+      automaticDependencies = autoDependencies,
+      initialClassLoader = initialClassLoader
     )
     log.info("Created interpreter")
 
