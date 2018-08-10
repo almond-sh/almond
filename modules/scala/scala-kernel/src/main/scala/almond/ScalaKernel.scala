@@ -75,6 +75,7 @@ object ScalaKernel extends CaseApp[Options] {
 
 
     val autoDependencies = options.autoDependencyMap()
+    val forceProperties = options.forceProperties()
     val extraLinks = options.extraLinks()
 
 
@@ -117,6 +118,7 @@ object ScalaKernel extends CaseApp[Options] {
       extraLinks = extraLinks,
       predef = options.predef,
       automaticDependencies = autoDependencies,
+      forceMavenProperties = forceProperties,
       initialClassLoader = initialClassLoader
     )
     log.info("Created interpreter")

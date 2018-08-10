@@ -15,6 +15,8 @@ final case class Options(
   link: List[String] = Nil,
   predef: String = "",
   autoDependency: List[String] = Nil,
+  @HelpMessage("Force Maven properties during dependency resolution")
+    forceProperty: List[String] = Nil,
   @HelpMessage("Enable logging - if enabled, logging goes to a file with the passed name in the directory where the kernel runs")
     logTo: Option[String] = None,
   connectionFile: Option[String] = None,
@@ -37,6 +39,18 @@ final case class Options(
       .groupBy(_._1)
       .mapValues(_.map(_._2))
       .iterator
+      .toMap
+
+  def forceProperties(): Map[String, String] =
+    forceProperty
+      .filter(_.nonEmpty)
+      .map(_.split("=", 2))
+      .map {
+        case Array(k, v) =>
+          k -> v
+        case other =>
+          sys.error(s"Malformed link: $other")
+      }
       .toMap
 
   def extraLinks(): Seq[KernelInfo.Link] =
