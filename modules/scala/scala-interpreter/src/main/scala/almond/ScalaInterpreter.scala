@@ -31,8 +31,10 @@ final class ScalaInterpreter(
   extraLinks: Seq[KernelInfo.Link] = Nil,
   predef: String = "",
   automaticDependencies: Map[String, Seq[String]] = Map(),
+  forceMavenProperties: Map[String, String] = Map(),
   codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
-  initialColors: Colors = Colors.Default
+  initialColors: Colors = Colors.Default,
+  initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader
 ) extends Interpreter { scalaInterp =>
 
   private val log = OptionalLogger(getClass)
@@ -287,6 +289,13 @@ final class ScalaInterpreter(
       ammInterp0.processLine(code, stmts, -1, silent = true, () => ())
 
       log.info("Ammonite interpreter ok")
+
+      if (forceMavenProperties.nonEmpty)
+        ammInterp0.resolutionHooks += { res =>
+          res.copy(
+            forceProperties = res.forceProperties ++ forceMavenProperties
+          )
+        }
 
       ammInterp0
     } catch {
