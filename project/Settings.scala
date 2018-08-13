@@ -22,9 +22,6 @@ object Settings {
       "-language:higherKinds",
       "-unchecked"
     ),
-    sources.in(Compile, doc) := Nil,
-    publishArtifact.in(Compile, packageDoc) := false,
-    publishArtifact.in(Compile, packageSrc) := false,
     resolvers += Resolver.sonatypeRepo("releases")
   )
 
