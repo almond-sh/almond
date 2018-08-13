@@ -24,7 +24,8 @@ object Settings {
     ),
     sources.in(Compile, doc) := Nil,
     publishArtifact.in(Compile, packageDoc) := false,
-    publishArtifact.in(Compile, packageSrc) := false
+    publishArtifact.in(Compile, packageSrc) := false,
+    resolvers += Resolver.sonatypeRepo("releases")
   )
 
   lazy val dontPublish = Seq(
