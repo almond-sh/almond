@@ -4,8 +4,8 @@ import java.io.PrintStream
 import java.nio.charset.{Charset, StandardCharsets}
 
 final class Capture(
-  inputBufferSize: Int = 10,
-  outputBufferSize: Int = 10,
+  inputBufferSize: Int = 1024,
+  outputBufferSize: Int = 1024,
   internalCharset: Charset = StandardCharsets.UTF_8
 ) {
 
