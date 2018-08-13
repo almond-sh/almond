@@ -22,7 +22,7 @@ class FunctionOutputStream(
   private val out = CharBuffer.wrap(outArray)
 
   private def flushIfNeeded(): Unit =
-    if (writeBuf.position() == writeBuf.limit())
+    if (!writeBuf.hasRemaining)
       flush()
 
   def write(b: Int): Unit = {
@@ -34,7 +34,7 @@ class FunctionOutputStream(
     var off0 = off
     var len0 = len
     while (len0 > 0) {
-      val take = math.min(len0, writeBuf.limit() - writeBuf.position())
+      val take = math.min(len0, writeBuf.remaining())
       assert(take > 0)
       writeBuf.put(b, off0, take)
       off0 = off0 + take
