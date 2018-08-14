@@ -17,6 +17,8 @@ final case class Options(
   autoDependency: List[String] = Nil,
   @HelpMessage("Force Maven properties during dependency resolution")
     forceProperty: List[String] = Nil,
+  @HelpMessage("Enable Maven profile (start with ! to disable)")
+    profile: List[String] = Nil,
   @HelpMessage("Enable logging - if enabled, logging goes to a file with the passed name in the directory where the kernel runs")
     logTo: Option[String] = None,
   connectionFile: Option[String] = None,
@@ -50,6 +52,17 @@ final case class Options(
           k -> v
         case other =>
           sys.error(s"Malformed link: $other")
+      }
+      .toMap
+
+  def mavenProfiles(): Map[String, Boolean] =
+    profile
+      .filter(_.nonEmpty)
+      .map { p =>
+        if (p.startsWith("!"))
+          p.stripPrefix("!") -> false
+        else
+          p -> true
       }
       .toMap
 

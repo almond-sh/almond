@@ -32,6 +32,7 @@ final class ScalaInterpreter(
   predef: String = "",
   automaticDependencies: Map[String, Seq[String]] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
+  mavenProfiles: Map[String, Boolean] = Map(),
   codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
   initialColors: Colors = Colors.Default,
   initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader
@@ -294,6 +295,13 @@ final class ScalaInterpreter(
         ammInterp0.resolutionHooks += { res =>
           res.copy(
             forceProperties = res.forceProperties ++ forceMavenProperties
+          )
+        }
+
+      if (mavenProfiles.nonEmpty)
+        ammInterp0.resolutionHooks += { res =>
+          res.copy(
+            userActivations = Some(res.userActivations.getOrElse(Map.empty[String, Boolean]) ++ mavenProfiles)
           )
         }
 
