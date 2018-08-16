@@ -48,7 +48,13 @@ object ScalaKernel extends CaseApp[Options] {
           Thread.currentThread()
             .getContextClassLoader
             .getResource("almond/scala-logo-64x64.png")
-        )
+        ),
+        interruptMode = {
+          if (options.installOptions.interruptViaMessage)
+            Some("message")
+          else
+            None
+        }
       ) match {
         case Left(e) =>
           Console.err.println(s"Error: $e")
@@ -76,6 +82,7 @@ object ScalaKernel extends CaseApp[Options] {
 
     val autoDependencies = options.autoDependencyMap()
     val forceProperties = options.forceProperties()
+    val mavenProfiles = options.mavenProfiles()
     val extraLinks = options.extraLinks()
 
 
@@ -119,6 +126,7 @@ object ScalaKernel extends CaseApp[Options] {
       predef = options.predef,
       automaticDependencies = autoDependencies,
       forceMavenProperties = forceProperties,
+      mavenProfiles = mavenProfiles,
       initialClassLoader = initialClassLoader
     )
     log.info("Created interpreter")

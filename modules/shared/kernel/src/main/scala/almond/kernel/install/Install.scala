@@ -144,7 +144,8 @@ object Install {
     options: Options,
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
-    copyLauncher: Boolean = true
+    copyLauncher: Boolean = true,
+    interruptMode: Option[String] = None
   ): Path = {
 
     val path =
@@ -192,7 +193,8 @@ object Install {
       KernelSpec(
         (cmd ++ connectionFileArgs).toList,
         options.displayName.getOrElse(defaultDisplayName),
-        language
+        language,
+        interrupt_mode = interruptMode
       ),
       path,
       logo64PngOpt = logoOpt,
@@ -208,7 +210,8 @@ object Install {
     options: Options,
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
-    copyLauncher: Boolean = true
+    copyLauncher: Boolean = true,
+    interruptMode: Option[String] = None
   ): Either[String, Path] =
     try {
       val dir = install(
@@ -218,7 +221,8 @@ object Install {
         options,
         defaultLogoOpt,
         connectionFileArgs,
-        copyLauncher
+        copyLauncher,
+        interruptMode
       )
       Right(dir)
     } catch {
