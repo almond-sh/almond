@@ -14,10 +14,9 @@ trait IOInterpreter {
 
   def execute(
     code: String,
-    outputHandler: Option[OutputHandler],
-    inputManager: Option[InputManager],
     storeHistory: Boolean,
-    currentMessageOpt: Option[Message[_]]
+    inputManager: Option[InputManager],
+    outputHandler: Option[OutputHandler]
   ): IO[ExecuteResult]
 
   def interruptSupported: Boolean =

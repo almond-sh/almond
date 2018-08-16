@@ -367,10 +367,9 @@ final class ScalaInterpreter(
 
   def execute(
     line: String,
-    outputHandler: Option[OutputHandler],
-    inputManager: Option[InputManager],
     storeHistory: Boolean, // FIXME Take that one into account
-    currentMessageOpt: Option[Message[_]]
+    inputManager: Option[InputManager],
+    outputHandler: Option[OutputHandler]
   ): ExecuteResult = {
 
     val hackedLine =

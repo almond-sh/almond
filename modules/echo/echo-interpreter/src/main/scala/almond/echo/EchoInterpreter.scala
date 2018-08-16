@@ -1,6 +1,6 @@
 package almond.echo
 
-import almond.interpreter.{ExecuteResult, Interpreter, Message}
+import almond.interpreter.{ExecuteResult, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
@@ -25,10 +25,9 @@ final class EchoInterpreter extends Interpreter {
 
   def execute(
     code: String,
-    outputHandler: Option[OutputHandler],
-    inputManager: Option[InputManager],
     storeHistory: Boolean,
-    currentMessageOpt: Option[Message[_]]
+    inputManager: Option[InputManager],
+    outputHandler: Option[OutputHandler]
   ): ExecuteResult =
     if (code.startsWith("print "))
       outputHandler match {

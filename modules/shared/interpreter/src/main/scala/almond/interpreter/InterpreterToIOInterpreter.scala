@@ -51,10 +51,9 @@ final class InterpreterToIOInterpreter(
 
   def execute(
     line: String,
-    outputHandler: Option[OutputHandler],
-    inputManager: Option[InputManager],
     storeHistory: Boolean,
-    currentMessageOpt: Option[Message[_]]
+    inputManager: Option[InputManager],
+    outputHandler: Option[OutputHandler]
   ): IO[ExecuteResult] =
     cancellable {
       case true =>
@@ -63,7 +62,7 @@ final class InterpreterToIOInterpreter(
         IO {
           log.info(s"Executing $line")
           val res =
-            try interpreter.execute(line, outputHandler, inputManager, storeHistory, currentMessageOpt)
+            try interpreter.execute(line, storeHistory, inputManager, outputHandler)
             catch {
               case t: Throwable =>
                 log.error(s"Error when executing $line", t)

@@ -12,6 +12,9 @@ trait InputManager {
   def done(): Unit
   def readInput(prompt: String = "", password: Boolean = false): Future[String]
 
+  final def password(prompt: String = ""): Future[String] =
+    readInput(prompt, password = true)
+
   final def inputStream(ec: ExecutionContext): InputStream =
     new InputManager.InputManagerInputStream(this, ec)
 }

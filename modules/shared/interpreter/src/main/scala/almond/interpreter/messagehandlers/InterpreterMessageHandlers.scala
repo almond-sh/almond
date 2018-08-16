@@ -48,10 +48,9 @@ final case class InterpreterMessageHandlers(
           .enqueueOn(Channel.Publish, queue)
         res <- interpreter.execute(
           message.content.code,
-          Some(handler),
-          if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
           message.content.store_history.getOrElse(true),
-          Some(message)
+          if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
+          Some(handler)
         )
         countAfter <- interpreter.executionCount
         _ <- res match {

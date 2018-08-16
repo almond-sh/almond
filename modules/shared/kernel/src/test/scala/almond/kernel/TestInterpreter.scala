@@ -1,6 +1,6 @@
 package almond.kernel
 
-import almond.interpreter.{ExecuteResult, Interpreter, Message}
+import almond.interpreter.{ExecuteResult, Interpreter}
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
@@ -11,10 +11,9 @@ import scala.concurrent.duration.Duration
 final class TestInterpreter extends Interpreter {
   def execute(
     code: String,
-    outputHandler: Option[OutputHandler],
-    inputManager: Option[InputManager],
     storeHistory: Boolean,
-    currentMessageOpt: Option[Message[_]]
+    inputManager: Option[InputManager],
+    outputHandler: Option[OutputHandler]
   ): ExecuteResult =
     if (code.startsWith("input:"))
       inputManager match {
