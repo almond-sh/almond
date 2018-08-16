@@ -414,7 +414,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(20.seconds)
+      t.unsafeRunTimedOrThrow(30.seconds)
 
       val messageTypes = streams.generatedMessageTypes()
       val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control))
