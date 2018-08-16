@@ -5,7 +5,7 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.protocol.{Execute, Header, Input, Protocol}
+import almond.protocol._
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
@@ -362,6 +362,78 @@ object ScalaKernelTests extends TestSuite {
       )
 
       assert(messageTypes == expectedMessageTypes)
+    }
+
+    "handle interrupt messages" - {
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // How the pseudo-client behaves
+
+      val interruptOnInput = MessageHandler(Channel.Input, Input.requestType) { msg =>
+        Message(
+          Header(
+            UUID.randomUUID().toString,
+            "test",
+            sessionId,
+            Interrupt.requestType.messageType,
+            Some(Protocol.versionStr)
+          ),
+          Interrupt.Request
+        ).streamOn(Channel.Control)
+      }
+
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _) =>
+        case (Channel.Requests, m) if m.header.msg_type == Execute.replyType.messageType =>
+        case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType =>
+      }
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == Execute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
+
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, "val n = scala.io.StdIn.readInt()"),
+        execute(sessionId, """val s = "ok done"""", msgId = lastMsgId)
+      )
+
+
+      val streams = ClientStreams.create(input, interruptOnInput.orElse(ignoreExpectedReplies), stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow(20.seconds)
+
+      val messageTypes = streams.generatedMessageTypes()
+      val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control))
+
+      val expectedMessageTypes = Seq(
+        "execute_input",
+        "stream",
+        "error",
+        "execute_reply",
+        "execute_input",
+        "execute_reply"
+      )
+
+      val expectedControlMessageTypes = Seq(
+        "interrupt_reply"
+      )
+
+      assert(messageTypes == expectedMessageTypes)
+      assert(controlMessageTypes == expectedControlMessageTypes)
     }
 
   }

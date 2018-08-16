@@ -63,9 +63,9 @@ final case class ClientStreams(
     }
   }
 
-  def generatedMessageTypes(filterOut: Set[String] = Set("status")): Seq[String] =
+  def generatedMessageTypes(channels: Set[Channel] = Set(Channel.Publish, Channel.Requests), filterOut: Set[String] = Set("status")): Seq[String] =
     generatedMessages.toList.collect {
-      case Left((c @ (Channel.Publish | Channel.Requests), m)) if m.header.msg_type != "status" =>
+      case Left((c, m)) if channels(c) && m.header.msg_type != "status" =>
         m.header.msg_type
     }
 

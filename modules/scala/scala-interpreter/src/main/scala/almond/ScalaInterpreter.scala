@@ -336,6 +336,29 @@ final class ScalaInterpreter(
     ammInterp
   }
 
+  private var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
+  private var currentThreadOpt = Option.empty[Thread]
+
+  override def interruptSupported: Boolean =
+    true
+  override def interrupt(): Unit =
+    currentThreadOpt.foreach(_.stop())
+
+  private def interruptible[T](t: => T): T = {
+    interruptedStackTraceOpt = None
+    currentThreadOpt = Some(Thread.currentThread())
+    try {
+      Signaller("INT") {
+        interruptedStackTraceOpt = currentThreadOpt.map(_.getStackTrace)
+        currentThreadOpt.foreach(_.stop())
+      }.apply {
+        t
+      }
+    } finally {
+      currentThreadOpt = None
+    }
+  }
+
 
   override def commManagerOpt: Some[CommManager] =
     Some(commManager)
@@ -365,8 +388,6 @@ final class ScalaInterpreter(
 
     val ammInterp0 = ammInterp // ensures we don't capture output / catch signals during interp initialization
 
-    var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
-
     val ammResult =
       withOutputHandler(outputHandler) {
         for {
@@ -378,42 +399,39 @@ final class ScalaInterpreter(
             )
           }
           _ = log.info(s"splitted $hackedLine")
-          currentThread = Thread.currentThread()
-          _ <- Signaller("INT") {
-            interruptedStackTraceOpt = Some(currentThread.getStackTrace)
-            currentThread.stop()
-          }
-          ev <- withInputManager(inputManager) {
-            withClientStdin {
-              capturingOutput {
-                resultOutput.clear()
-                resultVariables.clear()
-                log.info(s"Compiling / evaluating $code ($stmts)")
-                val r = ammInterp0.processLine(code, stmts, currentLine0, silent = false, incrementLine = () => currentLine0 += 1)
-                log.info(s"Handling output of $hackedLine")
-                Repl.handleOutput(ammInterp0, r)
-                val variables = resultVariables.toMap
-                val res0 = resultOutput.result()
-                log.info(s"Result of $hackedLine: $res0")
-                resultOutput.clear()
-                resultVariables.clear()
-                val data =
-                  if (variables.isEmpty) {
-                    if (res0.isEmpty)
-                      DisplayData.empty
-                    else
-                      DisplayData.text(res0)
-                  } else
-                    updatableResultsOpt match {
-                      case None =>
+          ev <- interruptible {
+            withInputManager(inputManager) {
+              withClientStdin {
+                capturingOutput {
+                  resultOutput.clear()
+                  resultVariables.clear()
+                  log.info(s"Compiling / evaluating $code ($stmts)")
+                  val r = ammInterp0.processLine(code, stmts, currentLine0, silent = false, incrementLine = () => currentLine0 += 1)
+                  log.info(s"Handling output of $hackedLine")
+                  Repl.handleOutput(ammInterp0, r)
+                  val variables = resultVariables.toMap
+                  val res0 = resultOutput.result()
+                  log.info(s"Result of $hackedLine: $res0")
+                  resultOutput.clear()
+                  resultVariables.clear()
+                  val data =
+                    if (variables.isEmpty) {
+                      if (res0.isEmpty)
+                        DisplayData.empty
+                      else
                         DisplayData.text(res0)
-                      case Some(r) =>
-                        r.add(
-                          DisplayData.text(res0).withId(UUID.randomUUID().toString),
-                          variables
-                        )
-                    }
-                r.map((_, data))
+                    } else
+                      updatableResultsOpt match {
+                        case None =>
+                          DisplayData.text(res0)
+                        case Some(r) =>
+                          r.add(
+                            DisplayData.text(res0).withId(UUID.randomUUID().toString),
+                            variables
+                          )
+                      }
+                  r.map((_, data))
+                }
               }
             }
           }

@@ -14,6 +14,8 @@ object Interrupt {
 
 
   implicit val requestDecoder = DecodeJson.of[Request.type]
+  implicit val requestEncoder = EncodeJson.of[Request.type]
+
   implicit val replyEncoder = EncodeJson.of[Reply.type]
 
 }
