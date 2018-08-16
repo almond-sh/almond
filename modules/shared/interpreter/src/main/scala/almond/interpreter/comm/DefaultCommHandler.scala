@@ -35,7 +35,6 @@ final class DefaultCommHandler(
     message
       .publish(messageType, content)
       .enqueueOn(Channel.Publish, queue)
-      .attempt
       .unsafeRunSync()
 
   private def parseJsonObj(s: String): Option[JsonObject] =

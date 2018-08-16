@@ -192,7 +192,6 @@ object InterpreterMessageHandlers {
       message
         .publish(Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
         .enqueueOn(Channel.Publish, queue)
-        .attempt // TODO Don't trap errors here
         .unsafeRunSync()
 
     def stdout(s: String): Unit =
@@ -211,7 +210,6 @@ object InterpreterMessageHandlers {
       message
         .publish(Execute.displayDataType, content)
         .enqueueOn(Channel.Publish, queue)
-        .attempt // TODO Don't trap errors here
         .unsafeRunSync()
     }
 
