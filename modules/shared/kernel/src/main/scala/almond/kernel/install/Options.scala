@@ -8,5 +8,6 @@ final case class Options(
   jupyterPath: Option[String] = None,
   logo: Option[String] = None,
   arg: List[String] = Nil,
-  command: Option[String] = None
+  command: Option[String] = None,
+  interruptViaMessage: Boolean = false
 )
