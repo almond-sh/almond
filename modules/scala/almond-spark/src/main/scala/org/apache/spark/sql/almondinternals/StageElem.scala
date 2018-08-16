@@ -35,7 +35,7 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
         s"""<script>
            |var comm = Jupyter.notebook.kernel.comm_manager.new_comm('$cancelStageCommTargetName', {});
            |
-             |function cancelStage(stageId) {
+           |function cancelStage(stageId) {
            |  console.log('Cancelling stage ' + stageId);
            |  comm.send({ 'stageId': stageId });
            |}
