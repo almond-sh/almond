@@ -90,7 +90,7 @@ final class ScalaInterpreter(
 
   private val storage = Storage.InMemory()
 
-  private val frames = Ref(List(Frame.createInitial()))
+  private val frames = Ref(List(Frame.createInitial(initialClassLoader)))
   private val sess0 = new SessionApiImpl(frames)
   private var currentLine0 = 0
 
