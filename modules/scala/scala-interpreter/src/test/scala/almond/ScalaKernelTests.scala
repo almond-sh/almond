@@ -1,5 +1,6 @@
 package almond
 
+import java.net.{URL, URLClassLoader}
 import java.util.UUID
 
 import almond.channels.Channel
@@ -434,6 +435,65 @@ object ScalaKernelTests extends TestSuite {
 
       assert(messageTypes == expectedMessageTypes)
       assert(controlMessageTypes == expectedControlMessageTypes)
+    }
+
+    "start from custom class loader" - {
+
+      // How the pseudo-client behaves
+
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _) =>
+        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
+      }
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """val url = Thread.currentThread().getContextClassLoader.getResource("foo")"""),
+        execute(sessionId, """assert(url.toString == "https://google.fr")""", lastMsgId)
+      )
+
+
+      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+
+      val loader = new URLClassLoader(Array(), Thread.currentThread().getContextClassLoader) {
+        override def getResource(name: String) =
+          if (name == "foo")
+            new URL("https://google.fr")
+          else
+            super.getResource(name)
+      }
+
+      val interpreter = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite,
+        initialClassLoader = loader
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow(25.seconds)
+
+      val messageTypes = streams.generatedMessageTypes()
+
+      val expectedMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_reply",
+        "execute_input",
+        "execute_reply"
+      )
+
+      assert(messageTypes == expectedMessageTypes)
     }
 
   }

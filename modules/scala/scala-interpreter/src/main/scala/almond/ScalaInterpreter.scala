@@ -90,7 +90,7 @@ final class ScalaInterpreter(
 
   private val storage = Storage.InMemory()
 
-  private val frames = Ref(List(Frame.createInitial()))
+  private val frames = Ref(List(Frame.createInitial(initialClassLoader)))
   private val sess0 = new SessionApiImpl(frames)
   private var currentLine0 = 0
 
@@ -367,10 +367,9 @@ final class ScalaInterpreter(
 
   def execute(
     line: String,
-    outputHandler: Option[OutputHandler],
-    inputManager: Option[InputManager],
     storeHistory: Boolean, // FIXME Take that one into account
-    currentMessageOpt: Option[Message[_]]
+    inputManager: Option[InputManager],
+    outputHandler: Option[OutputHandler]
   ): ExecuteResult = {
 
     val hackedLine =

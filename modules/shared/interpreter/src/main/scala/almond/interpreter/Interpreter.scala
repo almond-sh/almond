@@ -16,10 +16,9 @@ trait Interpreter {
 
   def execute(
     line: String,
-    outputHandler: Option[OutputHandler] = None,
-    inputManager: Option[InputManager] = None,
     storeHistory: Boolean = true,
-    currentMessageOpt: Option[Message[_]] = None
+    inputManager: Option[InputManager] = None,
+    outputHandler: Option[OutputHandler] = None
   ): ExecuteResult
 
   def currentLine(): Int
