@@ -23,7 +23,7 @@ final case class Options(
     logTo: Option[String] = None,
   connectionFile: Option[String] = None,
   @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
-    specialLoader: Option[String] = None
+    specialLoader: String = "user"
 ) {
 
   def autoDependencyMap(): Map[String, Seq[String]] =
