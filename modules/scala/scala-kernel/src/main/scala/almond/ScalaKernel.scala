@@ -106,14 +106,13 @@ object ScalaKernel extends CaseApp[Options] {
 
       val defaultLoader = Thread.currentThread().getContextClassLoader
 
-      options.specialLoader match {
-        case None => defaultLoader
-        case Some(name) =>
-          loaderWithName(name, defaultLoader).getOrElse {
-            log.warn(s"--special-loader set to $name, but no classloader with that name can be found")
-            defaultLoader
-          }
-      }
+      if (options.specialLoader.isEmpty)
+        defaultLoader
+      else
+        loaderWithName(options.specialLoader, defaultLoader).getOrElse {
+          log.warn(s"--special-loader set to ${options.specialLoader}, but no classloader with that name can be found")
+          defaultLoader
+        }
     }
 
     log.info("Creating interpreter")

@@ -8,6 +8,7 @@ cache:
   - $HOME/.sbt
 before_install:
   - git fetch --tags
+sudo: required
 stages:
   - name: test
   - name: release
