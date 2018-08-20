@@ -11,6 +11,19 @@ import cats.effect.IO
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
+/**
+  * Manages targets for comm messages from frontends.
+  *
+  * See https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#custom-messages.
+  *
+  * Adding a target with name `"target_name"` allows to receive messages from frontends.
+  * From the Jupyter classic UI, one can send messages to this target via code like
+  * {{{
+  *   var comm = Jupyter.notebook.kernel.comm_manager.new_comm("target_name", '{"a": 2, "b": false}');
+  *   comm.open();
+  *   comm.send('{"c": 2, "d": {"foo": [1, 2]}}');
+  * }}}
+  */
 final class CommManager {
 
   private val targets = new ConcurrentHashMap[String, TaskCommTarget]

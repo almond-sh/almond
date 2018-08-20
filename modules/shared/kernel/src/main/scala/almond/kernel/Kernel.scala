@@ -6,7 +6,7 @@ import java.util.UUID
 
 import almond.channels.zeromq.ZeromqThreads
 import almond.channels.{Channel, ConnectionParameters, Message => RawMessage}
-import almond.interpreter.{IOInterpreter, Interpreter, Message}
+import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterpreter, Message}
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{InterpreterMessageHandlers, MessageHandler}
@@ -222,7 +222,7 @@ object Kernel {
     kernelThreads: KernelThreads
   ): IO[Kernel] =
     create(
-      interpreter.ioInterpreter(interpreterEc),
+      new InterpreterToIOInterpreter(interpreter, interpreterEc),
       kernelThreads
     )
 

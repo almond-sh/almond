@@ -366,15 +366,15 @@ final class ScalaInterpreter(
     commHandlerOpt = Some(commHandler0)
 
   def execute(
-    line: String,
+    code: String,
     storeHistory: Boolean, // FIXME Take that one into account
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult = {
 
     val hackedLine =
-      if (line.contains("$ivy.`"))
-        automaticDependencies.foldLeft(line) {
+      if (code.contains("$ivy.`"))
+        automaticDependencies.foldLeft(code) {
           case (line0, (triggerDep, autoDeps)) =>
             if (line0.contains(triggerDep)) {
               log.info(s"Adding auto dependencies $autoDeps")
@@ -383,7 +383,7 @@ final class ScalaInterpreter(
               line0
         }
       else
-        line
+        code
 
     val ammInterp0 = ammInterp // ensures we don't capture output / catch signals during interp initialization
 

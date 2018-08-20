@@ -104,7 +104,7 @@ final case class InterpreterMessageHandlers(
         reply = Complete.Reply(
           res.completions.toList,
           res.from,
-          res.to,
+          res.until,
           Map()
         )
         _ <- message

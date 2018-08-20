@@ -3,6 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.DisplayData
 
 sealed abstract class ExecuteResult(val success: Boolean) extends Product with Serializable {
+
   def asError: Option[ExecuteResult.Error] =
     this match {
       case err: ExecuteResult.Error => Some(err)
@@ -12,8 +13,20 @@ sealed abstract class ExecuteResult(val success: Boolean) extends Product with S
 
 object ExecuteResult {
 
+  /**
+    * [[ExecuteResult]], if execution was successful.
+    *
+    * @param data: output data for the code that was run
+    */
   final case class Success(data: DisplayData = DisplayData.empty) extends ExecuteResult(success = true)
 
+  /**
+    * [[ExecuteResult]], if execution failed.
+    *
+    * @param name
+    * @param message
+    * @param stackTrace
+    */
   final case class Error(
     name: String,
     message: String,
@@ -25,6 +38,9 @@ object ExecuteResult {
       Error("", msg, Nil)
   }
 
+  /**
+    * [[ExecuteResult]], if execution was aborted.
+    */
   case object Abort extends ExecuteResult(success = false)
 
 }
