@@ -2,6 +2,7 @@ package almond.interpreter.messagehandlers
 
 import almond.channels.Channel
 import almond.interpreter.comm.CommManager
+import almond.logger.LoggerContext
 import almond.protocol.{Comm, CommInfo}
 import argonaut.JsonObject
 import cats.effect.IO
@@ -10,11 +11,12 @@ import scala.concurrent.ExecutionContext
 
 final case class CommMessageHandlers(
   commManager: CommManager,
-  queueEc: ExecutionContext
+  queueEc: ExecutionContext,
+  logCtx: LoggerContext
 ) {
 
   def commOpenHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Comm.openType, queueEc) { (message, queue) =>
+    MessageHandler.blocking(Channel.Requests, Comm.openType, queueEc, logCtx) { (message, queue) =>
       commManager.target(message.content.target_name) match {
         case None =>
           message
@@ -29,7 +31,7 @@ final case class CommMessageHandlers(
     }
 
   def commMessageHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Comm.messageType, queueEc) { (message, _) =>
+    MessageHandler.blocking(Channel.Requests, Comm.messageType, queueEc, logCtx) { (message, _) =>
       commManager.fromId(message.content.comm_id) match {
         case None => // FIXME Log error
           IO.unit
@@ -39,7 +41,7 @@ final case class CommMessageHandlers(
     }
 
   def commCloseHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Comm.closeType, queueEc) { (message, _) =>
+    MessageHandler.blocking(Channel.Requests, Comm.closeType, queueEc, logCtx) { (message, _) =>
       commManager.removeId(message.content.comm_id) match {
         case None => // FIXME Log error
           IO.unit
@@ -49,7 +51,7 @@ final case class CommMessageHandlers(
     }
 
   def commInfoHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, CommInfo.requestType, queueEc) { (message, queue) =>
+    MessageHandler.blocking(Channel.Requests, CommInfo.requestType, queueEc, logCtx) { (message, queue) =>
 
       val commsIO =
         message.content.target_name match {

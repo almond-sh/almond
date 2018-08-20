@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
+import almond.logger.LoggerContext
 import almond.protocol.Input
-import almond.util.OptionalLogger
 import cats.effect.IO
 import fs2.Stream
 
@@ -15,9 +15,12 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
 
-final class InputHandler(futureEc: ExecutionContext) {
+final class InputHandler(
+  futureEc: ExecutionContext,
+  logCtx: LoggerContext
+) {
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
   // this implem is possibly a bit overkill for now, as there's supposed to be at most one input request at a time…
 

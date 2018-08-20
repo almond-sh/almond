@@ -1,6 +1,7 @@
 package almond.channels.zeromq
 
 import almond.channels.{Channel, ConnectionParameters, Message}
+import almond.logger.LoggerContext
 import cats.effect.IO
 import utest._
 
@@ -12,6 +13,7 @@ object ZeromqConnectionTests extends TestSuite {
 
     'simple - {
 
+      val logCtx = LoggerContext.nop
       val params = ConnectionParameters.randomLocal()
       val kernelThreads = ZeromqThreads.create("test-kernel")
       val serverThreads = ZeromqThreads.create("test-server")
@@ -26,8 +28,8 @@ object ZeromqConnectionTests extends TestSuite {
 
       val t =
         for {
-          kernel <- params.channels(bind = true, kernelThreads)
-          server <- params.channels(bind = false, serverThreads)
+          kernel <- params.channels(bind = true, kernelThreads, logCtx)
+          server <- params.channels(bind = false, serverThreads, logCtx)
           _ <- kernel.open
           _ <- server.open
           _ <- server.send(Channel.Requests, msg0)

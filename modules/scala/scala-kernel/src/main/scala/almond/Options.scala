@@ -19,8 +19,8 @@ final case class Options(
     forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
     profile: List[String] = Nil,
-  @HelpMessage("Enable logging - if enabled, logging goes to a file with the passed name in the directory where the kernel runs")
-    logTo: Option[String] = None,
+  @HelpMessage("Log level (one of none, error, warn, info, debug)")
+    log: String = "warn",
   connectionFile: Option[String] = None,
   @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
     specialLoader: String = "user"

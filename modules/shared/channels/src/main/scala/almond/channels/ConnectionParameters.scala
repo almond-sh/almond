@@ -3,6 +3,7 @@ package almond.channels
 import java.net.ServerSocket
 
 import almond.channels.zeromq.{ZeromqConnection, ZeromqThreads}
+import almond.logger.LoggerContext
 import almond.util.Secret
 import cats.effect.IO
 
@@ -37,9 +38,10 @@ final case class ConnectionParameters(
   def channels(
     bind: Boolean,
     threads: ZeromqThreads,
+    logCtx: LoggerContext,
     identityOpt: Option[String] = None
   ): IO[ZeromqConnection] =
-    ZeromqConnection(this, bind, identityOpt, threads)
+    ZeromqConnection(this, bind, identityOpt, threads, logCtx)
 
 }
 

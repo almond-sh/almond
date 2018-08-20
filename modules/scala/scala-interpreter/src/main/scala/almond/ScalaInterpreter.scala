@@ -9,8 +9,8 @@ import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
-import almond.util.OptionalLogger
 import ammonite.interp.{Parsers, Preprocessor}
 import ammonite.ops.{Path, read}
 import ammonite.repl._
@@ -35,10 +35,11 @@ final class ScalaInterpreter(
   mavenProfiles: Map[String, Boolean] = Map(),
   codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
   initialColors: Colors = Colors.Default,
-  initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader
+  initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader,
+  logCtx: LoggerContext = LoggerContext.nop
 ) extends Interpreter { scalaInterp =>
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
 
   private val colors0 = Ref[Colors](initialColors)
@@ -80,6 +81,7 @@ final class ScalaInterpreter(
     updateBackgroundVariablesEcOpt.map { ec =>
       new UpdatableResults(
         ec,
+        logCtx,
         data => commHandlerOpt.foreach(_.updateDisplay(data)) // throw if commHandlerOpt is empty?
       )
     }

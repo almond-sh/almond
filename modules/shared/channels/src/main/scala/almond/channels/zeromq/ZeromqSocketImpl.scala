@@ -3,7 +3,8 @@ package almond.channels.zeromq
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.channels.Message
-import almond.util.{OptionalLogger, Secret}
+import almond.logger.LoggerContext
+import almond.util.Secret
 import cats.effect.IO
 import cats.syntax.apply._
 import javax.crypto.Mac
@@ -22,12 +23,13 @@ final class ZeromqSocketImpl(
   subscribeOpt: Option[Array[Byte]],
   context: ZMQ.Context,
   key: Secret[String],
-  algorithm: String
+  algorithm: String,
+  logCtx: LoggerContext
 ) extends ZeromqSocket {
 
   import ZeromqSocketImpl._
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
   private val algorithm0 = algorithm.filter(_ != '-')
   private val macInstance = Mac.getInstance(algorithm0)

@@ -4,12 +4,10 @@ import almond.util.ThreadUtil.singleThreadedExecutionContext
 import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads}
-import almond.util.OptionalLogger
+import almond.logger.{Level, LoggerContext}
 import caseapp._
 
 object EchoKernel extends CaseApp[Options] {
-
-  private lazy val log = OptionalLogger(getClass)
 
   def run(options: Options, args: RemainingArgs): Unit = {
 
@@ -36,17 +34,22 @@ object EchoKernel extends CaseApp[Options] {
       sys.exit(1)
     }
 
-    for (f <- options.logTo) {
-      sys.props("echo-kernel.log.file") = f
-      OptionalLogger.enable()
+    val logCtx = Level.fromString(options.log) match {
+      case Left(err) =>
+        Console.err.println(err)
+        sys.exit(1)
+      case Right(level) =>
+        LoggerContext.stderr(level)
     }
+
+    val log = logCtx(getClass)
 
     val zeromqThreads = ZeromqThreads.create("echo-kernel")
     val kernelThreads = KernelThreads.create("echo-kernel")
     val interpreterEc = singleThreadedExecutionContext("echo-interpreter")
 
     log.info("Running kernel")
-    Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads)
+    Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, logCtx)
       .flatMap(_.runOnConnectionFile(connectionFile, "echo", zeromqThreads))
       .unsafeRunSync()
   }

@@ -6,6 +6,7 @@ import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.blocking
 import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.{ExecuteResult, IOInterpreter, Message}
+import almond.logger.LoggerContext
 import almond.protocol._
 import cats.effect.IO
 import cats.syntax.apply._
@@ -18,6 +19,7 @@ final case class InterpreterMessageHandlers(
   commHandlerOpt: Option[CommHandler],
   inputHandlerOpt: Option[InputHandler],
   queueEc: ExecutionContext,
+  logCtx: LoggerContext,
   runAfterQueued: IO[Unit] => IO[Unit]
 ) {
 
@@ -25,7 +27,7 @@ final case class InterpreterMessageHandlers(
 
 
   def executeHandler: MessageHandler =
-    blocking(Channel.Requests, Execute.requestType, queueEc) { (message, queue) =>
+    blocking(Channel.Requests, Execute.requestType, queueEc, logCtx) { (message, queue) =>
 
       val handler = new QueueOutputHandler(message, queue, commHandlerOpt)
 
@@ -97,7 +99,7 @@ final case class InterpreterMessageHandlers(
 
 
   def completeHandler: MessageHandler =
-    blocking(Channel.Requests, Complete.requestType, queueEc) { (message, queue) =>
+    blocking(Channel.Requests, Complete.requestType, queueEc, logCtx) { (message, queue) =>
 
       for {
         res <- interpreter.complete(message.content.code, message.content.cursor_pos)
@@ -115,7 +117,7 @@ final case class InterpreterMessageHandlers(
 
 
   def isCompleteHandler: MessageHandler =
-    blocking(Channel.Requests, IsComplete.requestType, queueEc) { (message, queue) =>
+    blocking(Channel.Requests, IsComplete.requestType, queueEc, logCtx) { (message, queue) =>
 
       for {
         res <- interpreter.isComplete(message.content.code)
@@ -130,7 +132,7 @@ final case class InterpreterMessageHandlers(
 
 
   def inspectHandler: MessageHandler =
-    blocking(Channel.Requests, Inspect.requestType, queueEc) { (message, queue) =>
+    blocking(Channel.Requests, Inspect.requestType, queueEc, logCtx) { (message, queue) =>
 
       for {
         resOpt <- interpreter.inspect(message.content.code, message.content.cursor_pos, message.content.detail_level)
@@ -147,7 +149,7 @@ final case class InterpreterMessageHandlers(
 
 
   def kernelInfoHandler: MessageHandler =
-    blocking(Channel.Requests, KernelInfo.requestType, queueEc) { (message, queue) =>
+    blocking(Channel.Requests, KernelInfo.requestType, queueEc, logCtx) { (message, queue) =>
 
       for {
         info <- interpreter.kernelInfo
@@ -167,7 +169,7 @@ final case class InterpreterMessageHandlers(
     )
 
   def interruptHandler: MessageHandler =
-    blocking(Channel.Control, Interrupt.requestType, queueEc) { (message, queue) =>
+    blocking(Channel.Control, Interrupt.requestType, queueEc, logCtx) { (message, queue) =>
 
       for {
         _ <- interpreter.interrupt

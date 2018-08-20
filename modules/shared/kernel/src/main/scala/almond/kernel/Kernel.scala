@@ -10,8 +10,8 @@ import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterprete
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{CommMessageHandlers, InterpreterMessageHandlers, MessageHandler}
+import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
-import almond.util.OptionalLogger
 import cats.effect.IO
 import fs2.async.mutable.Queue
 import fs2.{Sink, Stream, async}
@@ -24,10 +24,11 @@ final case class Kernel(
   mainQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
   backgroundCommHandlerOpt: Option[DefaultCommHandler],
   inputHandler: InputHandler,
-  kernelThreads: KernelThreads
+  kernelThreads: KernelThreads,
+  logCtx: LoggerContext
 ) {
 
-  import Kernel._
+  private lazy val log = logCtx(getClass)
 
   def replies(requests: Stream[IO, (Channel, RawMessage)]): Stream[IO, (Channel, RawMessage)] = {
 
@@ -36,6 +37,7 @@ final case class Kernel(
       backgroundCommHandlerOpt,
       Some(inputHandler),
       kernelThreads.queueEc,
+      logCtx,
       io => mainQueue.enqueue1(Some(Stream.eval_(io)))
     )
 
@@ -43,7 +45,7 @@ final case class Kernel(
       case None =>
         MessageHandler.empty
       case Some(commManager) =>
-        CommMessageHandlers(commManager, kernelThreads.queueEc)
+        CommMessageHandlers(commManager, kernelThreads.queueEc, logCtx)
           .messageHandler
     }
 
@@ -92,12 +94,12 @@ final case class Kernel(
         requests.map {
           case (channel, rawMessage) =>
 
-            interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage) match {
+            interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
               case None =>
 
                 // interpreter message handler passes, try with the other handlers
 
-                immediateHandlers.handleOrLogError(channel, rawMessage) match {
+                immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
                   case None =>
                     log.warn(s"Ignoring unhandled message:\n$rawMessage")
                     Stream.empty
@@ -169,7 +171,12 @@ final case class Kernel(
     zeromqThreads: ZeromqThreads
   ): IO[Unit] =
     for {
-      c <- connection.channels(bind = true, zeromqThreads, identityOpt = Some(kernelId))
+      c <- connection.channels(
+        bind = true,
+        zeromqThreads,
+        logCtx,
+        identityOpt = Some(kernelId)
+      )
       _ <- c.open
       _ <- run(c.stream(), c.autoCloseSink)
     } yield ()
@@ -215,21 +222,22 @@ final case class Kernel(
 
 object Kernel {
 
-  private val log = OptionalLogger(getClass)
-
   def create(
     interpreter: Interpreter,
     interpreterEc: ExecutionContext,
-    kernelThreads: KernelThreads
+    kernelThreads: KernelThreads,
+    logCtx: LoggerContext = LoggerContext.nop
   ): IO[Kernel] =
     create(
-      new InterpreterToIOInterpreter(interpreter, interpreterEc),
-      kernelThreads
+      new InterpreterToIOInterpreter(interpreter, interpreterEc, logCtx),
+      kernelThreads,
+      logCtx
     )
 
   def create(
     interpreter: IOInterpreter,
-    kernelThreads: KernelThreads
+    kernelThreads: KernelThreads,
+    logCtx: LoggerContext
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- {
@@ -250,7 +258,7 @@ object Kernel {
           }
       }
       inputHandler <- IO {
-        new InputHandler(kernelThreads.futureEc)
+        new InputHandler(kernelThreads.futureEc, logCtx)
       }
     } yield {
       Kernel(
@@ -259,7 +267,8 @@ object Kernel {
         mainQueue,
         backgroundCommHandlerOpt,
         inputHandler,
-        kernelThreads
+        kernelThreads,
+        logCtx
       )
     }
 

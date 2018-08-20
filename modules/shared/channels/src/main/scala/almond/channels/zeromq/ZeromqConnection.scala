@@ -4,7 +4,7 @@ import java.nio.channels.{ClosedByInterruptException, Selector}
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.channels._
-import almond.util.OptionalLogger
+import almond.logger.LoggerContext
 import cats.effect.IO
 import cats.syntax.apply._
 import org.zeromq.ZMQ
@@ -16,13 +16,14 @@ final class ZeromqConnection(
   params: ConnectionParameters,
   bind: Boolean,
   identityOpt: Option[String],
-  threads: ZeromqThreads
+  threads: ZeromqThreads,
+  logCtx: LoggerContext
 ) extends Connection {
 
   import ZeromqConnection._
 
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
   private def routerDealer =
     if (bind) ZMQ.ROUTER
@@ -46,7 +47,8 @@ final class ZeromqConnection(
     None,
     threads.context,
     params.key,
-    params.signature_scheme.getOrElse(defaultSignatureScheme)
+    params.signature_scheme.getOrElse(defaultSignatureScheme),
+    logCtx
   )
 
   private val control0 = ZeromqSocket(
@@ -58,7 +60,8 @@ final class ZeromqConnection(
     None,
     threads.context,
     params.key,
-    params.signature_scheme.getOrElse(defaultSignatureScheme)
+    params.signature_scheme.getOrElse(defaultSignatureScheme),
+    logCtx
   )
 
   private val publish0 = ZeromqSocket(
@@ -70,7 +73,8 @@ final class ZeromqConnection(
     Some(Array.emptyByteArray),
     threads.context,
     params.key,
-    params.signature_scheme.getOrElse(defaultSignatureScheme)
+    params.signature_scheme.getOrElse(defaultSignatureScheme),
+    logCtx
   )
 
   private val stdin0 = ZeromqSocket(
@@ -82,7 +86,8 @@ final class ZeromqConnection(
     None,
     threads.context,
     params.key,
-    params.signature_scheme.getOrElse(defaultSignatureScheme)
+    params.signature_scheme.getOrElse(defaultSignatureScheme),
+    logCtx
   )
 
   private val heartBeatThreadOpt: Option[Thread] =
@@ -228,14 +233,16 @@ object ZeromqConnection {
     connection: ConnectionParameters,
     bind: Boolean,
     identityOpt: Option[String],
-    threads: ZeromqThreads
+    threads: ZeromqThreads,
+    logCtx: LoggerContext
   ): IO[ZeromqConnection] =
     IO.shift(threads.selectorOpenCloseEc) *> IO(
       new ZeromqConnection(
         connection,
         bind,
         identityOpt,
-        threads
+        threads,
+        logCtx
       )
     )
 

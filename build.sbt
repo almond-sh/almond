@@ -15,15 +15,23 @@ inThisBuild(List(
   )
 ))
 
+lazy val logger = project
+  .underShared
+  .settings(
+    shared,
+    testSettings,
+    libraryDependencies += Deps.scalaReflect.value
+  )
+
 lazy val channels = project
   .underShared
+  .dependsOn(logger)
   .settings(
     shared,
     testSettings,
     libraryDependencies ++= Seq(
       Deps.fs2,
-      Deps.jeromq,
-      Deps.scalaLogging
+      Deps.jeromq
     )
   )
 
@@ -56,8 +64,7 @@ lazy val kernel = project
     testSettings,
     libraryDependencies ++= Seq(
       Deps.caseAppAnnotations,
-      Deps.fs2,
-      Deps.logback % "test"
+      Deps.fs2
     )
   )
 
@@ -69,9 +76,7 @@ lazy val `scala-kernel-api` = project
     crossVersion := CrossVersion.full,
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
-    libraryDependencies ++= Seq(
-      Deps.ammoniteRepl
-    )
+    libraryDependencies += Deps.ammoniteRepl
   )
 
 lazy val `scala-interpreter` = project
@@ -80,10 +85,7 @@ lazy val `scala-interpreter` = project
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    testSettings,
-    libraryDependencies ++= Seq(
-      Deps.ammoniteRepl
-    )
+    testSettings
   )
 
 lazy val `scala-kernel` = project
@@ -92,10 +94,7 @@ lazy val `scala-kernel` = project
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    libraryDependencies ++= Seq(
-      Deps.caseApp,
-      Deps.logback
-    )
+    libraryDependencies += Deps.caseApp
   )
 
 lazy val echo = project
@@ -103,10 +102,7 @@ lazy val echo = project
   .dependsOn(kernel)
   .settings(
     shared,
-    libraryDependencies ++= Seq(
-      Deps.caseApp,
-      Deps.logback
-    )
+    libraryDependencies += Deps.caseApp
   )
 
 lazy val `almond-spark` = project
@@ -132,6 +128,7 @@ lazy val almond = project
     `interpreter-api`,
     interpreter,
     kernel,
+    logger,
     protocol,
     `scala-interpreter`,
     `scala-kernel-api`,
