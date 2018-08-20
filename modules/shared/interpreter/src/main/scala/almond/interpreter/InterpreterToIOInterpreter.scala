@@ -3,8 +3,8 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
-import almond.util.OptionalLogger
 import cats.effect.IO
 import cats.syntax.apply._
 import fs2.async
@@ -18,10 +18,11 @@ import scala.concurrent.ExecutionContext
   */
 final class InterpreterToIOInterpreter(
   interpreter: Interpreter,
-  interpreterEc: ExecutionContext
+  interpreterEc: ExecutionContext,
+  logCtx: LoggerContext
 ) extends IOInterpreter {
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
   override def commManagerOpt: Option[CommManager] =
     interpreter.commManagerOpt

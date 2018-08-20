@@ -1,6 +1,7 @@
 package almond.channels.zeromq
 
 import almond.channels.Message
+import almond.logger.LoggerContext
 import almond.util.Secret
 import cats.effect.IO
 import org.zeromq.ZMQ
@@ -31,7 +32,8 @@ object ZeromqSocket {
     subscribeOpt: Option[Array[Byte]],
     context: ZMQ.Context,
     key: Secret[String],
-    algorithm: String
+    algorithm: String,
+    logCtx: LoggerContext
   ): ZeromqSocket =
     new ZeromqSocketImpl(
       ec,
@@ -42,7 +44,8 @@ object ZeromqSocket {
       subscribeOpt,
       context,
       key,
-      algorithm
+      algorithm,
+      logCtx
     )
 
 }

@@ -34,7 +34,7 @@ object Settings {
   def disableScalaVersion(sbv: String*) = Seq(
     baseDirectory := {
       if (sbv.contains(scalaBinaryVersion.value))
-        baseDirectory.value / "dummy"
+        baseDirectory.value / "target" / "dummy"
       else
         baseDirectory.value
     },
@@ -118,8 +118,8 @@ object Settings {
   )
 
   implicit class ProjectOps(val project: Project) extends AnyVal {
-    def underEcho: Project = {
-      val base = project.base.getParentFile / "modules" / "echo" / project.base.getName
+    def underModules: Project = {
+      val base = project.base.getParentFile / "modules" / project.base.getName
       project.in(base)
     }
     def underScala: Project = {

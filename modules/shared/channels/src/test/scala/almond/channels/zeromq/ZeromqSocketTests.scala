@@ -3,6 +3,7 @@ package almond.channels.zeromq
 import java.util.concurrent.Executors
 
 import almond.channels.{ConnectionParameters, Message}
+import almond.logger.LoggerContext
 import almond.util.Secret
 import org.zeromq.ZMQ
 import utest._
@@ -31,6 +32,8 @@ object ZeromqSocketTests extends TestSuite {
 
       val key = Secret.randomUuid()
 
+      val logCtx = LoggerContext.nop
+
       val rep = ZeromqSocket(
         repEc,
         ZMQ.REP,
@@ -40,7 +43,8 @@ object ZeromqSocketTests extends TestSuite {
         None,
         ctx,
         key,
-        "hmac-sha256"
+        "hmac-sha256",
+        logCtx
       )
 
       val req = ZeromqSocket(
@@ -52,7 +56,8 @@ object ZeromqSocketTests extends TestSuite {
         None,
         ctx,
         key,
-        "hmac-sha256"
+        "hmac-sha256",
+        logCtx
       )
 
       val msg = Message(

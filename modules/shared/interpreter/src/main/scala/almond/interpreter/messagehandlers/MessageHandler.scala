@@ -5,8 +5,8 @@ import fs2.async.mutable.Queue
 import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
+import almond.logger.{Logger, LoggerContext}
 import almond.protocol.{MessageType, Status}
-import almond.util.OptionalLogger
 import argonaut.{DecodeJson, Json}
 import cats.effect.IO
 
@@ -24,8 +24,6 @@ final case class MessageHandler(
     Either[Throwable, Stream[IO, (Channel, RawMessage)]]
   ]
 ) {
-
-  import MessageHandler._
 
   def orElse(other: MessageHandler*): MessageHandler =
     MessageHandler(
@@ -45,7 +43,11 @@ final case class MessageHandler(
         handle(channel, message0)
     }
 
-  def handleOrLogError(channel: Channel, message: RawMessage): Option[Stream[IO, (Channel, RawMessage)]] =
+  def handleOrLogError(
+    channel: Channel,
+    message: RawMessage,
+    log: Logger
+  ): Option[Stream[IO, (Channel, RawMessage)]] =
     handle(channel, message).map {
       case Left(e) =>
         log.error(s"Ignoring error decoding message\n$message", e)
@@ -56,8 +58,6 @@ final case class MessageHandler(
 }
 
 object MessageHandler {
-
-  private val log = OptionalLogger(getClass)
 
   def empty: MessageHandler =
     MessageHandler(PartialFunction.empty)
@@ -97,22 +97,26 @@ object MessageHandler {
   def blocking[T: DecodeJson](
     channel: Channel,
     messageType: MessageType[T],
-    queueEc: ExecutionContext
+    queueEc: ExecutionContext,
+    logCtx: LoggerContext
   )(
     handler: (Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
   ): MessageHandler =
     MessageHandler(channel, messageType) { message =>
-      blockingTaskStream(message, queueEc) { queue =>
+      blockingTaskStream(message, queueEc, logCtx) { queue =>
         handler(message, queue)
       }
     }
 
   private def blockingTaskStream(
     currentMessage: Message[_],
-    queueEc: ExecutionContext
+    queueEc: ExecutionContext,
+    logCtx: LoggerContext
   )(
     run: Queue[IO, (Channel, RawMessage)] => IO[Unit]
   ): Stream[IO, (Channel, RawMessage)] = {
+
+    val log = logCtx(getClass)
 
     /*
      * While the task returned by run is being evaluated, messages can be pushed to the queue it is passed.

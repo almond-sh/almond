@@ -3,15 +3,13 @@ package almond
 import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
-import almond.util.OptionalLogger
+import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
 
 import scala.language.reflectiveCalls
 
 object ScalaKernel extends CaseApp[Options] {
-
-  private lazy val log = OptionalLogger(getClass)
 
   private def loaderWithName(name: String, cl: ClassLoader): Option[ClassLoader] =
     if (cl == null)
@@ -73,11 +71,15 @@ object ScalaKernel extends CaseApp[Options] {
       sys.exit(1)
     }
 
-
-    for (f <- options.logTo) {
-      sys.props("scala-kernel.log.file") = f
-      OptionalLogger.enable()
+    val logCtx = Level.fromString(options.log) match {
+      case Left(err) =>
+        Console.err.println(err)
+        sys.exit(1)
+      case Right(level) =>
+        LoggerContext.stderr(level)
     }
+
+    val log = logCtx(getClass)
 
 
     val autoDependencies = options.autoDependencyMap()
@@ -126,12 +128,13 @@ object ScalaKernel extends CaseApp[Options] {
       automaticDependencies = autoDependencies,
       forceMavenProperties = forceProperties,
       mavenProfiles = mavenProfiles,
-      initialClassLoader = initialClassLoader
+      initialClassLoader = initialClassLoader,
+      logCtx = logCtx
     )
     log.info("Created interpreter")
 
     log.info("Running kernel")
-    Kernel.create(interpreter, interpreterEc, kernelThreads)
+    Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
       .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
       .unsafeRunSync()
   }

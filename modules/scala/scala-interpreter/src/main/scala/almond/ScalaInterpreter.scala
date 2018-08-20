@@ -9,8 +9,8 @@ import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
-import almond.util.OptionalLogger
 import ammonite.interp.{Parsers, Preprocessor}
 import ammonite.ops.{Path, read}
 import ammonite.repl._
@@ -35,10 +35,11 @@ final class ScalaInterpreter(
   mavenProfiles: Map[String, Boolean] = Map(),
   codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
   initialColors: Colors = Colors.Default,
-  initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader
+  initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader,
+  logCtx: LoggerContext = LoggerContext.nop
 ) extends Interpreter { scalaInterp =>
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
 
   private val colors0 = Ref[Colors](initialColors)
@@ -73,13 +74,14 @@ final class ScalaInterpreter(
   )
   private val capture = new Capture
 
-  private val commManager = new CommManager
+  private val commManager = CommManager.create()
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private val updatableResultsOpt =
     updateBackgroundVariablesEcOpt.map { ec =>
       new UpdatableResults(
         ec,
+        logCtx,
         data => commHandlerOpt.foreach(_.updateDisplay(data)) // throw if commHandlerOpt is empty?
       )
     }
@@ -366,15 +368,15 @@ final class ScalaInterpreter(
     commHandlerOpt = Some(commHandler0)
 
   def execute(
-    line: String,
+    code: String,
     storeHistory: Boolean, // FIXME Take that one into account
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult = {
 
     val hackedLine =
-      if (line.contains("$ivy.`"))
-        automaticDependencies.foldLeft(line) {
+      if (code.contains("$ivy.`"))
+        automaticDependencies.foldLeft(code) {
           case (line0, (triggerDep, autoDeps)) =>
             if (line0.contains(triggerDep)) {
               log.info(s"Adding auto dependencies $autoDeps")
@@ -383,7 +385,7 @@ final class ScalaInterpreter(
               line0
         }
       else
-        line
+        code
 
     val ammInterp0 = ammInterp // ensures we don't capture output / catch signals during interp initialization
 

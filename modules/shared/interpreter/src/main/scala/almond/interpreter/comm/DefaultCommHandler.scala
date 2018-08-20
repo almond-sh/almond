@@ -26,7 +26,7 @@ final class DefaultCommHandler(
 
 
   def registerCommTarget(name: String, target: CommTarget): Unit =
-    commManager.addTarget(name, TaskCommTarget.fromCommTarget(target, commEc))
+    commManager.addTarget(name, IOCommTarget.fromCommTarget(target, commEc))
   def unregisterCommTarget(name: String): Unit =
     commManager.removeTarget(name)
 

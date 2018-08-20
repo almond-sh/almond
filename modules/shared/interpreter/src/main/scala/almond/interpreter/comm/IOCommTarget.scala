@@ -7,18 +7,18 @@ import cats.syntax.apply._
 
 import scala.concurrent.ExecutionContext
 
-trait TaskCommTarget {
+trait IOCommTarget {
   def open(id: String, data: JsonObject): IO[Unit]
   def message(id: String, data: JsonObject): IO[Unit]
   def close(id: String, data: JsonObject): IO[Unit]
 }
 
-object TaskCommTarget {
+object IOCommTarget {
 
-  def fromCommTarget(commTarget: CommTarget, commEc: ExecutionContext): TaskCommTarget =
+  def fromCommTarget(commTarget: CommTarget, commEc: ExecutionContext): IOCommTarget =
     new FromCommTarget(commTarget, commEc)
 
-  final class FromCommTarget(commTarget: CommTarget, commEc: ExecutionContext) extends TaskCommTarget {
+  final class FromCommTarget(commTarget: CommTarget, commEc: ExecutionContext) extends IOCommTarget {
 
     private def jsonObjToString(obj: JsonObject): String =
       Json.jObject(obj).nospaces

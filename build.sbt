@@ -15,15 +15,23 @@ inThisBuild(List(
   )
 ))
 
+lazy val logger = project
+  .underShared
+  .settings(
+    shared,
+    testSettings,
+    libraryDependencies += Deps.scalaReflect.value
+  )
+
 lazy val channels = project
   .underShared
+  .dependsOn(logger)
   .settings(
     shared,
     testSettings,
     libraryDependencies ++= Seq(
       Deps.fs2,
-      Deps.jeromq,
-      Deps.scalaLogging
+      Deps.jeromq
     )
   )
 
@@ -55,8 +63,8 @@ lazy val kernel = project
     shared,
     testSettings,
     libraryDependencies ++= Seq(
-      Deps.fs2,
-      Deps.logback % "test"
+      Deps.caseAppAnnotations,
+      Deps.fs2
     )
   )
 
@@ -68,9 +76,7 @@ lazy val `scala-kernel-api` = project
     crossVersion := CrossVersion.full,
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
-    libraryDependencies ++= Seq(
-      Deps.ammoniteRepl
-    )
+    libraryDependencies += Deps.ammoniteRepl
   )
 
 lazy val `scala-interpreter` = project
@@ -79,10 +85,7 @@ lazy val `scala-interpreter` = project
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    testSettings,
-    libraryDependencies ++= Seq(
-      Deps.ammoniteRepl
-    )
+    testSettings
   )
 
 lazy val `scala-kernel` = project
@@ -91,28 +94,15 @@ lazy val `scala-kernel` = project
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    libraryDependencies ++= Seq(
-      Deps.caseApp,
-      Deps.logback
-    )
+    libraryDependencies += Deps.caseApp
   )
 
-lazy val `echo-interpreter` = project
-  .underEcho
+lazy val echo = project
+  .underModules
   .dependsOn(kernel)
   .settings(
-    shared
-  )
-
-lazy val `echo-kernel` = project
-  .underEcho
-  .dependsOn(`echo-interpreter`)
-  .settings(
     shared,
-    libraryDependencies ++= Seq(
-      Deps.caseApp,
-      Deps.logback
-    )
+    libraryDependencies += Deps.caseApp
   )
 
 lazy val `almond-spark` = project
@@ -134,11 +124,11 @@ lazy val almond = project
   .aggregate(
     `almond-spark`,
     channels,
-    `echo-interpreter`,
-    `echo-kernel`,
+    echo,
     `interpreter-api`,
     interpreter,
     kernel,
+    logger,
     protocol,
     `scala-interpreter`,
     `scala-kernel-api`,

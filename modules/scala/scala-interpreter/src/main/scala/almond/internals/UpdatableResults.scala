@@ -1,15 +1,19 @@
 package almond.internals
 
 import almond.interpreter.api.DisplayData
-import almond.util.OptionalLogger
+import almond.logger.LoggerContext
 import ammonite.util.Ref
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
-class UpdatableResults(ec: ExecutionContext, updateData: DisplayData => Unit) {
+final class UpdatableResults(
+  ec: ExecutionContext,
+  logCtx: LoggerContext,
+  updateData: DisplayData => Unit
+) {
 
-  private val log = OptionalLogger(getClass)
+  private val log = logCtx(getClass)
 
   val refs = new mutable.HashMap[String, Ref[(DisplayData, Map[String, String])]]
 
