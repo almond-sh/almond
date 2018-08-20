@@ -55,6 +55,7 @@ lazy val kernel = project
     shared,
     testSettings,
     libraryDependencies ++= Seq(
+      Deps.caseAppAnnotations,
       Deps.fs2,
       Deps.logback % "test"
     )
