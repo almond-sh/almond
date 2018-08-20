@@ -34,7 +34,7 @@ object Settings {
   def disableScalaVersion(sbv: String*) = Seq(
     baseDirectory := {
       if (sbv.contains(scalaBinaryVersion.value))
-        baseDirectory.value / "dummy"
+        baseDirectory.value / "target" / "dummy"
       else
         baseDirectory.value
     },
