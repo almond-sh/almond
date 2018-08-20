@@ -97,16 +97,9 @@ lazy val `scala-kernel` = project
     )
   )
 
-lazy val `echo-interpreter` = project
-  .underEcho
+lazy val echo = project
+  .underModules
   .dependsOn(kernel)
-  .settings(
-    shared
-  )
-
-lazy val `echo-kernel` = project
-  .underEcho
-  .dependsOn(`echo-interpreter`)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -134,8 +127,7 @@ lazy val almond = project
   .aggregate(
     `almond-spark`,
     channels,
-    `echo-interpreter`,
-    `echo-kernel`,
+    echo,
     `interpreter-api`,
     interpreter,
     kernel,
