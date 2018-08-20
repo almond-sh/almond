@@ -9,7 +9,7 @@ import almond.channels.{Channel, ConnectionParameters, Message => RawMessage}
 import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterpreter, Message}
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
-import almond.interpreter.messagehandlers.{InterpreterMessageHandlers, MessageHandler}
+import almond.interpreter.messagehandlers.{CommMessageHandlers, InterpreterMessageHandlers, MessageHandler}
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import almond.util.OptionalLogger
 import cats.effect.IO
@@ -43,7 +43,8 @@ final case class Kernel(
       case None =>
         MessageHandler.empty
       case Some(commManager) =>
-        commManager.messageHandler(kernelThreads.queueEc)
+        CommMessageHandlers(commManager, kernelThreads.queueEc)
+          .messageHandler
     }
 
     // handlers whose messages are processed straightaway (no queueing to enforce sequential processing)

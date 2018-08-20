@@ -73,7 +73,7 @@ final class ScalaInterpreter(
   )
   private val capture = new Capture
 
-  private val commManager = new CommManager
+  private val commManager = CommManager.create()
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private val updatableResultsOpt =

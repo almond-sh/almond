@@ -68,7 +68,7 @@ final class TestInterpreter extends Interpreter {
 
   def kernelInfo() = ???
 
-  private val commManager = new CommManager
+  private val commManager = CommManager.create()
   private var commHandlerOpt0 = Option.empty[CommHandler]
   override def commManagerOpt = Some(commManager)
   override def setCommHandler(commHandler: CommHandler): Unit =
