@@ -35,11 +35,13 @@ final class EchoInterpreter extends Interpreter {
           ExecuteResult.Error("No output handler found")
         case Some(handler) =>
           handler.stdout(code.stripPrefix("print "))
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
     else {
-      count += 1
+      if (storeHistory)
+        count += 1
       ExecuteResult.Success(
         DisplayData.text("> " + code)
       )
