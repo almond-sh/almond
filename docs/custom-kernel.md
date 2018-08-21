@@ -1,13 +1,13 @@
 # Writing custom kernels
 
-The sources of the scala kernel have such an example demo kernel under [this directory](https://github.com/jupyter-scala/jupyter-scala/tree/7017401faf4acd0086243ca8950988406b7f01d1/modules/echo).
+The sources of the scala kernel have such an example demo kernel under [this directory](https://github.com/jupyter-scala/jupyter-scala/tree/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo).
 
-See [build.sbt](https://github.com/jupyter-scala/jupyter-scala/blob/7017401faf4acd0086243ca8950988406b7f01d1/build.sbt#L100-L106) for its dependencies (currently, only
-[case-app](https://github.com/alexarchambault/case-app), `"com.github.alexarchambault" %% "case-app" % "2.0.0-M2"`, and the `kernel` module, `"sh.almond" %% "kernel" % "0.1.2"`).
+See [build.sbt](https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/build.sbt#L100-L106) for its dependencies (currently, only
+[case-app](https://github.com/alexarchambault/case-app), `"com.github.alexarchambault" %% "case-app" % "2.0.0-M2"`, and the `kernel` module, `"sh.almond" %% "kernel" % "0.1.3"`).
 
-This demo kernel mainly consists in [`EchoInterpreter`](https://github.com/jupyter-scala/jupyter-scala/blob/7017401faf4acd0086243ca8950988406b7f01d1/modules/echo/src/main/scala/almond/echo/EchoInterpreter.scala),
-an implementation of [`almond.interpreter.Interpreter`](https://github.com/jupyter-scala/jupyter-scala/blob/7017401faf4acd0086243ca8950988406b7f01d1/modules/shared/interpreter/src/main/scala/almond/interpreter/Interpreter.scala),
-and in [`EchoKernel`](https://github.com/jupyter-scala/jupyter-scala/blob/7017401faf4acd0086243ca8950988406b7f01d1/modules/echo/src/main/scala/almond/echo/EchoKernel.scala), a small
+This demo kernel mainly consists in [`EchoInterpreter`](https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo/src/main/scala/almond/echo/EchoInterpreter.scala),
+an implementation of [`almond.interpreter.Interpreter`](https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/shared/interpreter/src/main/scala/almond/interpreter/Interpreter.scala),
+and in [`EchoKernel`](https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo/src/main/scala/almond/echo/EchoKernel.scala), a small
 application that either installs the kernel, or actually runs it when it is launched by Jupyter.
 
 When implementing a custom kernel, you may want to re-use almost as is `EchoKernel`, instantiating your own `Interpreter` instead of `EchoInterpreter`. You may optionally handle command-line arguments differently,
