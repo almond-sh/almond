@@ -19,5 +19,12 @@ final case class Options(
   @HelpMessage("command to launch this kernel, as one block (then split, takes precedence over --arg)")
     command: Option[String] = None,
   @HelpMessage("whether to request frontends to interrupt this kernel via a message")
-    interruptViaMessage: Boolean = false
-)
+    interruptViaMessage: Boolean = false,
+  @HelpMessage("Whether to copy the kernel launcher in the kernelspec directory (default: false if --arg or --command specified, true else)")
+    copyLauncher: Option[Boolean] = None
+) {
+  def copyLauncher0: Boolean =
+    copyLauncher.getOrElse {
+      arg.isEmpty && command.isEmpty
+    }
+}

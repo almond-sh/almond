@@ -8,6 +8,7 @@ import java.nio.file.{Files, Path, Paths}
 import almond.protocol.KernelSpec
 import almond.kernel.util.JupyterPath
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
@@ -91,19 +92,22 @@ object Install {
 
     val spec0 =
       if (copyLauncher)
-        spec.argv match {
-          case Nil =>
-            throw new Exception("Invalid empty command in kernel spec")
-          case h :: t =>
+        launcherPos(spec.argv) match {
+          case None =>
+            throw new Exception(
+              s"Can't copy launcher, launcher argument in command ${spec.argv.mkString(" ")} cannot be found"
+            )
+          case Some(pos) =>
+            val launcher0 = spec.argv(pos)
             val dest = dir.resolve("launcher.jar")
-            val source = Paths.get(h)
+            val source = Paths.get(launcher0)
             if (!Files.exists(source))
-              throw new Exception(s"Launcher $h in kernel spec command not found")
+              throw new Exception(s"Launcher $launcher0 in kernel spec command not found")
             if (!Files.isRegularFile(source))
-              throw new Exception(s"Launcher $h in kernel spec command is not a regular file")
-            Files.copy(Paths.get(h), dest)
+              throw new Exception(s"Launcher $launcher0 in kernel spec command is not a regular file")
+            Files.copy(Paths.get(launcher0), dest)
             spec.copy(
-              argv = dest.toString :: t
+              argv = spec.argv.updated(pos, dest.toString)
             )
         }
       else
@@ -134,7 +138,53 @@ object Install {
         .takeWhile(_.nonEmpty)
         .collect { case Some(arg) if !filterOutArgs(arg) => arg }
         .toList
-    } yield mainJar :: mainArgs
+    } yield "java" :: "-jar" :: mainJar :: mainArgs
+
+  /**
+    * Gets the command that launched the current application if possible.
+    *
+    * Works if the current app is launched via a single JAR, specifying a main class in its manifest.
+    *
+    * @param filterOutArgs: arguments to filter-out
+    */
+  def fatJarCurrentAppCommand(filterOutArgs: Set[String] = Set.empty): Option[List[String]] =
+    for {
+      mainJar <- Option(getClass.getProtectionDomain.getCodeSource)
+        .flatMap(s => Option(s.getLocation))
+        .flatMap(u => scala.util.Try(Paths.get(u.toURI).toFile.getAbsolutePath).toOption)
+      command <- sys.props.get("sun.java.command")
+      mainArgs = command
+        .split("\\s+")
+        .drop(1) // drop launcher path (should be mainJar)
+        .filter(!filterOutArgs(_))
+        .toList
+    } yield "java" :: "-jar" :: mainJar :: mainArgs
+
+  def launcherPos(command: List[String]): Option[Int] =
+    command match {
+      case h :: t if h == "java" || h.endsWith("/java") =>
+
+        @tailrec
+        def helper(l: List[(String, Int)]): Option[Int] =
+          l match {
+            case Nil =>
+              None
+            case (h, _) :: t =>
+              if (h == "-cp")
+                None
+              else if (h == "-jar")
+                t.headOption.map(_._2)
+              else if (h.startsWith("-"))
+                helper(t)
+              else
+                None
+          }
+
+        helper(t.zipWithIndex)
+          .map(_ + 1)
+      case _ =>
+        None
+    }
 
 
   def install(
@@ -144,7 +194,6 @@ object Install {
     options: Options,
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
-    copyLauncher: Boolean = true,
     interruptMode: Option[String] = None
   ): Path = {
 
@@ -199,7 +248,7 @@ object Install {
       path,
       logo64PngOpt = logoOpt,
       force = options.force,
-      copyLauncher = copyLauncher
+      copyLauncher = options.copyLauncher0
     )
   }
 
@@ -210,7 +259,6 @@ object Install {
     options: Options,
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
-    copyLauncher: Boolean = true,
     interruptMode: Option[String] = None
   ): Either[String, Path] =
     try {
@@ -221,7 +269,6 @@ object Install {
         options,
         defaultLogoOpt,
         connectionFileArgs,
-        copyLauncher,
         interruptMode
       )
       Right(dir)
