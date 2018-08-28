@@ -333,11 +333,6 @@ final class ScalaInterpreter(
 
   initThread.start()
 
-  override def init(): Unit = {
-    // wait for ammInterp to be initialized
-    ammInterp
-  }
-
   private var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
   private var currentThreadOpt = Option.empty[Thread]
 
