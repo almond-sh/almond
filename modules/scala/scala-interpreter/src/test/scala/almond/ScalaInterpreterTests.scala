@@ -52,7 +52,7 @@ object ScalaInterpreterTests extends TestSuite {
         val code = "HashM"
         val res = interpreter.complete(code, code.length)
         val expectedRes = Completion(
-          5, // TODO Change back to 0 once https://github.com/lihaoyi/Ammonite/pull/845 is merged and used here
+          0,
           5,
           Seq(
             "java.util.HashMap",
