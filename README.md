@@ -13,7 +13,7 @@ in Scala.
 
 Create a launcher via [coursier](http://get-coursier.io) with
 ```
-$ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.2
+$ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.5
 $ coursier bootstrap \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
@@ -39,7 +39,7 @@ picked from the cache of coursier. You may prefer to have the launcher embed all
 so that nothing needs to be downloaded or picked from a cache upon launch. Passing
 `--standalone` to the `coursier bootstrap` command generates such a launcher,
 ```
-$ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.2
+$ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.5
 $ coursier bootstrap --standalone \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
