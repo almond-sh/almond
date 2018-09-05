@@ -288,8 +288,24 @@ final class ScalaInterpreter(
         else
           predef
 
-      val stmts = Parsers.split(code).get.get.value
-      ammInterp0.processLine(code, stmts, -1, silent = true, () => ())
+      def handlePredef(): Unit = {
+        val stmts = Parsers.split(code).get.get.value
+        val predefRes = ammInterp0.processLine(code, stmts, 9999999, silent = false, () => ())
+        Repl.handleOutput(ammInterp0, predefRes)
+        predefRes match {
+          case Res.Success(_) =>
+          case Res.Failure(msg) =>
+            log.error(s"Error while running predef: $msg")
+            sys.exit(1)
+          case Res.Exception(t, msg) =>
+            log.error(s"Caught exception while running predef ($msg)", t)
+          case Res.Skip =>
+          case Res.Exit(v) =>
+            log.warn(s"Ignoring exit request from predef (exit value: $v)")
+        }
+      }
+
+      handlePredef()
 
       log.info("Ammonite interpreter ok")
 
