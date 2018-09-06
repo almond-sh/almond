@@ -66,6 +66,78 @@ object ScalaInterpreterTests extends TestSuite {
 
     }
 
+    "predef" - {
+
+      "simple" - {
+        val predef = "val n = 2"
+        val interp = new ScalaInterpreter(
+          initialColors = Colors.BlackWhite,
+          predef = predef
+        )
+
+        val res = interp.execute("val m = 2 * n")
+        val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
+        assert(res == expectedRes)
+      }
+
+      "no variable name" - {
+        val predef =
+          """println("foo") // automatically generated: val res… = println("foo")
+            |val n = 2
+          """.stripMargin
+        val interp = new ScalaInterpreter(
+          initialColors = Colors.BlackWhite,
+          predef = predef
+        )
+
+        val res = interp.execute("val m = 2 * n")
+        val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
+        assert(res == expectedRes)
+      }
+
+      "compilation error" - {
+        val predef = "val n = 2z"
+        val interp = new ScalaInterpreter(
+          initialColors = Colors.BlackWhite,
+          predef = predef
+        )
+
+        val res =
+          try {
+            interp.execute("val m = 2 * n")
+            false
+          } catch {
+            case e: ScalaInterpreter.PredefException =>
+              assert(e.getCause == null)
+              true
+          }
+
+        assert(res)
+      }
+
+      "exception" - {
+        val predef = """val n: Int = sys.error("foo")"""
+        val interp = new ScalaInterpreter(
+          initialColors = Colors.BlackWhite,
+          predef = predef
+        )
+
+        val res =
+          try {
+            interp.execute("val m = 2 * n")
+            false
+          } catch {
+            case e: ScalaInterpreter.PredefException =>
+              val msgOpt = Option(e.getCause).flatMap(e0 => Option(e0.getMessage))
+              assert(msgOpt.contains("foo"))
+              true
+          }
+
+        assert(res)
+      }
+
+    }
+
   }
 
 }
