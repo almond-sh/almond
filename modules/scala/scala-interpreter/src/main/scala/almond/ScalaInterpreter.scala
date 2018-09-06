@@ -326,28 +326,10 @@ final class ScalaInterpreter(
       ammInterp0
     } catch {
       case t: Throwable =>
-        log.error(s"Caught exception while initializing interpreter, exiting", t)
-        sys.exit(1)
+        log.error(s"Caught exception while initializing interpreter", t)
+        throw t
     }
   }
-
-  // Actually init interpreter in background
-
-  private val initThread = new Thread("interpreter-init") {
-    setDaemon(true)
-    override def run() =
-      try {
-        log.info("Initializing interpreter (background)")
-        ammInterp
-        log.info("Initialized interpreter (background)")
-      }
-      catch {
-        case t: Throwable =>
-          log.error(s"Caught exception while initializing interpreter", t)
-      }
-  }
-
-  initThread.start()
 
   private var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
   private var currentThreadOpt = Option.empty[Thread]
