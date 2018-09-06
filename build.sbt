@@ -53,7 +53,8 @@ lazy val interpreter = project
   .underShared
   .dependsOn(`interpreter-api`, protocol)
   .settings(
-    shared
+    shared,
+    testSettings
   )
 
 lazy val kernel = project
