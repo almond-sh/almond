@@ -133,6 +133,26 @@ object ScalaKernel extends CaseApp[Options] {
     )
     log.info("Created interpreter")
 
+
+    // Actually init Ammonite interpreter in background
+
+    val initThread = new Thread("interpreter-init") {
+      setDaemon(true)
+      override def run() =
+        try {
+          log.info("Initializing interpreter (background)")
+          interpreter.ammInterp
+          log.info("Initialized interpreter (background)")
+        } catch {
+          case t: Throwable =>
+            log.error(s"Caught exception while initializing interpreter, exiting", t)
+            sys.exit(1)
+        }
+    }
+
+    initThread.start()
+
+
     log.info("Running kernel")
     Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
       .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))

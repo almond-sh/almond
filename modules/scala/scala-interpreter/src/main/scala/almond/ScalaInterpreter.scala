@@ -146,6 +146,22 @@ final class ScalaInterpreter(
     }
 
 
+  def runPredef(interp: ammonite.interp.Interpreter): Unit = {
+    val stmts = Parsers.split(predef).get.get.value
+    val predefRes = interp.processLine(predef, stmts, 9999999, silent = false, () => ())
+    Repl.handleOutput(interp, predefRes)
+    predefRes match {
+      case Res.Success(_) =>
+      case Res.Failure(msg) =>
+        throw new ScalaInterpreter.PredefException(msg, None)
+      case Res.Exception(t, msg) =>
+        throw new ScalaInterpreter.PredefException(msg, Some(t))
+      case Res.Skip =>
+      case Res.Exit(v) =>
+        log.warn(s"Ignoring exit request from predef (exit value: $v)")
+    }
+  }
+
   lazy val ammInterp: ammonite.interp.Interpreter = {
 
     val replApi: ReplApiImpl =
@@ -281,31 +297,7 @@ final class ScalaInterpreter(
 
       log.info(s"Warming up interpreter (predef: $predef)")
 
-      val code =
-        if (predef.isEmpty)
-          // from ammonite.repl.Repl.warmup()
-          """val array = Seq.tabulate(10)(_*2).toArray.max"""
-        else
-          predef
-
-      def handlePredef(): Unit = {
-        val stmts = Parsers.split(code).get.get.value
-        val predefRes = ammInterp0.processLine(code, stmts, 9999999, silent = false, () => ())
-        Repl.handleOutput(ammInterp0, predefRes)
-        predefRes match {
-          case Res.Success(_) =>
-          case Res.Failure(msg) =>
-            log.error(s"Error while running predef: $msg")
-            sys.exit(1)
-          case Res.Exception(t, msg) =>
-            log.error(s"Caught exception while running predef ($msg)", t)
-          case Res.Skip =>
-          case Res.Exit(v) =>
-            log.warn(s"Ignoring exit request from predef (exit value: $v)")
-        }
-      }
-
-      handlePredef()
+      runPredef(ammInterp0)
 
       log.info("Ammonite interpreter ok")
 
@@ -326,28 +318,10 @@ final class ScalaInterpreter(
       ammInterp0
     } catch {
       case t: Throwable =>
-        log.error(s"Caught exception while initializing interpreter, exiting", t)
-        sys.exit(1)
+        log.error(s"Caught exception while initializing interpreter", t)
+        throw t
     }
   }
-
-  // Actually init interpreter in background
-
-  private val initThread = new Thread("interpreter-init") {
-    setDaemon(true)
-    override def run() =
-      try {
-        log.info("Initializing interpreter (background)")
-        ammInterp
-        log.info("Initialized interpreter (background)")
-      }
-      catch {
-        case t: Throwable =>
-          log.error(s"Caught exception while initializing interpreter", t)
-      }
-  }
-
-  initThread.start()
 
   private var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
   private var currentThreadOpt = Option.empty[Thread]
@@ -550,6 +524,17 @@ final class ScalaInterpreter(
 }
 
 object ScalaInterpreter {
+
+  final class PredefException(
+    msg: String,
+    causeOpt: Option[Throwable]
+  ) extends Exception(msg, causeOpt.orNull) {
+    def describe: String =
+      if (causeOpt.isEmpty)
+        s"Error while running predef: $msg"
+      else
+        s"Caught exception while running predef: $msg"
+  }
 
   // these come from Ammonite
   // exception display was tweaked a bit (too much red for notebooks else)

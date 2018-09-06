@@ -19,7 +19,7 @@ final case class Message[T](
   content: T,
   parent_header: Option[Header] = None,
   idents: List[Seq[Byte]] = Nil,
-  metadata: Map[String, String] = Map.empty
+  metadata: Map[String, Json] = Map.empty
 ) {
 
   def messageType: MessageType[T] =
@@ -39,7 +39,7 @@ final case class Message[T](
   def publish[U](
     messageType: MessageType[U],
     content: U,
-    metadata: Map[String, String] = Map.empty,
+    metadata: Map[String, Json] = Map.empty,
     ident: Option[String] = None
   ): Message[U] =
     Message(
@@ -56,7 +56,7 @@ final case class Message[T](
   def reply[U](
     messageType: MessageType[U],
     content: U,
-    metadata: Map[String, String] = Map.empty
+    metadata: Map[String, Json] = Map.empty
   ): Message[U] =
     Message(
       replyHeader(messageType),
@@ -118,7 +118,7 @@ object Message {
   def parse[T: DecodeJson](rawMessage: RawMessage): Either[String, Message[T]] =
     for {
       header <- rawMessage.header.decodeEither[Header].right
-      metaData <- rawMessage.metadata.decodeEither[Map[String, String]].right
+      metaData <- rawMessage.metadata.decodeEither[Map[String, Json]].right
       content <- rawMessage.content.decodeEither[T].right
     } yield {
       // FIXME Parent header is optional, but this unnecessarily traps errors
