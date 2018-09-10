@@ -5,7 +5,7 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.Message
-import almond.protocol.{Execute, Header, Input}
+import almond.protocol.{Execute, Header, Input, Shutdown}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import argonaut.Json
 import cats.effect.IO
@@ -142,6 +142,41 @@ object KernelTests extends TestSuite {
         "execute_result",
         "execute_reply"
       )
+
+      assert(msgTypes == expectedMsgTypes)
+    }
+
+    "shutdown request" - {
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _) =>
+        case (Channel.Requests, m) if m.header.msg_type == Shutdown.replyType.messageType =>
+      }
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.content.nospaces.contains("exit"))
+
+      val sessionId = UUID.randomUUID().toString
+      val input = Stream(
+        Message(
+          Header.random("test", Shutdown.requestType, sessionId),
+          Shutdown.Request(restart = false)
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+
+      val interpreter = new TestInterpreter
+      val t = Kernel.create(interpreter, interpreterEc, threads)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      intercept[TestShutdownException] {
+        t.unsafeRunTimed(10.seconds)
+      }
+
+      val msgTypes = streams.generatedMessageTypes()
+
+      val expectedMsgTypes = Seq(Shutdown.replyType.messageType)
 
       assert(msgTypes == expectedMsgTypes)
     }

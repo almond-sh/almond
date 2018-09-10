@@ -11,6 +11,7 @@ import argonaut.{DecodeJson, Json}
 import cats.effect.IO
 
 import scala.concurrent.ExecutionContext
+import scala.util.Either.RightProjection
 
 /**
   * Wraps a partial function, able to handle some [[Message]]s arriving via a given [[Channel]].
@@ -78,13 +79,34 @@ object MessageHandler {
   ): MessageHandler =
     MessageHandler {
       case (`channel`, message) if message.messageType == messageType =>
-        message
-          .decodeAs[T]
-          .left
-          .map(e => new Exception(s"Error decoding message: $e"))
-          .right
-          .map(handler)
+        tryDecode(message).map(handler)
     }
+
+  /**
+    * Constructs a [[MessageHandler]], able to handle a [[Message]] of a single type from one of several [[Channel]]s.
+    *
+    * The passed handler should return a [[Stream]] of messages as a response to the incoming message.
+    *
+    * @param channels: Set of [[Channel]]s this [[MessageHandler]] handles [[Message]]s from
+    * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
+    */
+  def apply[T: DecodeJson](
+    channels: Set[Channel],
+    messageType: MessageType[T]
+  )(
+    handler: (Channel, Message[T]) => Stream[IO, (Channel, RawMessage)]
+  ): MessageHandler =
+    MessageHandler {
+      case (channel, message) if message.messageType == messageType && channels.contains(channel) =>
+        tryDecode(message).map(msg => handler(channel, msg))
+    }
+
+  private def tryDecode[T: DecodeJson](message: Message[Json]): RightProjection[Exception, Message[T]] =
+    message
+      .decodeAs[T]
+      .left
+      .map(e => new Exception(s"Error decoding message: $e"))
+      .right
 
   /**
     * Constructs a [[MessageHandler]], that reports the kernel as busy while a [[Message]] is being processed.

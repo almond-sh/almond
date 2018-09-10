@@ -53,6 +53,7 @@ final case class Kernel(
     val immediateHandlers = inputHandler.messageHandler
       .orElse(commMessageHandler)
       .orElse(interpreterMessageHandler.interruptHandler)
+      .orElse(interpreterMessageHandler.shutdownHandler)
 
     // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
     // (don't know about lab, nteract seems fine, unless it just marks kernels as starting by itself)
