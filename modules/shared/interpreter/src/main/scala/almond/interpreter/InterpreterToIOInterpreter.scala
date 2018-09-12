@@ -79,6 +79,9 @@ final class InterpreterToIOInterpreter(
   override val interrupt: IO[Unit] =
     IO(interpreter.interrupt())
 
+  override val shutdown: IO[Nothing] =
+    IO(interpreter.shutdown())
+
   val executionCount: IO[Int] =
     IO(interpreter.currentLine())
 

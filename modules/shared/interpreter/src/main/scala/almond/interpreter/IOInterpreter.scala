@@ -24,6 +24,8 @@ trait IOInterpreter {
   def interrupt: IO[Unit] =
     IO.unit
 
+  def shutdown: IO[Nothing]
+
   // CommManager: manages the server-side comms (~objects that await messages)
   // CommHandler: allows to send messages to the client-side comms, and to register server comms to receive messages
   // FIXME Wrap the result of those in IO too?

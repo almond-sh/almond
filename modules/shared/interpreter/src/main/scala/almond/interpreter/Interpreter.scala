@@ -55,6 +55,12 @@ trait Interpreter {
   def interrupt(): Unit =
     ()
 
+  /**
+    * Called in response to the Shutdown message, after a reply has been sent, in order to shutdown the JVM.
+    * Exit code zero indicates intentional shutdown as opposed to error condition.
+    */
+  def shutdown(): Nothing =
+    sys.exit(0)
 
   /**
     * Whether the passed code is complete.
