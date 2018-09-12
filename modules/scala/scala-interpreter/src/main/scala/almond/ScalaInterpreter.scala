@@ -483,8 +483,6 @@ final class ScalaInterpreter(
       code
     )
 
-    println(other.mkString("\n") + "\n")
-
     val completions = completions0
       .filter(!_.contains("$"))
       .filter(_.nonEmpty)
