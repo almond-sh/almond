@@ -9,7 +9,8 @@ object Deps {
     def ammonium = "0.8.3-1"
     def flink = "1.1.3"
     def jupyterKernel = "0.4.1"
-    def scio = "0.2.12"
+    def scio = "0.6.1"
+    def beam = "2.6.0"
   }
 
   def ammonium = ("org.jupyter-scala" % "ammonite" % Versions.ammonium).cross(CrossVersion.full)
@@ -35,6 +36,7 @@ object Deps {
   def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
   def scioCore = "com.spotify" %% "scio-core" % Versions.scio
   def scioExtra = "com.spotify" %% "scio-extra" % Versions.scio
+  def dataflowRunner = "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % Versions.beam
   def slf4jSimple = "org.slf4j" % "slf4j-simple" % "1.7.24"
   def sparkSql1 = "org.apache.spark" %% "spark-sql" % "1.3.1"
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.0.2"

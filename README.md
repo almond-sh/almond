@@ -152,19 +152,23 @@ Status: POC
 Use like
 
 ```scala
-import $ivy.`org.jupyter-scala::scio:0.4.2`
+import $ivy.`org.jupyter-scala::scio:0.4.3`, $ivy.`org.apache.beam:beam-runners-direct-java:2.6.0`
+
 import jupyter.scio._
 
 import com.spotify.scio._
-import com.spotify.scio.accumulators._
 import com.spotify.scio.bigquery._
-import com.spotify.scio.experimental._
 
-val sc = JupyterScioContext(
-  "runner" -> "DataflowPipelineRunner",
+// Define JupyterScioContext
+JupyterScioContext(
+  "runner" -> "DirectRunner", // DirectRunner or DataflowRunner
   "project" -> "jupyter-scala",
   "stagingLocation" -> "gs://bucket/staging"
-).withGcpCredential("/path-to/credentials.json") // alternatively, set the env var GOOGLE_APPLICATION_CREDENTIALS to that path
+)
+
+sc.withGcpCredential("/path-to/credentials.json") // alternatively, set the env var GOOGLE_APPLICATION_CREDENTIALS to that path
+
+// Access JupyterScioContext with `sc`
 ```
 
 ### Scalding

@@ -2,7 +2,7 @@ package scala.tools.nsc.interpreter
 
 import java.io.File
 
-import com.google.api.client.auth.oauth2.Credential
+import com.google.auth.Credentials
 import com.spotify.scio.bigquery.BigQueryClient
 
 /**
@@ -19,8 +19,8 @@ object Helper {
       BigQueryClient(project, new File(secret))
   }
 
-  def bigQueryClient(project: String, credential: Credential): BigQueryClient =
-    BigQueryClient(project, credential)
+  def bigQueryClient(project: String, credentials: Credentials): BigQueryClient =
+    BigQueryClient(project, credentials)
 
   def bigQueryClient(project: String, secretFile: File): BigQueryClient =
     BigQueryClient(project, secretFile)

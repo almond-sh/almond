@@ -127,7 +127,8 @@ lazy val scio = project
         Deps.kantanCsv,
         Deps.macroParadise,
         Deps.scioCore,
-        Deps.scioExtra
+        Deps.scioExtra,
+        Deps.dataflowRunner
       )
     },
     disableScalaVersion("2.12")
