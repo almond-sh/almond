@@ -25,7 +25,7 @@ echo "Processing Markdown files"
 # with
 #   sbt interpreter-api/publishLocal scala-kernel-api/publishLocal almond-spark/publishLocal
 ../scripts/coursier.sh launch \
-  "com.geirsson:mdoc_$SCALA_VERSION:0.4.5" \
+  "com.geirsson:mdoc_$SCALA_VERSION:0.5.0" \
   "sh.almond:scala-kernel-api_$SCALA_VERSION:$VERSION" \
   -- \
     --in ../docs/pages \

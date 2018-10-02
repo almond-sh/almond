@@ -19,6 +19,7 @@ jobs:
   include:
   - scala: 2.11.12
   - scala: 2.12.6
+  - scala: 2.12.7
   - env: WEBSITE=1 # unused from the script, just to know what the job does from the Travis UI
     script: scripts/update-website.sh
   - stage: update-website
