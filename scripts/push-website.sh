@@ -11,8 +11,8 @@ if [ ! -e docs/website/build/almond/index.html ]; then
 fi
 
 FULL_VERSION="$(cat modules/shared/interpreter-api/target/version)"
-VERSION="$(echo "FULL_VERSION" | sed 's/+.*-SNAPSHOT$/-SNAPSHOT/')"
-echo "Current version is FULL_VERSION (shortened: VERSION)"
+VERSION="$(echo "$FULL_VERSION" | sed 's/+.*-SNAPSHOT$/-SNAPSHOT/')"
+echo "Current version is $FULL_VERSION (shortened: $VERSION)"
 
 mkdir -p target
 cd target
