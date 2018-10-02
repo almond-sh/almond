@@ -12,7 +12,7 @@ sudo: required
 stages:
   - name: test
   - name: release
-    if: (branch = develop AND type = push) OR (tag IS present)
+    if: (branch = master AND type = push) OR (tag IS present)
 jobs:
   include:
   - scala: 2.11.12
