@@ -1,0 +1,6 @@
+{
+  "docs": {
+    "Quick start": ["intro", "install"],
+    "Other": ["versions", "custom-kernel", "other"]
+  }
+}

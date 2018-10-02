@@ -11,11 +11,18 @@ before_install:
 sudo: required
 stages:
   - name: test
+  - name: update-website
+    if: (branch = master AND type = push) OR (tag IS present)
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
 jobs:
   include:
   - scala: 2.11.12
   - scala: 2.12.6
+  - env: WEBSITE=1 # unused from the script, just to know what the job does from the Travis UI
+    script: scripts/update-website.sh
+  - stage: update-website
+    env: PUSH_WEBSITE=1
+    script: scripts/update-website.sh
   - stage: release
     script: sbt ci-release
