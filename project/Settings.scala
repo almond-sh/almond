@@ -22,7 +22,8 @@ object Settings {
       "-language:higherKinds",
       "-unchecked"
     ),
-    resolvers += Resolver.sonatypeRepo("releases")
+    resolvers += Resolver.sonatypeRepo("releases"),
+    exportVersionsSetting
   )
 
   lazy val dontPublish = Seq(
@@ -129,6 +130,28 @@ object Settings {
     def underShared: Project = {
       val base = project.base.getParentFile / "modules" / "shared" / project.base.getName
       project.in(base)
+    }
+  }
+
+  lazy val exportVersions = taskKey[String]("Prints the current version to a dedicated file under target/")
+
+  lazy val exportVersionsSetting: Setting[_] = {
+    exportVersions := {
+      val ver = version.value
+      val scalaVer = scalaVersion.value
+      val outputDir = target.value
+
+      outputDir.mkdirs()
+
+      val output = outputDir / "version"
+      Files.write(output.toPath, ver.getBytes(UTF_8))
+      state.value.log.info(s"Wrote $output")
+
+      val scalaOutput = outputDir / "scala-version"
+      Files.write(scalaOutput.toPath, scalaVer.getBytes(UTF_8))
+      state.value.log.info(s"Wrote $scalaOutput")
+
+      ver
     }
   }
 

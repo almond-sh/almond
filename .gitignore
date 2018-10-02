@@ -1,3 +1,6 @@
 target/
 .DS_Store
 .idea/
+
+# website stuff
+processed-pages/
