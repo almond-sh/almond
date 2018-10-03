@@ -106,8 +106,8 @@ object ClientStreams {
 
   def create(
     initialMessages: Stream[IO, (Channel, RawMessage)],
-    handler: MessageHandler,
-    stopWhen: (Channel, Message[Json]) => IO[Boolean]
+    stopWhen: (Channel, Message[Json]) => IO[Boolean],
+    handler: MessageHandler = MessageHandler.discard { case _ => }
   ): ClientStreams = {
 
     val b = new mutable.ListBuffer[Either[(Channel, Message[Json]), (Channel, Message[Json])]]
