@@ -150,6 +150,15 @@ final case class InterpreterMessageHandlers(
     }
 
 
+  def historyHandler: MessageHandler =
+    blocking(Channel.Requests, History.requestType, queueEc, logCtx) { (message, queue) =>
+      // for now, always sending back an empty response
+      message
+        .reply(History.replyType, History.Reply.Simple(Nil))
+        .enqueueOn(Channel.Requests, queue)
+    }
+
+
   def kernelInfoHandler: MessageHandler =
     blocking(Channel.Requests, KernelInfo.requestType, queueEc, logCtx) { (message, queue) =>
 
@@ -167,7 +176,8 @@ final case class InterpreterMessageHandlers(
       executeHandler,
       completeHandler,
       isCompleteHandler,
-      inspectHandler
+      inspectHandler,
+      historyHandler
     )
 
   def shutdownHandler: MessageHandler = {

@@ -5,7 +5,8 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.Message
-import almond.protocol.{Execute, Header, Input, Shutdown}
+import almond.logger.{Level, LoggerContext}
+import almond.protocol.{Execute, Header, History, Input, Shutdown}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import argonaut.Json
 import cats.effect.IO
@@ -16,8 +17,7 @@ import scala.concurrent.duration.DurationInt
 
 object KernelTests extends TestSuite {
 
-  // uncomment this to facilitate debugging
-  // almond.util.OptionalLogger.enable()
+  val logCtx = LoggerContext.nop // debug: LoggerContext.stderr(Level.Debug)
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
 
@@ -71,7 +71,7 @@ object KernelTests extends TestSuite {
 
       val streams = ClientStreams.create(input, inputHandler.orElse(ignoreExpectedReplies), stopWhen)
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads)
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       val res = t.unsafeRunTimed(2.seconds)
@@ -119,7 +119,7 @@ object KernelTests extends TestSuite {
 
       val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads)
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       val res = t.unsafeRunTimed(10.seconds)
@@ -146,6 +146,40 @@ object KernelTests extends TestSuite {
       assert(msgTypes == expectedMsgTypes)
     }
 
+    "history request" - {
+
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _) =>
+        case (Channel.Requests, m) if m.header.msg_type == "history_reply" =>
+      }
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) => IO.pure(m.header.msg_type == "history_reply")
+
+      val sessionId = UUID.randomUUID().toString
+      val input = Stream(
+        Message(
+          Header.random("test", History.requestType, sessionId),
+          History.Request(output = false, raw = false, History.AccessType.Range)
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+
+      val interpreter = new TestInterpreter
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      val res = t.unsafeRunTimed(10.seconds)
+      assert(res.nonEmpty)
+
+      val msgTypes = streams.generatedMessageTypes()
+
+      val expectedMsgTypes = Seq(History.replyType.messageType)
+
+      assert(msgTypes == expectedMsgTypes)
+    }
+
     "shutdown request" - {
       val ignoreExpectedReplies = MessageHandler.discard {
         case (Channel.Publish, _) =>
@@ -167,7 +201,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       intercept[TestShutdownException] {

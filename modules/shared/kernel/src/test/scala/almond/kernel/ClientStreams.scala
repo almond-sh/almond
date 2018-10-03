@@ -151,7 +151,12 @@ object ClientStreams {
                   s.evalMap(q.enqueue1).compile.drain
               }
 
-              resp *> extra
+              // bracket?
+              for {
+                a <- resp.attempt
+                _ <- extra
+                r <- IO.fromEither(a)
+              } yield r
           }
       }
     }
