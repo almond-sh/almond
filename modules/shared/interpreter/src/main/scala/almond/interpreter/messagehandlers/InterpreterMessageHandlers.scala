@@ -10,10 +10,9 @@ import almond.logger.LoggerContext
 import almond.protocol._
 import cats.effect.IO
 import cats.syntax.apply._
-import fs2.async.mutable.Queue
+import fs2.async.mutable.{Queue, Signal}
 import fs2.Stream
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 final case class InterpreterMessageHandlers(
@@ -22,7 +21,8 @@ final case class InterpreterMessageHandlers(
   inputHandlerOpt: Option[InputHandler],
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
-  runAfterQueued: IO[Unit] => IO[Unit]
+  runAfterQueued: IO[Unit] => IO[Unit],
+  exitSignal: Signal[IO, Boolean]
 ) {
 
   import InterpreterMessageHandlers._
@@ -180,23 +180,21 @@ final case class InterpreterMessageHandlers(
       historyHandler
     )
 
-  def shutdownHandler: MessageHandler = {
+  def shutdownHandler: MessageHandler =
     // v5.3 spec states "The request can be sent on either the control or shell channels.".
-    MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) { case (channel, message) =>
-      val reply = {
-        val msg = message.reply(Shutdown.replyType, Shutdown.Reply(message.content.restart))
-        msg.streamOn(channel)
-      }
+    MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) { (channel, message) =>
 
-      // Allow some time for message to be delivered. Doing this on the `queueEc` isn't great in that shutdown could
-      // hypothetically be sequenced behind queue operations, but in practice there's likely no consequence.
-      // Alternatively we could Thread.sleep() sleep inside a regular/synchronous IO but then might want to construct
-      // our Stream Chunks by hand to avoid sleep() causing any delay in delivery of our reply.
-      val delayedShutdown = IO.timer(queueEc).sleep(500.milliseconds).flatMap(_ => interpreter.shutdown)
+      val reply = message
+        .reply(Shutdown.replyType, Shutdown.Reply(message.content.restart))
+        .streamOn(channel)
 
-      reply ++ Stream.eval(delayedShutdown)
+      val prepareShutdown = exitSignal
+        .set(true)
+        .flatMap(_ => interpreter.shutdown)
+
+      Stream.eval(prepareShutdown)
+        .flatMap(_ => reply)
     }
-  }
 
   def interruptHandler: MessageHandler =
     blocking(Channel.Control, Interrupt.requestType, queueEc, logCtx) { (message, queue) =>

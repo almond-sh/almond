@@ -5,7 +5,7 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.Message
-import almond.logger.{Level, LoggerContext}
+import almond.logger.LoggerContext
 import almond.protocol.{Execute, Header, History, Input, Shutdown}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import argonaut.Json
@@ -17,7 +17,7 @@ import scala.concurrent.duration.DurationInt
 
 object KernelTests extends TestSuite {
 
-  val logCtx = LoggerContext.nop // debug: LoggerContext.stderr(Level.Debug)
+  val logCtx = LoggerContext.nop // debug: LoggerContext.stderr(almond.logger.Level.Debug)
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
 
@@ -187,8 +187,8 @@ object KernelTests extends TestSuite {
       }
 
       val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.content.nospaces.contains("exit"))
+        (_, _) =>
+          IO.pure(false)
 
       val sessionId = UUID.randomUUID().toString
       val input = Stream(
@@ -204,9 +204,10 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
-      intercept[TestShutdownException] {
-        t.unsafeRunTimed(10.seconds)
-      }
+      val res = t.unsafeRunTimed(10.seconds)
+      assert(res.nonEmpty)
+
+      assert(interpreter.shutdownCalled())
 
       val msgTypes = streams.generatedMessageTypes()
 

@@ -32,131 +32,145 @@ final case class Kernel(
 
   def replies(requests: Stream[IO, (Channel, RawMessage)]): Stream[IO, (Channel, RawMessage)] = {
 
-    val interpreterMessageHandler = InterpreterMessageHandlers(
-      interpreter,
-      backgroundCommHandlerOpt,
-      Some(inputHandler),
-      kernelThreads.queueEc,
-      logCtx,
-      io => mainQueue.enqueue1(Some(Stream.eval_(io)))
-    )
-
-    val commMessageHandler = interpreter.commManagerOpt match {
-      case None =>
-        MessageHandler.empty
-      case Some(commManager) =>
-        CommMessageHandlers(commManager, kernelThreads.queueEc, logCtx)
-          .messageHandler
+    val exitSignal = {
+      implicit val S = kernelThreads.scheduleEc // or another ExecutionContext?
+      fs2.async.signalOf[IO, Boolean](false)
     }
 
-    // handlers whose messages are processed straightaway (no queueing to enforce sequential processing)
-    val immediateHandlers = inputHandler.messageHandler
-      .orElse(commMessageHandler)
-      .orElse(interpreterMessageHandler.interruptHandler)
-      .orElse(interpreterMessageHandler.shutdownHandler)
+    Stream.eval(exitSignal).flatMap { exitSignal0 =>
 
-    // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
-    // (don't know about lab, nteract seems fine, unless it just marks kernels as starting by itself)
-    val initStream = {
-
-      def sendStatus(status: Status) =
-        Stream(
-          Message(
-            Header(
-              UUID.randomUUID().toString,
-              "username",
-              UUID.randomUUID().toString, // Would there be a way to get the session id from the client?
-              Status.messageType.messageType,
-              Some(Protocol.versionStr)
-            ),
-            Status.starting,
-            idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)
-          ).on(Channel.Publish)
-        )
-
-      val attemptInit = interpreter.init.attempt.flatMap { a =>
-
-        for (e <- a.left)
-          log.error("Error initializing interpreter", e)
-
-        IO.fromEither(a)
-      }
-
-      sendStatus(Status.starting) ++
-        sendStatus(Status.busy) ++
-        Stream.eval_(attemptInit) ++
-        sendStatus(Status.idle)
-    }
-
-    val mainStream = {
-
-      // For each incoming message, an IO that processes it, and gives the response messages
-      val streams: Stream[IO, Stream[IO, (Channel, RawMessage)]] =
-        requests.map {
-          case (channel, rawMessage) =>
-
-            interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
-              case None =>
-
-                // interpreter message handler passes, try with the other handlers
-
-                immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
-                  case None =>
-                    log.warn(s"Ignoring unhandled message:\n$rawMessage")
-                    Stream.empty
-
-                  case Some(output) =>
-                    // process stdin messages and send response back straightaway
-                    output
-                }
-
-              case Some(output) =>
-                // enqueue stream that processes the incoming message, so that the main messages are
-                // still processed and answered in order
-                Stream.eval_(mainQueue.enqueue1(Some(output)))
-            }
-        }
-
-      // Try to process messages eagerly, to e.g. process comm messages even while an execute_request is
-      // being processed.
-      // Order of the main messages and their answers is still preserved via mainQueue, see also comments above.
-      val mergedStreams = {
-        implicit val S = kernelThreads.scheduleEc
-        streams.join(20) // https://twitter.com/mpilquist/status/943653692745666560
-      }
-
-      // Put poison pill (null) at the end of mainQueue when all input messages have been processed
-      val s1 = Stream.bracket(IO.unit)(
-        _ => mergedStreams,
-        _ => mainQueue.enqueue1(None)
+      val interpreterMessageHandler = InterpreterMessageHandlers(
+        interpreter,
+        backgroundCommHandlerOpt,
+        Some(inputHandler),
+        kernelThreads.queueEc,
+        logCtx,
+        io => mainQueue.enqueue1(Some(Stream.eval_(io))),
+        exitSignal0
       )
 
-      // Reponses for the main messages
-      val s2 = mainQueue
-        .dequeue
-        .takeWhile(_.nonEmpty)
-        .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
+      val commMessageHandler = interpreter.commManagerOpt match {
+        case None =>
+          MessageHandler.empty
+        case Some(commManager) =>
+          CommMessageHandlers(commManager, kernelThreads.queueEc, logCtx)
+            .messageHandler
+      }
 
-      // Merge s1 (messages answered straightaway and enqueuing of the main messages) and s2 (responses of main
-      // messages, that are processed sequentially via mainQueue)
+      // handlers whose messages are processed straightaway (no queueing to enforce sequential processing)
+      val immediateHandlers = inputHandler.messageHandler
+        .orElse(commMessageHandler)
+        .orElse(interpreterMessageHandler.interruptHandler)
+        .orElse(interpreterMessageHandler.shutdownHandler)
+
+      // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
+      // (don't know about lab, nteract seems fine, unless it just marks kernels as starting by itself)
+      val initStream = {
+
+        def sendStatus(status: Status) =
+          Stream(
+            Message(
+              Header(
+                UUID.randomUUID().toString,
+                "username",
+                UUID.randomUUID().toString, // Would there be a way to get the session id from the client?
+                Status.messageType.messageType,
+                Some(Protocol.versionStr)
+              ),
+              Status.starting,
+              idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)
+            ).on(Channel.Publish)
+          )
+
+        val attemptInit = interpreter.init.attempt.flatMap { a =>
+
+          for (e <- a.left)
+            log.error("Error initializing interpreter", e)
+
+          IO.fromEither(a)
+        }
+
+        sendStatus(Status.starting) ++
+          sendStatus(Status.busy) ++
+          Stream.eval_(attemptInit) ++
+          sendStatus(Status.idle)
+      }
+
+      val mainStream = {
+
+        val requests0 = {
+          implicit val S = kernelThreads.scheduleEc
+          requests.interruptWhen(exitSignal0)
+        }
+
+        // For each incoming message, an IO that processes it, and gives the response messages
+        val streams: Stream[IO, Stream[IO, (Channel, RawMessage)]] =
+          requests0.map {
+            case (channel, rawMessage) =>
+
+              interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
+                case None =>
+
+                  // interpreter message handler passes, try with the other handlers
+
+                  immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
+                    case None =>
+                      log.warn(s"Ignoring unhandled message:\n$rawMessage")
+                      Stream.empty
+
+                    case Some(output) =>
+                      // process stdin messages and send response back straightaway
+                      output
+                  }
+
+                case Some(output) =>
+                  // enqueue stream that processes the incoming message, so that the main messages are
+                  // still processed and answered in order
+                  Stream.eval_(mainQueue.enqueue1(Some(output)))
+              }
+          }
+
+        // Try to process messages eagerly, to e.g. process comm messages even while an execute_request is
+        // being processed.
+        // Order of the main messages and their answers is still preserved via mainQueue, see also comments above.
+        val mergedStreams = {
+          implicit val S = kernelThreads.scheduleEc
+          streams.join(20) // https://twitter.com/mpilquist/status/943653692745666560
+        }
+
+        // Put poison pill (null) at the end of mainQueue when all input messages have been processed
+        val s1 = Stream.bracket(IO.unit)(
+          _ => mergedStreams,
+          _ => mainQueue.enqueue1(None)
+        )
+
+        // Reponses for the main messages
+        val s2 = mainQueue
+          .dequeue
+          .takeWhile(_.nonEmpty)
+          .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
+
+        // Merge s1 (messages answered straightaway and enqueuing of the main messages) and s2 (responses of main
+        // messages, that are processed sequentially via mainQueue)
+        {
+          implicit val S = kernelThreads.scheduleEc
+          s1.merge(s2)
+        }
+      }
+
+      // Put poison pill (null) at the end of backgroundMessagesQueue when all input messages have been processed
+      // and answered.
+      val mainStream0 = Stream.bracket(IO.unit)(
+        _ => initStream ++ mainStream,
+        _ => backgroundMessagesQueue.enqueue1(null)
+      )
+
+      // Merge responses to all incoming messages with background messages (comm messages sent by user code when it
+      // is run)
       {
         implicit val S = kernelThreads.scheduleEc
-        s1.merge(s2)
+        mainStream0.merge(backgroundMessagesQueue.dequeue.takeWhile(_ != null))
       }
-    }
-
-    // Put poison pill (null) at the end of backgroundMessagesQueue when all input messages have been processed
-    // and answered.
-    val mainStream0 = Stream.bracket(IO.unit)(
-      _ => initStream ++ mainStream,
-      _ => backgroundMessagesQueue.enqueue1(null)
-    )
-
-    // Merge responses to all incoming messages with background messages (comm messages sent by user code when it
-    // is run)
-    {
-      implicit val S = kernelThreads.scheduleEc
-      mainStream0.merge(backgroundMessagesQueue.dequeue.takeWhile(_ != null))
     }
   }
 
