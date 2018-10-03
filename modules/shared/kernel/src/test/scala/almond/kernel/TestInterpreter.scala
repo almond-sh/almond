@@ -74,7 +74,11 @@ final class TestInterpreter extends Interpreter {
   override def setCommHandler(commHandler: CommHandler): Unit =
     commHandlerOpt0 = Some(commHandler)
 
-  override def shutdown(): Nothing = throw new TestShutdownException
-}
+  private var shutdownCalled0 = false
 
-class TestShutdownException extends Exception
+  def shutdownCalled(): Boolean =
+    shutdownCalled0
+  override def shutdown(): Unit = {
+    shutdownCalled0 = true
+  }
+}

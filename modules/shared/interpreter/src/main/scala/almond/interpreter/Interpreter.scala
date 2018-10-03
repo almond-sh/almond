@@ -56,11 +56,10 @@ trait Interpreter {
     ()
 
   /**
-    * Called in response to the Shutdown message, after a reply has been sent, in order to shutdown the JVM.
-    * Exit code zero indicates intentional shutdown as opposed to error condition.
+    * Called in response to a shutdown message, before a reply has been sent.
     */
-  def shutdown(): Nothing =
-    sys.exit(0)
+  def shutdown(): Unit =
+    ()
 
   /**
     * Whether the passed code is complete.

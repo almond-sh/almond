@@ -1,11 +1,9 @@
 package almond.protocol
 
 import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, DecodeResult, EncodeJson}
+import argonaut.{DecodeJson, DecodeResult, EncodeJson, Json}
 
 object History {
-
-  // TODO Handle these
 
   final case class Request(
     output: Boolean,
@@ -30,22 +28,27 @@ object History {
   }
 
 
-  sealed abstract class AccessType extends Product with Serializable
+  sealed abstract class AccessType(val name: String) extends Product with Serializable
 
   object AccessType {
-    case object Range extends AccessType
-    case object Tail extends AccessType
-    case object Search extends AccessType
+    case object Range extends AccessType("range")
+    case object Tail extends AccessType("tail")
+    case object Search extends AccessType("search")
+
+    val seq = Seq[AccessType](Range, Tail, Search)
+    val map = seq.map(t => t.name -> t).toMap
 
     implicit val decoder: DecodeJson[AccessType] =
       DecodeJson { c =>
-        c.as[String].flatMap {
-          case "range" => DecodeResult.ok(Range)
-          case "tail" => DecodeResult.ok(Tail)
-          case "search" => DecodeResult.ok(Search)
-          case other => DecodeResult.fail(s"Unrecognized history access type $other", c.history)
+        c.as[String].flatMap { s =>
+          map.get(s) match {
+            case Some(t) => DecodeResult.ok(t)
+            case None => DecodeResult.fail(s"Unrecognized history access type $s", c.history)
+          }
         }
       }
+    implicit val encoder: EncodeJson[AccessType] =
+      EncodeJson(t => Json.jString(t.name))
   }
 
 
@@ -54,6 +57,7 @@ object History {
 
 
   implicit val requestDecoder = DecodeJson.of[Request]
+  implicit val requestEncoder = EncodeJson.of[Request]
 
   private val simpleReplyEncoder = EncodeJson.of[Reply.Simple]
   private val withOutputReplyEncoder = EncodeJson.of[Reply.WithOutput]

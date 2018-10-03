@@ -93,7 +93,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, inputHandler.orElse(ignoreExpectedReplies), stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
         initialColors = Colors.BlackWhite
@@ -119,11 +119,6 @@ object ScalaKernelTests extends TestSuite {
 
       // How the pseudo-client behaves
 
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
-      }
-
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
 
@@ -142,7 +137,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
         initialColors = Colors.BlackWhite
@@ -179,11 +174,6 @@ object ScalaKernelTests extends TestSuite {
 
       // How the pseudo-client behaves
 
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
-      }
-
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
 
@@ -202,7 +192,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
         initialColors = Colors.BlackWhite
@@ -257,11 +247,6 @@ object ScalaKernelTests extends TestSuite {
 
       // How the pseudo-client behaves
 
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
-      }
-
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
 
@@ -280,7 +265,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
         updateBackgroundVariablesEcOpt = Some(bgVarEc),
@@ -317,11 +302,6 @@ object ScalaKernelTests extends TestSuite {
 
       // How the pseudo-client behaves
 
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
-      }
-
       val sessionId = UUID.randomUUID().toString
 
       // When the pseudo-client exits
@@ -338,7 +318,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
         updateBackgroundVariablesEcOpt = Some(bgVarEc),
@@ -406,7 +386,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, interruptOnInput.orElse(ignoreExpectedReplies), stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
         initialColors = Colors.BlackWhite
@@ -441,11 +421,6 @@ object ScalaKernelTests extends TestSuite {
 
       // How the pseudo-client behaves
 
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
-      }
-
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
 
@@ -463,7 +438,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
 
-      val streams = ClientStreams.create(input, ignoreExpectedReplies, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen)
 
       val loader = new URLClassLoader(Array(), Thread.currentThread().getContextClassLoader) {
         override def getResource(name: String) =

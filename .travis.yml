@@ -11,9 +11,9 @@ before_install:
 sudo: required
 stages:
   - name: test
-  - name: update-website
-    if: (branch = master AND type = push) OR (tag IS present)
   - name: release
+    if: (branch = master AND type = push) OR (tag IS present)
+  - name: update-website
     if: (branch = master AND type = push) OR (tag IS present)
 jobs:
   include:
