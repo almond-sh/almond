@@ -1,21 +1,23 @@
 ---
-title: Jupyter-specific features
+title: Jupyter API
 ---
 
-## Displaying HTML
+## Displaying data
+
+### HTML
 
 ```scala
 html("<b>hey</b>")
 ```
 
-## Displaying text
+### Text
 
-## Displaying Markdown
+### Markdown
 
-## Displaying images
+### Images
 
-## Displaying content with custom MIME type
+### Custom MIME type
 
-## Updating previously displayed elements
+## Updating displayed data
 
 ## Two-way front-end - kernel communication

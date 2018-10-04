@@ -1,8 +1,8 @@
 {
   "docs": {
-    "Quick start": ["intro", "install"],
-    "Usage": ["usage-shell", "usage-jupyter"],
+    "Quick start": ["intro", "quick-start-install"],
+    "Usage": ["usage-shell", "usage-jupyter", "usage-plotting", "usage-spark"],
     "Installation": ["install-options", "install-multiple", "install-versions", "install-other"],
-    "Development": ["custom-kernel"]
+    "Development": ["dev-custom-kernel", "dev-libraries"]
   }
 }

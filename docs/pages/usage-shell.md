@@ -1,5 +1,5 @@
 ---
-title: Shell features
+title: Shell API
 ---
 
 Almond mostly wraps the [Ammonite](http://ammonite.io/) scala shell in a Jupyter kernel. Most
@@ -21,6 +21,8 @@ Note the use of single `:` for Java dependencies (last one), and double `::`
 in first position for the Scala ones.
 
 ## Adding custom repositories
+
+Example:
 
 ```scala
 import coursier.core.Authentication, coursier.MavenRepository
