@@ -5,7 +5,9 @@ import java.util.regex.Pattern
 import almond.protocol.KernelInfo
 import almond.kernel.install.{Options => InstallOptions}
 import caseapp._
+import caseapp.core.help.Help
 
+@ProgName("almond")
 final case class Options(
   install: Boolean = false,
   @Recurse
@@ -75,5 +77,14 @@ final case class Options(
         case other =>
           sys.error(s"Malformed link: $other")
       }
+
+}
+
+object Options {
+
+  implicit val help = Help[Options].copy(
+    // not sure why the @ProgName annotation above isn't picked here
+    progName = "almond"
+  )
 
 }

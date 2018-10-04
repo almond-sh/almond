@@ -13,8 +13,8 @@ object JupyterPaths {
     OS.current match {
       case _: OS.Unix =>
         Seq(
-          Paths.get("/usr/share/jupyter/kernels"),
-          Paths.get("/usr/local/share/jupyter/kernels")
+          Paths.get("/usr/local/share/jupyter/kernels"),
+          Paths.get("/usr/share/jupyter/kernels")
         )
       case OS.Windows =>
         Seq(
