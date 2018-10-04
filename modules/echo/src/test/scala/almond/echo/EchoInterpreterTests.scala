@@ -74,6 +74,40 @@ object EchoInterpreterTests extends TestSuite {
       }
     }
 
+    'inspect - {
+
+      val interpreter: Interpreter = new EchoInterpreter
+
+      'none - {
+        * - {
+          val res = interpreter.inspect("foo", 2)
+          assert(res.isEmpty)
+        }
+
+        * - {
+          val res = interpreter.inspect("print foo", 7)
+          assert(res.isEmpty)
+        }
+      }
+
+      'print - {
+        * - {
+          val res = interpreter.inspect("print foo", 0)
+          assert(res.nonEmpty)
+        }
+
+        * - {
+          val res = interpreter.inspect("print foo", 2)
+          assert(res.nonEmpty)
+        }
+
+        * - {
+          val res = interpreter.inspect("print foo", "print".length)
+          assert(res.nonEmpty)
+        }
+      }
+    }
+
   }
 
 }

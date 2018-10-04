@@ -101,6 +101,15 @@ trait Interpreter {
     None
 
   /**
+    *
+    * @param code: code to inspect
+    * @param pos: cursor position (as a unicode code point index) in code
+    * @return
+    */
+  final def inspect(code: String, pos: Int): Option[Inspection] =
+    inspect(code, pos, detailLevel = 0)
+
+  /**
     * If this kernel handles custom messages (see [[CommManager]]), a [[CommManager]] to receive messages.
     */
   def commManagerOpt: Option[CommManager] =

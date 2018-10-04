@@ -2,7 +2,7 @@ package almond.echo
 
 import java.util.Properties
 
-import almond.interpreter.{Completion, ExecuteResult, Interpreter}
+import almond.interpreter.{Completion, ExecuteResult, Inspection, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
@@ -69,6 +69,17 @@ final class EchoInterpreter extends Interpreter {
     else
       Completion.empty(pos)
   }
+
+  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+    if (code.startsWith("print") && code.lift("print".length).forall(_.isSpaceChar) && pos <= "print".length) {
+      val data = DisplayData.text(
+        s"""${Console.RED}${Console.BOLD}print${Console.RESET}
+           |
+           |detail level: ${Console.BLUE}${Console.BOLD}$detailLevel${Console.RESET}""".stripMargin
+      )
+      Some(Inspection.fromDisplayData(data))
+    } else
+      None
 
 }
 
