@@ -514,8 +514,8 @@ final class ScalaInterpreter(
       s"""Almond ${almond.api.Properties.version}
          |Ammonite ${ammonite.Constants.version}
          |${scala.util.Properties.versionMsg}
-         |Java ${sys.props.getOrElse("java.version", "[unknown]")}
-       """.stripMargin + extraBannerOpt.fold("")("\n\n" + _),
+         |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin +
+        extraBannerOpt.fold("")("\n\n" + _),
       help_links = Some(extraLinks.toList).filter(_.nonEmpty)
     )
 
