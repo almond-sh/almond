@@ -99,7 +99,7 @@ final class InterpreterToIOInterpreter(
   override def complete(code: String, pos: Int): IO[Completion] =
     cancellable {
       case true =>
-        IO.pure(Completion(pos, pos, Nil))
+        IO.pure(Completion.empty(pos))
       case false =>
         IO(interpreter.complete(code, pos))
     }

@@ -80,7 +80,7 @@ trait Interpreter {
     * @param pos: cursor position (as a unicode code point index) in code
     */
   def complete(code: String, pos: Int): Completion =
-    Completion(pos, pos, Nil)
+    Completion.empty(pos)
 
   /**
     *
