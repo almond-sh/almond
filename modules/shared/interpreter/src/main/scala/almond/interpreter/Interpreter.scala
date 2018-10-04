@@ -80,7 +80,15 @@ trait Interpreter {
     * @param pos: cursor position (as a unicode code point index) in code
     */
   def complete(code: String, pos: Int): Completion =
-    Completion(pos, pos, Nil)
+    Completion.empty(pos)
+
+  /**
+    * Tries to complete code.
+    *
+    * @param code: code to complete
+    */
+  final def complete(code: String): Completion =
+    complete(code, code.length)
 
   /**
     *
@@ -91,6 +99,15 @@ trait Interpreter {
     */
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
     None
+
+  /**
+    *
+    * @param code: code to inspect
+    * @param pos: cursor position (as a unicode code point index) in code
+    * @return
+    */
+  final def inspect(code: String, pos: Int): Option[Inspection] =
+    inspect(code, pos, detailLevel = 0)
 
   /**
     * If this kernel handles custom messages (see [[CommManager]]), a [[CommManager]] to receive messages.

@@ -8,3 +8,8 @@ package almond.interpreter
   * @param completions: possible replacements between indices `from` until `to`
   */
 final case class Completion(from: Int, until: Int, completions: Seq[String])
+
+object Completion {
+  def empty(pos: Int): Completion =
+    Completion(pos, pos, Nil)
+}

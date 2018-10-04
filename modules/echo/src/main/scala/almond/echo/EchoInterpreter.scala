@@ -1,6 +1,8 @@
 package almond.echo
 
-import almond.interpreter.{ExecuteResult, Interpreter}
+import java.util.Properties
+
+import almond.interpreter.{Completion, ExecuteResult, Inspection, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
@@ -10,7 +12,7 @@ final class EchoInterpreter extends Interpreter {
   def kernelInfo(): KernelInfo =
     KernelInfo(
       "echo",
-      "0.1",
+      EchoInterpreter.version,
       KernelInfo.LanguageInfo(
         "echo",
         "1.0",
@@ -18,7 +20,8 @@ final class EchoInterpreter extends Interpreter {
         "echo",
         "text" // ???
       ),
-      "Echo kernel"
+      s"""Echo kernel ${EchoInterpreter.version}
+         |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin
     )
 
   @volatile private var count = 0
@@ -49,5 +52,55 @@ final class EchoInterpreter extends Interpreter {
 
   def currentLine(): Int =
     count
+
+  override def complete(code: String, pos: Int): Completion = {
+
+    // try to complete 'print' at the beginning of the cell
+
+    val firstWord = code.takeWhile(_.isLetter)
+
+    val completePrint = pos <= firstWord.length &&
+      firstWord.length < "print".length &&
+      "print".take(firstWord.length) == firstWord &&
+      code.lift(firstWord.length).forall(_.isSpaceChar)
+
+    if (completePrint)
+      Completion(0, firstWord.length, Seq("print"))
+    else
+      Completion.empty(pos)
+  }
+
+  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+    if (code.startsWith("print") && code.lift("print".length).forall(_.isSpaceChar) && pos <= "print".length) {
+      val data = DisplayData.text(
+        s"""${Console.RED}${Console.BOLD}print${Console.RESET}
+           |
+           |detail level: ${Console.BLUE}${Console.BOLD}$detailLevel${Console.RESET}""".stripMargin
+      )
+      Some(Inspection.fromDisplayData(data))
+    } else
+      None
+
+}
+
+object EchoInterpreter {
+
+  lazy val version = {
+
+    val p = new Properties
+
+    try {
+      p.load(
+        getClass
+          .getClassLoader
+          .getResourceAsStream("almond/echo.properties")
+      )
+    } catch  {
+      case _: NullPointerException =>
+    }
+
+    Option(p.getProperty("version"))
+      .getOrElse("[unknown]")
+  }
 
 }

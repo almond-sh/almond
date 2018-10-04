@@ -21,7 +21,7 @@ object Properties {
     p
   }
 
-  lazy val version = props.getProperty("version")
-  lazy val commitHash = props.getProperty("commit-hash")
+  lazy val version = Option(props.getProperty("version")).getOrElse("[unknown]")
+  lazy val commitHash = Option(props.getProperty("commit-hash")).getOrElse("[unknown]")
 
 }

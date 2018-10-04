@@ -4,6 +4,12 @@ import almond.interpreter.api.DisplayData
 
 sealed abstract class ExecuteResult(val success: Boolean) extends Product with Serializable {
 
+  def asSuccess: Option[ExecuteResult.Success] =
+    this match {
+      case s: ExecuteResult.Success => Some(s)
+      case _ => None
+    }
+
   def asError: Option[ExecuteResult.Error] =
     this match {
       case err: ExecuteResult.Error => Some(err)

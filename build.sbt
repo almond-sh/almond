@@ -12,7 +12,16 @@ inThisBuild(List(
       "alexandre.archambault@gmail.com",
       url("https://github.com/alexarchambault")
     )
-  )
+  ),
+  version := {
+    // Simple X.Y.Z-SNAPSHOT versions are easier to find once published locally
+    val onTravisCi = sys.env.exists(_._1.startsWith("TRAVIS_"))
+    val v = version.value
+    if (!onTravisCi && v.contains("+") && v.endsWith("-SNAPSHOT"))
+      v.takeWhile(_ != '+') + "-SNAPSHOT"
+    else
+      v
+  }
 ))
 
 lazy val logger = project
@@ -69,6 +78,13 @@ lazy val kernel = project
     )
   )
 
+lazy val test = project
+  .underShared
+  .dependsOn(`interpreter-api`)
+  .settings(
+    shared
+  )
+
 lazy val `scala-kernel-api` = project
   .underScala
   .dependsOn(`interpreter-api`)
@@ -100,9 +116,11 @@ lazy val `scala-kernel` = project
 
 lazy val echo = project
   .underModules
-  .dependsOn(kernel)
+  .dependsOn(kernel, test % Test)
   .settings(
     shared,
+    generatePropertyFile("almond/echo.properties"),
+    testSettings,
     libraryDependencies += Deps.caseApp
   )
 
@@ -133,7 +151,8 @@ lazy val almond = project
     protocol,
     `scala-interpreter`,
     `scala-kernel-api`,
-    `scala-kernel`
+    `scala-kernel`,
+    test
   )
   .settings(
     shared,

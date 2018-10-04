@@ -37,7 +37,7 @@ trait IOInterpreter {
     IO.pure(None)
 
   def complete(code: String, pos: Int): IO[Completion] =
-    IO.pure(Completion(pos, pos, Nil))
+    IO.pure(Completion.empty(pos))
 
   def inspect(code: String, pos: Int, detailLevel: Int): IO[Option[Inspection]] =
     IO.pure(None)
