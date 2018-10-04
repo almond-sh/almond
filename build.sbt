@@ -12,7 +12,16 @@ inThisBuild(List(
       "alexandre.archambault@gmail.com",
       url("https://github.com/alexarchambault")
     )
-  )
+  ),
+  version := {
+    // Simple X.Y.Z-SNAPSHOT versions are easier to find once published locally
+    val onTravisCi = sys.env.exists(_._1.startsWith("TRAVIS_"))
+    val v = version.value
+    if (!onTravisCi && v.contains("+") && v.endsWith("-SNAPSHOT"))
+      v.takeWhile(_ != '+') + "-SNAPSHOT"
+    else
+      v
+  }
 ))
 
 lazy val logger = project
