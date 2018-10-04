@@ -1,5 +1,7 @@
 package almond.echo
 
+import java.util.Properties
+
 import almond.interpreter.{Completion, ExecuteResult, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
@@ -10,7 +12,7 @@ final class EchoInterpreter extends Interpreter {
   def kernelInfo(): KernelInfo =
     KernelInfo(
       "echo",
-      "0.1",
+      EchoInterpreter.version,
       KernelInfo.LanguageInfo(
         "echo",
         "1.0",
@@ -18,7 +20,8 @@ final class EchoInterpreter extends Interpreter {
         "echo",
         "text" // ???
       ),
-      "Echo kernel"
+      s"""Echo kernel ${EchoInterpreter.version}
+         |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin
     )
 
   @volatile private var count = 0
@@ -65,6 +68,28 @@ final class EchoInterpreter extends Interpreter {
       Completion(0, firstWord.length, Seq("print"))
     else
       Completion.empty(pos)
+  }
+
+}
+
+object EchoInterpreter {
+
+  lazy val version = {
+
+    val p = new Properties
+
+    try {
+      p.load(
+        getClass
+          .getClassLoader
+          .getResourceAsStream("almond/echo.properties")
+      )
+    } catch  {
+      case _: NullPointerException =>
+    }
+
+    Option(p.getProperty("version"))
+      .getOrElse("[unknown]")
   }
 
 }

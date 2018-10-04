@@ -119,6 +119,7 @@ lazy val echo = project
   .dependsOn(kernel, test % Test)
   .settings(
     shared,
+    generatePropertyFile("almond/echo.properties"),
     testSettings,
     libraryDependencies += Deps.caseApp
   )
