@@ -69,6 +69,13 @@ lazy val kernel = project
     )
   )
 
+lazy val test = project
+  .underShared
+  .dependsOn(`interpreter-api`)
+  .settings(
+    shared
+  )
+
 lazy val `scala-kernel-api` = project
   .underScala
   .dependsOn(`interpreter-api`)
@@ -100,9 +107,10 @@ lazy val `scala-kernel` = project
 
 lazy val echo = project
   .underModules
-  .dependsOn(kernel)
+  .dependsOn(kernel, test % Test)
   .settings(
     shared,
+    testSettings,
     libraryDependencies += Deps.caseApp
   )
 
@@ -133,7 +141,8 @@ lazy val almond = project
     protocol,
     `scala-interpreter`,
     `scala-kernel-api`,
-    `scala-kernel`
+    `scala-kernel`,
+    test
   )
   .settings(
     shared,
