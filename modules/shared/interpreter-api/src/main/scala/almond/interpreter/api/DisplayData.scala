@@ -21,12 +21,15 @@ object DisplayData {
 
   object ContentType {
     def text = "text/plain"
+    def markdown = "text/markdown"
     def html = "text/html"
     def js = "application/javascript"
   }
 
   def text(text: String): DisplayData =
     DisplayData(Map(ContentType.text -> text))
+  def markdown(content: String): DisplayData =
+    DisplayData(Map(ContentType.markdown -> content))
   def html(content: String): DisplayData =
     DisplayData(Map(ContentType.html -> content))
   def js(content: String): DisplayData =
