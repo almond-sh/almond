@@ -494,10 +494,20 @@ final class ScalaInterpreter(
     )
   }
 
-  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
-    // TODO Use ammonite.repl.tools.source.load to return some details here
-    None
-  }
+  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+    ammInterp.compilerManager.info(
+      pos,
+      frames().head.imports.toString(),
+      code
+    ) match {
+      case Success(s) =>
+        Some(Inspection.fromDisplayData(
+          DisplayData.text(s)
+        ))
+      case Failure(e) =>
+        log.warn(s"Error while getting info for code '${code.take(pos)}<caret>${code.drop(pos)}'", e)
+        None
+    }
 
   def kernelInfo() =
     KernelInfo(

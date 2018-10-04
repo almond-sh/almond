@@ -1,7 +1,7 @@
 package almond
 
 import almond.interpreter.api.DisplayData
-import almond.interpreter.{Completion, ExecuteResult, Interpreter}
+import almond.interpreter.{Completion, ExecuteResult, Inspection, Interpreter}
 import ammonite.util.Colors
 import utest._
 
@@ -64,6 +64,15 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res == expectedRes)
       }
 
+    }
+
+    "inspect" - {
+      * - {
+        val code = "val n = 2; n<caret> + 1"
+        val res = interpreter.inspect(code.replace("<caret>", ""), code.indexOf("<caret>"))
+        val expectedRes = Some(Inspection.fromDisplayData(DisplayData.text("=> Int")))
+        assert(res == expectedRes)
+      }
     }
 
     "predef" - {
