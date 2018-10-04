@@ -1,6 +1,6 @@
 package almond.echo
 
-import almond.interpreter.{ExecuteResult, Interpreter, TestOutputHandler}
+import almond.interpreter.{Completion, ExecuteResult, Interpreter, TestOutputHandler}
 import almond.interpreter.api.DisplayData
 import utest._
 
@@ -37,6 +37,41 @@ object EchoInterpreterTests extends TestSuite {
         TestOutputHandler.Output.Stdout("foo")
       )
       assert(output == expectedOutput)
+    }
+
+    'complete - {
+
+      val interpreter: Interpreter = new EchoInterpreter
+
+      'none - {
+        val res = interpreter.complete("zpri")
+        val expectedRes = Completion(4, 4, Nil)
+        assert(res == expectedRes)
+      }
+
+      * - {
+        val res = interpreter.complete("pri")
+        val expectedRes = Completion(0, 3, Seq("print"))
+        assert(res == expectedRes)
+      }
+
+      * - {
+        val res = interpreter.complete("pri", 0)
+        val expectedRes = Completion(0, 3, Seq("print"))
+        assert(res == expectedRes)
+      }
+
+      * - {
+        val res = interpreter.complete("pri", 1)
+        val expectedRes = Completion(0, 3, Seq("print"))
+        assert(res == expectedRes)
+      }
+
+      * - {
+        val res = interpreter.complete("pri foo", 1)
+        val expectedRes = Completion(0, 3, Seq("print"))
+        assert(res == expectedRes)
+      }
     }
 
   }

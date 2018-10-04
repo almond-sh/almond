@@ -83,6 +83,14 @@ trait Interpreter {
     Completion.empty(pos)
 
   /**
+    * Tries to complete code.
+    *
+    * @param code: code to complete
+    */
+  final def complete(code: String): Completion =
+    complete(code, code.length)
+
+  /**
     *
     * @param code: code to inspect
     * @param pos: cursor position (as a unicode code point index) in code

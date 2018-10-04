@@ -1,6 +1,6 @@
 package almond.echo
 
-import almond.interpreter.{ExecuteResult, Interpreter}
+import almond.interpreter.{Completion, ExecuteResult, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
@@ -49,5 +49,22 @@ final class EchoInterpreter extends Interpreter {
 
   def currentLine(): Int =
     count
+
+  override def complete(code: String, pos: Int): Completion = {
+
+    // try to complete 'print' at the beginning of the cell
+
+    val firstWord = code.takeWhile(_.isLetter)
+
+    val completePrint = pos <= firstWord.length &&
+      firstWord.length < "print".length &&
+      "print".take(firstWord.length) == firstWord &&
+      code.lift(firstWord.length).forall(_.isSpaceChar)
+
+    if (completePrint)
+      Completion(0, firstWord.length, Seq("print"))
+    else
+      Completion.empty(pos)
+  }
 
 }
