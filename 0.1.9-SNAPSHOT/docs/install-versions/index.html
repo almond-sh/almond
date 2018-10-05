@@ -13,20 +13,20 @@
   <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
   <meta property="og:description" content="Available Scala versions for each version of almond">
   <meta name="twitter:card" content="summary">
-  <link rel="shortcut icon" href="../undefined">
+  <link rel="shortcut icon" href="../../undefined">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
   <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
-  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../../css/main.css">
  </head>
  <body class="sideNavVisible separateOnPageNav">
   <div class="fixedHeaderContainer">
    <div class="headerWrapper wrapper">
     <header>
-     <a href=".."><h2 class="headerTitle">almond</h2></a>
+     <a href="../.."><h2 class="headerTitle">almond</h2></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
-        <li class="siteNavGroupActive"><a href="intro" target="_self">Docs</a></li>
+        <li class="siteNavGroupActive"><a href="../intro" target="_self">Docs</a></li>
         <li class=""><a href="https://github.com/almond-sh/almond" target="_self">GitHub</a></li>
        </ul>
       </nav>
@@ -44,7 +44,7 @@
          <div class="navToggle" id="navToggler">
           <i></i>
          </div>
-         <h2><i>›</i><span>Other</span></h2>
+         <h2><i>›</i><span>Installation</span></h2>
          <div class="tocToggler" id="tocToggler">
           <i class="icon-toc"></i>
          </div>
@@ -53,16 +53,33 @@
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Quick start</h3>
           <ul>
-           <li class="navListItem"><a class="navItem" href="intro">Intro</a></li>
-           <li class="navListItem"><a class="navItem" href="install">Install</a></li>
+           <li class="navListItem"><a class="navItem" href="../intro">Intro</a></li>
+           <li class="navListItem"><a class="navItem" href="../quick-start-install">Installation</a></li>
           </ul>
          </div>
          <div class="navGroup">
-          <h3 class="navGroupCategoryTitle">Other</h3>
+          <h3 class="navGroupCategoryTitle">Usage</h3>
           <ul>
-           <li class="navListItem navListItemActive"><a class="navItem" href="versions">Versions</a></li>
-           <li class="navListItem"><a class="navItem" href="custom-kernel">Writing custom kernels</a></li>
-           <li class="navListItem"><a class="navItem" href="other">Other</a></li>
+           <li class="navListItem"><a class="navItem" href="../usage-shell">Shell API</a></li>
+           <li class="navListItem"><a class="navItem" href="../usage-jupyter">Jupyter API</a></li>
+           <li class="navListItem"><a class="navItem" href="../usage-plotting">Plotting</a></li>
+           <li class="navListItem"><a class="navItem" href="../usage-spark">Spark</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Installation</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../install-options">Options</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-multiple">Multiple kernels</a></li>
+           <li class="navListItem navListItemActive"><a class="navItem" href="">Versions</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-other">Other</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Development</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../dev-custom-kernel">Writing custom kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-libraries">Writing libraries interacting with Jupyter</a></li>
           </ul>
          </div>
         </div>
@@ -102,7 +119,7 @@
      <div class="wrapper">
       <div class="post">
        <header class="postHeader">
-        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/doc/docs/versions.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/doc/docs/install-versions.md" target="_blank" rel="noreferrer noopener">Edit</a>
         <h1 class="postHeaderTitle">Versions</h1>
        </header>
        <article>
@@ -118,9 +135,14 @@
            </thead> 
            <tbody> 
             <tr>
-             <td><code>0.1.0</code>, <code>0.1.1</code>, <code>0.1.2</code>, <code>0.1.3</code>, <code>0.1.4</code>, <code>0.1.5</code>, <code>0.1.6</code>, <code>0.1.7</code></td>
+             <td><code>0.1.0</code> to <code>0.1.8</code></td>
              <td><code>2.11.12</code></td>
              <td><code>2.12.6</code></td>
+            </tr> 
+            <tr>
+             <td><code>0.1.9</code> - ...</td>
+             <td><code>2.11.12</code></td>
+             <td><code>2.12.6</code>, <code>2.12.7</code></td>
             </tr> 
            </tbody> 
           </table> </span>
@@ -128,8 +150,8 @@
        </article>
       </div>
       <div class="docs-prevnext">
-       <a class="docs-prev button" href="install"><span class="arrow-prev">← </span><span>Previous</span></a>
-       <a class="docs-next button" href="custom-kernel"><span>Next</span><span class="arrow-next"> →</span></a>
+       <a class="docs-prev button" href="../install-multiple"><span class="arrow-prev">← </span><span>Previous</span></a>
+       <a class="docs-next button" href="../install-other"><span>Next</span><span class="arrow-next"> →</span></a>
       </div>
      </div>
     </div>
@@ -137,10 +159,10 @@
    </div>
    <footer class="nav-footer" id="footer">
     <section class="sitemap">
-     <a href=".." class="nav-home"></a>
+     <a href="../.." class="nav-home"></a>
      <div>
       <h5>Docs</h5>
-      <a href="intro.html">Quick start</a>
+      <a href="../intro.html">Quick start</a>
      </div>
      <div>
       <h5>Community</h5>
