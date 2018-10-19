@@ -1,5 +1,7 @@
 package almond
 
+import java.io.{File, FileOutputStream, PrintStream}
+
 import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
@@ -76,7 +78,12 @@ object ScalaKernel extends CaseApp[Options] {
         Console.err.println(err)
         sys.exit(1)
       case Right(level) =>
-        LoggerContext.stderr(level)
+        options.logTo match {
+          case None =>
+            LoggerContext.stderr(level)
+          case Some(f) =>
+            LoggerContext.printStream(level, new PrintStream(new FileOutputStream(new File(f))))
+        }
     }
 
     val log = logCtx(getClass)

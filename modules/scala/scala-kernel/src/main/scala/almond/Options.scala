@@ -23,6 +23,9 @@ final case class Options(
     profile: List[String] = Nil,
   @HelpMessage("Log level (one of none, error, warn, info, debug)")
     log: String = "warn",
+  @HelpMessage("Send log to a file rather than stderr")
+  @ValueDescription("/path/to/log-file")
+    logTo: Option[String],
   connectionFile: Option[String] = None,
   @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
     specialLoader: String = "user"
