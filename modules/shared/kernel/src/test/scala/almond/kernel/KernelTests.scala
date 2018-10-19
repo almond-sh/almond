@@ -4,7 +4,7 @@ import java.util.UUID
 
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.interpreter.Message
+import almond.interpreter.{Message, TestInterpreter}
 import almond.logger.LoggerContext
 import almond.protocol.{Execute, Header, History, Input, Shutdown}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}

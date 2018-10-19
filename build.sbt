@@ -68,7 +68,7 @@ lazy val interpreter = project
 
 lazy val kernel = project
   .underShared
-  .dependsOn(interpreter)
+  .dependsOn(interpreter, interpreter % "test->test")
   .settings(
     shared,
     testSettings,

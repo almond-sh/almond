@@ -83,6 +83,18 @@ trait Interpreter {
     Completion.empty(pos)
 
   /**
+    * Asynchronously try to complete code.
+    *
+    * This is normally called before [[complete()]]. If this returns a non-empty option,
+    * it is assumed asynchronous completions are supported. Else, [[complete()]] is called.
+    *
+    * @param code: code to complete
+    * @param pos: cursor position (as a unicode code point index) in code
+    */
+  def asyncComplete(code: String, pos: Int): Option[FutureCompletion] =
+    None
+
+  /**
     * Tries to complete code.
     *
     * @param code: code to complete
