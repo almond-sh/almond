@@ -174,7 +174,6 @@ final case class InterpreterMessageHandlers(
   def handler: MessageHandler =
     kernelInfoHandler.orElse(
       executeHandler,
-      completeHandler,
       isCompleteHandler,
       inspectHandler,
       historyHandler

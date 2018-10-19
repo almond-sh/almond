@@ -1,12 +1,12 @@
-package almond.kernel
+package almond.interpreter
 
-import almond.interpreter.{ExecuteResult, Interpreter}
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.util.Success
 
 final class TestInterpreter extends Interpreter {
   def execute(
@@ -67,6 +67,21 @@ final class TestInterpreter extends Interpreter {
   def currentLine() = count
 
   def kernelInfo() = ???
+
+  override def asyncComplete(code: String, pos: Int) = {
+
+    val res =
+      if (code == "cancel") {
+        val p = Promise[Completion]()
+        FutureCompletion(p.future, () => p.complete(Success(Completion(0, code.length, Seq("cancelled")))))
+      } else
+        FutureCompletion(Future.successful(Completion(pos, pos, Seq("?"))), () => sys.error("should not happen"))
+
+    Some(res)
+  }
+
+  override def complete(code: String, pos: Int) =
+    sys.error("should not be called")
 
   private val commManager = CommManager.create()
   private var commHandlerOpt0 = Option.empty[CommHandler]
