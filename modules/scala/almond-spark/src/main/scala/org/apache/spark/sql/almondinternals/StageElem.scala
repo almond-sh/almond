@@ -28,6 +28,12 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
     allDone0 = true
   }
 
+  val extraStyle = Seq(
+    "word-wrap: normal",
+    "white-space: nowrap",
+    "text-align: center"
+  )
+
   def init(cancelStageCommTargetName: String, sendInitCode: Boolean)(implicit publish: OutputHandler): Unit = {
 
     if (sendInitCode)
@@ -45,15 +51,17 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
 
     publish.html(
       s"""<div>
-         |  <span style="float: left;">$name</span>
-         |  <span style="float: right;"><a href="#" onclick="cancelStage($stageId);">(kill)</a></span>
+         |  <span style="float: left; ${extraStyle.mkString("; ")}">$name</span>
+         |  <span style="float: right; ${extraStyle.mkString("; ")}"><a href="#" onclick="cancelStage($stageId);">(kill)</a></span>
          |</div>
+         |<br>
          |""".stripMargin,
       id = titleDisplayId
     )
+    // <br> above seems required put both divs on different lines in nteract
     publish.html(
       s"""<div class="progress">
-         |  <div class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+         |  <div class="progress-bar bg-success" role="progressbar" style="width: 0%; ${extraStyle.mkString("; ")}; color: white" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
          |    0 / $numTasks
          |  </div>
          |</div>
@@ -86,7 +94,7 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
 
       publish.updateHtml(
         s"""<div class="progress">
-           |  <div class="progress-bar" role="progressbar" style="background-color: blue; width: $donePct%" aria-valuenow="$donePct" aria-valuemin="0" aria-valuemax="100">
+           |  <div class="progress-bar" role="progressbar" style="background-color: blue; width: $donePct%; ${extraStyle.mkString("; ")}; color: white" aria-valuenow="$donePct" aria-valuemin="0" aria-valuemax="100">
            |    $doneTasks0${if (diff == 0) "" else s" + $diff"} / $numTasks
            |  </div>
            |  <div class="progress-bar" role="progressbar" style="background-color: red; width: $startedPct%" aria-valuenow="$startedPct" aria-valuemin="0" aria-valuemax="100"></div>
