@@ -7,6 +7,7 @@ import fs2.async.mutable.Queue
 import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
 import almond.protocol.{Header, MessageType}
+import almond.interpreter.util.BetterPrinter
 import argonaut.{DecodeJson, EncodeJson, Json}
 import argonaut.Argonaut._
 import cats.effect.IO
@@ -72,10 +73,10 @@ final case class Message[T](
   def asRawMessage(implicit encoder: EncodeJson[T]): RawMessage =
     RawMessage(
       idents,
-      header.asJson.nospaces,
-      parent_header.fold("{}")(_.asJson.nospaces),
-      metadata.asJson.nospaces,
-      content.asJson.nospaces
+      BetterPrinter.noSpaces(header.asJson),
+      parent_header.fold("{}")(h => BetterPrinter.noSpaces(h.asJson)),
+      BetterPrinter.noSpaces(metadata.asJson),
+      BetterPrinter.noSpaces(content.asJson)
     )
 
 

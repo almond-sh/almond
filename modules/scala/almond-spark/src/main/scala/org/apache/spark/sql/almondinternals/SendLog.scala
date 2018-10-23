@@ -117,6 +117,7 @@ final class SendLog(
                   l.map(_.replace(home, "~"))
                 } else
                   l
+              // Beware: nospaces has a bad complexity (super slow when generating a large output)
               val res = Json.obj("data" -> Json.jArray(l0.map(Json.jString))).nospaces
               lines.clear()
 

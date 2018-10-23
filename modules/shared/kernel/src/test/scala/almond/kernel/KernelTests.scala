@@ -4,6 +4,7 @@ import java.util.UUID
 
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
+import almond.interpreter.util.BetterPrinter
 import almond.interpreter.{Message, TestInterpreter}
 import almond.logger.LoggerContext
 import almond.protocol.{Execute, Header, History, Input, Shutdown}
@@ -89,7 +90,7 @@ object KernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.content.nospaces.contains("exit"))
+          IO.pure(m.header.msg_type == "execute_reply" && BetterPrinter.noSpaces(m.content).contains("exit"))
 
       val sessionId = UUID.randomUUID().toString
       val input = Stream(
