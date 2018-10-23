@@ -1,6 +1,7 @@
 package almond.interpreter.comm
 
 import almond.interpreter.api.CommTarget
+import almond.interpreter.util.BetterPrinter
 import argonaut.{Json, JsonObject}
 import cats.effect.IO
 import cats.syntax.apply._
@@ -21,7 +22,7 @@ object IOCommTarget {
   final class FromCommTarget(commTarget: CommTarget, commEc: ExecutionContext) extends IOCommTarget {
 
     private def jsonObjToString(obj: JsonObject): String =
-      Json.jObject(obj).nospaces
+      BetterPrinter.noSpaces(Json.jObject(obj))
 
     def open(id: String, data: JsonObject): IO[Unit] =
       IO.shift(commEc) *> IO(commTarget.open(id, jsonObjToString(data)))
