@@ -109,7 +109,7 @@ final case class InterpreterMessageHandlers(
           res.completions.toList,
           res.from,
           res.until,
-          Map()
+          res.metadata
         )
         _ <- message
           .reply(Complete.replyType, reply)

@@ -46,7 +46,7 @@ final case class ClientStreams(
 
     val l = generatedMessages
       .collect {
-        case Left((`channel`, m)) =>
+        case Left((`channel`, m)) if m.header.msg_type == msgType.messageType =>
           m.decodeAs[T] match {
             case Left(err) =>
               throw new Exception(s"Error decoding message: $err\n$m")

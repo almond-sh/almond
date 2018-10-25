@@ -74,6 +74,17 @@ final class TestInterpreter extends Interpreter {
       if (code == "cancel") {
         val p = Promise[Completion]()
         FutureCompletion(p.future, () => p.complete(Success(Completion(0, code.length, Seq("cancelled")))))
+      } else if (code.startsWith("meta:")) {
+        import argonaut._
+        import argonaut.Argonaut._
+        import almond.protocol.internal.ExtraCodecs._
+        val c = code.drop("meta:".length).decodeEither[JsonObject].right.toOption match {
+          case None =>
+            Completion.empty(pos)
+          case Some(obj) =>
+            Completion(pos, pos, Seq("sent"), obj)
+        }
+        FutureCompletion(Future.successful(c), () => sys.error("should not happen"))
       } else
         FutureCompletion(Future.successful(Completion(pos, pos, Seq("?"))), () => sys.error("should not happen"))
 
