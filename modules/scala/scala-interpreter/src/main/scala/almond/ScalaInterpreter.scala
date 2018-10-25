@@ -17,7 +17,7 @@ import ammonite.repl._
 import ammonite.runtime._
 import ammonite.util._
 import ammonite.util.Util.{newLine, normalizeNewlines}
-import fastparse.core.Parsed
+import fastparse.Parsed
 
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
@@ -377,11 +377,11 @@ final class ScalaInterpreter(
     val ammResult =
       withOutputHandler(outputHandler) {
         for {
-          (code, stmts) <- Parsers.Splitter.parse(hackedLine) match {
+          (code, stmts) <- fastparse.parse(hackedLine, Parsers.Splitter(_)) match {
             case Parsed.Success(value, _) =>
               Res.Success((hackedLine, value))
-            case Parsed.Failure(_, index, extra) => Res.Failure(
-              fastparse.core.ParseError.msg(extra.input, extra.traced.expected, index)
+            case f: Parsed.Failure => Res.Failure(
+              Preprocessor.formatFastparseError("(console)", code, f)
             )
           }
           _ = log.info(s"splitted $hackedLine")
@@ -463,7 +463,7 @@ final class ScalaInterpreter(
 
   override def isComplete(code: String): Option[IsCompleteResult] = {
 
-    val res = Parsers.Splitter.parse(code) match {
+    val res = fastparse.parse(code, Parsers.Splitter(_)) match {
       case Parsed.Success(_, _) =>
         IsCompleteResult.Complete
       case Parsed.Failure(_, index, _) if code.drop(index).trim() == "" =>
