@@ -3,6 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.interpreter.util.CancellableFuture
 import almond.protocol.KernelInfo
 
 trait Interpreter {
@@ -91,7 +92,7 @@ trait Interpreter {
     * @param code: code to complete
     * @param pos: cursor position (as a unicode code point index) in code
     */
-  def asyncComplete(code: String, pos: Int): Option[FutureCompletion] =
+  def asyncComplete(code: String, pos: Int): Option[CancellableFuture[Completion]] =
     None
 
   /**

@@ -3,6 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.interpreter.util.CancellableFuture
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
@@ -73,7 +74,7 @@ final class TestInterpreter extends Interpreter {
     val res =
       if (code == "cancel") {
         val p = Promise[Completion]()
-        FutureCompletion(p.future, () => p.complete(Success(Completion(0, code.length, Seq("cancelled")))))
+        CancellableFuture(p.future, () => p.complete(Success(Completion(0, code.length, Seq("cancelled")))))
       } else if (code.startsWith("meta:")) {
         import argonaut._
         import argonaut.Argonaut._
@@ -84,9 +85,9 @@ final class TestInterpreter extends Interpreter {
           case Some(obj) =>
             Completion(pos, pos, Seq("sent"), obj)
         }
-        FutureCompletion(Future.successful(c), () => sys.error("should not happen"))
+        CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
       } else
-        FutureCompletion(Future.successful(Completion(pos, pos, Seq("?"))), () => sys.error("should not happen"))
+        CancellableFuture(Future.successful(Completion(pos, pos, Seq("?"))), () => sys.error("should not happen"))
 
     Some(res)
   }

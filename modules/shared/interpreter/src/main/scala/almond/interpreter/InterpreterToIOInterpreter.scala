@@ -3,6 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.interpreter.util.CancellableFuture
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
 import cats.effect.IO
@@ -97,7 +98,7 @@ final class InterpreterToIOInterpreter(
         IO(interpreter.isComplete(code))
     }
 
-  private var runningCompletionOpt = Option.empty[FutureCompletion]
+  private var runningCompletionOpt = Option.empty[CancellableFuture[Completion]]
   private val runningCompletionLock = new Object
 
   override def complete(code: String, pos: Int): IO[Completion] = {
