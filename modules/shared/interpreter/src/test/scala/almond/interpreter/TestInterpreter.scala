@@ -4,6 +4,7 @@ import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
+import argonaut.Json
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
@@ -93,6 +94,37 @@ final class TestInterpreter extends Interpreter {
   }
 
   override def complete(code: String, pos: Int) =
+    sys.error("should not be called")
+
+  override def asyncInspect(code: String, pos: Int, detailLevel: Int) = {
+
+    val res =
+      if (code == "cancel") {
+        val p = Promise[Option[Inspection]]()
+        CancellableFuture(
+          p.future,
+          () => p.complete(
+            Success(
+              Some(
+                Inspection(Map("cancelled" -> Json.jBool(true)))
+              )
+            )
+          )
+        )
+      } else
+        CancellableFuture(
+          Future.successful(
+            Some(
+              Inspection(Map("result" -> Json.jString(s"$code: code")))
+            )
+          ),
+          () => sys.error("should not happen")
+        )
+
+    Some(res)
+  }
+
+  override def inspect(code: String, pos: Int, detailLevel: Int) =
     sys.error("should not be called")
 
   private val commManager = CommManager.create()

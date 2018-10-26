@@ -121,15 +121,26 @@ final class InterpreterToIOInterpreter(
     }
   )
 
+  private val inspectionCancellable = new Cancellable[(String, Int, Int), Option[Inspection]](
+    {
+      case (code, pos, detailLevel) =>
+        cancellable {
+          case true =>
+            IO.pure(None)
+          case false =>
+            IO(interpreter.inspect(code, pos, detailLevel))
+        }
+    },
+    {
+      case (code, pos, detailLevel) =>
+        interpreter.asyncInspect(code, pos, detailLevel)
+    }
+  )
+
   override def complete(code: String, pos: Int): IO[Completion] =
     completionCancellable.run((code, pos))
 
   override def inspect(code: String, pos: Int, detailLevel: Int): IO[Option[Inspection]] =
-    cancellable {
-      case true =>
-        IO.pure(None)
-      case false =>
-        IO(interpreter.inspect(code, pos, detailLevel))
-    }
+    inspectionCancellable.run((code, pos, detailLevel))
 
 }

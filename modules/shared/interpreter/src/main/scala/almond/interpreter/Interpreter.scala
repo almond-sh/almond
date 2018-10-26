@@ -114,6 +114,19 @@ trait Interpreter {
     None
 
   /**
+    * Asynchronously try to inspect code.
+    *
+    * This is normally called before [[inspect()]]. If this returns a non-empty option,
+    * it is assumed asynchronous inspections are supported. Else, [[inspect()]] is called.
+    *
+    * @param code: code to inspect
+    * @param pos: cursor position (as a unicode code point index)
+    * @param detailLevel
+    */
+  def asyncInspect(code: String, pos: Int, detailLevel: Int): Option[CancellableFuture[Option[Inspection]]] =
+    None
+
+  /**
     *
     * @param code: code to inspect
     * @param pos: cursor position (as a unicode code point index) in code
