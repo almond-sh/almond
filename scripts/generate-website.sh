@@ -3,6 +3,12 @@ set -e
 
 # FIXME Lots of duplications with https://github.com/coursier/coursier/blob/3309b64102678550b1393c524dddf2b71fb9d931/scripts/generate-website.sh
 
+if [ "$1" == "--watch" ]; then
+  WATCH=1
+else
+  WATCH=0
+fi
+
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Assumes 'sbt interpreter-api/exportVersions' has been run
@@ -20,6 +26,12 @@ fi
 
 echo "Processing Markdown files"
 
+if [ "$WATCH" = 1 ]; then
+  EXTRA_OPTS="--watch"
+else
+  EXTRA_OPTS=""
+fi
+
 # first processing md files via https://github.com/olafurpg/mdoc
 # requires the cache modules and its dependencies to have been published locally
 # with
@@ -32,7 +44,12 @@ echo "Processing Markdown files"
     --out ../docs/processed-pages \
     --site.VERSION "$VERSION" \
     --site.SCALA_VERSION "$SCALA_VERSION" \
-    --site.EXTRA_COURSIER_ARGS "$EXTRA_COURSIER_ARGS"
+    --site.EXTRA_COURSIER_ARGS "$EXTRA_COURSIER_ARGS" \
+    $EXTRA_OPTS
+
+if [ "$WATCH" = 1 ]; then
+  exit 0
+fi
 
 echo "Generating website"
 
