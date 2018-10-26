@@ -96,14 +96,22 @@ final class InterpreterToIOInterpreter(
   val kernelInfo: IO[KernelInfo] =
     IO(interpreter.kernelInfo())
 
-  override def isComplete(code: String): IO[Option[IsCompleteResult]] =
-    cancellable {
-      case true =>
-        IO.pure(None)
-      case false =>
-        IO(interpreter.isComplete(code))
-    }
 
+  private val completionCheckCancellable = new Cancellable[String, Option[IsCompleteResult]](
+    {
+      code =>
+        cancellable {
+          case true =>
+            IO.pure(None)
+          case false =>
+            IO(interpreter.isComplete(code))
+        }
+    },
+    {
+      code =>
+        interpreter.asyncIsComplete(code)
+    }
+  )
 
   private val completionCancellable = new Cancellable[(String, Int), Completion](
     {
@@ -136,6 +144,9 @@ final class InterpreterToIOInterpreter(
         interpreter.asyncInspect(code, pos, detailLevel)
     }
   )
+
+  override def isComplete(code: String): IO[Option[IsCompleteResult]] =
+    completionCheckCancellable.run(code)
 
   override def complete(code: String, pos: Int): IO[Completion] =
     completionCancellable.run((code, pos))

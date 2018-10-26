@@ -71,6 +71,17 @@ trait Interpreter {
   def isComplete(code: String): Option[IsCompleteResult] =
     None
 
+  /**
+    * Asynchronously try to check whether some code is complete.
+    *
+    * This is normally called before [[isComplete()]]. If this returns a non-empty option,
+    * it is assumed asynchronous completion checks are supported. Else, [[isComplete()]] is called.
+    *
+    * @param code: code to check for completion
+    */
+  def asyncIsComplete(code: String): Option[CancellableFuture[Option[IsCompleteResult]]] =
+    None
+
   // warning: in the 2 methods below, pos should correspond to a code point index
   // (https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#cursor-pos-and-unicode-offsets)
 

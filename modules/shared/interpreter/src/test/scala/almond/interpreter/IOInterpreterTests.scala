@@ -21,6 +21,34 @@ object IOInterpreterTests extends TestSuite {
 
   val tests = Tests {
 
+    "completion check" - {
+
+      "cancel previous requests" - {
+
+        val interpreter: Interpreter = new TestInterpreter
+        val ioInterpreter: IOInterpreter = new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+
+        val ios = Seq(
+          // the "cancel" completion checks are only completed if they are cancelled
+          ioInterpreter.isComplete("cancel"),
+          ioInterpreter.isComplete("cancel"),
+          ioInterpreter.isComplete("other")
+        )
+
+        val t = ios.toList.sequence
+
+        val res = t.unsafeRunSync()
+        val expectedRes = Seq(
+          Some(IsCompleteResult.Invalid),
+          Some(IsCompleteResult.Invalid),
+          Some(IsCompleteResult.Complete)
+        )
+
+        assert(res == expectedRes)
+      }
+
+    }
+
     "completion" - {
 
       "cancel previous requests" - {

@@ -127,6 +127,37 @@ final class TestInterpreter extends Interpreter {
   override def inspect(code: String, pos: Int, detailLevel: Int) =
     sys.error("should not be called")
 
+  override def asyncIsComplete(code: String) = {
+
+    val res =
+      if (code == "cancel") {
+        val p = Promise[Option[IsCompleteResult]]()
+        CancellableFuture(
+          p.future,
+          () => p.complete(
+            Success(
+              Some(
+                IsCompleteResult.Invalid
+              )
+            )
+          )
+        )
+      } else
+        CancellableFuture(
+          Future.successful(
+            Some(
+              IsCompleteResult.Complete
+            )
+          ),
+          () => sys.error("should not happen")
+        )
+
+    Some(res)
+  }
+
+  override def isComplete(code: String) =
+    sys.error("should not be called")
+
   private val commManager = CommManager.create()
   private var commHandlerOpt0 = Option.empty[CommHandler]
   override def commManagerOpt = Some(commManager)
