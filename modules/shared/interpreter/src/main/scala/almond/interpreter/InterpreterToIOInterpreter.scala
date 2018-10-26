@@ -3,7 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
-import almond.interpreter.util.CancellableFuture
+import almond.interpreter.util.Cancellable
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
 import cats.effect.IO
@@ -12,7 +12,6 @@ import fs2.async
 import fs2.async.mutable.Signal
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 /**
   *
@@ -41,6 +40,13 @@ final class InterpreterToIOInterpreter(
   def cancelledSignal: Signal[IO, Boolean] =
     cancelledSignal0
 
+  /**
+    * Check whether an [[IO]] should be cancelled because of stop-or-error prior to running it.
+    *
+    * The passed function is called immediately prior to evaluating the [[IO]] it returns. If stop-on-error
+    * was triggered while this [[IO]] was queued for execution, the boolean given to the passed function is
+    * true, and the returned [[IO]] can take it into account, typically returning an empty result.
+    */
   private def cancellable[T](io: Boolean => IO[T]): IO[T] =
     for {
       cancelled <- cancelledSignal.get
@@ -98,56 +104,25 @@ final class InterpreterToIOInterpreter(
         IO(interpreter.isComplete(code))
     }
 
-  private var runningCompletionOpt = Option.empty[CancellableFuture[Completion]]
-  private val runningCompletionLock = new Object
 
-  override def complete(code: String, pos: Int): IO[Completion] = {
-
-    val ioOrFutureCompletion =
-      runningCompletionLock.synchronized {
-
-        for (c <- runningCompletionOpt) {
-          log.debug(s"Cancelling completion request $c")
-          c.cancel()
-          runningCompletionOpt = None
+  private val completionCancellable = new Cancellable[(String, Int), Completion](
+    {
+      case (code, pos) =>
+        cancellable {
+          case true =>
+            IO.pure(Completion.empty(pos))
+          case false =>
+            IO(interpreter.complete(code, pos))
         }
-
-        interpreter.asyncComplete(code, pos) match {
-          case None =>
-            Left {
-              cancellable {
-                case true =>
-                  IO.pure(Completion.empty(pos))
-                case false =>
-                  IO(interpreter.complete(code, pos))
-              }
-            }
-          case Some(f) =>
-            runningCompletionOpt = Some(f)
-            Right(f)
-        }
-      }
-
-    ioOrFutureCompletion match {
-      case Left(io) => io
-      case Right(f) =>
-        IO.async[Completion] { cb =>
-          import scala.concurrent.ExecutionContext.Implicits.global // meh
-          f.future.onComplete { res =>
-            runningCompletionLock.synchronized {
-              log.debug(s"Completion request $f done: $res")
-              runningCompletionOpt = runningCompletionOpt.filter(_ != f)
-            }
-            res match {
-              case Success(c) =>
-                cb(Right(c))
-              case Failure(e) =>
-                cb(Left(e))
-            }
-          }
-        }
+    },
+    {
+      case (code, pos) =>
+        interpreter.asyncComplete(code, pos)
     }
-  }
+  )
+
+  override def complete(code: String, pos: Int): IO[Completion] =
+    completionCancellable.run((code, pos))
 
   override def inspect(code: String, pos: Int, detailLevel: Int): IO[Option[Inspection]] =
     cancellable {
