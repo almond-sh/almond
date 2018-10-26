@@ -1,7 +1,8 @@
 package almond.protocol
 
+import almond.protocol.internal.ExtraCodecs._
 import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, EncodeJson}
+import argonaut.{DecodeJson, EncodeJson, JsonObject}
 
 object Complete {
 
@@ -14,7 +15,7 @@ object Complete {
     matches: List[String],
     cursor_start: Int,
     cursor_end: Int,
-    metadata: Map[String, String],
+    metadata: JsonObject,
     status: String
   )
 
@@ -24,7 +25,7 @@ object Complete {
       matches: List[String],
       cursor_start: Int,
       cursor_end: Int,
-      metadata: Map[String, String]
+      metadata: JsonObject
     ): Reply =
       Reply(
         matches,
@@ -42,6 +43,8 @@ object Complete {
 
 
   implicit val requestDecoder = DecodeJson.of[Request]
+  implicit val requestEncoder = EncodeJson.of[Request]
+  implicit val replyDecoder = DecodeJson.of[Reply]
   implicit val replyEncoder = EncodeJson.of[Reply]
 
 }

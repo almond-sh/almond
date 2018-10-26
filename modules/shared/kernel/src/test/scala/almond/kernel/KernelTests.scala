@@ -7,7 +7,7 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.util.BetterPrinter
 import almond.interpreter.{Message, TestInterpreter}
 import almond.logger.LoggerContext
-import almond.protocol.{Execute, Header, History, Input, Shutdown}
+import almond.protocol.{Complete, Execute, Header, History, Input, Shutdown}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import argonaut.Json
 import cats.effect.IO
@@ -201,6 +201,65 @@ object KernelTests extends TestSuite {
       val expectedMsgTypes = Seq(Shutdown.replyType.messageType)
 
       assert(msgTypes == expectedMsgTypes)
+    }
+
+    "completion metadata" - {
+
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _) =>
+        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
+        case (Channel.Requests, m) if m.header.msg_type == "complete_reply" =>
+      }
+
+      // we stop the pseudo-client at the first execute_reply
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply")
+
+      val rawMetadata = """{ "a": 2, "b": [true, false, "s"] }"""
+
+      val sessionId = UUID.randomUUID().toString
+      val input = Stream(
+        Message(
+          Header.random("test", Complete.requestType, sessionId),
+          Complete.Request(s"meta:$rawMetadata", 5)
+        ).on(Channel.Requests),
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:foo")
+        ).on(Channel.Requests)
+      )
+
+
+      val streams = ClientStreams.create(input, stopWhen, ignoreExpectedReplies)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      val res = t.unsafeRunTimed(2.seconds)
+      assert(res.nonEmpty)
+
+      val msgTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toSet
+
+      // Using a set, as these may be processed concurrently
+      val expectedMsgTypes = Set(
+        Complete.replyType.messageType,
+        Execute.replyType.messageType
+      )
+
+      assert(msgTypes == expectedMsgTypes)
+
+      val completeReply = streams.singleReply(Channel.Requests, Complete.replyType)
+      val metadata = completeReply.content.metadata
+      val expectedMetadata = {
+        import argonaut._
+        import argonaut.Argonaut._
+        import almond.protocol.internal.ExtraCodecs._
+        rawMetadata.decodeEither[JsonObject].right.get
+      }
+
+      assert(metadata == expectedMetadata)
     }
 
   }

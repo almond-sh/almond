@@ -5,7 +5,10 @@ import java.util.Properties
 import almond.interpreter.{Completion, ExecuteResult, Inspection, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
+import almond.protocol.internal.ExtraCodecs._
 import almond.protocol.KernelInfo
+import argonaut._
+import argonaut.Argonaut._
 
 final class EchoInterpreter extends Interpreter {
 
@@ -55,10 +58,9 @@ final class EchoInterpreter extends Interpreter {
 
   override def complete(code: String, pos: Int): Completion = {
 
-    // try to complete 'print' at the beginning of the cell
-
     val firstWord = code.takeWhile(_.isLetter)
 
+    // try to complete 'print' at the beginning of the cell
     val completePrint = pos <= firstWord.length &&
       firstWord.length < "print".length &&
       "print".take(firstWord.length) == firstWord &&
@@ -66,6 +68,13 @@ final class EchoInterpreter extends Interpreter {
 
     if (completePrint)
       Completion(0, firstWord.length, Seq("print"))
+    else if (code.startsWith("meta:") && pos == "meta:".length)
+      code.drop("meta:".length).decodeEither[JsonObject].right.toOption match {
+        case None =>
+          Completion.empty(pos)
+        case Some(obj) =>
+          Completion(pos, pos, Seq("sent"), obj)
+      }
     else
       Completion.empty(pos)
   }

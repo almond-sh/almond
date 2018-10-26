@@ -3,6 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.interpreter.util.CancellableFuture
 import almond.protocol.KernelInfo
 
 trait Interpreter {
@@ -70,6 +71,17 @@ trait Interpreter {
   def isComplete(code: String): Option[IsCompleteResult] =
     None
 
+  /**
+    * Asynchronously try to check whether some code is complete.
+    *
+    * This is normally called before [[isComplete()]]. If this returns a non-empty option,
+    * it is assumed asynchronous completion checks are supported. Else, [[isComplete()]] is called.
+    *
+    * @param code: code to check for completion
+    */
+  def asyncIsComplete(code: String): Option[CancellableFuture[Option[IsCompleteResult]]] =
+    None
+
   // warning: in the 2 methods below, pos should correspond to a code point index
   // (https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#cursor-pos-and-unicode-offsets)
 
@@ -91,7 +103,7 @@ trait Interpreter {
     * @param code: code to complete
     * @param pos: cursor position (as a unicode code point index) in code
     */
-  def asyncComplete(code: String, pos: Int): Option[FutureCompletion] =
+  def asyncComplete(code: String, pos: Int): Option[CancellableFuture[Completion]] =
     None
 
   /**
@@ -110,6 +122,19 @@ trait Interpreter {
     * @return
     */
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+    None
+
+  /**
+    * Asynchronously try to inspect code.
+    *
+    * This is normally called before [[inspect()]]. If this returns a non-empty option,
+    * it is assumed asynchronous inspections are supported. Else, [[inspect()]] is called.
+    *
+    * @param code: code to inspect
+    * @param pos: cursor position (as a unicode code point index)
+    * @param detailLevel
+    */
+  def asyncInspect(code: String, pos: Int, detailLevel: Int): Option[CancellableFuture[Option[Inspection]]] =
     None
 
   /**
