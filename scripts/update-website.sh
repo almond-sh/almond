@@ -7,6 +7,8 @@ if [ "$TRAVIS_BRANCH" != "" ]; then
   source scripts/setup-sbt-extra.sh
 fi
 
+export FORCE_SIMPLE_VERSION=1
+
 sbt \
   interpreter-api/exportVersions \
   interpreter-api/publishLocal \

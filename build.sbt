@@ -15,11 +15,20 @@ inThisBuild(List(
   ),
   version := {
     // Simple X.Y.Z-SNAPSHOT versions are easier to find once published locally
+    val forceSimpleVersion = sys.env
+      .get("FORCE_SIMPLE_VERSION")
+      .contains("1")
     val onTravisCi = sys.env.exists(_._1.startsWith("TRAVIS_"))
     val v = version.value
-    if (!onTravisCi && v.contains("+") && v.endsWith("-SNAPSHOT"))
-      v.takeWhile(_ != '+') + "-SNAPSHOT"
-    else
+    if ((forceSimpleVersion || !onTravisCi) && v.contains("+") && v.endsWith("-SNAPSHOT")) {
+      val base = v.takeWhile(_ != '+')
+      val elems = base.split('.')
+      val last = scala.util.Try(elems.last.toInt)
+        .toOption
+	.fold(elems.last)(n => (n + 1).toString)
+      val bumpedBase = (elems.init :+ last).mkString(".")
+      bumpedBase + "-SNAPSHOT"
+    } else
       v
   }
 ))
