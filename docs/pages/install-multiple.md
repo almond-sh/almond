@@ -11,7 +11,7 @@ have different ids (required) and display names (recommended).
 For example, let's install almond for the scala `2.12.7` version,
 ```bash
 $ SCALA_VERSION=2.12.7 ALMOND_VERSION=@VERSION@
-$ coursier bootstrap \
+$ coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
     -o almond
@@ -24,7 +24,7 @@ This installs almond with the default kernel id, `scala`, and default display na
 Now let's *also* install almond for scala `2.11.12`,
 ```bash
 $ SCALA_VERSION=2.11.12 ALMOND_VERSION=@VERSION@
-$ coursier bootstrap \
+$ coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
     -o almond-scala-2.11
