@@ -53,9 +53,7 @@ Then install the kernel with
 ```bash
 $ ./almond-snapshot --install \
     --id scala-snapshot \
-    --display-name "Scala (snapshot)" \
-    --log debug \
-    --log-to "$(pwd)/almond-snapshot-log.txt"
+    --display-name "Scala (snapshot)"
 ```
 
 Optionally, change the log level with e.g. `--log debug`. If you'd like these logs to go to a distinct file rather than in the console, pass e.g. `--log-to "/path/to/log-file.txt"`.
@@ -65,3 +63,46 @@ Optionally, change the log level with e.g. `--log debug`. If you'd like these lo
 Once the kernel is installed this way, one can update its artifacts with `sbt publishLocal`. These are taken into account by restarting the kernel.
 
 Re-generating an installer, and installing it, is only necessary if the dependencies of the kernel are changed / updated, or if the kernel version changes. It is safer to re-generate an installer and install it after a `git pull` in particular.
+
+## sbt crash course
+
+Running `sbt` with no options starts an sbt shell
+```
+$ sbt
+[…]
+> 
+```
+
+At the sbt prompt, type
+- `compile` to compile the main sources,
+- `test:compile` to compile both the main and test sources,
+- `test` to run all the tests,
+- `publishLocal` to publish the projects locally (these land under `~/.ivy2/local`).
+
+All these commands can be prefixed with a project id, like `kernel/test` or `interpreter/publishLocal`. List the available projects with `projects`.
+
+`~` can be added as prefix to watch sources, like `~test:compile` or `~kernel/publishLocal`.
+
+To run one or several commands from your shell rather than the sbt prompt, pass those to `sbt`, like
+```
+$ sbt "~test:compile"
+$ sbt interpreter/test "~publishLocal"
+```
+
+Note that the sbt start up time is incurred each time you type `sbt` in your shell. Running it once, like `$ sbt`, then entering commands at the sbt prompt allows to avoid this.
+
+Select a specific scala version, for example `2.11.12`, with `++2.11.12`. Example of use
+```
+$ sbt ++2.11.12 "~test:compile"
+$ sbt
+> ++2.11.12
+> interpreter/test
+```
+
+List the available scala versions with the `show crossScalaVersions` command, like
+```
+$ sbt "show crossScalaVersions"
+$ sbt
+> show crossScalaVersions
+```
+
