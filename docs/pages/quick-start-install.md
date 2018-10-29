@@ -13,7 +13,7 @@ $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
 
 See the available versions of almond [here](https://github.com/jupyter-scala/jupyter-scala/releases),
 adjust `ALMOND_VERSION` and `SCALA_VERSION` at your convenience (not all combinations are guaranteed
-to be available, see the available combinations [here](versions.md)).
+to be available, see the available combinations [here](install-versions.md)).
 
 Run the launcher like
 ```bash
