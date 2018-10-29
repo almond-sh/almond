@@ -8,7 +8,7 @@ import scala.util.{Failure, Success}
   * Handles cancellation of prior running requests, in case a new one is incoming.
   *
   * This only applies if `asyncOpt` returns non-empty results, meaning [[B]] is asynchronously calculated,
-  * and that this calculation can be stopped. If a new request arrives, the [[CancellableFuture.cancel]] is
+  * and that this calculation can be stopped. If a new request arrives, [[CancellableFuture.cancel]] is
   * called on previous requests that are still running.
   */
 final class Cancellable[A, B](
@@ -25,7 +25,6 @@ final class Cancellable[A, B](
       runningCompletionLock.synchronized {
 
         for (c <- runningCompletionOpt) {
-          // log.debug(s"Cancelling completion request $c")
           c.cancel()
           runningCompletionOpt = None
         }
@@ -46,7 +45,6 @@ final class Cancellable[A, B](
           import scala.concurrent.ExecutionContext.Implicits.global // meh
           f.future.onComplete { res =>
             runningCompletionLock.synchronized {
-              // log.debug(s"Completion request $f done: $res")
               runningCompletionOpt = runningCompletionOpt.filter(_ != f)
             }
             res match {
