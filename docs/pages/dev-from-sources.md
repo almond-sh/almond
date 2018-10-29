@@ -81,6 +81,8 @@ At the sbt prompt, type
 
 All these commands can be prefixed with a project id, like `kernel/test` or `interpreter/publishLocal`. List the available projects with `projects`.
 
+Note that sbt knows about the dependencies between commands, so that you can directly run `test`. This triggers a compilation of the main and test sources if needed. Sources are automatically compiled incrementally.
+
 `~` can be added as prefix to watch sources, like `~test:compile` or `~kernel/publishLocal`.
 
 To run one or several commands from your shell rather than the sbt prompt, pass those to `sbt`, like
