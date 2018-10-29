@@ -108,3 +108,5 @@ $ sbt
 > show crossScalaVersions
 ```
 
+Note that `show crossScalaVersions` is quoted when passed to sbt from the shell, so that sbt interprets it as a single command.
+
