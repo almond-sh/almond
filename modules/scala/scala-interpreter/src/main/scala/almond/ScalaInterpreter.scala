@@ -579,7 +579,7 @@ object ScalaInterpreter {
       |}
       |import almond.api.JupyterAPIHolder.value.publish.display
       |import almond.interpreter.api.DisplayData.DisplayDataSyntax
-      |import almond.api.helpers.Display.{html, js, text}
+      |import almond.api.helpers.Display.{html, js, text, jpg, png, svg}
     """.stripMargin
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
