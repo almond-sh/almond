@@ -43,4 +43,31 @@ object Display {
       DisplayData.js(content)
     )
 
+  def jpg(content: Array[Byte])(implicit outputHandler: OutputHandler): Display = {
+    val id = newId()
+    outputHandler.display(
+      DisplayData.jpg(content)
+        .withId(id)
+    )
+    new Display(id, DisplayData.ContentType.jpg)
+  }
+
+  def png(content: Array[Byte])(implicit outputHandler: OutputHandler): Display = {
+    val id = newId()
+    outputHandler.display(
+      DisplayData.png(content)
+        .withId(id)
+    )
+    new Display(id, DisplayData.ContentType.png)
+  }
+
+  def svg(content: String)(implicit outputHandler: OutputHandler): Display = {
+    val id = newId()
+    outputHandler.display(
+      DisplayData.svg(content)
+        .withId(id)
+    )
+    new Display(id, DisplayData.ContentType.svg)
+  }
+
 }

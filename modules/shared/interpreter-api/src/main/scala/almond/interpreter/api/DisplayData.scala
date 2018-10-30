@@ -1,5 +1,7 @@
 package almond.interpreter.api
 
+import java.util.Base64
+
 /** Data that can be pushed to and displayed in the Jupyter UI */
 final case class DisplayData(
   data: Map[String, String],
@@ -24,6 +26,9 @@ object DisplayData {
     def markdown = "text/markdown"
     def html = "text/html"
     def js = "application/javascript"
+    def jpg = "image/jpeg"
+    def png = "image/png"
+    def svg = "image/svg+xml"
   }
 
   def text(text: String): DisplayData =
@@ -34,6 +39,12 @@ object DisplayData {
     DisplayData(Map(ContentType.html -> content))
   def js(content: String): DisplayData =
     DisplayData(Map(ContentType.js -> content))
+  def jpg(content: Array[Byte]): DisplayData =
+    DisplayData(Map(ContentType.jpg -> Base64.getEncoder.encodeToString(content)))
+  def png(content: Array[Byte]): DisplayData =
+    DisplayData(Map(ContentType.png -> Base64.getEncoder.encodeToString(content)))
+  def svg(content: String): DisplayData =
+    DisplayData(Map(ContentType.svg -> content))
 
   val empty: DisplayData =
     DisplayData(Map.empty)
