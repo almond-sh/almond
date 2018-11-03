@@ -28,6 +28,7 @@ object DisplayData {
     def js = "application/javascript"
     def jpg = "image/jpeg"
     def png = "image/png"
+    def gif = "image/gif"
     def svg = "image/svg+xml"
   }
 
