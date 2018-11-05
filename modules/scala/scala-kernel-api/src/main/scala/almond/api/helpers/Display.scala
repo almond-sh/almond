@@ -1,7 +1,11 @@
 package almond.api.helpers
 
-import java.util.UUID
+import java.io.{BufferedInputStream, IOException}
+import java.net.{URL, URLConnection}
+import java.nio.file.{Files, Paths}
+import java.util.{Base64, UUID}
 
+import almond.interpreter.api.DisplayData.ContentType
 import almond.interpreter.api.{DisplayData, OutputHandler}
 
 final class Display(id: String, contentType: String) {
@@ -43,24 +47,6 @@ object Display {
       DisplayData.js(content)
     )
 
-  def jpg(content: Array[Byte])(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
-    outputHandler.display(
-      DisplayData.jpg(content)
-        .withId(id)
-    )
-    new Display(id, DisplayData.ContentType.jpg)
-  }
-
-  def png(content: Array[Byte])(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
-    outputHandler.display(
-      DisplayData.png(content)
-        .withId(id)
-    )
-    new Display(id, DisplayData.ContentType.png)
-  }
-
   def svg(content: String)(implicit outputHandler: OutputHandler): Display = {
     val id = newId()
     outputHandler.display(
@@ -70,4 +56,85 @@ object Display {
     new Display(id, DisplayData.ContentType.svg)
   }
 
+  object Image {
+
+    sealed trait Format {
+      val contentType: String
+    }
+    case object JPG extends Format { val contentType = ContentType.jpg }
+    case object PNG extends Format { val contentType = ContentType.png }
+    case object GIF extends Format { val contentType = ContentType.gif }
+
+    private val imageTypes = Set(JPG, PNG, GIF).map(_.contentType)
+
+    private def dimensionMetadata(width: Option[String], height: Option[String]): Map[String, String] =
+      Map() ++
+        width.map("width" -> _) ++
+        height.map("height" -> _)
+
+    def fromArray(
+      content: Array[Byte],
+      format: Format,
+      width: Option[String] = None,
+      height: Option[String] = None,
+      id: String = newId()
+    )(implicit outputHandler: OutputHandler): Display = {
+      DisplayData(
+        data = Map(format.contentType -> Base64.getEncoder.encodeToString(content)),
+        metadata = dimensionMetadata(width, height),
+        idOpt = Some(id)
+      ).show()
+      new Display(id, format.contentType)
+    }
+
+    def fromUrl(
+      url: String,
+      embed: Boolean = false,
+      format: Option[Format] = None,
+      width: Option[String] = None,
+      height: Option[String] = None,
+      id: String = newId()
+    )(implicit outputHandler: OutputHandler): Display = {
+      val connection = new URL(url).openConnection()
+      connection.setConnectTimeout(5000)
+      connection.connect()
+      val contentType = format.map(_.contentType).getOrElse(connection.getContentType)
+      val data = if (embed) {
+        if(!imageTypes.contains(contentType))
+          throw new IOException("Unknown or unsupported content type: " + contentType)
+        val input = new BufferedInputStream(connection.getInputStream)
+        val rawImage = Iterator.continually(input.read).takeWhile(_ != -1).map(_.toByte).toArray
+        contentType -> Base64.getEncoder.encodeToString(rawImage)
+      } else {
+        val dimensionAttrs = dimensionMetadata(width, height).map{case (k,v) => s"$k=$v"}.mkString(" ")
+        ContentType.html -> s"<img src='$url' $dimensionAttrs/>"
+      }
+      DisplayData(
+        data = Map(data),
+        metadata = dimensionMetadata(width, height),
+        idOpt = Some(id)
+      ).show()
+      new Display(id, contentType)
+    }
+
+    def fromFile(
+      path: String,
+      format: Option[Format] = None,
+      width: Option[String] = None,
+      height: Option[String] = None,
+      id: String = newId()
+    )(implicit outputHandler: OutputHandler): Display = {
+      val contentType = format.map(_.contentType).getOrElse(URLConnection.guessContentTypeFromName(path))
+      if(!imageTypes.contains(contentType))
+        throw new IOException("Unknown or unsupported content type: " + contentType)
+      val imgPath = Paths.get(path)
+      val content = Files.readAllBytes(imgPath)
+      DisplayData(
+        data = Map(contentType -> Base64.getEncoder.encodeToString(content)),
+        metadata = dimensionMetadata(width, height),
+        idOpt = Some(id)
+      ).show()
+      new Display(id, contentType)
+    }
+  }
 }
