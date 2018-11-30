@@ -84,7 +84,7 @@ object Settings {
       val res = coursier.CoursierPlugin.autoImport.coursierResolutions
         .value
         .collectFirst {
-          case (scopes, r) if scopes("compile") =>
+          case (scopes, r) if scopes(coursier.core.Configuration.compile) =>
             r
         }
         .getOrElse(
