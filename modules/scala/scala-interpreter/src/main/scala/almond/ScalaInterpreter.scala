@@ -1,6 +1,7 @@
 package almond
 
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
 import almond.api.JupyterApi
@@ -12,7 +13,7 @@ import almond.interpreter.input.InputManager
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
 import ammonite.interp.{Parsers, Preprocessor}
-import ammonite.ops.{Path, read}
+import ammonite.ops.read
 import ammonite.repl._
 import ammonite.runtime._
 import ammonite.util._
@@ -30,6 +31,7 @@ final class ScalaInterpreter(
   extraBannerOpt: Option[String] = None,
   extraLinks: Seq[KernelInfo.Link] = Nil,
   predefCode: String = "",
+  predefFiles: Seq[Path] = Nil,
   automaticDependencies: Map[String, Seq[String]] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
   mavenProfiles: Map[String, Boolean] = Map(),
@@ -177,7 +179,7 @@ final class ScalaInterpreter(
                 case _ =>
               }
 
-            def exec(file: Path): Unit = {
+            def exec(file: ammonite.ops.Path): Unit = {
               ammInterp.watch(file)
               apply(normalizeNewlines(read(file)))
             }
@@ -229,6 +231,19 @@ final class ScalaInterpreter(
         )
       }
 
+    val predefFileInfos =
+      predefFiles.zipWithIndex.map {
+        case (path, idx) =>
+          val suffix = if (idx <= 0) "" else s"-$idx"
+          PredefInfo(
+            Name("FilePredef" + suffix),
+            // read with the local charset…
+            new String(Files.readAllBytes(path)),
+            false,
+            Some(os.Path(path))
+          )
+      }
+
     try {
 
       log.info("Creating Ammonite interpreter")
@@ -246,7 +261,7 @@ final class ScalaInterpreter(
               None
             )
           ),
-          customPredefs = Seq(
+          customPredefs = predefFileInfos ++ Seq(
             PredefInfo(Name("CodePredef"), predefCode, false, None)
           ),
           extraBridges = Seq(

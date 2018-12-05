@@ -1,5 +1,7 @@
 package almond
 
+import java.nio.file.{Path, Paths}
+
 import almond.interpreter.api.DisplayData
 import almond.interpreter.{Completion, ExecuteResult, Interpreter}
 import ammonite.util.Colors
@@ -11,6 +13,107 @@ object ScalaInterpreterTests extends TestSuite {
     new ScalaInterpreter(
       initialColors = Colors.BlackWhite
     )
+
+  private object Predef {
+    private def predefPath(name: String): Path =
+      Paths.get(getClass.getResource(s"/test-predefs/$name.sc").toURI)
+
+    def simple(fileBased: Boolean = false): Unit = {
+
+      val (predefCode, predefFiles) =
+        if (fileBased)
+          ("", Seq(predefPath("simple")))
+        else
+          ("val n = 2", Nil)
+
+      val interp = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite,
+        predefCode = predefCode,
+        predefFiles = predefFiles
+      )
+
+      val res = interp.execute("val m = 2 * n")
+      val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
+      assert(res == expectedRes)
+    }
+
+    def noVariableName(fileBased: Boolean = false): Unit = {
+
+      val (predefCode, predefFiles) =
+        if (fileBased)
+          ("", Seq(predefPath("no-variable-name")))
+        else {
+          val code =
+            """println("foo") // automatically generated: val res… = println("foo")
+              |val n = 2
+            """.stripMargin
+          (code, Nil)
+        }
+      val interp = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite,
+        predefCode = predefCode,
+        predefFiles = predefFiles
+      )
+
+      val res = interp.execute("val m = 2 * n")
+      val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
+      assert(res == expectedRes)
+    }
+
+    def compilationError(fileBased: Boolean = false): Unit = {
+
+      val (predefCode, predefFiles) =
+        if (fileBased)
+          ("", Seq(predefPath("compilation-error")))
+        else
+          ("val n = 2z", Nil)
+
+      val interp = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite,
+        predefCode = predefCode,
+        predefFiles = predefFiles
+      )
+
+      val res =
+        try {
+          interp.execute("val m = 2 * n")
+          false
+        } catch {
+          case e: ScalaInterpreter.PredefException =>
+            assert(e.getCause == null)
+            true
+        }
+
+      assert(res)
+    }
+
+    def exception(fileBased: Boolean = false): Unit = {
+
+      val (predefCode, predefFiles) =
+        if (fileBased)
+          ("", Seq(predefPath("exception")))
+        else
+          ("""val n: Int = sys.error("foo")""", Nil)
+      val interp = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite,
+        predefCode = predefCode,
+        predefFiles = predefFiles
+      )
+
+      val res =
+        try {
+          interp.execute("val m = 2 * n")
+          false
+        } catch {
+          case e: ScalaInterpreter.PredefException =>
+            val msgOpt = Option(e.getCause).flatMap(e0 => Option(e0.getMessage))
+            assert(msgOpt.contains("foo"))
+            true
+        }
+
+      assert(res)
+    }
+  }
 
   val tests = Tests {
 
@@ -66,76 +169,18 @@ object ScalaInterpreterTests extends TestSuite {
 
     }
 
-    "predef" - {
+    "predef code" - {
+      "simple" - Predef.simple()
+      "no variable name" - Predef.noVariableName()
+      "compilation error" - Predef.compilationError()
+      "exception" - Predef.exception()
+    }
 
-      "simple" - {
-        val predef = "val n = 2"
-        val interp = new ScalaInterpreter(
-          initialColors = Colors.BlackWhite,
-          predefCode = predef
-        )
-
-        val res = interp.execute("val m = 2 * n")
-        val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
-        assert(res == expectedRes)
-      }
-
-      "no variable name" - {
-        val predef =
-          """println("foo") // automatically generated: val res… = println("foo")
-            |val n = 2
-          """.stripMargin
-        val interp = new ScalaInterpreter(
-          initialColors = Colors.BlackWhite,
-          predefCode = predef
-        )
-
-        val res = interp.execute("val m = 2 * n")
-        val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
-        assert(res == expectedRes)
-      }
-
-      "compilation error" - {
-        val predef = "val n = 2z"
-        val interp = new ScalaInterpreter(
-          initialColors = Colors.BlackWhite,
-          predefCode = predef
-        )
-
-        val res =
-          try {
-            interp.execute("val m = 2 * n")
-            false
-          } catch {
-            case e: ScalaInterpreter.PredefException =>
-              assert(e.getCause == null)
-              true
-          }
-
-        assert(res)
-      }
-
-      "exception" - {
-        val predef = """val n: Int = sys.error("foo")"""
-        val interp = new ScalaInterpreter(
-          initialColors = Colors.BlackWhite,
-          predefCode = predef
-        )
-
-        val res =
-          try {
-            interp.execute("val m = 2 * n")
-            false
-          } catch {
-            case e: ScalaInterpreter.PredefException =>
-              val msgOpt = Option(e.getCause).flatMap(e0 => Option(e0.getMessage))
-              assert(msgOpt.contains("foo"))
-              true
-          }
-
-        assert(res)
-      }
-
+    "predef files" - {
+      "simple" - Predef.simple(fileBased = true)
+      "no variable name" - Predef.noVariableName(fileBased = true)
+      "compilation error" - Predef.compilationError(fileBased = true)
+      "exception" - Predef.exception(fileBased = true)
     }
 
   }
