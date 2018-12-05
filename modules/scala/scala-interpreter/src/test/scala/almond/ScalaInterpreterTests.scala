@@ -72,7 +72,7 @@ object ScalaInterpreterTests extends TestSuite {
         val predef = "val n = 2"
         val interp = new ScalaInterpreter(
           initialColors = Colors.BlackWhite,
-          predef = predef
+          predefCode = predef
         )
 
         val res = interp.execute("val m = 2 * n")
@@ -87,7 +87,7 @@ object ScalaInterpreterTests extends TestSuite {
           """.stripMargin
         val interp = new ScalaInterpreter(
           initialColors = Colors.BlackWhite,
-          predef = predef
+          predefCode = predef
         )
 
         val res = interp.execute("val m = 2 * n")
@@ -99,7 +99,7 @@ object ScalaInterpreterTests extends TestSuite {
         val predef = "val n = 2z"
         val interp = new ScalaInterpreter(
           initialColors = Colors.BlackWhite,
-          predef = predef
+          predefCode = predef
         )
 
         val res =
@@ -119,7 +119,7 @@ object ScalaInterpreterTests extends TestSuite {
         val predef = """val n: Int = sys.error("foo")"""
         val interp = new ScalaInterpreter(
           initialColors = Colors.BlackWhite,
-          predef = predef
+          predefCode = predef
         )
 
         val res =

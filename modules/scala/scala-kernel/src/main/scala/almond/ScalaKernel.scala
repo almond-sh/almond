@@ -131,7 +131,7 @@ object ScalaKernel extends CaseApp[Options] {
       extraRepos = options.extraRepository,
       extraBannerOpt = options.banner,
       extraLinks = extraLinks,
-      predef = options.predef,
+      predefCode = options.predefCode,
       automaticDependencies = autoDependencies,
       forceMavenProperties = forceProperties,
       mavenProfiles = mavenProfiles,

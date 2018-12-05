@@ -15,7 +15,7 @@ final case class Options(
   extraRepository: List[String] = Nil,
   banner: Option[String] = None,
   link: List[String] = Nil,
-  predef: String = "",
+  predefCode: String = "",
   autoDependency: List[String] = Nil,
   @HelpMessage("Force Maven properties during dependency resolution")
     forceProperty: List[String] = Nil,

@@ -29,7 +29,7 @@ final class ScalaInterpreter(
   extraRepos: Seq[String] = Nil,
   extraBannerOpt: Option[String] = None,
   extraLinks: Seq[KernelInfo.Link] = Nil,
-  predef: String = "",
+  predefCode: String = "",
   automaticDependencies: Map[String, Seq[String]] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
   mavenProfiles: Map[String, Boolean] = Map(),
@@ -146,22 +146,6 @@ final class ScalaInterpreter(
     }
 
 
-  def runPredef(interp: ammonite.interp.Interpreter): Unit = {
-    val stmts = Parsers.split(predef).get.get.value
-    val predefRes = interp.processLine(predef, stmts, 9999999, silent = false, () => ())
-    Repl.handleOutput(interp, predefRes)
-    predefRes match {
-      case Res.Success(_) =>
-      case Res.Failure(msg) =>
-        throw new ScalaInterpreter.PredefException(msg, None)
-      case Res.Exception(t, msg) =>
-        throw new ScalaInterpreter.PredefException(msg, Some(t))
-      case Res.Skip =>
-      case Res.Exit(v) =>
-        log.warn(s"Ignoring exit request from predef (exit value: $v)")
-    }
-  }
-
   lazy val ammInterp: ammonite.interp.Interpreter = {
 
     val replApi: ReplApiImpl =
@@ -262,7 +246,9 @@ final class ScalaInterpreter(
               None
             )
           ),
-          customPredefs = Nil,
+          customPredefs = Seq(
+            PredefInfo(Name("CodePredef"), predefCode, false, None)
+          ),
           extraBridges = Seq(
             (ammonite.repl.ReplBridge.getClass.getName.stripSuffix("$"), "repl", replApi),
             (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
@@ -279,7 +265,16 @@ final class ScalaInterpreter(
 
       log.info("Initializing interpreter predef")
 
-      ammInterp0.initializePredef()
+      for ((e, _) <- ammInterp0.initializePredef())
+        e match {
+          case Res.Failure(msg) =>
+            throw new ScalaInterpreter.PredefException(msg, None)
+          case Res.Exception(t, msg) =>
+            throw new ScalaInterpreter.PredefException(msg, Some(t))
+          case Res.Skip =>
+          case Res.Exit(v) =>
+            log.warn(s"Ignoring exit request from predef (exit value: $v)")
+        }
 
       log.info("Loading base dependencies")
 
@@ -294,10 +289,6 @@ final class ScalaInterpreter(
       log.info("Processing scalac args")
 
       ammInterp0.compilerManager.preConfigureCompiler(_.processArguments(Nil, processAll = true))
-
-      log.info(s"Warming up interpreter (predef: $predef)")
-
-      runPredef(ammInterp0)
 
       log.info("Ammonite interpreter ok")
 
