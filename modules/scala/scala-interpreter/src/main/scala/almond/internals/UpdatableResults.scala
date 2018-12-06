@@ -26,11 +26,12 @@ final class UpdatableResults(
   def add(data: DisplayData, variables: Map[String, String]): DisplayData = {
     val ref = Ref((data, variables))
     addRefsLock.synchronized {
-      for (k <- variables.keys)
-        refs.put(k, ref)
       val variables0 = variables.map {
         case (k, v) =>
-          k -> earlyUpdates.get(k).fold(v)(_._1)
+          val vOpt = earlyUpdates.remove(k)
+          if (!vOpt.exists(_._2))
+            refs.put(k, ref)
+          k -> vOpt.fold(v)(_._1)
       }
       UpdatableResults.substituteVariables(data, variables0)
     }

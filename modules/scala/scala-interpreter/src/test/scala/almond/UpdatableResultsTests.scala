@@ -24,6 +24,7 @@ object UpdatableResultsTests extends TestSuite {
       val data = r.add(DisplayData.text("Foo <foo>"), Map("<foo>" -> "---"))
       val expectedData = DisplayData.text("Foo value")
       assert(data == expectedData)
+      assert(r.earlyUpdates.isEmpty)
     }
 
   }
