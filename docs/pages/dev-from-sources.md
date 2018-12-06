@@ -45,6 +45,7 @@ $ SCALA_VERSION=2.12.7 ALMOND_VERSION=0.1.11-SNAPSHOT
 $ coursier bootstrap \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
+    --sources --default=true \
     -o almond-snapshot --embed-files=false
 ```
 Compared to [the default installation instructions](quick-start-install.md), `--embed-files=false` is added as an option. This makes the generated launcher directly rely on files under `~/.ivy2/local`, rather than copying those in the launcher. If the files under `~/.ivy2/local` are updated (e.g. with a new `sbt publishLocal`), just restarting the kernel is enough for these to be picked, which is useful for fast iterations during development.

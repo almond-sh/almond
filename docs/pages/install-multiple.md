@@ -14,6 +14,7 @@ $ SCALA_VERSION=2.12.7 ALMOND_VERSION=@VERSION@
 $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
+    --sources --default=true \
     -o almond
 $ ./almond --install
 $ rm -f almond
@@ -27,6 +28,7 @@ $ SCALA_VERSION=2.11.12 ALMOND_VERSION=@VERSION@
 $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
+    --sources --default=true \
     -o almond-scala-2.11
 $ ./almond-scala-2.11 --install --id scala211 --display-name "Scala (2.11)"
 $ rm -f almond-scala-2.11
