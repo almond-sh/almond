@@ -93,6 +93,7 @@ object ScalaKernel extends CaseApp[Options] {
     val forceProperties = options.forceProperties()
     val mavenProfiles = options.mavenProfiles()
     val extraLinks = options.extraLinks()
+    val predefFiles = options.predefFiles()
 
 
     log.info(
@@ -131,7 +132,8 @@ object ScalaKernel extends CaseApp[Options] {
       extraRepos = options.extraRepository,
       extraBannerOpt = options.banner,
       extraLinks = extraLinks,
-      predef = options.predef,
+      predefCode = options.predefCode,
+      predefFiles = predefFiles,
       automaticDependencies = autoDependencies,
       forceMavenProperties = forceProperties,
       mavenProfiles = mavenProfiles,

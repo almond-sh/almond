@@ -1,5 +1,6 @@
 package almond
 
+import java.nio.file.{Files, Path, Paths}
 import java.util.regex.Pattern
 
 import almond.protocol.KernelInfo
@@ -15,7 +16,8 @@ final case class Options(
   extraRepository: List[String] = Nil,
   banner: Option[String] = None,
   link: List[String] = Nil,
-  predef: String = "",
+  predefCode: String = "",
+  predef: List[String] = Nil,
   autoDependency: List[String] = Nil,
   @HelpMessage("Force Maven properties during dependency resolution")
     forceProperty: List[String] = Nil,
@@ -80,6 +82,20 @@ final case class Options(
         case other =>
           sys.error(s"Malformed link: $other")
       }
+
+  def predefFiles(): Seq[Path] =
+    predef.map { p =>
+      val path = Paths.get(p)
+      if (!Files.exists(path)) {
+        System.err.println(s"Error: predef $p: not found")
+        sys.exit(1)
+      }
+      if (!Files.isRegularFile(path)) {
+        System.err.println(s"Error: predef $p: not a file")
+        sys.exit(1)
+      }
+      path
+    }
 
 }
 

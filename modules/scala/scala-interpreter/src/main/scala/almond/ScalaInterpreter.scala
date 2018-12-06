@@ -1,6 +1,7 @@
 package almond
 
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
 import almond.api.JupyterApi
@@ -12,7 +13,7 @@ import almond.interpreter.input.InputManager
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
 import ammonite.interp.{Parsers, Preprocessor}
-import ammonite.ops.{Path, read}
+import ammonite.ops.read
 import ammonite.repl._
 import ammonite.runtime._
 import ammonite.util._
@@ -29,7 +30,8 @@ final class ScalaInterpreter(
   extraRepos: Seq[String] = Nil,
   extraBannerOpt: Option[String] = None,
   extraLinks: Seq[KernelInfo.Link] = Nil,
-  predef: String = "",
+  predefCode: String = "",
+  predefFiles: Seq[Path] = Nil,
   automaticDependencies: Map[String, Seq[String]] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
   mavenProfiles: Map[String, Boolean] = Map(),
@@ -146,22 +148,6 @@ final class ScalaInterpreter(
     }
 
 
-  def runPredef(interp: ammonite.interp.Interpreter): Unit = {
-    val stmts = Parsers.split(predef).get.get.value
-    val predefRes = interp.processLine(predef, stmts, 9999999, silent = false, () => ())
-    Repl.handleOutput(interp, predefRes)
-    predefRes match {
-      case Res.Success(_) =>
-      case Res.Failure(msg) =>
-        throw new ScalaInterpreter.PredefException(msg, None)
-      case Res.Exception(t, msg) =>
-        throw new ScalaInterpreter.PredefException(msg, Some(t))
-      case Res.Skip =>
-      case Res.Exit(v) =>
-        log.warn(s"Ignoring exit request from predef (exit value: $v)")
-    }
-  }
-
   lazy val ammInterp: ammonite.interp.Interpreter = {
 
     val replApi: ReplApiImpl =
@@ -193,7 +179,7 @@ final class ScalaInterpreter(
                 case _ =>
               }
 
-            def exec(file: Path): Unit = {
+            def exec(file: ammonite.ops.Path): Unit = {
               ammInterp.watch(file)
               apply(normalizeNewlines(read(file)))
             }
@@ -245,6 +231,19 @@ final class ScalaInterpreter(
         )
       }
 
+    val predefFileInfos =
+      predefFiles.zipWithIndex.map {
+        case (path, idx) =>
+          val suffix = if (idx <= 0) "" else s"-$idx"
+          PredefInfo(
+            Name("FilePredef" + suffix),
+            // read with the local charset…
+            new String(Files.readAllBytes(path)),
+            false,
+            Some(os.Path(path))
+          )
+      }
+
     try {
 
       log.info("Creating Ammonite interpreter")
@@ -262,7 +261,9 @@ final class ScalaInterpreter(
               None
             )
           ),
-          customPredefs = Nil,
+          customPredefs = predefFileInfos ++ Seq(
+            PredefInfo(Name("CodePredef"), predefCode, false, None)
+          ),
           extraBridges = Seq(
             (ammonite.repl.ReplBridge.getClass.getName.stripSuffix("$"), "repl", replApi),
             (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
@@ -279,7 +280,16 @@ final class ScalaInterpreter(
 
       log.info("Initializing interpreter predef")
 
-      ammInterp0.initializePredef()
+      for ((e, _) <- ammInterp0.initializePredef())
+        e match {
+          case Res.Failure(msg) =>
+            throw new ScalaInterpreter.PredefException(msg, None)
+          case Res.Exception(t, msg) =>
+            throw new ScalaInterpreter.PredefException(msg, Some(t))
+          case Res.Skip =>
+          case Res.Exit(v) =>
+            log.warn(s"Ignoring exit request from predef (exit value: $v)")
+        }
 
       log.info("Loading base dependencies")
 
@@ -294,10 +304,6 @@ final class ScalaInterpreter(
       log.info("Processing scalac args")
 
       ammInterp0.compilerManager.preConfigureCompiler(_.processArguments(Nil, processAll = true))
-
-      log.info(s"Warming up interpreter (predef: $predef)")
-
-      runPredef(ammInterp0)
 
       log.info("Ammonite interpreter ok")
 
