@@ -146,14 +146,16 @@ object ScalaInterpreterTests extends TestSuite {
 
       * - {
         val code = "Lis"
-        val res = interpreter.complete(code, code.length)
         val expectedRes = Completion(0, 3, Seq("List"))
+        val res0 = interpreter.complete(code, code.length)
+        val res = res0.copy(
+          completions = res0.completions.filter(expectedRes.completions.toSet)
+        )
         assert(res == expectedRes)
       }
 
       * - {
         val code = "HashM"
-        val res = interpreter.complete(code, code.length)
         val expectedRes = Completion(
           0,
           5,
@@ -163,6 +165,10 @@ object ScalaInterpreterTests extends TestSuite {
             "scala.collection.mutable.HashMap",
             "scala.collection.parallel.immutable.HashMapCombiner"
           )
+        )
+        val res0 = interpreter.complete(code, code.length)
+        val res = res0.copy(
+          completions = res0.completions.filter(expectedRes.completions.toSet)
         )
         assert(res == expectedRes)
       }

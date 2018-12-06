@@ -138,7 +138,8 @@ object ScalaKernel extends CaseApp[Options] {
       forceMavenProperties = forceProperties,
       mavenProfiles = mavenProfiles,
       initialClassLoader = initialClassLoader,
-      logCtx = logCtx
+      logCtx = logCtx,
+      metabrowse = options.metabrowse
     )
     log.info("Created interpreter")
 
