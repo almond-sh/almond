@@ -130,6 +130,7 @@
 $ coursier bootstrap -r sonatype:snapshots \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
     sh.almond:scala-kernel_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
+    --sources --default=<span class="hljs-literal">true</span> \
     -o almond
 $ ./almond --install
 $ rm -f almond
@@ -137,6 +138,7 @@ $ rm -f almond
 $ coursier bootstrap -r sonatype:snapshots \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
     sh.almond:scala-kernel_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
+    --sources --default=<span class="hljs-literal">true</span> \
     -o almond-scala-2.11
 $ ./almond-scala-2.11 --install --id scala211 --display-name <span class="hljs-string">"Scala (2.11)"</span>
 $ rm -f almond-scala-2.11

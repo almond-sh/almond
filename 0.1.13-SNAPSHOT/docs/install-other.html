@@ -133,6 +133,7 @@
 $ coursier bootstrap --standalone \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
     sh.almond:scala-kernel_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
+    --sources --default=<span class="hljs-literal">true</span> \
     -o almond
 </code></pre> <p>but that launcher won't work fine until something like <a href="https://github.com/lihaoyi/Ammonite/pull/850">https://github.com/lihaoyi/Ammonite/pull/850</a> is merged in Ammonite.</p> </span>
         </div>

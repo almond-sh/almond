@@ -152,6 +152,7 @@ $ <span class="hljs-built_in">cd</span> almond
 $ coursier bootstrap \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
     sh.almond:scala-kernel_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
+    --sources --default=<span class="hljs-literal">true</span> \
     -o almond-snapshot --embed-files=<span class="hljs-literal">false</span>
 </code></pre> <p>Compared to <a href="../quick-start-install">the default installation instructions</a>, <code>--embed-files=false</code> is added as an option. This makes the generated launcher directly rely on files under <code>~/.ivy2/local</code>, rather than copying those in the launcher. If the files under <code>~/.ivy2/local</code> are updated (e.g. with a new <code>sbt publishLocal</code>), just restarting the kernel is enough for these to be picked, which is useful for fast iterations during development.</p> <p>Then install the kernel with</p> <pre><code class="hljs css language-bash">$ ./almond-snapshot --install \
     --id scala-snapshot \

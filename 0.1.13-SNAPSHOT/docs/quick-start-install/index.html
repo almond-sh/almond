@@ -130,6 +130,7 @@
 $ coursier bootstrap -r sonatype:snapshots \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
     sh.almond:scala-kernel_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
+    --sources --default=<span class="hljs-literal">true</span> \
     -o almond
 </code></pre> <p>See the available versions of almond <a href="https://github.com/jupyter-scala/jupyter-scala/releases">here</a>, adjust <code>ALMOND_VERSION</code> and <code>SCALA_VERSION</code> at your convenience (not all combinations are guaranteed to be available, see the available combinations <a href="../install-versions">here</a>).</p> <p>Run the launcher like</p> <pre><code class="hljs css language-bash">$ ./almond --install
 </code></pre> <p>to install the kernel. See <code>./almond --help</code> for the available options. Once the kernel is installed, the generated launcher can then be safely removed, with <code>rm -f almond</code>.</p> </span>
