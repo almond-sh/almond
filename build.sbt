@@ -72,6 +72,12 @@ lazy val interpreter = project
   .dependsOn(`interpreter-api`, protocol)
   .settings(
     shared,
+    libraryDependencies ++= Seq(
+      Deps.metabrowseServer,
+      Deps.scalatags,
+      // picked by jboss-logging, that metabrowse transitively depends on
+      Deps.slf4jNop
+    ),
     testSettings
   )
 

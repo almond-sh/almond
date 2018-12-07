@@ -13,6 +13,7 @@ $ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.7
 $ coursier bootstrap --standalone \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
+    --sources --default=true \
     -o almond
 ```
 but that launcher won't work fine until something like https://github.com/lihaoyi/Ammonite/pull/850

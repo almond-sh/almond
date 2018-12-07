@@ -8,6 +8,7 @@ $ SCALA_VERSION=@SCALA_VERSION@ ALMOND_VERSION=@VERSION@
 $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
+    --sources --default=true \
     -o almond
 ```
 

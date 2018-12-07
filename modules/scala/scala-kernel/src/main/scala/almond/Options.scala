@@ -30,7 +30,9 @@ final case class Options(
     logTo: Option[String],
   connectionFile: Option[String] = None,
   @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
-    specialLoader: String = "user"
+    specialLoader: String = "user",
+  @HelpMessage("Start a metabrowse server for go to source navigation (linked from Jupyter inspections)")
+    metabrowse: Boolean = false
 ) {
 
   def autoDependencyMap(): Map[String, Seq[String]] =

@@ -1,16 +1,19 @@
 package almond
 
+import java.io.File
+import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
 import almond.api.JupyterApi
+import almond.channels.ConnectionParameters
 import almond.internals.{Capture, FunctionInputStream, FunctionOutputStream, UpdatableResults}
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
-import almond.logger.LoggerContext
+import almond.logger.{Logger, LoggerContext}
 import almond.protocol.KernelInfo
 import ammonite.interp.{Parsers, Preprocessor}
 import ammonite.ops.read
@@ -19,11 +22,13 @@ import ammonite.runtime._
 import ammonite.util._
 import ammonite.util.Util.{newLine, normalizeNewlines}
 import fastparse.Parsed
+import metabrowse.server.{MetabrowseServer, Sourcepath}
 
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success}
+import scala.tools.nsc.Global
+import scala.util.{Failure, Random, Success}
 
 final class ScalaInterpreter(
   updateBackgroundVariablesEcOpt: Option[ExecutionContext] = None,
@@ -38,10 +43,87 @@ final class ScalaInterpreter(
   codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
   initialColors: Colors = Colors.Default,
   initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader,
-  logCtx: LoggerContext = LoggerContext.nop
+  logCtx: LoggerContext = LoggerContext.nop,
+  metabrowse: Boolean = false,
+  metabrowseHost: String = "localhost",
+  metabrowsePort: Int = -1
 ) extends Interpreter { scalaInterp =>
 
   private val log = logCtx(getClass)
+
+  @volatile private var metabrowseServerOpt0 = Option.empty[(MetabrowseServer, Int, String)]
+  private val metabrowseServerCreateLock = new Object
+
+  private def metabrowseServerOpt() =
+    if (metabrowse)
+      metabrowseServerOpt0.orElse {
+        metabrowseServerCreateLock.synchronized {
+          metabrowseServerOpt0.orElse {
+            metabrowseServerOpt0 = Some(createMetabrowseServer())
+            metabrowseServerOpt0
+          }
+        }
+      }
+    else
+      None
+
+  private def createMetabrowseServer() = {
+
+    if (metabrowse && !sys.props.contains("org.jboss.logging.provider") && !sys.props.get("almond.adjust.jboss.logging.provider").contains("0")) {
+      log.info("Setting Java property org.jboss.logging.provider to slf4j")
+      sys.props("org.jboss.logging.provider") = "slf4j"
+    }
+
+    val port =
+      if (metabrowsePort > 0)
+        metabrowsePort
+      else
+        ConnectionParameters.randomPort()
+
+    val server = new MetabrowseServer(
+      host = metabrowseHost,
+      port = port
+      // FIXME Pass custom logger?
+    )
+
+    val windowName = {
+      val id = math.abs(Random.nextInt().toLong)
+      s"almond-metabrowse-$id"
+    }
+
+    val baseSourcepath = ScalaInterpreter.baseSourcePath(
+      frames()
+        .last
+        .classloader
+        .getParent,
+      log
+    )
+
+    val sourcePath = {
+
+      import ScalaInterpreter.SourcepathOps
+
+      val sessionJars = frames()
+        .flatMap(_.classpath)
+        .map(_.toPath)
+
+      val (sources, other) = sessionJars
+        .partition(_.getFileName.toString.endsWith("-sources.jar"))
+
+      Sourcepath(other, sources) :: baseSourcepath
+    }
+
+    log.info(s"Starting metabrowse server at http://$metabrowseHost:$port")
+    log.info(
+      "Initial source path\n  Classpath\n" +
+        sourcePath.classpath.map("    " + _).mkString("\n") +
+        "\n  Sources\n" +
+        sourcePath.sources.map("    " + _).mkString("\n")
+    )
+    server.start(sourcePath)
+
+    (server, port, windowName)
+  }
 
 
   private val colors0 = Ref[Colors](initialColors)
@@ -164,6 +246,7 @@ final class ScalaInterpreter(
         val colors = colors0
         def newCompiler() = ammInterp.compilerManager.init(force = true)
         def compiler = ammInterp.compilerManager.compiler.compiler
+        def interactiveCompiler = ammInterp.compilerManager.pressy.compiler
         def fullImports = ammInterp.predefImports ++ imports
         def imports = ammInterp.frameImports
         def usedEarlierDefinitions = ammInterp.frameUsedEarlierDefinitions
@@ -500,10 +583,63 @@ final class ScalaInterpreter(
     )
   }
 
-  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
-    // TODO Use ammonite.repl.tools.source.load to return some details here
-    None
-  }
+  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+    metabrowseServerOpt().flatMap {
+      case (metabrowseServer, metabrowsePort0, metabrowseWindowId) =>
+        val pressy = ammInterp.compilerManager.pressy.compiler
+
+        val prefix = frames().head.imports.toString() + newLine + "object InspectWrapper{" + newLine
+        val suffix = newLine + "}"
+        val allCode = prefix + code + suffix
+        val index = prefix.length + pos
+
+        val currentFile = new scala.reflect.internal.util.BatchSourceFile(
+          ammonite.interp.Compiler.makeFile(allCode.getBytes, name = "Current.sc"),
+          allCode
+        )
+
+        val r = new scala.tools.nsc.interactive.Response[Unit]
+        pressy.askReload(List(currentFile), r)
+        r.get.swap match {
+          case Left(e) =>
+            log.warn(s"Error loading '${code.take(pos)}|${code.drop(pos)}' into presentation compiler", e)
+            None
+          case Right(()) =>
+            val r0 = new scala.tools.nsc.interactive.Response[pressy.Tree]
+            pressy.askTypeAt(new scala.reflect.internal.util.OffsetPosition(currentFile, index), r0)
+            r0.get.swap match {
+              case Left(e) =>
+                log.debug(s"Getting type info for '${code.take(pos)}|${code.drop(pos)}' via presentation compiler", e)
+                None
+              case Right(tree) =>
+
+                val r0 = pressy.askForResponse(() => metabrowseServer.urlForSymbol(pressy)(tree.symbol))
+                r0.get.swap match {
+                  case Left(e) =>
+                    log.warn(s"Error loading '${code.take(pos)}|${code.drop(pos)}' into presentation compiler", e)
+                    None
+                  case Right(relUrlOpt) =>
+                    log.debug(s"url of $tree: $relUrlOpt")
+                    val urlOpt = relUrlOpt.map(relUrl => s"http://$metabrowseHost:$metabrowsePort0/$relUrl")
+
+                    val typeStr = ScalaInterpreter.typeOfTree(pressy)(tree).getOrElse(tree.toString)
+
+                    import scalatags.Text.all._
+
+                    val typeHtml0 = pre(typeStr)
+                    val typeHtml: Frag = urlOpt.fold(typeHtml0) { url =>
+                      a(href := url, target := metabrowseWindowId, typeHtml0)
+                    }
+
+                    val res = Inspection.fromDisplayData(
+                      DisplayData.html(typeHtml.toString)
+                    )
+
+                    Some(res)
+                }
+            }
+        }
+      }
 
   def kernelInfo() =
     KernelInfo(
@@ -524,6 +660,12 @@ final class ScalaInterpreter(
         extraBannerOpt.fold("")("\n\n" + _),
       help_links = Some(extraLinks.toList).filter(_.nonEmpty)
     )
+
+  override def shutdown(): Unit =
+    for ((metabrowseServer, _, _) <- metabrowseServerOpt0) {
+      log.info("Stopping metabrowse server")
+      metabrowseServer.stop()
+    }
 
 }
 
@@ -595,4 +737,76 @@ object ScalaInterpreter {
       ))
     )
 
+  private def baseSourcePath(loader: ClassLoader, log: Logger): Sourcepath = {
+
+    lazy val javaDirs = {
+      val l = Seq(sys.props("java.home")) ++
+        sys.props.get("java.ext.dirs").toSeq.flatMap(_.split(File.pathSeparator)).filter(_.nonEmpty) ++
+        sys.props.get("java.endorsed.dirs").toSeq.flatMap(_.split(File.pathSeparator)).filter(_.nonEmpty)
+      l.map(_.stripSuffix("/") + "/")
+    }
+
+    def isJdkJar(uri: URI): Boolean =
+      uri.getScheme == "file" && {
+        val path = new File(uri).getAbsolutePath
+        javaDirs.exists(path.startsWith)
+      }
+
+    def classpath(cl: ClassLoader): Stream[java.net.URL] = {
+      if (cl == null)
+        Stream()
+      else {
+        val cp = cl match {
+          case u: java.net.URLClassLoader => u.getURLs.toStream
+          case _ => Stream()
+        }
+
+        cp #::: classpath(cl.getParent)
+      }
+    }
+
+    val baseJars = classpath(loader)
+      .map(_.toURI)
+      // assuming the JDK on the YARN machines already have those
+      .filter(u => !isJdkJar(u))
+      .map(Paths.get)
+      .toList
+
+    log.info(
+      "Found base JARs:\n" +
+        baseJars.sortBy(_.toString).map("  " + _).mkString("\n") +
+        "\n"
+    )
+
+    val (baseSources, baseOther) = baseJars
+      .partition(_.getFileName.toString.endsWith("-sources.jar"))
+
+    Sourcepath(baseOther, baseSources)
+  }
+
+  private implicit class SourcepathOps(private val p: Sourcepath) extends AnyVal {
+    def ::(other: Sourcepath): Sourcepath =
+      Sourcepath(other.classpath ::: p.classpath, other.sources ::: p.sources)
+  }
+
+  // from https://github.com/scalameta/metals/blob/cec8b98cba23110d5b2919d9879c78d3b0146ab2/metaserver/src/main/scala/scala/meta/languageserver/providers/HoverProvider.scala#L34-L51
+  // (via https://github.com/almond-sh/almond/pull/235#discussion_r222696661)
+  private def typeOfTree(c: Global)(t: c.Tree): Option[String] = {
+    import c._
+
+    val stringOrTree = t match {
+      case t: DefDef => Right(t.symbol.asMethod.info.toLongString)
+      case t: ValDef if t.tpt != null => Left(t.tpt)
+      case t: ValDef if t.rhs != null => Left(t.rhs)
+      case x => Left(x)
+    }
+
+    stringOrTree match {
+      case Right(string) => Some(string)
+      case Left(null) => None
+      case Left(tree) if tree.tpe ne NoType => Some(tree.tpe.widen.toString)
+      case _ => None
+    }
+
+  }
 }
