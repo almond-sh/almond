@@ -46,7 +46,8 @@ final class ScalaInterpreter(
   logCtx: LoggerContext = LoggerContext.nop,
   metabrowse: Boolean = false,
   metabrowseHost: String = "localhost",
-  metabrowsePort: Int = -1
+  metabrowsePort: Int = -1,
+  lazyInit: Boolean = false
 ) extends Interpreter { scalaInterp =>
 
   private val log = logCtx(getClass)
@@ -411,6 +412,10 @@ final class ScalaInterpreter(
         throw t
     }
   }
+
+  if (!lazyInit)
+    // eagerly initialize ammInterp
+    ammInterp
 
   private var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
   private var currentThreadOpt = Option.empty[Thread]

@@ -71,7 +71,8 @@ object ScalaInterpreterTests extends TestSuite {
       val interp = new ScalaInterpreter(
         initialColors = Colors.BlackWhite,
         predefCode = predefCode,
-        predefFiles = predefFiles
+        predefFiles = predefFiles,
+        lazyInit = true // predef throws here else
       )
 
       val res =
@@ -97,7 +98,8 @@ object ScalaInterpreterTests extends TestSuite {
       val interp = new ScalaInterpreter(
         initialColors = Colors.BlackWhite,
         predefCode = predefCode,
-        predefFiles = predefFiles
+        predefFiles = predefFiles,
+        lazyInit = true // predef throws here else
       )
 
       val res =
