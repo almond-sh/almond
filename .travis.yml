@@ -15,6 +15,8 @@ stages:
     if: (branch = master AND type = push) OR (tag IS present)
   - name: update-website
     if: (branch = master AND type = push) OR (tag IS present)
+  - name: upload-launcher # TODO Run before previous one once this works fine
+    if: (branch = master AND type = push) OR (tag IS present)
 jobs:
   include:
   - scala: 2.11.12
@@ -25,8 +27,11 @@ jobs:
     jdk: openjdk11
   - env: WEBSITE=1 # unused from the script, just to know what the job does from the Travis UI
     script: scripts/update-website.sh
+  - stage: release
+    script: sbt ci-release
   - stage: update-website
     env: PUSH_WEBSITE=1
     script: scripts/update-website.sh
-  - stage: release
-    script: sbt ci-release
+  - stage: upload-launcher
+    env: UPLOAD_LAUNCHER=1
+    script: scripts/upload-launcher.sh
