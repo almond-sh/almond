@@ -149,11 +149,15 @@ object ScalaInterpreterTests extends TestSuite {
       * - {
         val code = "Lis"
         val expectedRes = Completion(0, 3, Seq("List"))
+        val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
         val res0 = interpreter.complete(code, code.length)
         val res = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
-        assert(res == expectedRes)
+        val alternativeRes = res0.copy(
+          completions = res0.completions.filter(alternativeExpectedRes.completions.toSet)
+        )
+        assert(res == expectedRes || alternativeRes == alternativeExpectedRes)
       }
 
       * - {
