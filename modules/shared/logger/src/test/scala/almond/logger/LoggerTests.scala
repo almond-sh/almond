@@ -115,8 +115,7 @@ object LoggerTests extends TestSuite {
               |  almond.logger.LoggerTests(LoggerTests.scala:93)
               |""".stripMargin
 
-        val res = b
-          .toString
+        val res = Predef.augmentString(b.toString)
           .lines
           .flatMap { s =>
             if (s.startsWith("  almond."))
