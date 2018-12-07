@@ -16,7 +16,7 @@ stages:
   - name: update-website
     if: (branch = master AND type = push) OR (tag IS present)
   - name: upload-launcher # TODO Run before previous one once this works fine
-    if: (branch = master AND type = push) OR (tag IS present)
+    if: tag IS present
 jobs:
   include:
   - scala: 2.11.12
