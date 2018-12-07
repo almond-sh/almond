@@ -5,11 +5,13 @@ hide_title: true
 
 # almond
 
-*almond* is a [Scala](https://scala-lang.org) kernel for [Jupyter](https://jupyter.org).
+*almond* is a [Scala](https://scala-lang.org) kernel for [Jupyter](https://jupyter.org). It is formerly known as *jupyter-scala*.
 
-It mostly wraps the [Ammonite](http://ammonite.io) Scala shell in a Jupyter kernel,
-with the addition of custom Jupyter-specific APIs. It is formerly known as
-*jupyter-scala*.
+It wraps the [Ammonite](http://ammonite.io) Scala shell in a Jupyter kernel,
+with the addition of custom Jupyter-specific APIs. It features
+- [plotting](usage-plotting.md),
+- [Spark support](usage-spark.md), along with
+- all the niceties of the [Ammonite](http://ammonite.io) Scala shell.
 
 It also provides libraries allowing one to write custom Jupyter kernels
 in Scala.
