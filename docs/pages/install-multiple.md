@@ -34,7 +34,7 @@ $ ./almond-scala-2.11 --install --id scala211 --display-name "Scala (2.11)"
 $ rm -f almond-scala-2.11
 ```
 
-`--id scala211` ensure this kernel is installed along side the former, in a directory
+`--id scala211` ensures this kernel is installed along side the former, in a directory
 with a different name.
 
 `--display-name "Scala (2.11)"` ensures users can differentiate both kernels, with the latter
