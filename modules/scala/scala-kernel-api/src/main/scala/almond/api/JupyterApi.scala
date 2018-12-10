@@ -25,6 +25,7 @@ trait JupyterApi { api =>
 
   implicit def commHandler: CommHandler =
     throw new Exception("Comm handler not available (not supported)")
+  final def comm: CommHandler = commHandler
 
   protected def addResultVariable(k: String, v: String): Unit
   protected def updateResultVariable(k: String, v: String, last: Boolean): Unit
