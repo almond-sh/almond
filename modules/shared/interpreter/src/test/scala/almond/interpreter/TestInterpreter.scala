@@ -1,7 +1,6 @@
 package almond.interpreter
 
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
-import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
 import argonaut.Json
@@ -158,9 +157,8 @@ final class TestInterpreter extends Interpreter {
   override def isComplete(code: String) =
     sys.error("should not be called")
 
-  private val commManager = CommManager.create()
   private var commHandlerOpt0 = Option.empty[CommHandler]
-  override def commManagerOpt = Some(commManager)
+  override def supportComm = true
   override def setCommHandler(commHandler: CommHandler): Unit =
     commHandlerOpt0 = Some(commHandler)
 
