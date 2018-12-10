@@ -1,7 +1,6 @@
 package almond.interpreter
 
 import almond.interpreter.api.{CommHandler, OutputHandler}
-import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
 import cats.effect.IO
@@ -26,10 +25,6 @@ trait IOInterpreter {
 
   def shutdown: IO[Unit]
 
-  // CommManager: manages the server-side comms (~objects that await messages)
-  // CommHandler: allows to send messages to the client-side comms, and to register server comms to receive messages
-  // FIXME Wrap the result of those in IO too?
-  def commManagerOpt: Option[CommManager] = None
   def supportComm: Boolean = false
   def setCommHandler(commHandler: CommHandler): Unit = {}
 

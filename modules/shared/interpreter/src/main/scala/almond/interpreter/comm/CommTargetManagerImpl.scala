@@ -7,7 +7,7 @@ import cats.effect.IO
 
 import scala.collection.JavaConverters._
 
-final class CommManagerImpl extends CommManager {
+final class CommTargetManagerImpl extends CommTargetManager {
 
   private val targets = new ConcurrentHashMap[String, IOCommTarget]
   private val commIdTargets = new ConcurrentHashMap[String, IOCommTarget]

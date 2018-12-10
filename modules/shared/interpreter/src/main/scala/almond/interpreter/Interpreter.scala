@@ -1,7 +1,6 @@
 package almond.interpreter
 
 import almond.interpreter.api.{CommHandler, OutputHandler}
-import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
 import almond.protocol.KernelInfo
@@ -147,18 +146,16 @@ trait Interpreter {
     inspect(code, pos, detailLevel = 0)
 
   /**
-    * If this kernel handles custom messages (see [[CommManager]]), a [[CommManager]] to receive messages.
+    * Whether this kernel handles custom messages (see [[CommHandler]]).
     */
-  def commManagerOpt: Option[CommManager] =
-    None
+  def supportComm: Boolean = false
 
   /**
     * Provides a [[CommHandler]] that this kernel can use to send custom messages to the frontend.
     *
-    * Called prior to any call to [[execute]], if and only if [[commManagerOpt]] returns a
-    * [[CommManager]].
+    * Called prior to any call to [[execute]], if and only if [[supportComm]] is true.
     *
-    * See [[CommManager]] for more details about custom messages.
+    * See [[CommHandler]] for more details about custom messages.
     */
   def setCommHandler(commHandler: CommHandler): Unit =
     ()

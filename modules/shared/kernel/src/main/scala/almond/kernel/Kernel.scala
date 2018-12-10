@@ -49,11 +49,11 @@ final case class Kernel(
         exitSignal0
       )
 
-      val commMessageHandler = interpreter.commManagerOpt match {
+      val commMessageHandler = backgroundCommHandlerOpt match {
         case None =>
           MessageHandler.empty
-        case Some(commManager) =>
-          CommMessageHandlers(commManager, kernelThreads.queueEc, logCtx)
+        case Some(commHandler) =>
+          CommMessageHandlers(commHandler.commTargetManager, kernelThreads.queueEc, logCtx)
             .messageHandler
       }
 
@@ -265,13 +265,14 @@ object Kernel {
         async.boundedQueue[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       }
       backgroundCommHandlerOpt <- IO {
-        interpreter
-          .commManagerOpt
-          .map { commManager =>
-            val h = new DefaultCommHandler(commManager, backgroundMessagesQueue, kernelThreads.commEc)
+        if (interpreter.supportComm)
+          Some {
+            val h = new DefaultCommHandler(backgroundMessagesQueue, kernelThreads.commEc)
             interpreter.setCommHandler(h)
             h
           }
+        else
+          None
       }
       inputHandler <- IO {
         new InputHandler(kernelThreads.futureEc, logCtx)

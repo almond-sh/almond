@@ -1,7 +1,7 @@
 package almond.interpreter.messagehandlers
 
 import almond.channels.Channel
-import almond.interpreter.comm.CommManager
+import almond.interpreter.comm.CommTargetManager
 import almond.logger.LoggerContext
 import almond.protocol.{Comm, CommInfo}
 import argonaut.JsonObject
@@ -10,7 +10,7 @@ import cats.effect.IO
 import scala.concurrent.ExecutionContext
 
 final case class CommMessageHandlers(
-  commManager: CommManager,
+  commManager: CommTargetManager,
   queueEc: ExecutionContext,
   logCtx: LoggerContext
 ) {

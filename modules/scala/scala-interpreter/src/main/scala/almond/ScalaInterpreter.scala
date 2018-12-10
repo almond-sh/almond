@@ -11,7 +11,6 @@ import almond.channels.ConnectionParameters
 import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
-import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
 import almond.logger.{Logger, LoggerContext}
@@ -160,7 +159,6 @@ final class ScalaInterpreter(
   )
   private val capture = new Capture
 
-  private val commManager = CommManager.create()
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private val updatableResultsOpt =
@@ -442,8 +440,7 @@ final class ScalaInterpreter(
   }
 
 
-  override def commManagerOpt: Some[CommManager] =
-    Some(commManager)
+  override def supportComm: Boolean = true
   override def setCommHandler(commHandler0: CommHandler): Unit =
     commHandlerOpt = Some(commHandler0)
 

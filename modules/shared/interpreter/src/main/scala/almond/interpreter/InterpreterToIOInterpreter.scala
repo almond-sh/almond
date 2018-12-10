@@ -1,7 +1,6 @@
 package almond.interpreter
 
 import almond.interpreter.api.{CommHandler, OutputHandler}
-import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.Cancellable
 import almond.logger.LoggerContext
@@ -24,9 +23,6 @@ final class InterpreterToIOInterpreter(
 ) extends IOInterpreter {
 
   private val log = logCtx(getClass)
-
-  override def commManagerOpt: Option[CommManager] =
-    interpreter.commManagerOpt
 
   override def supportComm: Boolean = true
 

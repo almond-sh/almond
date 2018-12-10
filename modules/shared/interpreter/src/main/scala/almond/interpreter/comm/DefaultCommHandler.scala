@@ -13,10 +13,11 @@ import fs2.async.mutable.Queue
 import scala.concurrent.ExecutionContext
 
 final class DefaultCommHandler(
-  commManager: CommManager,
   queue: Queue[IO, (Channel, RawMessage)],
   commEc: ExecutionContext
 ) extends CommHandler {
+
+  val commTargetManager = CommTargetManager.create()
 
   private val message: Message[_] =
     Message(
@@ -26,9 +27,12 @@ final class DefaultCommHandler(
 
 
   def registerCommTarget(name: String, target: CommTarget): Unit =
-    commManager.addTarget(name, IOCommTarget.fromCommTarget(target, commEc))
+    registerCommTarget(name, IOCommTarget.fromCommTarget(target, commEc))
   def unregisterCommTarget(name: String): Unit =
-    commManager.removeTarget(name)
+    commTargetManager.removeTarget(name)
+
+  def registerCommTarget(name: String, target: IOCommTarget): Unit =
+    commTargetManager.addTarget(name, target)
 
 
   private def publish[T: EncodeJson](messageType: MessageType[T], content: T): Unit =
