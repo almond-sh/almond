@@ -272,7 +272,7 @@ final class ScalaInterpreter(
     val jupyterApi: JupyterApi =
       new JupyterApi {
 
-        def stdin(prompt: String, password: Boolean): Option[String] =
+        def stdinOpt(prompt: String, password: Boolean): Option[String] =
           for (m <- currentInputManagerOpt)
             yield Await.result(m.readInput(prompt, password), Duration.Inf)
 
