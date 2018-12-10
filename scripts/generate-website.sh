@@ -16,6 +16,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 VERSION="$(cat ../modules/shared/interpreter-api/target/version)"
 echo "Current version is $VERSION"
 
+AMMONITE_VERSION="$(cat ../modules/shared/interpreter-api/target/ammonite-version)"
 SCALA_VERSION="$(cat ../modules/shared/interpreter-api/target/scala-version)"
 
 if echo "$VERSION" | grep -q -- '-SNAPSHOT$'; then
@@ -44,6 +45,7 @@ fi
     --in ../docs/pages \
     --out ../docs/processed-pages \
     --site.VERSION "$VERSION" \
+    --site.AMMONITE_VERSION "$AMMONITE_VERSION" \
     --site.SCALA_VERSION "$SCALA_VERSION" \
     --site.EXTRA_COURSIER_ARGS "$EXTRA_COURSIER_ARGS" \
     $EXTRA_OPTS

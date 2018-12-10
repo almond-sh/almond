@@ -1,7 +1,8 @@
 {
   "docs": {
     "Quick start": ["intro", "quick-start-install"],
-    "Usage": ["usage-shell", "usage-jupyter", "usage-plotting", "usage-spark"],
+    "Usage": ["usage-plotting", "usage-spark"],
+    "API": ["api", "api-access-instances", "api-ammonite", "api-jupyter"],
     "Installation": ["install-options", "install-multiple", "install-versions", "install-other"],
     "Development": ["dev-from-sources", "dev-custom-kernel", "dev-libraries", "dev-website"]
   }
