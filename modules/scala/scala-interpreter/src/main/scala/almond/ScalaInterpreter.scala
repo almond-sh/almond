@@ -8,11 +8,12 @@ import java.util.UUID
 
 import almond.api.JupyterApi
 import almond.channels.ConnectionParameters
-import almond.internals.{Capture, FunctionInputStream, FunctionOutputStream, UpdatableResults}
+import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.comm.CommManager
 import almond.interpreter.input.InputManager
+import almond.interpreter.util.CancellableFuture
 import almond.logger.{Logger, LoggerContext}
 import almond.protocol.KernelInfo
 import ammonite.interp.{Parsers, Preprocessor}
@@ -569,9 +570,22 @@ final class ScalaInterpreter(
     Some(res)
   }
 
+  // As most "cancelled" calculations (completions, inspections, …) are run in other threads by the presentation
+  // compiler, they aren't actually cancelled, they'll keep running in the background. This just interrupts
+  // the thread that waits for the background calculation.
+  // Having a thread that blocks for results, in turn, is almost required by scala.tools.nsc.interactive.Response…
+  private val cancellableFuturePool = new CancellableFuturePool(logCtx)
+
+  override def asyncIsComplete(code: String): Some[CancellableFuture[Option[IsCompleteResult]]] =
+    Some(cancellableFuturePool.cancellableFuture(isComplete(code)))
+  override def asyncComplete(code: String, pos: Int): Some[CancellableFuture[Completion]] =
+    Some(cancellableFuturePool.cancellableFuture(complete(code, pos)))
+  override def asyncInspect(code: String, pos: Int, detailLevel: Int): Some[CancellableFuture[Option[Inspection]]] =
+    Some(cancellableFuturePool.cancellableFuture(inspect(code, pos)))
+
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, completions0, other) = ammInterp.compilerManager.complete(
+    val (newPos, completions0, _) = ammInterp.compilerManager.complete(
       pos,
       frames().head.imports.toString(),
       code
