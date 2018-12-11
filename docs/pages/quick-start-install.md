@@ -6,6 +6,7 @@ Create a launcher via [coursier](http://get-coursier.io) with
 ```bash
 $ SCALA_VERSION=@SCALA_VERSION@ ALMOND_VERSION=@VERSION@
 $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
+    -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
     --sources --default=true \

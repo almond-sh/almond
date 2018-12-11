@@ -22,11 +22,14 @@ import ammonite.runtime._
 import ammonite.util._
 import ammonite.util.Util.{newLine, normalizeNewlines}
 import fastparse.Parsed
+import jupyter.{Displayer, Displayers}
 import metabrowse.server.{MetabrowseServer, Sourcepath}
+import pprint.{TPrint, TPrintColors}
 
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
+import scala.reflect.ClassTag
 import scala.tools.nsc.Global
 import scala.util.{Failure, Random, Success}
 
@@ -233,7 +236,7 @@ final class ScalaInterpreter(
   lazy val ammInterp: ammonite.interp.Interpreter = {
 
     val replApi: ReplApiImpl =
-      new ReplApiImpl {
+      new ReplApiImpl { self =>
         def replArgs0 = Vector.empty[Bind[_]]
         def printer = printer0
 
@@ -265,6 +268,43 @@ final class ScalaInterpreter(
             def exec(file: ammonite.ops.Path): Unit = {
               ammInterp.watch(file)
               apply(normalizeNewlines(read(file)))
+            }
+          }
+
+        override protected[this] def internal0: FullReplAPI.Internal =
+          new FullReplAPI.Internal {
+            def pprinter = self.pprinter
+            def colors = self.colors
+            def replArgs: IndexedSeq[Bind[_]] = replArgs0
+
+            val defaultDisplayer = Displayers.registration().find(classOf[ScalaInterpreter.Foo])
+
+            override def print[T](
+              value: => T,
+              ident: String,
+              custom: Option[String]
+            )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Iterator[String] = {
+
+              val displayerPublishOpt =
+                if (classTagT == null)
+                  None
+                else
+                  currentPublishOpt.flatMap { p =>
+                    Some(Displayers.registration().find(classTagT.runtimeClass))
+                      .filter(_ ne defaultDisplayer)
+                      .map(d => (d.asInstanceOf[Displayer[T]], p))
+                  }
+
+              displayerPublishOpt match {
+                case None =>
+                  super.print(value, ident, custom)(tprint, tcolors, classTagT)
+                case Some((displayer, publish)) =>
+                  import scala.collection.JavaConverters._
+                  val m = displayer.display(value)
+                  val data = DisplayData(m.asScala.toMap)
+                  publish.display(data)
+                  Iterator()
+              }
             }
           }
       }
@@ -814,4 +854,6 @@ object ScalaInterpreter {
     }
 
   }
+
+  private class Foo
 }

@@ -1,6 +1,9 @@
 package almond.api
 
 import almond.interpreter.api.{CommHandler, OutputHandler}
+import jupyter.{Displayer, Displayers}
+
+import scala.reflect.{ClassTag, classTag}
 
 trait JupyterApi { api =>
 
@@ -31,6 +34,15 @@ trait JupyterApi { api =>
 
   final lazy val updatableResults: JupyterApi.UpdatableResults =
     updatableResults0
+
+  def register[T: ClassTag](f: T => Map[String, String]): Unit =
+    Displayers.register(
+      classTag[T].runtimeClass.asInstanceOf[Class[T]],
+      new Displayer[T] {
+        import scala.collection.JavaConverters._
+        def display(t: T) = f(t).asJava
+      }
+    )
 }
 
 object JupyterApi {
