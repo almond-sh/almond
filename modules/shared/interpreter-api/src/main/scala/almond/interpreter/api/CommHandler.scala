@@ -1,5 +1,7 @@
 package almond.interpreter.api
 
+import java.util.UUID
+
 /**
   * Kind of message broker between the Jupyter UI and the kernel.
   *
@@ -18,10 +20,53 @@ package almond.interpreter.api
   * }}}
   */
 abstract class CommHandler extends OutputHandler.UpdateDisplay with OutputHandler.UpdateHelpers {
+
+  import CommHandler.Comm
+
   def registerCommTarget(name: String, target: CommTarget): Unit
   def unregisterCommTarget(name: String): Unit
 
   def commOpen(targetName: String, id: String, data: String): Unit
   def commMessage(id: String, data: String): Unit
   def commClose(id: String, data: String): Unit
+
+
+  final def receiver(
+    name: String,
+    onOpen: (String, String) => Unit = (_, _) => (),
+    onClose: (String, String) => Unit = (_, _) => ()
+  )(
+    // scraps the id (first arg of onOpen / onClose)
+    onMessage: String => Unit
+  ): Unit = {
+    val t = CommTarget(
+      (_, data) => onMessage(data),
+      (id, data) => onOpen(id, data),
+      (id, data) => onClose(id, data)
+    )
+    registerCommTarget(name, t)
+  }
+
+  final def sender(
+    targetName: String,
+    id: String = UUID.randomUUID().toString,
+    data: String = "{}"
+  ): Comm = {
+    commOpen(targetName, id, data)
+    new Comm {
+      def message(data: String) =
+        commMessage(id, data)
+      def close(data: String) =
+        commClose(id, data)
+    }
+  }
+}
+
+object CommHandler {
+
+  abstract class Comm {
+    def message(data: String): Unit
+    def close(data: String): Unit
+  }
+
 }

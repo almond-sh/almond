@@ -141,6 +141,7 @@ object Settings {
   lazy val exportVersionsSetting: Setting[_] = {
     exportVersions := {
       val ver = version.value
+      val ammoniteVer = Deps.Versions.ammonite
       val scalaVer = scalaVersion.value
       val outputDir = target.value
 
@@ -149,6 +150,10 @@ object Settings {
       val output = outputDir / "version"
       Files.write(output.toPath, ver.getBytes(UTF_8))
       state.value.log.info(s"Wrote $output")
+
+      val ammoniteOutput = outputDir / "ammonite-version"
+      Files.write(ammoniteOutput.toPath, ammoniteVer.getBytes(UTF_8))
+      state.value.log.info(s"Wrote $ammoniteOutput")
 
       val scalaOutput = outputDir / "scala-version"
       Files.write(scalaOutput.toPath, scalaVer.getBytes(UTF_8))

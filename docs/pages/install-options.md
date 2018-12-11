@@ -83,12 +83,12 @@ Default: true if `--arg` and `--command` aren't specified, false else.
 
 ## Scala-related
 
-#### `--predef`
+#### `--predef-code`
 
 Run some code right before the session starts. Makes the kernel start fail if the predef
 doesn't compile or throws an exception. Use like
 ```bash
---predef "
+--predef-code "
   import scala.collection.JavaConverters._
 "
 ```

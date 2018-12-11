@@ -5,7 +5,12 @@ import almond.interpreter.api.{CommHandler, OutputHandler}
 trait JupyterApi { api =>
 
   /** Request input from the the Jupyter UI */
-  def stdin(prompt: String = "", password: Boolean = false): Option[String]
+  final def stdin(prompt: String = "", password: Boolean = false): String =
+    stdinOpt(prompt, password).getOrElse {
+      throw new Exception("stdin not available")
+    }
+
+  def stdinOpt(prompt: String = "", password: Boolean = false): Option[String]
 
   protected implicit def changingPublish: OutputHandler =
     new almond.interpreter.api.OutputHandler.OnlyUpdateVia(commHandler)
@@ -20,6 +25,7 @@ trait JupyterApi { api =>
 
   implicit def commHandler: CommHandler =
     throw new Exception("Comm handler not available (not supported)")
+  final def comm: CommHandler = commHandler
 
   protected def addResultVariable(k: String, v: String): Unit
   protected def updateResultVariable(k: String, v: String, last: Boolean): Unit
