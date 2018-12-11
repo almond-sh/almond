@@ -3,15 +3,15 @@
  <head>
   <meta charSet="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Installing from sources · almond</title>
+  <title>Almond Jupyter API · almond</title>
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
-  <meta name="description" content="## Prerequisites">
+  <meta name="description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterAPI`](#jupyterapi). Such an">
   <meta name="docsearch:language" content="en">
-  <meta property="og:title" content="Installing from sources · almond">
+  <meta property="og:title" content="Almond Jupyter API · almond">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
-  <meta property="og:description" content="## Prerequisites">
+  <meta property="og:description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterAPI`](#jupyterapi). Such an">
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="../../undefined">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
@@ -44,7 +44,7 @@
          <div class="navToggle" id="navToggler">
           <i></i>
          </div>
-         <h2><i>›</i><span>Development</span></h2>
+         <h2><i>›</i><span>API</span></h2>
          <div class="tocToggler" id="tocToggler">
           <i class="icon-toc"></i>
          </div>
@@ -70,7 +70,7 @@
            <li class="navListItem"><a class="navItem" href="../api">Intro</a></li>
            <li class="navListItem"><a class="navItem" href="../api-access-instances">Access API instances</a></li>
            <li class="navListItem"><a class="navItem" href="../api-ammonite">Ammonite API</a></li>
-           <li class="navListItem"><a class="navItem" href="../api-jupyter">Almond Jupyter API</a></li>
+           <li class="navListItem navListItemActive"><a class="navItem" href="">Almond Jupyter API</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -85,7 +85,7 @@
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Development</h3>
           <ul>
-           <li class="navListItem navListItemActive"><a class="navItem" href="">Installing from sources</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-from-sources">Installing from sources</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-custom-kernel">Writing custom kernels</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-libraries">Writing libraries interacting with Jupyter</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-website">Generate the website</a></li>
@@ -128,83 +128,83 @@
      <div class="wrapper">
       <div class="post">
        <header class="postHeader">
-        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/docs/pages/dev-from-sources.md" target="_blank" rel="noreferrer noopener">Edit</a>
-        <h1 class="postHeaderTitle">Installing from sources</h1>
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/docs/pages/api-jupyter.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <h1 class="postHeaderTitle">Almond Jupyter API</h1>
        </header>
        <article>
         <div>
-         <span><h2><a class="anchor" aria-hidden="true" id="prerequisites"></a><a href="index.html#prerequisites" aria-hidden="true" class="hash-link">
+         <span><p>The Almond Jupyter API can be accessed via an instance of <a href="index.html#jupyterapi"><code>almond.api.JupyterAPI</code></a>. Such an instance is created by almond upon start-up. This instance accessible via the <code>kernel</code> variable and in the implicit scope via e.g. <code>implicitly[almond.api.JupyterAPI]</code>.</p> <h2><a class="anchor" aria-hidden="true" id="jupyterapi"></a><a href="index.html#jupyterapi" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Prerequisites</h2> <p>Ensure a JDK 8 is installed on your machine</p> <pre><code class="hljs css language-bash">$ java -version
-java version <span class="hljs-string">"1.8.0_121"</span>
-Java(TM) SE Runtime Environment (build 1.8.0_121-b13)
-Java HotSpot(TM) 64-Bit Server VM (build 25.121-b13, mixed mode)
-$ javac -version
-javac 1.8.0_121
-</code></pre> <p>Ensure an <a href="https://scala-sbt.org">sbt</a> launcher is installed</p> <pre><code class="hljs css language-bash">$ sbt -<span class="hljs-built_in">help</span>
-Usage: sbt [options]
-
-[…]
-</code></pre> <p>If it's not, <a href="https://github.com/paulp/sbt-extras">sbt-extras</a> or the default installer from <a href="https://scala-sbt.org">the sbt website</a> should do.</p> <h2><a class="anchor" aria-hidden="true" id="compiling"></a><a href="index.html#compiling" aria-hidden="true" class="hash-link">
-            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
-             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Compiling</h2> <p>Check-out the sources with</p> <pre><code class="hljs css language-bash">$ git <span class="hljs-built_in">clone</span> https://github.com/almond-sh/almond.git
-$ <span class="hljs-built_in">cd</span> almond
-</code></pre> <p>Compile and publish the kernel locally with</p> <pre><code class="hljs css language-bash">$ sbt publishLocal
-</code></pre> <p>This installs the kernel artifacts under your <code>~/.ivy2/local</code> local repository. The kernel artifacts should land under <code>~/.ivy2/local/sh.almond/</code> in particular. In the output of <code>sbt publishLocal</code>, note the snapshot version the kernel is installed with. At the time of writing this, this version is <code>0.1.11-SNAPSHOT</code>.</p> <h2><a class="anchor" aria-hidden="true" id="installing"></a><a href="index.html#installing" aria-hidden="true" class="hash-link">
-            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
-             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Installing</h2> <p>Create a launcher with</p> <pre><code class="hljs css language-bash">$ SCALA_VERSION=2.12.7 ALMOND_VERSION=0.1.11-SNAPSHOT
-$ coursier bootstrap \
-    -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
-    sh.almond:scala-kernel_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
-    --sources --default=<span class="hljs-literal">true</span> \
-    -o almond-snapshot --embed-files=<span class="hljs-literal">false</span>
-</code></pre> <p>Compared to <a href="../quick-start-install">the default installation instructions</a>, <code>--embed-files=false</code> is added as an option. This makes the generated launcher directly rely on files under <code>~/.ivy2/local</code>, rather than copying those in the launcher. If the files under <code>~/.ivy2/local</code> are updated (e.g. with a new <code>sbt publishLocal</code>), just restarting the kernel is enough for these to be picked, which is useful for fast iterations during development.</p> <p>Then install the kernel with</p> <pre><code class="hljs css language-bash">$ ./almond-snapshot --install \
-    --id scala-snapshot \
-    --display-name <span class="hljs-string">"Scala (snapshot)"</span>
-</code></pre> <p>Optionally, change the log level with e.g. <code>--log debug</code>. If you'd like these logs to go to a distinct file rather than in the console, pass e.g. <code>--log-to "/path/to/log-file.txt"</code>.</p> <h2><a class="anchor" aria-hidden="true" id="development-cycle"></a><a href="index.html#development-cycle" aria-hidden="true" class="hash-link">
-            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
-             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Development cycle</h2> <p>Once the kernel is installed this way, one can update its artifacts with <code>sbt publishLocal</code>. These are taken into account by restarting the kernel.</p> <p>Re-generating an installer, and installing it, is only necessary if the dependencies of the kernel are changed / updated, or if the kernel version changes. It is safer to re-generate an installer and install it after a <code>git pull</code> in particular.</p> <h2><a class="anchor" aria-hidden="true" id="sbt-crash-course"></a><a href="index.html#sbt-crash-course" aria-hidden="true" class="hash-link">
-            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
-             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>sbt crash course</h2> <p>Running <code>sbt</code> with no options starts an sbt shell</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt</span>
-[…]
-<span class="hljs-meta">&gt;</span><span class="bash"> </span>
-</code></pre> <p>At the sbt prompt, type</p> 
+            </svg></a><code>JupyterAPI</code></h2> <p><code>almond.api.JupyterAPI</code> allows to</p> 
           <ul> 
-           <li><code>compile</code> to compile the main sources,</li> 
-           <li><code>test:compile</code> to compile both the main and test sources,</li> 
-           <li><code>test</code> to run all the tests,</li> 
-           <li><code>publishLocal</code> to publish the projects locally (these land under <code>~/.ivy2/local</code>).</li> 
-          </ul> <p>All these commands can be prefixed with a project id, like <code>kernel/test</code> or <code>interpreter/publishLocal</code>. List the available projects with <code>projects</code>.</p> <p>Note that sbt knows about the dependencies between commands, so that you can directly run <code>test</code>. This triggers a compilation of the main and test sources if needed. Sources are automatically compiled incrementally.</p> <p><code>~</code> can be added as prefix to watch sources, like <code>~test:compile</code> or <code>~kernel/publishLocal</code>.</p> <p>To run one or several commands from your shell rather than the sbt prompt, pass those to <code>sbt</code>, like</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt <span class="hljs-string">"~test:compile"</span></span>
-<span class="hljs-meta">$</span><span class="bash"> sbt interpreter/<span class="hljs-built_in">test</span> <span class="hljs-string">"~publishLocal"</span></span>
-</code></pre> <p>Note that the sbt start up time is incurred each time you type <code>sbt</code> in your shell. Running it once, like <code>$ sbt</code>, then entering commands at the sbt prompt allows to avoid this.</p> <p>Select a specific scala version, for example <code>2.11.12</code>, with <code>++2.11.12</code>. Example of use</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt ++2.11.12 <span class="hljs-string">"~test:compile"</span></span>
-<span class="hljs-meta">$</span><span class="bash"> sbt</span>
-<span class="hljs-meta">&gt;</span><span class="bash"> ++2.11.12</span>
-<span class="hljs-meta">&gt;</span><span class="bash"> interpreter/<span class="hljs-built_in">test</span></span>
-</code></pre> <p>List the available scala versions with the <code>show crossScalaVersions</code> command, like</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt <span class="hljs-string">"show crossScalaVersions"</span></span>
-<span class="hljs-meta">$</span><span class="bash"> sbt</span>
-<span class="hljs-meta">&gt;</span><span class="bash"> show crossScalaVersions</span>
-</code></pre> <p>Note that <code>show crossScalaVersions</code> is quoted when passed to sbt from the shell, so that sbt interprets it as a single command.</p> </span>
+           <li><a href="index.html#request-input">request input</a> (password input in particular),</li> 
+           <li><a href="index.html#display-data">display data</a> (HTML, text, images, …) in the front-end while a cell is running,</li> 
+           <li><a href="index.html#updatable-display-data">update a previous display</a> in the background (while the initial cell is running or not),</li> 
+           <li><a href="index.html#comm-messages">exchange comm messages</a> with the front-end.</li> 
+          </ul> <h3><a class="anchor" aria-hidden="true" id="request-input"></a><a href="index.html#request-input" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Request input</h3> <p>Call <code>stdin</code> on <code>JupyterAPI</code> to request user input, e.g.</p> <pre><code class="hljs css language-scala">kernel.stdin() <span class="hljs-comment">// clear text input</span>
+kernel.stdin(prompt = <span class="hljs-string">"&gt;&gt; "</span>, password = <span class="hljs-literal">true</span>) <span class="hljs-comment">// password input, with custom prompt</span>
+</code></pre> <p><img src="../../../demo/stdin.gif" alt=""></p> <h3><a class="anchor" aria-hidden="true" id="display-data"></a><a href="index.html#display-data" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Display data</h3> <p>The <code>publish</code> field, of type <a href="https://github.com/almond-sh/almond/blob/master/modules/shared/interpreter-api/src/main/scala/almond/interpreter/api/OutputHandler.scala"><code>almond.interpreter.api.OutputHandler</code></a>, has numerous methods to push display data to the front-end.</p> <p>The most generic is <code>display</code>, accepting a <code>almond.api.DisplayData</code>.</p> <pre><code class="hljs css language-scala">kernel.publish.display(
+  almond.interpreter.api.<span class="hljs-type">DisplayData</span>(
+    <span class="hljs-type">Map</span>(
+      <span class="hljs-comment">// if we set up an extension for application/myapp+json, first element should be picked</span>
+      <span class="hljs-string">"application/myapp+json"</span> -&gt; <span class="hljs-string">""</span><span class="hljs-string">"{"</span><span class="hljs-string">a": "</span><span class="hljs-type">A</span><span class="hljs-string">"}"</span><span class="hljs-string">""</span>,
+      <span class="hljs-comment">// else, text/html should be displayed</span>
+      <span class="hljs-string">"text/html"</span> -&gt; <span class="hljs-string">"&lt;b&gt;A&lt;/b&gt;"</span>
+    )
+  )
+)
+</code></pre> <p><img src="../../../demo/display-alternative.gif" alt=""></p> <p><code>OutputHandler</code> also has helper methods to push HTML straightaway.</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">for</span> (i &lt;- <span class="hljs-number">1</span> to <span class="hljs-number">10</span>) {
+  kernel.publish.html(<span class="hljs-string">s"Got item &lt;b&gt;#<span class="hljs-subst">$i</span>&lt;/b&gt;"</span>)
+  <span class="hljs-type">Thread</span>.sleep((<span class="hljs-number">200.0</span> + <span class="hljs-number">200.0</span> * scala.util.<span class="hljs-type">Random</span>.nextGaussian).toLong max <span class="hljs-number">0</span>L)
+}
+</code></pre> <p><img src="../../../demo/display.gif" alt=""></p> <h3><a class="anchor" aria-hidden="true" id="updatable-display-data"></a><a href="index.html#updatable-display-data" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Updatable display data</h3> <p>If passed an id, when pushing some display data, <code>OutputHandler</code> allows to update that data later.</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> id = java.util.<span class="hljs-type">UUID</span>.randomUUID().toString
+kernel.publish.html(<span class="hljs-string">"Starting"</span>, id)
+
+<span class="hljs-keyword">for</span> (i &lt;- <span class="hljs-number">1</span> to <span class="hljs-number">10</span>) {
+  <span class="hljs-type">Thread</span>.sleep((<span class="hljs-number">200.0</span> + <span class="hljs-number">200.0</span> * scala.util.<span class="hljs-type">Random</span>.nextGaussian).toLong max <span class="hljs-number">0</span>L)
+  kernel.publish.updateHtml(<span class="hljs-string">s"Got item &lt;b&gt;#<span class="hljs-subst">$i</span>&lt;/b&gt;"</span>, id)
+}
+
+kernel.publish.updateHtml(<span class="hljs-string">"Got all items"</span>, id)
+</code></pre> <p><img src="../../../demo/updatable.gif" alt=""></p> <h3><a class="anchor" aria-hidden="true" id="comm-messages"></a><a href="index.html#comm-messages" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Comm messages</h3> <p><a href="https://jupyter-notebook.readthedocs.io/en/5.7.2/comms.html">Comm messages</a> are part of the <a href="https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html">Jupyter messaging protocol</a>. They allow the exchange of arbitrary messages between code running in the front-end (typically JavaScript code) and kernels.</p> <p>The comm API can be used to receive messages, or send them.</p> <p><code>kernel.comm.receiver</code> allows to register a target to receive messages from the front-end, like</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> id = java.util.<span class="hljs-type">UUID</span>.randomUUID().toString
+kernel.publish.html(<span class="hljs-string">"Waiting"</span>, id)
+
+kernel.comm.receiver(<span class="hljs-string">"A"</span>) { data =&gt;
+  <span class="hljs-comment">// received message `data` from front-end</span>
+  kernel.publish.updateHtml(<span class="hljs-string">s"&lt;code&gt;<span class="hljs-subst">$data</span>&lt;/code&gt;"</span>, id)
+}
+</code></pre> <p><img src="../../../demo/comm-receive.gif" alt=""></p> <p>TODO Send to client</p> </span>
         </div>
        </article>
       </div>
       <div class="docs-prevnext">
-       <a class="docs-prev button" href="../install-other"><span class="arrow-prev">← </span><span>Previous</span></a>
-       <a class="docs-next button" href="../dev-custom-kernel"><span>Next</span><span class="arrow-next"> →</span></a>
+       <a class="docs-prev button" href="../api-ammonite"><span class="arrow-prev">← </span><span>Previous</span></a>
+       <a class="docs-next button" href="../install-options"><span>Next</span><span class="arrow-next"> →</span></a>
       </div>
      </div>
     </div>
     <nav class="onPageNav docOnPageNav">
      <ul class="toc-headings">
-      <li><a href="index.html#prerequisites">Prerequisites</a></li>
-      <li><a href="index.html#compiling">Compiling</a></li>
-      <li><a href="index.html#installing">Installing</a></li>
-      <li><a href="index.html#development-cycle">Development cycle</a></li>
-      <li><a href="index.html#sbt-crash-course">sbt crash course</a></li>
+      <li><a href="index.html#jupyterapi"><code>JupyterAPI</code></a>
+       <ul class="toc-headings">
+        <li><a href="index.html#request-input">Request input</a></li>
+        <li><a href="index.html#display-data">Display data</a></li>
+        <li><a href="index.html#updatable-display-data">Updatable display data</a></li>
+        <li><a href="index.html#comm-messages">Comm messages</a></li>
+       </ul></li>
      </ul>
     </nav>
    </div>
