@@ -11,6 +11,7 @@ so that nothing needs to be downloaded or picked from a cache upon launch. Passi
 ```bash
 $ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.7
 $ coursier bootstrap --standalone \
+    -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
     --sources --default=true \

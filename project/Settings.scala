@@ -22,7 +22,10 @@ object Settings {
       "-language:higherKinds",
       "-unchecked"
     ),
-    resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers ++= Seq(
+      Resolver.sonatypeRepo("releases"),
+      "jitpack" at "https://jitpack.io"
+    ),
     // Seems required when cross-publishing for several scala versions
     // with same major and minor numbers (e.g. 2.12.6 and 2.12.7)
     publishConfiguration := publishConfiguration.value.withOverwrite(true),

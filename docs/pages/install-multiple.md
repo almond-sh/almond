@@ -12,6 +12,7 @@ For example, let's install almond for the scala `2.12.7` version,
 ```bash
 $ SCALA_VERSION=2.12.7 ALMOND_VERSION=@VERSION@
 $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
+    -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
     --sources --default=true \
@@ -26,6 +27,7 @@ Now let's *also* install almond for scala `2.11.12`,
 ```bash
 $ SCALA_VERSION=2.11.12 ALMOND_VERSION=@VERSION@
 $ coursier bootstrap @EXTRA_COURSIER_ARGS@\
+    -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
     --sources --default=true \

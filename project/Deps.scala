@@ -6,7 +6,7 @@ import sbt.Keys.scalaVersion
 object Deps {
 
   object Versions {
-    def ammonite = "1.5.0"
+    def ammonite = "1.5.0-4-6296f20"
   }
 
   def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
@@ -16,6 +16,7 @@ object Deps {
   def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M5"
   def fs2 = "co.fs2" %% "fs2-core" % "0.10.5"
   def jeromq = "org.zeromq" % "jeromq" % "0.4.3"
+  def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.3.1"
   def metabrowseServer = ("org.scalameta" %% "metabrowse-server" % "0.2.0").exclude("org.slf4j", "slf4j-simple")
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"

@@ -170,6 +170,65 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
+    "jvm-repr" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """class Bar(val value: String)"""),
+        execute(sessionId, """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))"""),
+        execute(sessionId, """val b = new Bar("other")""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow(15.seconds)
+
+      val messageTypes = streams.generatedMessageTypes()
+
+      val expectedMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_reply",
+        "execute_input",
+        "execute_reply",
+        "execute_input",
+        "display_data",
+        "execute_reply"
+      )
+
+      assert(messageTypes == expectedMessageTypes)
+
+      val displayData = streams.displayData
+
+      val expectedDisplayData = Seq(
+        Execute.DisplayData(
+          Map("text/plain" -> Json.jString("Bar(other)")),
+          Map()
+        ) -> false
+      )
+
+      assert(displayData == expectedDisplayData)
+    }
+
     "updatable display" - {
 
       // How the pseudo-client behaves

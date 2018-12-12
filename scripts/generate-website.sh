@@ -39,6 +39,7 @@ fi
 #   sbt interpreter-api/publishLocal scala-kernel-api/publishLocal almond-spark/publishLocal
 ../scripts/coursier.sh launch \
   -r sonatype:releases \
+  -r jitpack \
   "com.geirsson:mdoc_$SCALA_VERSION:0.7.0" \
   "sh.almond:scala-kernel-api_$SCALA_VERSION:$VERSION" \
   -- \
