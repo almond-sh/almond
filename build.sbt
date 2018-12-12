@@ -113,7 +113,7 @@ lazy val `scala-kernel-api` = project
 
 lazy val `scala-interpreter` = project
   .underScala
-  .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test")
+  .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test", `almond-rx` % Test)
   .settings(
     shared,
     crossVersion := CrossVersion.full,
@@ -153,9 +153,18 @@ lazy val `almond-spark` = project
     disableScalaVersion("2.12")
   )
 
+lazy val `almond-rx` = project
+  .underScala
+  .dependsOn(`scala-kernel-api` % Provided)
+  .settings(
+    shared,
+    libraryDependencies += Deps.scalaRx
+  )
+
 lazy val almond = project
   .in(file("."))
   .aggregate(
+    `almond-rx`,
     `almond-spark`,
     channels,
     echo,
