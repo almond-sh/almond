@@ -27,13 +27,17 @@ trait JupyterApi { api =>
     throw new Exception("Comm handler not available (not supported)")
   final def comm: CommHandler = commHandler
 
-  protected def addResultVariable(k: String, v: String): Unit
-  protected def updateResultVariable(k: String, v: String, last: Boolean): Unit
+  protected def updatableResults0: JupyterApi.UpdatableResults
 
-  object Internals {
-    def addResultVariable(k: String, v: String): Unit =
-      api.addResultVariable(k, v)
-    def updateResultVariable(k: String, v: String, last: Boolean): Unit =
-      api.updateResultVariable(k, v, last)
+  final lazy val updatableResults: JupyterApi.UpdatableResults =
+    updatableResults0
+}
+
+object JupyterApi {
+
+  trait UpdatableResults {
+    def addVariable(k: String, v: String): Unit
+    def updateVariable(k: String, v: String, last: Boolean): Unit
   }
+
 }

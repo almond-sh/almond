@@ -281,38 +281,20 @@ final class ScalaInterpreter(
         override def commHandler =
           commHandlerOpt.getOrElse(super.commHandler)
 
-        def addResultVariable(k: String, v: String): Unit =
-          resultVariables += k -> v
-        def updateResultVariable(k: String, v: String, last: Boolean): Unit =
-          updatableResultsOpt match {
-            case None => throw new Exception("Results updating not available")
-            case Some(r) => r.update(k, v, last)
+        protected def updatableResults0: JupyterApi.UpdatableResults =
+          new JupyterApi.UpdatableResults {
+            override def addVariable(k: String, v: String) =
+              resultVariables += k -> v
+            override def updateVariable(k: String, v: String, last: Boolean) =
+              updatableResultsOpt match {
+                case None => throw new Exception("Results updating not available")
+                case Some(r) => r.update(k, v, last)
+              }
           }
       }
 
     for (ec <- updateBackgroundVariablesEcOpt)
-      replApi.pprinter() = {
-        val p = replApi.pprinter()
-
-        val additionalHandlers: PartialFunction[Any, pprint.Tree] = {
-          case f: scala.concurrent.Future[_] =>
-            implicit val ec0 = ec
-            val id = "<future-" + java.util.UUID.randomUUID() + ">"
-            jupyterApi.Internals.addResultVariable(id, "[running future]")
-            f.onComplete { t =>
-              jupyterApi.Internals.updateResultVariable(
-                id,
-                replApi.pprinter().tokenize(t).mkString,
-                last = true
-              )
-            }
-            pprint.Tree.Literal(id)
-        }
-
-        p.copy(
-          additionalHandlers = p.additionalHandlers.orElse(additionalHandlers)
-        )
-      }
+      UpdatableFuture.setup(replApi, jupyterApi, ec)
 
     val predefFileInfos =
       predefFiles.zipWithIndex.map {
