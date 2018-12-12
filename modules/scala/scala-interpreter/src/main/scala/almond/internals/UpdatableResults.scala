@@ -17,14 +17,14 @@ final class UpdatableResults(
 
   private val log = logCtx(getClass)
 
-  val refs = new ConcurrentHashMap[String, Ref[(DisplayData, Map[String, String])]]
+  val refs = new ConcurrentHashMap[String, (DisplayData, Ref[Map[String, String]])]
 
   val addRefsLock = new Object
 
   val earlyUpdates = new mutable.HashMap[String, (String, Boolean)]
 
   def add(data: DisplayData, variables: Map[String, String]): DisplayData = {
-    val ref = Ref((data, variables))
+    val ref = (data, Ref(variables))
     addRefsLock.synchronized {
       val variables0 = variables.map {
         case (k, v) =>
@@ -39,13 +39,13 @@ final class UpdatableResults(
 
   def update(k: String, v: String, last: Boolean): Unit = {
 
-    def updateRef(ref: Ref[(DisplayData, Map[String, String])]): Unit = {
-      log.info(s"Updating variable $k with $v")
-      val (data0, m0) = ref()
+    def updateRef(data: DisplayData, ref: Ref[Map[String, String]]): Unit = {
+      val m0 = ref()
       val m = m0 + (k -> v)
-      val data = UpdatableResults.substituteVariables(data0, m)
-      ref() = (data, m)
-      Future(updateData(data))(ec)
+      val data0 = UpdatableResults.substituteVariables(data, m)
+      log.debug(s"Updating variable $k with $v: $data0")
+      ref() = m
+      Future(updateData(data0))(ec)
       if (last)
         refs.remove(k)
     }
@@ -60,10 +60,10 @@ final class UpdatableResults(
           }
           r
         }
-        for (ref <- r)
-          updateRef(ref)
-      case Some(ref) =>
-        updateRef(ref)
+        for ((data, ref) <- r)
+          updateRef(data, ref)
+      case Some((data, ref)) =>
+        updateRef(data, ref)
     }
   }
 
