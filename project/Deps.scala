@@ -6,11 +6,11 @@ import sbt.Keys.scalaVersion
 object Deps {
 
   object Versions {
-    def ammonite = "1.4.4-6-afec827"
+    def ammonite = "1.5.0"
   }
 
   def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
-  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.1.2"
+  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.2.0"
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M8"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % "2.0.0-M5"
   def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M5"
