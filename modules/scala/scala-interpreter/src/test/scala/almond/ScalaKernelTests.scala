@@ -345,6 +345,90 @@ object ScalaKernelTests extends TestSuite {
       assert(messageTypes == expectedMessageTypes)
     }
 
+    "auto-update Rx stuff upon change" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, "almondrx.setup()"),
+        execute(sessionId, "val a = rx.Var(1)"),
+        execute(sessionId, "a() = 2"),
+        execute(sessionId, "a() = 3", lastMsgId)
+      )
+
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        updateBackgroundVariablesEcOpt = Some(bgVarEc),
+        initialColors = Colors.BlackWhite
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow(20.seconds)
+
+      val messageTypes = streams.generatedMessageTypes()
+
+      val expectedMessageTypes = Seq(
+        "execute_input",
+        "stream",
+        "execute_reply",
+        "execute_input",
+        "display_data",
+        "execute_reply",
+        "execute_input",
+        "update_display_data",
+        "execute_reply",
+        "execute_input",
+        "update_display_data",
+        "execute_reply"
+      )
+
+      assert(messageTypes == expectedMessageTypes)
+
+      val displayData = streams.displayData
+      val id = {
+        val ids = displayData.flatMap(_._1.transient.display_id).toSet
+        assert(ids.size == 1)
+        ids.head
+      }
+
+      val expectedDisplayData = Seq(
+        Execute.DisplayData(
+          Map("text/plain" -> Json.jString("a: rx.Var[Int] = 1")),
+          Map(),
+          Execute.DisplayData.Transient(Some(id))
+        ) -> false,
+        Execute.DisplayData(
+          Map("text/plain" -> Json.jString("a: rx.Var[Int] = 2")),
+          Map(),
+          Execute.DisplayData.Transient(Some(id))
+        ) -> true,
+        Execute.DisplayData(
+          Map("text/plain" -> Json.jString("a: rx.Var[Int] = 3")),
+          Map(),
+          Execute.DisplayData.Transient(Some(id))
+        ) -> true
+      )
+
+      displayData.foreach(println)
+
+      assert(displayData == expectedDisplayData)
+    }
+
     "handle interrupt messages" - {
 
       val sessionId = UUID.randomUUID().toString

@@ -18,6 +18,7 @@ object Deps {
   def jeromq = "org.zeromq" % "jeromq" % "0.4.3"
   def metabrowseServer = ("org.scalameta" %% "metabrowse-server" % "0.2.0").exclude("org.slf4j", "slf4j-simple")
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
   def scalatags = "com.lihaoyi" %% "scalatags" % "0.6.7"
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.25"
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.0.2"
