@@ -485,10 +485,17 @@ final class ScalaInterpreter(
                         case None =>
                           DisplayData.text(res0)
                         case Some(r) =>
-                          r.add(
+                          val d = r.add(
                             DisplayData.text(res0).withId(UUID.randomUUID().toString),
                             variables
                           )
+                          outputHandler match {
+                            case None =>
+                              d
+                            case Some(h) =>
+                              h.display(d)
+                              DisplayData.empty
+                          }
                       }
                   r.map((_, data))
                 }

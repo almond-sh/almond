@@ -284,7 +284,7 @@ object ScalaKernelTests extends TestSuite {
         "execute_result",
         "execute_reply",
         "execute_input",
-        "execute_result",
+        "display_data",
         "execute_reply",
         "execute_input",
         // that one originates from the second line, but arrives while the third one is running
@@ -337,7 +337,7 @@ object ScalaKernelTests extends TestSuite {
         "execute_result",
         "execute_reply",
         "execute_input",
-        "execute_result",
+        "display_data",
         "execute_reply",
         "update_display_data" // arrives while no cell is running
       )
