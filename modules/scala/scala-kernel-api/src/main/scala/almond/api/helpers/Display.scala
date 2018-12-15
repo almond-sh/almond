@@ -33,6 +33,15 @@ object Display {
     new Display(id, DisplayData.ContentType.html)
   }
 
+  def latex(content: String)(implicit outputHandler: OutputHandler): Display = {
+    val id = newId()
+    outputHandler.display(
+      DisplayData.latex(content)
+        .withId(id)
+    )
+    new Display(id, DisplayData.ContentType.latex)
+  }
+
   def text(content: String)(implicit outputHandler: OutputHandler): Display = {
     val id = newId()
     outputHandler.display(
