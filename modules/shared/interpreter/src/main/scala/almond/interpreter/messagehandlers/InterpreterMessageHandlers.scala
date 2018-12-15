@@ -8,6 +8,7 @@ import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.{ExecuteResult, IOInterpreter, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
+import argonaut.{Json, JsonObject}
 import cats.effect.IO
 import cats.syntax.apply._
 import fs2.async.mutable.{Queue, Signal}
@@ -83,6 +84,8 @@ final case class InterpreterMessageHandlers(
                 .enqueueOn(Channel.Publish, queue)
           case ExecuteResult.Abort =>
             IO.unit
+          case ExecuteResult.Exit =>
+            exitSignal.set(true)
         }
         resp = res match {
           case v: ExecuteResult.Success =>
@@ -92,6 +95,11 @@ final case class InterpreterMessageHandlers(
             Execute.Reply.Error(ex.name, ex.message, traceBack /* or just stackTrace? */, countAfter)
           case ExecuteResult.Abort =>
             Execute.Reply.Abort()
+          case ExecuteResult.Exit =>
+            val ask_exit_payload = Json.jObject(
+                JsonObject.empty + ("source", Json.jString("ask_exit")) + ("keepkernel", Json.jBool(false))
+            )
+            Execute.Reply.Success(countAfter, Map(), List(ask_exit_payload))
         }
         _ <- message
           .reply(Execute.replyType, resp)
