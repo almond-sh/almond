@@ -58,6 +58,8 @@ object DisplayData {
       DisplayData(Map(ContentType.text -> s))
     def as(mimeType: String): DisplayData =
       DisplayData(Map(mimeType -> s))
+    def asMarkdown: DisplayData =
+      DisplayData(Map(ContentType.markdown -> s))
     def asHtml: DisplayData =
       DisplayData(Map(ContentType.html -> s))
     def asLatex: DisplayData =
