@@ -25,7 +25,7 @@ object Execute {
       execution_count: Int,
       user_expressions: Map[String, Json],
       status: String, // no default value here for the value not to be swallowed by the JSON encoder
-      payload: List[Json],
+      payload: List[Json]
     ) extends Reply {
       assert(status == "ok")
     }
@@ -40,7 +40,7 @@ object Execute {
           execution_count,
           user_expressions,
           "ok",
-          payload,
+          payload
         )
     }
 
