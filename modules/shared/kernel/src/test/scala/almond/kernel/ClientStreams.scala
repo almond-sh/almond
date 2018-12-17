@@ -63,11 +63,32 @@ final case class ClientStreams(
     }
   }
 
-  def generatedMessageTypes(channels: Set[Channel] = Set(Channel.Publish, Channel.Requests), filterOut: Set[String] = Set("status")): Seq[String] =
-    generatedMessages.toList.collect {
-      case Left((c, m)) if channels(c) && m.header.msg_type != "status" =>
+  def generatedMessageTypes(
+    channels: Set[Channel] = Set(Channel.Publish, Channel.Requests),
+    filterOut: Set[String] = Set("status"),
+    collapse: Set[String] = Set("stream")
+  ): Seq[String] = {
+
+    val s = generatedMessages.toStream.collect {
+      case Left((c, m)) if channels(c) && !filterOut(m.header.msg_type) =>
         m.header.msg_type
     }
+
+    def collapsing(s: scala.Stream[String]): scala.Stream[String] =
+      if (s.isEmpty)
+        s
+      else {
+        val tail =
+          if (collapse(s.head))
+            s.tail.dropWhile(_ == s.head)
+          else
+            s.tail
+
+        s.head #:: collapsing(tail)
+      }
+
+    collapsing(s)
+  }
 
   def executeReplies: Map[Int, String] =
     generatedMessages
