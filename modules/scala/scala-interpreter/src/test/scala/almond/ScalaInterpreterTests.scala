@@ -4,6 +4,7 @@ import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.DisplayData
 import almond.interpreter.{Completion, ExecuteResult, Interpreter}
+import almond.TestLogging.logCtx
 import ammonite.util.Colors
 import utest._
 
@@ -11,7 +12,8 @@ object ScalaInterpreterTests extends TestSuite {
 
   private val interpreter: Interpreter =
     new ScalaInterpreter(
-      initialColors = Colors.BlackWhite
+      initialColors = Colors.BlackWhite,
+      logCtx = logCtx
     )
 
   private object Predef {
@@ -29,7 +31,8 @@ object ScalaInterpreterTests extends TestSuite {
       val interp = new ScalaInterpreter(
         initialColors = Colors.BlackWhite,
         predefCode = predefCode,
-        predefFiles = predefFiles
+        predefFiles = predefFiles,
+        logCtx = logCtx
       )
 
       val res = interp.execute("val m = 2 * n")
@@ -52,7 +55,8 @@ object ScalaInterpreterTests extends TestSuite {
       val interp = new ScalaInterpreter(
         initialColors = Colors.BlackWhite,
         predefCode = predefCode,
-        predefFiles = predefFiles
+        predefFiles = predefFiles,
+        logCtx = logCtx
       )
 
       val res = interp.execute("val m = 2 * n")
@@ -72,7 +76,8 @@ object ScalaInterpreterTests extends TestSuite {
         initialColors = Colors.BlackWhite,
         predefCode = predefCode,
         predefFiles = predefFiles,
-        lazyInit = true // predef throws here else
+        lazyInit = true, // predef throws here else
+        logCtx = logCtx
       )
 
       val res =
@@ -99,7 +104,8 @@ object ScalaInterpreterTests extends TestSuite {
         initialColors = Colors.BlackWhite,
         predefCode = predefCode,
         predefFiles = predefFiles,
-        lazyInit = true // predef throws here else
+        lazyInit = true, // predef throws here else
+        logCtx = logCtx
       )
 
       val res =
