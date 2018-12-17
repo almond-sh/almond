@@ -8,6 +8,8 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol._
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
+import almond.logger.{Level, LoggerContext}
+import almond.TestLogging.logCtx
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
 import argonaut.Json
@@ -26,9 +28,6 @@ object ScalaKernelTests extends TestSuite {
         throw new Exception("Timeout")
       }
   }
-
-  // uncomment this to facilitate debugging
-  // almond.util.OptionalLogger.enable()
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
   val bgVarEc = singleThreadedExecutionContext("test-bg-var")
@@ -96,10 +95,11 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -140,10 +140,11 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -194,10 +195,11 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -254,10 +256,11 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -328,10 +331,11 @@ object ScalaKernelTests extends TestSuite {
 
       val interpreter = new ScalaInterpreter(
         updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -381,10 +385,11 @@ object ScalaKernelTests extends TestSuite {
 
       val interpreter = new ScalaInterpreter(
         updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -431,10 +436,11 @@ object ScalaKernelTests extends TestSuite {
 
       val interpreter = new ScalaInterpreter(
         updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -532,10 +538,11 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
@@ -593,10 +600,11 @@ object ScalaKernelTests extends TestSuite {
 
       val interpreter = new ScalaInterpreter(
         initialColors = Colors.BlackWhite,
-        initialClassLoader = loader
+        initialClassLoader = loader,
+        logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads)
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
       t.unsafeRunTimedOrThrow()
