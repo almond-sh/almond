@@ -3,7 +3,8 @@ package almond.api.helpers
 import java.io.{BufferedInputStream, IOException}
 import java.net.{URL, URLConnection}
 import java.nio.file.{Files, Paths}
-import java.util.{Base64, UUID}
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.{Base64, Locale, UUID}
 
 import almond.interpreter.api.DisplayData.ContentType
 import almond.interpreter.api.{DisplayData, OutputHandler}
@@ -21,8 +22,28 @@ final class Display(id: String, contentType: String) {
 
 object Display {
 
-  private def newId(): String =
-    UUID.randomUUID().toString
+  def useRandomIds(): Boolean =
+    sys.props
+      .get("almond.ids.random")
+      .forall(s => s == "1" || s.toLowerCase(Locale.ROOT) == "true")
+
+  private val idCounter = new AtomicInteger
+  private val divCounter = new AtomicInteger
+
+  def newId(): String =
+    if (useRandomIds())
+      UUID.randomUUID().toString
+    else
+      idCounter.incrementAndGet().toString
+
+  def newDiv(prefix: String = "data-"): String =
+    prefix + {
+      if (useRandomIds())
+        UUID.randomUUID().toString
+      else
+        divCounter.incrementAndGet().toString
+    }
+
 
   def markdown(content: String)(implicit outputHandler: OutputHandler): Display = {
     val id = newId()
