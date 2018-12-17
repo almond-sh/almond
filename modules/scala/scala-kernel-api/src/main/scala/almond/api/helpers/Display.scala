@@ -24,6 +24,15 @@ object Display {
   private def newId(): String =
     UUID.randomUUID().toString
 
+  def markdown(content: String)(implicit outputHandler: OutputHandler): Display = {
+    val id = newId()
+    outputHandler.display(
+      DisplayData.markdown(content)
+        .withId(id)
+    )
+    new Display(id, DisplayData.ContentType.markdown)
+  }
+
   def html(content: String)(implicit outputHandler: OutputHandler): Display = {
     val id = newId()
     outputHandler.display(
@@ -31,6 +40,15 @@ object Display {
         .withId(id)
     )
     new Display(id, DisplayData.ContentType.html)
+  }
+
+  def latex(content: String)(implicit outputHandler: OutputHandler): Display = {
+    val id = newId()
+    outputHandler.display(
+      DisplayData.latex(content)
+        .withId(id)
+    )
+    new Display(id, DisplayData.ContentType.latex)
   }
 
   def text(content: String)(implicit outputHandler: OutputHandler): Display = {

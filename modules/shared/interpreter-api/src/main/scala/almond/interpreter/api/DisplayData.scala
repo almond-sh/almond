@@ -25,6 +25,7 @@ object DisplayData {
     def text = "text/plain"
     def markdown = "text/markdown"
     def html = "text/html"
+    def latex = "text/latex"
     def js = "application/javascript"
     def jpg = "image/jpeg"
     def png = "image/png"
@@ -38,6 +39,8 @@ object DisplayData {
     DisplayData(Map(ContentType.markdown -> content))
   def html(content: String): DisplayData =
     DisplayData(Map(ContentType.html -> content))
+  def latex(content: String): DisplayData =
+    DisplayData(Map(ContentType.latex -> content))
   def js(content: String): DisplayData =
     DisplayData(Map(ContentType.js -> content))
   def jpg(content: Array[Byte]): DisplayData =
@@ -55,8 +58,12 @@ object DisplayData {
       DisplayData(Map(ContentType.text -> s))
     def as(mimeType: String): DisplayData =
       DisplayData(Map(mimeType -> s))
+    def asMarkdown: DisplayData =
+      DisplayData(Map(ContentType.markdown -> s))
     def asHtml: DisplayData =
       DisplayData(Map(ContentType.html -> s))
+    def asLatex: DisplayData =
+      DisplayData(Map(ContentType.latex -> s))
     def asJs: DisplayData =
       DisplayData(Map(ContentType.js -> s))
   }
