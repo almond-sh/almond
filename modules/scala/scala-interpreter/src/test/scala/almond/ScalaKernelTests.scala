@@ -21,7 +21,7 @@ object ScalaKernelTests extends TestSuite {
 
   private implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
-    def unsafeRunTimedOrThrow(duration: Duration): T =
+    def unsafeRunTimedOrThrow(duration: Duration = 30.seconds): T =
       io.unsafeRunTimed(duration).getOrElse {
         throw new Exception("Timeout")
       }
@@ -102,7 +102,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(25.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val replies = streams.executeReplies
 
@@ -146,7 +146,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(15.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -200,7 +200,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(15.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -260,7 +260,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(15.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -334,7 +334,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(20.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -387,7 +387,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(20.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -437,7 +437,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(20.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -538,7 +538,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(30.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
       val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control))
@@ -599,7 +599,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(25.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -634,7 +634,7 @@ object ScalaKernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads)
         .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow(25.seconds)
+      t.unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
 
