@@ -15,13 +15,13 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.Duration
 
 object ScalaKernelTests extends TestSuite {
 
   private implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
-    def unsafeRunTimedOrThrow(duration: Duration = 30.seconds): T =
+    def unsafeRunTimedOrThrow(duration: Duration = Duration.Inf): T =
       io.unsafeRunTimed(duration).getOrElse {
         throw new Exception("Timeout")
       }
