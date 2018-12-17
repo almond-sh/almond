@@ -49,4 +49,9 @@ object ExecuteResult {
     */
   case object Abort extends ExecuteResult(success = false)
 
+
+  /**
+    * [[ExecuteResult]], if execution was exited
+    */
+  case object Exit extends ExecuteResult(success = true)
 }

@@ -86,6 +86,23 @@ final case class ClientStreams(
       }
       .toMap
 
+  def executeReplyPayloads: Map[Int, Seq[Json]] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+          m.decodeAs[Execute.Reply] match {
+            case Left(_) => Nil
+            case Right(m) => Seq(m.content)
+          }
+      }
+      .flatten
+      .collect {
+        case s: Execute.Reply.Success if s.payload.nonEmpty =>
+          s.execution_count -> s.payload
+      }
+      .toMap
+
   def displayData: Seq[(DisplayData, Boolean)] =
     generatedMessages
       .iterator
@@ -106,7 +123,7 @@ object ClientStreams {
 
   def create(
     initialMessages: Stream[IO, (Channel, RawMessage)],
-    stopWhen: (Channel, Message[Json]) => IO[Boolean],
+    stopWhen: (Channel, Message[Json]) => IO[Boolean] = (_, _) => IO.pure(false),
     handler: MessageHandler = MessageHandler.discard { case _ => }
   ): ClientStreams = {
 

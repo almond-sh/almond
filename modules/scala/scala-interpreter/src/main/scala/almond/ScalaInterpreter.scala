@@ -575,7 +575,7 @@ final class ScalaInterpreter(
         ExecuteResult.Success()
 
       case Res.Exit(_) =>
-        ???
+        ExecuteResult.Exit
     }
   }
 

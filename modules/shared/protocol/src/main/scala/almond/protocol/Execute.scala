@@ -15,6 +15,7 @@ object Execute {
     stop_on_error: Option[Boolean] = None
   )
 
+
   sealed abstract class Reply extends Product with Serializable
 
   object Reply {
@@ -23,7 +24,8 @@ object Execute {
     final case class Success private (
       execution_count: Int,
       user_expressions: Map[String, Json],
-      status: String // no default value here for the value not to be swallowed by the JSON encoder
+      status: String, // no default value here for the value not to be swallowed by the JSON encoder
+      payload: List[Json]
     ) extends Reply {
       assert(status == "ok")
     }
@@ -31,12 +33,14 @@ object Execute {
     object Success {
       def apply(
         execution_count: Int,
-        user_expressions: Map[String, Json] // value type?
+        user_expressions: Map[String, Json], // value type?
+        payload: List[Json] = List[Json]()
       ): Success =
         Success(
           execution_count,
           user_expressions,
-          "ok"
+          "ok",
+          payload
         )
     }
 
