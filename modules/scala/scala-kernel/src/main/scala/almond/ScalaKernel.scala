@@ -140,7 +140,8 @@ object ScalaKernel extends CaseApp[Options] {
       initialClassLoader = initialClassLoader,
       logCtx = logCtx,
       metabrowse = options.metabrowse,
-      lazyInit = true
+      lazyInit = true,
+      trapOutput = options.trapOutput
     )
     log.info("Created interpreter")
 

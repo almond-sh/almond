@@ -32,7 +32,9 @@ final case class Options(
   @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
     specialLoader: String = "user",
   @HelpMessage("Start a metabrowse server for go to source navigation (linked from Jupyter inspections)")
-    metabrowse: Boolean = false
+    metabrowse: Boolean = false,
+  @HelpMessage("Trap what user code sends to stdout and stderr")
+    trapOutput: Boolean = false
 ) {
 
   def autoDependencyMap(): Map[String, Seq[String]] =
