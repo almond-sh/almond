@@ -443,16 +443,29 @@ final class ScalaInterpreter(
 
   override def interruptSupported: Boolean =
     true
-  override def interrupt(): Unit =
-    currentThreadOpt.foreach(_.stop())
+  override def interrupt(): Unit = {
+    currentThreadOpt match {
+      case None =>
+        log.warn("Interrupt asked, but no execution is running")
+      case Some(t) =>
+        log.debug(s"Interrupt asked, stopping thread $t")
+        t.stop()
+    }
+  }
 
   private def interruptible[T](t: => T): T = {
     interruptedStackTraceOpt = None
     currentThreadOpt = Some(Thread.currentThread())
     try {
       Signaller("INT") {
-        interruptedStackTraceOpt = currentThreadOpt.map(_.getStackTrace)
-        currentThreadOpt.foreach(_.stop())
+        currentThreadOpt match {
+          case None =>
+            log.warn("Received SIGINT, but no execution is running")
+          case Some(t) =>
+            log.debug(s"Received SIGINT, stopping thread $t")
+            interruptedStackTraceOpt = Some(t.getStackTrace)
+            t.stop()
+        }
       }.apply {
         t
       }
