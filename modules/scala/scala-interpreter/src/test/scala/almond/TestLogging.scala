@@ -14,7 +14,7 @@ object TestLogging {
         }
       }
       .getOrElse(
-        Level.Info
+        Level.Debug
       )
   )
 }
