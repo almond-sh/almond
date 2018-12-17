@@ -7,6 +7,7 @@ import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
 import almond.api.JupyterApi
+import almond.api.helpers.Display
 import almond.channels.ConnectionParameters
 import almond.internals._
 import almond.interpreter._
@@ -539,7 +540,7 @@ final class ScalaInterpreter(
                           DisplayData.text(res0)
                         case Some(r) =>
                           val d = r.add(
-                            DisplayData.text(res0).withId(UUID.randomUUID().toString),
+                            DisplayData.text(res0).withId(Display.newId()),
                             variables
                           )
                           outputHandler match {
