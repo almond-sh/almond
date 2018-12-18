@@ -22,6 +22,8 @@ jobs:
   - env: VALIDATE_EXAMPLES=1 # unused from the script, just to know what the job does from the Travis UI
     addons:
       apt:
+        sources:
+          - deadsnakes
         packages:
           - python3.6
     install: python3 -V && pip3 -V && pip3 install -r examples/requirements.txt
