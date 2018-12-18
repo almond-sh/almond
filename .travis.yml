@@ -28,7 +28,7 @@ jobs:
           - python3.6
     install:
       - curl https://bootstrap.pypa.io/get-pip.py | sudo -H python3.6
-      - python3 -V
+      - python3.6 -V
       - pip3 -V
       - sudo pip3 install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
