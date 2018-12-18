@@ -455,7 +455,7 @@ final class ScalaInterpreter(
       case None =>
         log.warn("Interrupt asked, but no execution is running")
       case Some(t) =>
-        log.debug(s"Interrupt asked, stopping thread $t")
+        log.debug(s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
         t.stop()
     }
   }
@@ -469,8 +469,8 @@ final class ScalaInterpreter(
           case None =>
             log.warn("Received SIGINT, but no execution is running")
           case Some(t) =>
-            log.debug(s"Received SIGINT, stopping thread $t")
             interruptedStackTraceOpt = Some(t.getStackTrace)
+            log.debug(s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt.map("  " + _).mkString("\n")}")
             t.stop()
         }
       }.apply {
