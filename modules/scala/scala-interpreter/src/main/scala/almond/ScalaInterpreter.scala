@@ -51,7 +51,8 @@ final class ScalaInterpreter(
   metabrowse: Boolean = false,
   metabrowseHost: String = "localhost",
   metabrowsePort: Int = -1,
-  lazyInit: Boolean = false
+  lazyInit: Boolean = false,
+  trapOutput: Boolean = false
 ) extends Interpreter { scalaInterp =>
 
   private val log = logCtx(getClass)
@@ -161,7 +162,12 @@ final class ScalaInterpreter(
       }
     }
   )
-  private val capture = new Capture
+
+  private val capture =
+    if (trapOutput)
+      Capture.nop()
+    else
+      Capture.create()
 
   private var commHandlerOpt = Option.empty[CommHandler]
 
@@ -449,7 +455,7 @@ final class ScalaInterpreter(
       case None =>
         log.warn("Interrupt asked, but no execution is running")
       case Some(t) =>
-        log.debug(s"Interrupt asked, stopping thread $t")
+        log.debug(s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
         t.stop()
     }
   }
@@ -463,8 +469,8 @@ final class ScalaInterpreter(
           case None =>
             log.warn("Received SIGINT, but no execution is running")
           case Some(t) =>
-            log.debug(s"Received SIGINT, stopping thread $t")
             interruptedStackTraceOpt = Some(t.getStackTrace)
+            log.debug(s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt.map("  " + _).mkString("\n")}")
             t.stop()
         }
       }.apply {

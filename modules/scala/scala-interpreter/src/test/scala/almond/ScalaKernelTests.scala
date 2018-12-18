@@ -670,6 +670,49 @@ object ScalaKernelTests extends TestSuite {
       assert(payloads == expectedPayloads)
     }
 
+    "trap output" - {
+
+      val sessionId = UUID.randomUUID().toString
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, "val n = 2"),
+        execute(sessionId, """println("Hello")"""),
+        execute(sessionId, """System.err.println("Bbbb")"""),
+        execute(sessionId, "exit")
+      )
+
+      val streams = ClientStreams.create(input)
+
+      val interpreter = new ScalaInterpreter(
+        initialColors = Colors.BlackWhite,
+        trapOutput = true
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val messageTypes = streams.generatedMessageTypes()
+
+      // no stream messages in particular
+      val expectedMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_reply",
+        "execute_input",
+        "execute_reply",
+        "execute_input",
+        "execute_reply",
+        "execute_input",
+        "execute_reply"
+      )
+
+      assert(messageTypes == expectedMessageTypes)
+    }
+
   }
 
 }
