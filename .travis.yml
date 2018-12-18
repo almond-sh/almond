@@ -19,16 +19,16 @@ stages:
     if: tag IS present
 jobs:
   include:
+  - env: VALIDATE_EXAMPLES=1 # unused from the script, just to know what the job does from the Travis UI
+    python: 3.4
+    install: pip install -r examples/requirements.txt
+    script: scripts/setup-and-validate-examples.sh
   - scala: 2.11.12
   - scala: 2.12.6
   - scala: 2.12.7
   - scala: 2.12.8
   - scala: 2.12.8
     jdk: openjdk11
-  - env: VALIDATE_EXAMPLES=1 # unused from the script, just to know what the job does from the Travis UI
-    python: 3.4
-    install: pip install -r examples/requirements.txt
-    script: scripts/setup-and-validate-examples.sh
   - env: WEBSITE=1 # unused from the script, just to know what the job does from the Travis UI
     script: scripts/update-website.sh
   - stage: release
