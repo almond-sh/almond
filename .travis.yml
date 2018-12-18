@@ -26,6 +26,7 @@ jobs:
   - scala: 2.12.8
     jdk: openjdk11
   - env: VALIDATE_EXAMPLES=1 # unused from the script, just to know what the job does from the Travis UI
+    python: 3.4
     install: pip install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
   - env: WEBSITE=1 # unused from the script, just to know what the job does from the Travis UI
