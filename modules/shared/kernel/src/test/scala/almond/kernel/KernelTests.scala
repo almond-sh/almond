@@ -139,7 +139,11 @@ object KernelTests extends TestSuite {
         "execute_reply"
       )
 
-      assert(msgTypes == expectedMsgTypes)
+      val (commMsgTypes, stdMsgTypes) = msgTypes.partition(_.startsWith("comm_"))
+      val (expectedCommMsgTypes, expectedStdMsgTypes) = expectedMsgTypes.partition(_.startsWith("comm_"))
+
+      assert(commMsgTypes == expectedCommMsgTypes)
+      assert(stdMsgTypes == expectedStdMsgTypes)
     }
 
     "history request" - {
