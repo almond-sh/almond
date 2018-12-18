@@ -20,9 +20,11 @@ stages:
 jobs:
   include:
   - env: VALIDATE_EXAMPLES=1 # unused from the script, just to know what the job does from the Travis UI
-    before_install:
-    - sudo apt-get -y install python3-pip python-dev
-    install: pip3 install -r examples/requirements.txt
+    addons:
+      apt:
+        packages:
+          - python3.6
+    install: python3 -V && pip3 -V && pip3 install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
   - scala: 2.11.12
   - scala: 2.12.6
