@@ -30,7 +30,7 @@ jobs:
       - curl https://bootstrap.pypa.io/get-pip.py | sudo -H python3.6
       - python3 -V
       - pip3 -V
-      - pip3 install -r examples/requirements.txt
+      - sudo pip3 install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
   - scala: 2.11.12
   - scala: 2.12.6
