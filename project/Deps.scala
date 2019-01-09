@@ -16,7 +16,7 @@ object Deps {
   def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M5"
   def fs2 = "co.fs2" %% "fs2-core" % "0.10.7"
   def jeromq = "org.zeromq" % "jeromq" % "0.4.3"
-  def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.3.1"
+  def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
   def metabrowseServer = ("org.scalameta" %% "metabrowse-server" % "0.2.1").exclude("org.slf4j", "slf4j-simple")
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
