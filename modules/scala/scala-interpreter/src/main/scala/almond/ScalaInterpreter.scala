@@ -184,7 +184,7 @@ final class ScalaInterpreter(
   private val resultOutput = new StringBuilder
   private val resultStream = new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
-  private val storage = Storage.InMemory()
+  private val storage = new Storage.Folder(ammonite.ops.home/".almond")
 
   private val frames = Ref(List(Frame.createInitial(initialClassLoader)))
   private val sess0 = new SessionApiImpl(frames)
