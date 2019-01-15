@@ -46,5 +46,5 @@ jobs:
     env: PUSH_WEBSITE=1
     script: scripts/update-website.sh
   - stage: upload-launcher
-    env: UPLOAD_LAUNCHER=1
+    name: "Upload launcher"
     script: scripts/upload-launcher.sh
