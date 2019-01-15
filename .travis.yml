@@ -15,10 +15,10 @@ stages:
   - name: test
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
+  - name: upload-launcher
+    if: tag IS present
   - name: update-website
     if: (branch = master AND type = push) OR (tag IS present)
-  - name: upload-launcher # TODO Run before previous one once this works fine
-    if: tag IS present
 jobs:
   include:
   - env: VALIDATE_EXAMPLES=1 # unused from the script, just to know what the job does from the Travis UI
