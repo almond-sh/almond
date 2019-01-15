@@ -6,8 +6,10 @@ cache:
   - $HOME/.cache
   - $HOME/.ivy2/cache
   - $HOME/.sbt
+git:
+  depth: false
 before_install:
-  - git fetch --tags
+  - source scripts/setup-build-tools.sh
 sudo: required
 stages:
   - name: test
