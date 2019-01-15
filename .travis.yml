@@ -48,3 +48,7 @@ jobs:
   - stage: upload-launcher
     name: "Upload launcher"
     script: scripts/upload-launcher.sh
+branches:
+  only:
+  - master
+  - /^v\d+\.\d+.*$/ # tagged versions
