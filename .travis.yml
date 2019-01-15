@@ -38,7 +38,7 @@ jobs:
   - scala: 2.12.8
   - scala: 2.12.8
     jdk: openjdk11
-  - env: WEBSITE=1 # unused from the script, just to know what the job does from the Travis UI
+  - name: "Website"
     script: scripts/update-website.sh
   - stage: release
     script: sbt ci-release
