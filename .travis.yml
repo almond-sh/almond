@@ -9,13 +9,15 @@ cache:
 git:
   depth: false
 before_install:
-  - source scripts/setup-build-tools.sh
+  - source scripts/website/setup-build-tools.sh
 sudo: required
 stages:
   - name: test
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
   - name: upload-launcher
+    if: tag IS present
+  - name: update-versioned-docs
     if: tag IS present
   - name: update-website
     if: (branch = master AND type = push) OR (tag IS present)
@@ -41,15 +43,24 @@ jobs:
   - scala: 2.12.8
     jdk: openjdk11
   - name: "Website"
-    script: scripts/update-website.sh
+    script: amm scripts/site.sc --publishLocal true
   - stage: release
     script: sbt ci-release
-  - stage: update-website
-    env: PUSH_WEBSITE=1
-    script: scripts/update-website.sh
   - stage: upload-launcher
     name: "Upload launcher"
     script: scripts/upload-launcher.sh
+  - stage: update-versioned-docs
+    env: WEBSITE_DIR=docs/website VERSIONED_DOCS_REPO=almond-sh/versioned-docs
+    script:
+      - amm scripts/site.sc --publishLocal true --npmInstall true --yarnRunBuild true
+      - scripts/website/versioned-docs.sh --update
+  - stage: update-website
+    env: WEBSITE_DIR=docs/website REPO=almond-sh/almond VERSIONED_DOCS_REPO=almond-sh/versioned-docs
+    name: "Push website"
+    script:
+      - scripts/website/versioned-docs.sh
+      - amm scripts/site.sc --publishLocal true --npmInstall true --yarnRunBuild true --relativize true
+      - scripts/website/push-website.sh
 branches:
   only:
   - master
