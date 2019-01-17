@@ -34,7 +34,9 @@ final case class Options(
   @HelpMessage("Start a metabrowse server for go to source navigation (linked from Jupyter inspections)")
     metabrowse: Boolean = false,
   @HelpMessage("Trap what user code sends to stdout and stderr")
-    trapOutput: Boolean = false
+    trapOutput: Boolean = false,
+  @HelpMessage("Disable ammonite compilation cache")
+    disableCache: Boolean = false
 ) {
 
   def autoDependencyMap(): Map[String, Seq[String]] =

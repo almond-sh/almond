@@ -53,7 +53,8 @@ final class ScalaInterpreter(
   metabrowseHost: String = "localhost",
   metabrowsePort: Int = -1,
   lazyInit: Boolean = false,
-  trapOutput: Boolean = false
+  trapOutput: Boolean = false,
+  disableCache: Boolean = false
 ) extends Interpreter { scalaInterp =>
 
   private val log = logCtx(getClass)
@@ -185,7 +186,11 @@ final class ScalaInterpreter(
   private val resultOutput = new StringBuilder
   private val resultStream = new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
-  private val storage = new Storage.Folder(os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite")
+  private val storage =
+    if (disableCache)
+      Storage.InMemory()
+    else
+      new Storage.Folder(os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite")
 
   private val frames = Ref(List(Frame.createInitial(initialClassLoader)))
   private val sess0 = new SessionApiImpl(frames)
