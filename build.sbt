@@ -120,7 +120,8 @@ lazy val `scala-interpreter` = project
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    testSettings
+    testSettings,
+    libraryDependencies += Deps.directories
   )
 
 lazy val `scala-kernel` = project
