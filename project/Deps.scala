@@ -14,6 +14,7 @@ object Deps {
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M9"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % "2.0.0-M5"
   def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M5"
+  def directories = "io.github.soc" % "directories" % "11"
   def fs2 = "co.fs2" %% "fs2-core" % "0.10.7"
   def jeromq = "org.zeromq" % "jeromq" % "0.4.3"
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
