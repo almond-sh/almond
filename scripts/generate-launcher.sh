@@ -11,5 +11,5 @@ coursier bootstrap \
   --no-default -r central -r jitpack \
   sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
   -o "$OUTPUT" \
-  --embed-files=false --sources --default=true \
+  --embed-files=false \
   "$@"
