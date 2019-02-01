@@ -152,9 +152,8 @@ lazy val `almond-spark` = project
       Deps.ammoniteRepl % "provided",
       Deps.ammoniteSpark,
       Deps.argonautShapeless,
-      Deps.sparkSql % "provided"
-    ),
-    disableScalaVersion("2.12")
+      Deps.sparkSql.value % "provided"
+    )
   )
 
 lazy val `almond-rx` = project

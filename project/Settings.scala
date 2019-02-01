@@ -10,6 +10,13 @@ object Settings {
   private val scala211 = "2.11.12"
   private val scala212 = "2.12.8"
 
+  lazy val isAtLeast212 = Def.setting {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, n)) if n >= 12 => true
+      case _ => false
+    }
+  }
+
   lazy val shared = Seq(
     scalaVersion := scala212,
     crossScalaVersions := Seq(scala212, "2.12.7", "2.12.6", scala211),
@@ -36,24 +43,6 @@ object Settings {
     publish := {},
     publishLocal := {},
     publishArtifact := false
-  )
-
-  def disableScalaVersion(sbv: String*) = Seq(
-    baseDirectory := {
-      if (sbv.contains(scalaBinaryVersion.value))
-        baseDirectory.value / "target" / "dummy"
-      else
-        baseDirectory.value
-    },
-    libraryDependencies := {
-      if (sbv.contains(scalaBinaryVersion.value))
-        Nil
-      else
-        libraryDependencies.value
-    },
-    publishArtifact := {
-      !sbv.contains(scalaBinaryVersion.value) && publishArtifact.value
-    }
   )
 
   def generatePropertyFile(path: String) =
