@@ -2,6 +2,7 @@ package almond
 
 import java.io.{File, FileOutputStream, PrintStream}
 
+import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
@@ -12,29 +13,6 @@ import caseapp._
 import scala.language.reflectiveCalls
 
 object ScalaKernel extends CaseApp[Options] {
-
-  private def loaderWithName(name: String, cl: ClassLoader): Option[ClassLoader] =
-    if (cl == null)
-      None
-    else {
-
-      val targetFound =
-        try {
-          val t = cl.asInstanceOf[ {
-            def getIsolationTargets: Array[String]
-          }].getIsolationTargets
-
-          t.contains(name)
-        } catch {
-          case _: NoSuchMethodException =>
-            false
-        }
-
-      if (targetFound)
-        Some(cl)
-      else
-        loaderWithName(name, cl.getParent)
-    }
 
   def run(options: Options, args: RemainingArgs): Unit = {
 
@@ -112,18 +90,11 @@ object ScalaKernel extends CaseApp[Options] {
     val zeromqThreads = ZeromqThreads.create("scala-kernel")
     val kernelThreads = KernelThreads.create("scala-kernel")
 
-    val initialClassLoader = {
-
-      val defaultLoader = Thread.currentThread().getContextClassLoader
-
-      if (options.specialLoader.isEmpty)
-        defaultLoader
+    val initialClassLoader =
+      if (options.specificLoader)
+        JupyterApi.getClass.getClassLoader
       else
-        loaderWithName(options.specialLoader, defaultLoader).getOrElse {
-          log.warn(s"--special-loader set to ${options.specialLoader}, but no classloader with that name can be found")
-          defaultLoader
-        }
-    }
+        Thread.currentThread().getContextClassLoader
 
     log.info("Creating interpreter")
 

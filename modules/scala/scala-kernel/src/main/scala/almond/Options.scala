@@ -29,8 +29,11 @@ final case class Options(
   @ValueDescription("/path/to/log-file")
     logTo: Option[String],
   connectionFile: Option[String] = None,
-  @HelpMessage("Name of a class loader set up with the -i option of coursier bootstrap or coursier launch, to be used from the session")
-    specialLoader: String = "user",
+  // For class loader isolation, the user code is loaded from the classloader of the api module.
+  // If the right -i / -I options are passed to coursier bootstrap when generating a launcher, that loader
+  // only sees the api module and its dependencies, rather than the full classpath of almond.
+  @HelpMessage("Use class loader that loaded the api module rather than the context class loader")
+    specificLoader: Boolean = true,
   @HelpMessage("Start a metabrowse server for go to source navigation (linked from Jupyter inspections)")
     metabrowse: Boolean = false,
   @HelpMessage("Trap what user code sends to stdout and stderr")
