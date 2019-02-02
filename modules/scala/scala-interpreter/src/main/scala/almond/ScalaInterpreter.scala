@@ -113,7 +113,11 @@ final class ScalaInterpreter(
 
       val sessionJars = frames()
         .flatMap(_.classpath)
-        .map(_.toPath)
+        .collect {
+          // FIXME We're ignoring jars-in-jars of standalone bootstraps of coursier in particular
+          case p if p.getProtocol == "file" =>
+            Paths.get(p.toURI)
+        }
 
       val (sources, other) = sessionJars
         .partition(_.getFileName.toString.endsWith("-sources.jar"))
