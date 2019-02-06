@@ -105,11 +105,10 @@ lazy val `scala-kernel-api` = project
   .dependsOn(`interpreter-api`)
   .settings(
     shared,
-    crossVersion := CrossVersion.full,
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
     libraryDependencies ++= Seq(
-      Deps.ammoniteRepl,
+      Deps.ammoniteRepl % Provided,
       Deps.jvmRepr
     )
   )
@@ -121,7 +120,10 @@ lazy val `scala-interpreter` = project
     shared,
     crossVersion := CrossVersion.full,
     testSettings,
-    libraryDependencies += Deps.directories
+    libraryDependencies ++= Seq(
+      Deps.ammoniteRepl,
+      Deps.directories
+    )
   )
 
 lazy val `scala-kernel` = project
