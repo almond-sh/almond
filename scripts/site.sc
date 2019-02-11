@@ -13,6 +13,17 @@ lazy val version = Util.cached("version") {
     .last
 }
 
+lazy val latestRelease = Util.cached("latest-release") {
+  import sys.process._
+  val v = Seq("git", "describe", "--abbrev=0", "--match", "v*")
+    .!!
+    .trim
+    .stripPrefix("v")
+  assert(v.nonEmpty, "Could not find latest release")
+  v
+}
+
+
 lazy val scalaVersion = Util.cached("scala-version") {
   Util.outputOf(Seq("sbt", "export channels/scalaVersion"))
     .linesIterator
@@ -41,6 +52,7 @@ lazy val mdocProps: Map[String, String] = {
       ""
   Map(
     "VERSION" -> version,
+    "LATEST_RELEASE" -> latestRelease,
     "EXTRA_SBT" -> extraSbt,
     "AMMONITE_VERSION" -> ammoniteVersion,
     "SCALA_VERSION" -> scalaVersion,

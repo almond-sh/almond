@@ -16,6 +16,7 @@ const siteConfig = {
 
   headerLinks: [
     {doc: 'intro', label: 'Docs'},
+    {blog: true, label: 'Blog'},
     {href: 'https://github.com/almond-sh/almond', label: 'GitHub'},
   ],
 
@@ -26,7 +27,7 @@ const siteConfig = {
     secondaryColor: '#3498DB',
   },
 
-  copyright: `Copyright © ${new Date().getFullYear()} Alexandre Archambault and almond contributors`,
+  copyright: `Copyright © ${new Date().getFullYear()} almond contributors`,
 
   highlight: {
     theme: 'default',
