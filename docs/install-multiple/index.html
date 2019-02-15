@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="Several versions of almond can be installed side-by-side. This is useful e.g. to have kernels">
-  <meta name="docsearch:version" content="0.2.2">
+  <meta name="docsearch:version" content="0.3.0">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Multiple kernels · almond">
   <meta property="og:type" content="website">
@@ -24,7 +24,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href="../.."><h2 class="headerTitle">almond</h2></a>
-     <a href="../../versions"><h3>0.2.2</h3></a>
+     <a href="../../versions"><h3>0.3.0</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -53,10 +53,26 @@
         </div>
         <div class="navGroups">
          <div class="navGroup">
-          <h3 class="navGroupCategoryTitle">Quick start</h3>
+          <h3 class="navGroupCategoryTitle">Intro</h3>
           <ul>
-           <li class="navListItem"><a class="navItem" href="../intro">Intro</a></li>
+           <li class="navListItem"><a class="navItem" href="../intro">Overview</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Try it</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../try-mybinder">mybinder</a></li>
+           <li class="navListItem"><a class="navItem" href="../try-docker">docker</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Installation</h3>
+          <ul>
            <li class="navListItem"><a class="navItem" href="../quick-start-install">Installation</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-options">Options</a></li>
+           <li class="navListItem navListItemActive"><a class="navItem" href="">Multiple kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-versions">Versions</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-other">Other</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -67,21 +83,12 @@
           </ul>
          </div>
          <div class="navGroup">
-          <h3 class="navGroupCategoryTitle">API</h3>
+          <h3 class="navGroupCategoryTitle">User API</h3>
           <ul>
            <li class="navListItem"><a class="navItem" href="../api">Intro</a></li>
            <li class="navListItem"><a class="navItem" href="../api-access-instances">Access API instances</a></li>
            <li class="navListItem"><a class="navItem" href="../api-ammonite">Ammonite API</a></li>
            <li class="navListItem"><a class="navItem" href="../api-jupyter">Almond Jupyter API</a></li>
-          </ul>
-         </div>
-         <div class="navGroup">
-          <h3 class="navGroupCategoryTitle">Installation</h3>
-          <ul>
-           <li class="navListItem"><a class="navItem" href="../install-options">Options</a></li>
-           <li class="navListItem navListItemActive"><a class="navItem" href="">Multiple kernels</a></li>
-           <li class="navListItem"><a class="navItem" href="../install-versions">Versions</a></li>
-           <li class="navListItem"><a class="navItem" href="../install-other">Other</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -135,7 +142,7 @@
        </header>
        <article>
         <div>
-         <span><p>Several versions of almond can be installed side-by-side. This is useful e.g. to have kernels for several Scala versions, or to test newer / former almond versions.</p> <p>To install several version of the kernel side-by-side, just ensure the different installed versions have different ids (required) and display names (recommended).</p> <p>For example, let's install almond for the scala <code>2.12.7</code> version,</p> <pre><code class="hljs css language-bash">$ SCALA_VERSION=2.12.7 ALMOND_VERSION=0.2.2
+         <span><p>Several versions of almond can be installed side-by-side. This is useful e.g. to have kernels for several Scala versions, or to test newer / former almond versions.</p> <p>To install several version of the kernel side-by-side, just ensure the different installed versions have different ids (required) and display names (recommended).</p> <p>For example, let's install almond for the scala <code>2.12.7</code> version,</p> <pre><code class="hljs css language-bash">$ SCALA_VERSION=2.12.7 ALMOND_VERSION=0.3.0
 $ coursier bootstrap \
     -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
@@ -144,7 +151,7 @@ $ coursier bootstrap \
     -o almond
 $ ./almond --install
 $ rm -f almond
-</code></pre> <p>This installs almond with the default kernel id, <code>scala</code>, and default display name, "Scala".</p> <p>Now let's <em>also</em> install almond for scala <code>2.11.12</code>,</p> <pre><code class="hljs css language-bash">$ SCALA_VERSION=2.11.12 ALMOND_VERSION=0.2.2
+</code></pre> <p>This installs almond with the default kernel id, <code>scala</code>, and default display name, "Scala".</p> <p>Now let's <em>also</em> install almond for scala <code>2.11.12</code>,</p> <pre><code class="hljs css language-bash">$ SCALA_VERSION=2.11.12 ALMOND_VERSION=0.3.0
 $ coursier bootstrap \
     -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_<span class="hljs-variable">$SCALA_VERSION</span>:<span class="hljs-variable">$ALMOND_VERSION</span> \
