@@ -3,7 +3,6 @@ package almond.interpreter
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-import fs2.async.mutable.Queue
 import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
 import almond.protocol.{Header, MessageType}
@@ -11,6 +10,7 @@ import almond.interpreter.util.BetterPrinter
 import argonaut.{DecodeJson, EncodeJson, Json}
 import argonaut.Argonaut._
 import cats.effect.IO
+import fs2.concurrent.Queue
 
 /**
   * Fully-decoded message, with content of type [[T]]

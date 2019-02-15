@@ -8,7 +8,7 @@ import almond.protocol._
 import argonaut.{EncodeJson, JsonObject}
 import argonaut.Parse.{parse => parseJson}
 import cats.effect.IO
-import fs2.async.mutable.Queue
+import fs2.concurrent.Queue
 
 import scala.concurrent.ExecutionContext
 

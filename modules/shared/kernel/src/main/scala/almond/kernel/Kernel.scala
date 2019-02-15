@@ -13,8 +13,8 @@ import almond.interpreter.messagehandlers.{CommMessageHandlers, InterpreterMessa
 import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import cats.effect.IO
-import fs2.async.mutable.Queue
-import fs2.{Sink, Stream, async}
+import fs2.concurrent.{Queue, SignallingRef}
+import fs2.{Pipe, Stream}
 
 import scala.concurrent.ExecutionContext
 
@@ -33,8 +33,8 @@ final case class Kernel(
   def replies(requests: Stream[IO, (Channel, RawMessage)]): Stream[IO, (Channel, RawMessage)] = {
 
     val exitSignal = {
-      implicit val S = kernelThreads.scheduleEc // or another ExecutionContext?
-      fs2.async.signalOf[IO, Boolean](false)
+      implicit val shift = IO.contextShift(kernelThreads.scheduleEc) // or another ExecutionContext?
+      SignallingRef[IO, Boolean](false)
     }
 
     Stream.eval(exitSignal).flatMap { exitSignal0 =>
@@ -100,7 +100,7 @@ final case class Kernel(
       val mainStream = {
 
         val requests0 = {
-          implicit val S = kernelThreads.scheduleEc
+          implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
           requests.interruptWhen(exitSignal0)
         }
 
@@ -135,15 +135,13 @@ final case class Kernel(
         // being processed.
         // Order of the main messages and their answers is still preserved via mainQueue, see also comments above.
         val mergedStreams = {
-          implicit val S = kernelThreads.scheduleEc
-          streams.join(20) // https://twitter.com/mpilquist/status/943653692745666560
+          implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
+          streams.parJoin(20) // https://twitter.com/mpilquist/status/943653692745666560
         }
 
         // Put poison pill (null) at the end of mainQueue when all input messages have been processed
-        val s1 = Stream.bracket(IO.unit)(
-          _ => mergedStreams,
-          _ => mainQueue.enqueue1(None)
-        )
+        val s1 = Stream.bracket(IO.unit)(_ => mainQueue.enqueue1(None))
+          .flatMap(_ => mergedStreams)
 
         // Reponses for the main messages
         val s2 = mainQueue
@@ -154,22 +152,20 @@ final case class Kernel(
         // Merge s1 (messages answered straightaway and enqueuing of the main messages) and s2 (responses of main
         // messages, that are processed sequentially via mainQueue)
         {
-          implicit val S = kernelThreads.scheduleEc
+          implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
           s1.merge(s2)
         }
       }
 
       // Put poison pill (null) at the end of backgroundMessagesQueue when all input messages have been processed
       // and answered.
-      val mainStream0 = Stream.bracket(IO.unit)(
-        _ => initStream ++ mainStream,
-        _ => backgroundMessagesQueue.enqueue1(null)
-      )
+      val mainStream0 = Stream.bracket(IO.unit)(_ => backgroundMessagesQueue.enqueue1(null))
+        .flatMap(_ => initStream ++ mainStream)
 
       // Merge responses to all incoming messages with background messages (comm messages sent by user code when it
       // is run)
       {
-        implicit val S = kernelThreads.scheduleEc
+        implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
         mainStream0.merge(backgroundMessagesQueue.dequeue.takeWhile(_ != null))
       }
     }
@@ -177,7 +173,7 @@ final case class Kernel(
 
   def run(
     stream: Stream[IO, (Channel, RawMessage)],
-    sink: Sink[IO, (Channel, RawMessage)]
+    sink: Pipe[IO, (Channel, RawMessage), Unit]
   ): IO[Unit] =
     sink(replies(stream)).compile.drain
 
@@ -257,12 +253,12 @@ object Kernel {
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- {
-        implicit val ec = kernelThreads.queueEc
-        async.boundedQueue[IO, (Channel, RawMessage)](20) // FIXME Sizing
+        implicit val shift = IO.contextShift(kernelThreads.queueEc)
+        Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
       }
       mainQueue <- {
-        implicit val S = kernelThreads.queueEc
-        async.boundedQueue[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+        implicit val shift = IO.contextShift(kernelThreads.queueEc)
+        Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       }
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)

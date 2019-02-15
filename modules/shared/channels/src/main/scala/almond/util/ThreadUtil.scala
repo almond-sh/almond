@@ -4,9 +4,8 @@ import java.lang.Thread.UncaughtExceptionHandler
 import java.util.concurrent.{Executors, ThreadFactory}
 import java.util.concurrent.atomic.AtomicInteger
 
-import fs2.internal.NonFatal
-
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import scala.util.control.NonFatal
 
 object ThreadUtil {
 
