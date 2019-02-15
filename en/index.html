@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charSet="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>almond · A Scala kernel for Jupyter</title>
+  <meta name="viewport" content="width=device-width">
+  <meta name="generator" content="Docusaurus">
+  <meta name="description" content="A Scala kernel for Jupyter">
+  <meta name="docsearch:language" content="en">
+  <meta property="og:title" content="almond · A Scala kernel for Jupyter">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
+  <meta property="og:description" content="A Scala kernel for Jupyter">
+  <meta name="twitter:card" content="summary">
+  <link rel="shortcut icon" href="../undefined">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+  <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <link rel="stylesheet" href="../css/main.css">
+ </head>
+ <body>
+  <div class="fixedHeaderContainer">
+   <div class="headerWrapper wrapper">
+    <header>
+     <a href=".."><h2 class="headerTitle">almond</h2></a>
+     <a href="../versions"><h3>0.2.2</h3></a>
+     <div class="navigationWrapper navigationSlider">
+      <nav class="slidingNav">
+       <ul class="nav-site nav-site-internal">
+        <li class=""><a href="../docs/intro" target="_self">Docs</a></li>
+        <li class=""><a href="https://github.com/almond-sh/almond" target="_self">GitHub</a></li>
+       </ul>
+      </nav>
+     </div>
+    </header>
+   </div>
+  </div>
+  <div class="navPusher">
+   <div>
+    <div class="homeContainer">
+     <div class="homeSplashFade">
+      <div class="wrapper homeWrapper">
+       <div class="inner">
+        <h2 class="projectTitle">almond<small>A Scala kernel for Jupyter</small></h2>
+        <div class="section promoSection">
+         <div class="promoRow">
+          <div class="pluginRowBlock">
+           <div class="pluginWrapper buttonWrapper">
+            <a class="button" href="https://mybinder.org/v2/gh/almond-sh/examples/master?urlpath=lab" target="_self">Try it online</a>
+           </div>
+           <div class="pluginWrapper buttonWrapper">
+            <a class="button" href="../docs/en/try-docker" target="_self">Try it with docker</a>
+           </div>
+           <div class="pluginWrapper buttonWrapper">
+            <a class="button" href="../docs/en/quick-start-install" target="_self">Install</a>
+           </div>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="mainContainer">
+     <div class="container paddingBottom paddingTop">
+      <div class="wrapper">
+       <div class="gridBlock">
+        <div class="blockElement imageAlignSide imageAlignRight twoByGridBlock">
+         <div class="blockContent">
+          <h2>
+           <div>
+            <span><p>All the <a href="https://ammonite.io">Ammonite</a> niceties</p> </span>
+           </div></h2>
+          <div>
+           <span><p>Ammonite is a modern and user-friendly Scala shell. Almond wraps it in a Jupyter kernel, giving you all its features and niceties, including customizable pretty-printing, magic imports, advanced dependency handling, its API, right from Jupyter.</p> <p>This also makes it easy to copy some code from notebooks to Ammonite scripts, and vice versa.</p> </span>
+          </div>
+         </div>
+         <div class="blockImage">
+          <img src="../frontpage/ammonite.gif" alt="Ammonite features">
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="container lightBackground paddingBottom paddingTop">
+      <div class="wrapper">
+       <div class="gridBlock">
+        <div class="blockElement imageAlignSide imageAlignLeft twoByGridBlock">
+         <div class="blockImage">
+          <img src="../frontpage/progressbar.gif" alt="Progress bar">
+         </div>
+         <div class="blockContent">
+          <h2>
+           <div>
+            <span><p>APIs to interact with Jupyter front-ends</p> </span>
+           </div></h2>
+          <div>
+           <span><p>Almond exposes APIs to interact with Jupyter front-ends. Call them from notebooks… or from your own libraries.</p> </span>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="container paddingBottom paddingTop">
+      <div class="wrapper">
+       <div class="gridBlock">
+        <div class="blockElement imageAlignSide imageAlignRight twoByGridBlock">
+         <div class="blockContent">
+          <h2>
+           <div>
+            <span><p>Plotting libraries</p> </span>
+           </div></h2>
+          <div>
+           <span><p>Several plotting libraries are already available to plot things from notebooks, such as <a href="http://plotly-scala.org">plotly-scala</a> or <a href="https://github.com/vegas-viz/Vegas">Vegas</a>.</p> </span>
+          </div>
+         </div>
+         <div class="blockImage">
+          <img src="../frontpage/plotly.gif" alt="Plots">
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="container paddingBottom paddingTop">
+      <div class="wrapper">
+       <div class="gridBlock">
+        <div class="blockElement imageAlignSide imageAlignLeft twoByGridBlock">
+         <div class="blockImage">
+          <img src="../frontpage/spark.gif" alt="Spark">
+         </div>
+         <div class="blockContent">
+          <h2>
+           <div>
+            <span><p>Spark support</p> </span>
+           </div></h2>
+          <div>
+           <span><p>Load the spark version of your choice, create a Spark session, and start using it from your notebooks.</p> </span>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="container paddingBottom paddingTop">
+      <div class="wrapper">
+       <div class="gridBlock">
+        <div class="blockElement imageAlignSide imageAlignRight twoByGridBlock">
+         <div class="blockContent">
+          <h2>
+           <div>
+            <span><p>IDE-like features</p> </span>
+           </div></h2>
+          <div>
+           <span><p>Almond already supports code navigation in dependencies via <a href="https://github.com/scalameta/metabrowse">metabrowse</a>, paving the way for more IDE-like features and a closer integration with the <a href="https://github.com/scalameta">scalameta</a> ecosystem.</p> </span>
+          </div>
+         </div>
+         <div class="blockImage">
+          <img src="../frontpage/metabrowse.gif" alt="Metabrowse">
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="container paddingBottom paddingTop">
+      <div class="wrapper">
+       <div class="gridBlock">
+        <div class="blockElement imageAlignSide imageAlignLeft twoByGridBlock">
+         <div class="blockImage">
+          <img src="../frontpage/echo.gif" alt="Echo kernel">
+         </div>
+         <div class="blockContent">
+          <h2>
+           <div>
+            <span><p>Custom kernels</p> </span>
+           </div></h2>
+          <div>
+           <span><p>Write Jupyter kernels for the language of your choice, in Scala, by relying on the exact same libraries as Almond.</p> </span>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+   <footer class="nav-footer" id="footer">
+    <section class="sitemap">
+     <a href=".." class="nav-home"></a>
+     <div>
+      <h5>Docs</h5>
+      <a href="../docs/intro.html">Quick start</a>
+     </div>
+     <div>
+      <h5>Community</h5>
+      <a href="https://gitter.im/alexarchambault/jupyter-scala">Gitter room</a>
+     </div>
+     <div>
+      <h5>More</h5>
+      <a href="https://github.com/almond-sh/almond">GitHub</a>
+      <a class="github-button" data-icon="octicon-star" data-count-href="/almond-sh/almond/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a>
+     </div>
+    </section>
+    <section class="copyright">
+     Copyright © 2019 almond contributors
+    </section>
+   </footer>
+  </div>
+ </body>
+</html>
