@@ -16,7 +16,6 @@ const siteConfig = {
 
   headerLinks: [
     {doc: 'intro', label: 'Docs'},
-    {blog: true, label: 'Blog'},
     {href: 'https://github.com/almond-sh/almond', label: 'GitHub'},
   ],
 
