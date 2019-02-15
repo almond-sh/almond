@@ -120,17 +120,34 @@ lazy val `scala-interpreter` = project
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    testSettings,
-    libraryDependencies += Deps.directories
+    testSettings
   )
 
 lazy val `scala-kernel` = project
   .underScala
+  .enablePlugins(PackPlugin)
   .dependsOn(kernel, `scala-interpreter`)
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    libraryDependencies += Deps.caseApp
+    libraryDependencies += Deps.caseApp,
+    packExcludeArtifactTypes -= "source",
+    packModuleEntries ++= {
+      val report = updateClassifiers.value
+      for {
+        c <- report.configurations
+        m <- c.modules
+        (a, f) <- m.artifacts
+        if a.classifier.contains("sources")
+      } yield xerial.sbt.pack.PackPlugin.ModuleEntry(
+        m.module.organization,
+        m.module.name,
+        xerial.sbt.pack.VersionString(m.module.revision),
+        a.name,
+        a.classifier,
+        f
+      )
+    }
   )
 
 lazy val echo = project
@@ -185,3 +202,68 @@ lazy val almond = project
     shared,
     dontPublish
   )
+
+lazy val jupyterStart = taskKey[Unit]("")
+lazy val jupyterStop = taskKey[Unit]("")
+lazy val jupyterDir = taskKey[File]("")
+
+jupyterDir := {
+  baseDirectory.in(ThisBuild).value / "target" / "jupyter"
+}
+
+lazy val jupyterCommand = Seq("jupyter", "lab")
+
+jupyterStart := {
+  val pack0 = (pack.in(`scala-kernel`).value / "bin" / "scala-kernel").getAbsolutePath
+  val jupyterDir0 = jupyterDir.value
+  val dir = jupyterDir0 / "kernels" / "scala"
+  dir.mkdirs()
+  val kernelJson = s"""{
+    "language": "scala",
+    "display_name": "Scala (sources)",
+    "argv": [
+      "$pack0",
+      "--metabrowse", "--log", "info",
+      "--connection-file", "{connection_file}"
+    ]
+  }"""
+  java.nio.file.Files.write((dir / "kernel.json").toPath, kernelJson.getBytes("UTF-8"))
+
+  val b = new ProcessBuilder(jupyterCommand: _*).inheritIO()
+  val env = b.environment()
+  env.put("JUPYTER_PATH", jupyterDir0.getAbsolutePath)
+  val p = b.start()
+  val pidOpt = try {
+    val fld = p.getClass.getDeclaredField("pid")
+    fld.setAccessible(true)
+    Some(fld.getInt(p))
+  } catch {
+    case _: Throwable => None
+  }
+  for (pid <- pidOpt) {
+    java.nio.file.Files.write((jupyterDir0 / "pid").toPath, pid.toString.getBytes("UTF-8"))
+    java.lang.Runtime.getRuntime.addShutdownHook(
+      new Thread("jupyter-stop") {
+        override def run() =
+          Helper.jupyterStop(jupyterDir0)
+      }
+    )
+  }
+}
+
+lazy val Helper = new {
+  def jupyterStop(jupyterDir: File): Unit = {
+    val pidFile = jupyterDir / "pid"
+    if (pidFile.exists()) {
+      val b = java.nio.file.Files.readAllBytes((jupyterDir / "pid").toPath)
+      val pid = new String(b, "UTF-8").toInt
+      new ProcessBuilder("kill", pid.toString).start().waitFor()
+      java.nio.file.Files.deleteIfExists(pidFile.toPath)
+    }
+  }
+}
+
+jupyterStop := {
+  val jupyterDir0 = jupyterDir.value
+  Helper.jupyterStop(jupyterDir0)
+}

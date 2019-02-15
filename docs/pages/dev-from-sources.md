@@ -23,13 +23,56 @@ Usage: sbt [options]
 ```
 If it's not, [sbt-extras](https://github.com/paulp/sbt-extras) or the default installer from [the sbt website](https://scala-sbt.org) should do.
 
-## Compiling
-
 Check-out the sources with
 ```bash
 $ git clone https://github.com/almond-sh/almond.git
 $ cd almond
 ```
+
+## Setup
+
+From the almond sources, run
+```bash
+$ sbt jupyterStart shell
+```
+
+`jupyterStart` generates a [sbt-pack](https://github.com/xerial/sbt-pack)
+distribution of the kernel under `modules/scala-kernel/target/pack`
+(like `sbt scala-kernel/pack` would do), it also generates a `kernel.json`
+to run almond from that distribution, then runs `jupyter lab` with
+the `JUPYTER_PATH` environment variable pointing to that `kernel.json`. In the
+launched `jupyter lab`, the kernel with id `scala` and name `Scala (sources)`
+corresponds to the almond sources.
+
+This jupyter server is automatically killed when sbt exits, or can be manually
+stopped by typing `jupyterStop` at the sbt prompt.
+
+Automatically re-generate the kernel when sources change by typing
+```bash
+> ~scala-kernel/pack
+```
+at the sbt prompt. Re-starting the kernel in the jupyter UI should then pick
+the newly generated one.
+
+You can adjust the Jupyter command by changing it in `build.sbt` (look
+for `jupyterCommand`).
+
+Note that that approach does _not_ benefit from the ClassLoader isolation features
+that the coursier bootstrap-based approach allows for. All the almond
+dependencies are also seen from the user session.
+
+## Alternative launcher-based setup
+
+This setup generates a launcher very similar to the one that can be generated
+from the `coursier bootstrap` command of the
+[installation instructions](quick-start-install.md). This launcher
+benefits from the ClassLoader isolation that coursier bootstraps allow,
+effectively isolating the kernel-specific dependencies from the user
+facing ones. (To be more specific, this isolates the dependencies
+of the `scala-kernel` module, that aren't dependencies of the `scala-kernel-api`
+module - currently, this includes scalameta dependencies in particular.)
+
+### Compiling
 
 Compile and publish the kernel locally with
 ```bash
@@ -37,7 +80,7 @@ $ sbt publishLocal
 ```
 This installs the kernel artifacts under your `~/.ivy2/local` local repository. The kernel artifacts should land under `~/.ivy2/local/sh.almond/` in particular. In the output of `sbt publishLocal`, note the snapshot version the kernel is installed with. At the time of writing this, this version is `0.1.11-SNAPSHOT`.
 
-## Installing
+### Installing
 
 Create a launcher with
 ```bash
@@ -60,7 +103,7 @@ $ ./almond-snapshot --install \
 
 Optionally, change the log level with e.g. `--log debug`. If you'd like these logs to go to a distinct file rather than in the console, pass e.g. `--log-to "/path/to/log-file.txt"`.
 
-## Development cycle
+### Development cycle
 
 Once the kernel is installed this way, one can update its artifacts with `sbt publishLocal`. These are taken into account by restarting the kernel.
 
