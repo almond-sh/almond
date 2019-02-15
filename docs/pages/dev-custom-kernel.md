@@ -5,7 +5,7 @@ title: Writing custom kernels
 The sources of the scala kernel have such an example demo kernel under [this directory](https://github.com/jupyter-scala/jupyter-scala/tree/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo).
 
 See [the sources](https://github.com/almond-sh/almond/blob/8de9abd3597dbb6756d552a3f9de9b1b124e6f0f/build.sbt#L117-L125) for its dependencies. Currently, these are only
-- the `kernel` module, `"sh.almond" %% "kernel" % "0.1.9"`
+- the `kernel` module, `"sh.almond" %% "kernel" % "@VERSION@"`
 - [case-app](https://github.com/alexarchambault/case-app), `"com.github.alexarchambault" %% "case-app" % "2.0.0-M2"`
 
 Note that case-app can be replaced by the command-line parsing library of your choice.
