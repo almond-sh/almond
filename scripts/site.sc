@@ -15,7 +15,7 @@ lazy val version = Util.cached("version") {
 
 lazy val latestRelease = Util.cached("latest-release") {
   import sys.process._
-  val v = Seq("git", "describe", "--abbrev=0", "--match", "v*")
+  val v = Seq("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
     .!!
     .trim
     .stripPrefix("v")
