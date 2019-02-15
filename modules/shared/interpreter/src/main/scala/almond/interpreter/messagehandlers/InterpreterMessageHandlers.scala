@@ -11,8 +11,8 @@ import almond.protocol._
 import argonaut.{Json, JsonObject}
 import cats.effect.IO
 import cats.syntax.apply._
-import fs2.async.mutable.{Queue, Signal}
 import fs2.Stream
+import fs2.concurrent.{Queue, SignallingRef}
 
 import scala.concurrent.ExecutionContext
 
@@ -23,7 +23,7 @@ final case class InterpreterMessageHandlers(
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
   runAfterQueued: IO[Unit] => IO[Unit],
-  exitSignal: Signal[IO, Boolean]
+  exitSignal: SignallingRef[IO, Boolean]
 ) {
 
   import InterpreterMessageHandlers._

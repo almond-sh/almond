@@ -7,8 +7,7 @@ import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
 import cats.effect.IO
 import cats.syntax.apply._
-import fs2.async
-import fs2.async.mutable.Signal
+import fs2.concurrent.{Signal, SignallingRef}
 
 import scala.concurrent.ExecutionContext
 
@@ -30,10 +29,10 @@ final class InterpreterToIOInterpreter(
     interpreter.setCommHandler(commHandler0)
 
   private val cancelledSignal0 = {
-    implicit val ec = interpreterEc // maybe not the right ec, but that one shouldn't be used yet at that point
-    async.signalOf[IO, Boolean](false).unsafeRunSync()
+    implicit val shift = IO.contextShift(interpreterEc) // maybe not the right ec, but that one shouldn't be used yet at that point
+    SignallingRef[IO, Boolean](false).unsafeRunSync()
   }
-  def cancelledSignal: Signal[IO, Boolean] =
+  def cancelledSignal: SignallingRef[IO, Boolean] =
     cancelledSignal0
 
   /**

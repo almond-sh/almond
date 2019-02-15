@@ -4,7 +4,7 @@ import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
 import cats.effect.IO
-import fs2.async.mutable.Signal
+import fs2.concurrent.SignallingRef
 
 trait IOInterpreter {
 
@@ -44,6 +44,6 @@ trait IOInterpreter {
 
   def kernelInfo: IO[KernelInfo]
 
-  def cancelledSignal: Signal[IO, Boolean]
+  def cancelledSignal: SignallingRef[IO, Boolean]
 
 }

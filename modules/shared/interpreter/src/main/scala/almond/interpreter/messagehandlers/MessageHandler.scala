@@ -1,7 +1,6 @@
 package almond.interpreter.messagehandlers
 
-import fs2.async.boundedQueue
-import fs2.async.mutable.Queue
+import fs2.concurrent.Queue
 import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
@@ -153,8 +152,8 @@ object MessageHandler {
 
     val task = for {
       queue <- {
-        implicit val S = queueEc
-        boundedQueue[IO, (Channel, RawMessage)](40) // FIXME sizing?
+        implicit val shift = IO.contextShift(queueEc)
+        Queue.bounded[IO, (Channel, RawMessage)](40) // FIXME sizing?
       }
       main = run(queue)
       _ <- {
@@ -169,13 +168,18 @@ object MessageHandler {
           _ <- queue.enqueue1(poisonPill)
         } yield ()
 
-        t.attempt.flatMap {
+        val t0 = t.attempt.flatMap {
           case Left(e) =>
             log.error(s"Internal error while processing ${currentMessage.header.msg_type} message", e)
             IO.raiseError(e)
           case Right(()) =>
             IO.unit
-        }.start
+        }
+
+        {
+          implicit val shift = IO.contextShift(queueEc) // not sure that's the right EC for that
+          t0.start
+        }
       }
     } yield queue.dequeue.takeWhile(_ != poisonPill)
 

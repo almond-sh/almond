@@ -1,7 +1,7 @@
 package almond.channels
 
 import cats.effect.IO
-import fs2.{Sink, Stream}
+import fs2.{Pipe, Stream}
 
 import scala.concurrent.duration.{Duration, DurationInt}
 
@@ -67,12 +67,12 @@ abstract class Connection {
       .flatMap(t => Stream(t.toList: _*))
 
   /**
-    * [[Sink]] to send [[Message]]s to any [[Channel]].
+    * Sink to send [[Message]]s to any [[Channel]].
     */
-  final def sink: Sink[IO, (Channel, Message)] =
+  final def sink: Pipe[IO, (Channel, Message), Unit] =
     _.evalMap((send _).tupled)
 
-  final def autoCloseSink: Sink[IO, (Channel, Message)] =
-    s => Stream.bracket(IO.unit)(_ => sink(s), _ => close)
+  final def autoCloseSink: Pipe[IO, (Channel, Message), Unit] =
+    s => Stream.bracket(IO.unit)(_ => close).flatMap(_ => sink(s))
 
 }

@@ -9,13 +9,14 @@ import almond.kernel.KernelTests.threads
 import argonaut.{DecodeJson, Json}
 import cats.effect.IO
 import cats.syntax.apply._
-import fs2.{Sink, Stream, async}
+import fs2.concurrent.Queue
+import fs2.{Pipe, Stream}
 
 import scala.collection.mutable
 
 final case class ClientStreams(
   source: Stream[IO, (Channel, RawMessage)],
-  sink: Sink[IO, (Channel, RawMessage)],
+  sink: Pipe[IO, (Channel, RawMessage), Unit],
   generatedMessages: mutable.ListBuffer[Either[(Channel, Message[Json]), (Channel, Message[Json])]]
 ) {
 
@@ -153,16 +154,14 @@ object ClientStreams {
     val poisonPill: (Channel, RawMessage) = null
 
     val q = {
-      implicit val ec = threads.queueEc
-      async.boundedQueue[IO, (Channel, RawMessage)](10).unsafeRunSync()
+      implicit val shift = IO.contextShift(threads.queueEc)
+      Queue.bounded[IO, (Channel, RawMessage)](10).unsafeRunSync()
     }
 
-    val sink: Sink[IO, (Channel, RawMessage)] = { s =>
+    val sink: Pipe[IO, (Channel, RawMessage), Unit] = { s =>
 
-      val s0 = Stream.bracket(IO.unit)(
-        _ => s,
-        _ => q.enqueue1(poisonPill)
-      )
+      val s0 = Stream.bracket(IO.unit)(_ => q.enqueue1(poisonPill))
+        .flatMap(_ => s)
 
       s0.evalMap {
         case (c, m) =>
