@@ -16,6 +16,8 @@
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="../../undefined">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+  <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
+  <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
   <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
   <link rel="stylesheet" href="../../css/main.css">
  </head>
@@ -29,6 +31,7 @@
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
         <li class="siteNavGroupActive"><a href="intro" target="_self">Docs</a></li>
+        <li class=""><a href="../../blog" target="_self">Blog</a></li>
         <li class=""><a href="https://github.com/almond-sh/almond" target="_self">GitHub</a></li>
        </ul>
       </nav>
@@ -143,8 +146,8 @@
        <article>
         <div>
          <span><p>Docker images of almond are automatically published on <a href="https://hub.docker.com/r/almondsh/almond">dockerhub</a> upon each release.</p> <p>Run the latest version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:latest</span>
-</code></pre> <p>Run a specific version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:0.1.9</span>
-</code></pre> <p>Run a specific version with a specific Scala version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:0.1.9-scala-2.12.8</span>
+</code></pre> <p>Run a specific version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:0.3.0</span>
+</code></pre> <p>Run a specific version with a specific Scala version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:0.3.0-scala-2.12.8</span>
 </code></pre> <p>See <a href="install-versions">here</a> for the compatible Almond versions / Scala versions.</p> </span>
         </div>
        </article>

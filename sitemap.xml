@@ -3,6 +3,7 @@
 <url> <loc>https://almond-sh.github.io/almond/help</loc> <changefreq>weekly</changefreq> <priority>0.5</priority> <xhtml:link rel="alternate" hreflang="en" href="https://almond-sh.github.io/almond/en/help" /> </url>
 <url> <loc>https://almond-sh.github.io/almond/index</loc> <changefreq>weekly</changefreq> <priority>0.5</priority> <xhtml:link rel="alternate" hreflang="en" href="https://almond-sh.github.io/almond/en/index" /> </url>
 <url> <loc>https://almond-sh.github.io/almond/versions</loc> <changefreq>weekly</changefreq> <priority>0.5</priority> <xhtml:link rel="alternate" hreflang="en" href="https://almond-sh.github.io/almond/en/versions" /> </url>
+<url> <loc>https://almond-sh.github.io/almond/blog/2019/02/18/0.3.0</loc> <changefreq>weekly</changefreq> <priority>0.3</priority> </url>
 <url> <loc>https://almond-sh.github.io/almond/docs/next/api-access-instances</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://almond-sh.github.io/almond/docs/next/api-access-instances" /> </url>
 <url> <loc>https://almond-sh.github.io/almond/docs/next/api-ammonite</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://almond-sh.github.io/almond/docs/next/api-ammonite" /> </url>
 <url> <loc>https://almond-sh.github.io/almond/docs/next/api-jupyter</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://almond-sh.github.io/almond/docs/next/api-jupyter" /> </url>
