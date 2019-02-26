@@ -13,10 +13,10 @@ REPO="almond-sh/almond"
 NAME="almond"
 CMD="./scripts/generate-launcher.sh -f --bat=true" # will work once sync-ed to Maven Central
 
-# initial check with Sonatype releases
+# initial check with Sonatype staging (releases now redirects to Central)
 mkdir -p target/launcher
 export OUTPUT="target/launcher/$NAME"
-$CMD -r sonatype:releases
+$CMD -r sonatype:staging
 
 
 # actual script
