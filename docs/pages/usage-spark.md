@@ -3,7 +3,7 @@ title: Spark
 ---
 
 Almond comes with a Spark integration module called *almond-spark*, which allows you to connect to a Spark cluster and
-to run Spark calculation interactively from a Jupyter notebook.
+to run Spark calculations interactively from a Jupyter notebook.
 
 It is based on [ammonite-spark](https://github.com/alexarchambault/ammonite-spark), adding Jupyter specific features
 such as progress bars and cancellation for running Spark computations.
@@ -60,8 +60,8 @@ val rdd = sc.parallelize(1 to 100000000, 100)
 val n = rdd.map(_ + 1).sum()
 ```
 
-When you execute a Spark `Action` like run you should see a progress bar, showing the progress of the running Spark job,
-as well as a link to cancel the job.
+When you execute a Spark action like `sum` you should see a progress bar, showing the progress of the running Spark job,
+as well as a link to cancel the job if you are using the Jupyter classic UI.
 
 ### Syncing dependencies
 
