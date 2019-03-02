@@ -18,7 +18,9 @@ combinations [here](install-versions.md)).
 2. Create a launcher via [coursier](http://get-coursier.io):
 
 ```bash
-$ coursier bootstrap @EXTRA_COURSIER_ARGS@\
+$ curl -Lo coursier https://git.io/coursier-cli
+$ chmod +x coursier
+$ ./coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
     sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
