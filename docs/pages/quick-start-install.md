@@ -10,7 +10,7 @@ title: Installation
 $ SCALA_VERSION=@SCALA_VERSION@ ALMOND_VERSION=@VERSION@
 ```
 
-The available versions of Scala and Almond are can be found [here](https://github.com/almond.sh/almond/releases).
+The available versions of Scala and Almond are can be found [here](https://github.com/almond-sh/almond/releases).
 Adjust `ALMOND_VERSION` and `SCALA_VERSION` at your convenience to meet your
 needs. Not all combinations are guaranteed to be available. See the available
 combinations [here](install-versions.md)).
