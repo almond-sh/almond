@@ -5,7 +5,7 @@ import java.util.concurrent.Executors
 import almond.channels.{ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.util.Secret
-import org.zeromq.ZMQ
+import org.zeromq.{SocketType, ZMQ}
 import utest._
 
 import scala.concurrent.ExecutionContext
@@ -36,7 +36,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val rep = ZeromqSocket(
         repEc,
-        ZMQ.REP,
+        SocketType.REP,
         bind = true,
         s"tcp://localhost:$port",
         None,
@@ -49,7 +49,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val req = ZeromqSocket(
         reqEc,
-        ZMQ.REQ,
+        SocketType.REQ,
         bind = false,
         s"tcp://localhost:$port",
         None,
@@ -99,7 +99,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val rep = ZeromqSocket(
         repEc,
-        ZMQ.REP,
+        SocketType.REP,
         bind = true,
         s"tcp://localhost:$port",
         None,
@@ -112,7 +112,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val req = ZeromqSocket(
         reqEc,
-        ZMQ.REQ,
+        SocketType.REQ,
         bind = false,
         s"tcp://localhost:$port",
         None,
