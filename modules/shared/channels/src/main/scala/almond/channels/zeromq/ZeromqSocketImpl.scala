@@ -33,17 +33,23 @@ final class ZeromqSocketImpl(
 
   private val algorithm0 = algorithm.filter(_ != '-')
   private val macInstance = Mac.getInstance(algorithm0)
-  macInstance.init(new SecretKeySpec(key.value.getBytes(UTF_8), algorithm0))
+  private val enableMac = key.value.nonEmpty
+  if (enableMac) {
+    macInstance.init(new SecretKeySpec(key.value.getBytes(UTF_8), algorithm0))
+  }
 
   private def hmac(args: String*): String = {
+    if (enableMac) {
+      for (s <- args)
+        macInstance.update(s.getBytes(UTF_8))
 
-    for (s <- args)
-      macInstance.update(s.getBytes(UTF_8))
-
-    macInstance
-      .doFinal()
-      .map(s => f"$s%02x")
-      .mkString
+      macInstance
+        .doFinal()
+        .map(s => f"$s%02x")
+        .mkString
+    } else {
+      ""
+    }
   }
 
 
@@ -134,7 +140,7 @@ final class ZeromqSocketImpl(
 
       val expectedSignature = hmac(header, parentHeader, metaData, content)
 
-      if (expectedSignature == signature) {
+      if (expectedSignature == signature || !enableMac) {
         log.debug(s"Received on $channel message with header ${message.header} and idents ${identsAsStrings(message.idents)})")
         Some(message)
       } else {
