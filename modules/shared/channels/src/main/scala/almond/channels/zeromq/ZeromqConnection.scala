@@ -7,7 +7,7 @@ import almond.channels._
 import almond.logger.LoggerContext
 import cats.effect.IO
 import cats.syntax.apply._
-import org.zeromq.ZMQ
+import org.zeromq.{SocketType, ZMQ}
 import org.zeromq.ZMQ.{PollItem, Poller}
 
 import scala.concurrent.duration.Duration
@@ -26,17 +26,17 @@ final class ZeromqConnection(
   private val log = logCtx(getClass)
 
   private def routerDealer =
-    if (bind) ZMQ.ROUTER
-    else ZMQ.DEALER
+    if (bind) SocketType.ROUTER
+    else SocketType.DEALER
   private def inverseRouterDealer =
-    if (bind) ZMQ.DEALER
-    else ZMQ.ROUTER
+    if (bind) SocketType.DEALER
+    else SocketType.ROUTER
   private def pubSub =
-    if (bind) ZMQ.PUB
-    else ZMQ.SUB
+    if (bind) SocketType.PUB
+    else SocketType.SUB
   private def repReq =
-    if (bind) ZMQ.REP
-    else ZMQ.REQ
+    if (bind) SocketType.REP
+    else SocketType.REQ
 
   private val requests0 = ZeromqSocket(
     threads.ecs(Channel.Requests),

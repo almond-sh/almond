@@ -4,7 +4,7 @@ import almond.channels.Message
 import almond.logger.LoggerContext
 import almond.util.Secret
 import cats.effect.IO
-import org.zeromq.ZMQ
+import org.zeromq.{SocketType, ZMQ}
 
 import scala.concurrent.ExecutionContext
 
@@ -25,7 +25,7 @@ object ZeromqSocket {
     */
   def apply(
     ec: ExecutionContext,
-    socketType: Int,
+    socketType: SocketType,
     bind: Boolean,
     uri: String,
     identityOpt: Option[Array[Byte]],

@@ -9,14 +9,14 @@ import cats.effect.IO
 import cats.syntax.apply._
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import org.zeromq.ZMQ
+import org.zeromq.{SocketType, ZMQ}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 final class ZeromqSocketImpl(
   ec: ExecutionContext,
-  socketType: Int,
+  socketType: SocketType,
   bind: Boolean,
   uri: String,
   identityOpt: Option[Array[Byte]],
