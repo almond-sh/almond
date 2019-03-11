@@ -57,6 +57,7 @@
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Recent Posts</h3>
           <ul>
+           <li class="navListItem"><a class="navItem" href="2019/03/11/0.3.1">0.3.1</a></li>
            <li class="navListItem"><a class="navItem" href="2019/02/18/0.3.0">0.3.0</a></li>
           </ul>
          </div>
@@ -96,6 +97,31 @@
     <div class="container mainContainer postContainer blogContainer">
      <div class="wrapper">
       <div class="posts">
+       <div class="post">
+        <header class="postHeader">
+         <h1 class="postHeaderTitle"><a href="2019/03/11/0.3.1">0.3.1</a></h1>
+         <p class="post-meta">March 11, 2019</p>
+         <div class="authorBlock">
+          <p class="post-authorName"><a href="https://github.com/alexarchambault" target="_blank" rel="noreferrer noopener">Alexandre Archambault</a></p>
+         </div>
+        </header>
+        <article class="post-content">
+         <div>
+          <span><p>almond <code>0.3.1</code> was just released. This release contains updates along with a fix to have almond work on <a href="https://colab.research.google.com">Colaboratory</a>, thanks to the only <a href="https://github.com/shadaj">Shadaj Laddad</a>!</p> <h2><a class="anchor" aria-hidden="true" id="updates"></a><a href="index.html#updates" aria-hidden="true" class="hash-link">
+             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+             </svg></a>Updates</h2> <p>This release switches to <a href="https://ammonite.io">Ammonite</a> <code>1.6.4</code>, fs2 <code>1.0.4</code>, and jeromq <code>0.5.0</code>, among others.</p> <p>Ammonite <code>1.6.4</code> mainly switched from scalaj-http to requests-scala. It also doesn't print back private values, e.g.</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">private</span> <span class="hljs-keyword">val</span> n = <span class="hljs-number">2</span>
+<span class="hljs-keyword">val</span> m = n + <span class="hljs-number">1</span>
+</code></pre> <p>just prints back</p> <pre><code class="hljs">m: <span class="hljs-built_in">Int</span> = <span class="hljs-number">3</span>
+</code></pre> <p>rather than</p> <pre><code class="hljs">n: <span class="hljs-built_in">Int</span> = <span class="hljs-number">2</span>
+m: <span class="hljs-built_in">Int</span> = <span class="hljs-number">3</span>
+</code></pre> <p>(<code>n</code> isn't accessible in subsequent code, so it doesn't make much sense to pretty-print it.)</p> <h2><a class="anchor" aria-hidden="true" id="colaboratory"></a><a href="index.html#colaboratory" aria-hidden="true" class="hash-link">
+             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+             </svg></a>Colaboratory</h2> <p><a href="https://github.com/shadaj">Shadaj Laddad</a> contributed a fix allowing almond to run fine on <a href="https://colab.research.google.com">Colaboratory</a>.</p> <p>For the braves, the <a href="https://github.com/alexarchambault/almond-examples/blob/colab/notebooks/colab/install-almond.ipynb">following notebook</a> (<a href="https://github.com/alexarchambault/almond-examples/blob/89eed0ff78b0b1018154ec8b391afc48a6439999/notebooks/colab/install-almond.ipynb">more stable link</a>) allows one to setup almond in a <a href="https://colab.research.google.com">Colaboratory</a> environment.</p> <p>As using custom kernels isn't an official feature of Colaboratory yet, one cannot start almond sessions straightaway. Instead, an almond notebook has to be imported. Imported notebooks will have the right kernel. For example, notebooks from the <a href="https://github.com/almond-sh/examples">almond examples repository</a>, can be imported, and modified / run, once almond is installed.</p> </span>
+         </div>
+        </article>
+       </div>
        <div class="post">
         <header class="postHeader">
          <h1 class="postHeaderTitle"><a href="2019/02/18/0.3.0">0.3.0</a></h1>
