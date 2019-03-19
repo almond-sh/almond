@@ -1,0 +1,7 @@
+language: scala
+jdk: openjdk8
+env: REPO=almond-sh/almond SONATYPE_PROJECT=sh.almond
+script: scripts/update.sh
+cache:
+  directories:
+  - $HOME/.cache
