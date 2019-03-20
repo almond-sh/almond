@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>plotly chart</title>
+<script src="https://cdn.plot.ly/plotly-1.41.3.min.js"></script>
+</head>
+<body>
+<div id="downloads"></div>
+<div id="uniqueips"></div>
+<script>
+(function () {
+  var data0 = {"x":["2018-07-01 00:00:00","2018-08-01 00:00:00","2018-09-01 00:00:00","2018-10-01 00:00:00","2018-11-01 00:00:00","2018-12-01 00:00:00","2019-01-01 00:00:00","2019-02-01 00:00:00"],"name":"# downloads","y":[42.0,8281.0,37805.0,43012.0,36642.0,47744.0,81145.0,52627.0],"type":"bar"};
+
+  var data = [data0];
+  var layout = {};
+
+  Plotly.plot('downloads', data, layout);
+})();
+(function () {
+  var data0 = {"x":["2018-07-01 00:00:00","2018-08-01 00:00:00","2018-09-01 00:00:00","2018-10-01 00:00:00","2018-11-01 00:00:00","2018-12-01 00:00:00","2019-01-01 00:00:00","2019-02-01 00:00:00"],"name":"Unique IPs","y":[18.0,119.0,157.0,411.0,441.0,730.0,791.0,898.0],"type":"bar"};
+
+  var data = [data0];
+  var layout = {};
+
+  Plotly.plot('uniqueips', data, layout);
+})();
+</script>
+</body>
+</html>
