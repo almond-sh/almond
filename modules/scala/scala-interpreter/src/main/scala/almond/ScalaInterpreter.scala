@@ -22,6 +22,7 @@ import ammonite.repl._
 import ammonite.runtime._
 import ammonite.util._
 import ammonite.util.Util.{newLine, normalizeNewlines}
+import coursier.almond.tmp.Tmp
 import fastparse.Parsed
 import io.github.soc.directories.ProjectDirectories
 import jupyter.{Displayer, Displayers}
@@ -430,17 +431,23 @@ final class ScalaInterpreter(
       log.info("Ammonite interpreter ok")
 
       if (forceMavenProperties.nonEmpty)
-        ammInterp0.resolutionHooks += { res =>
-          res.copy(
-            forceProperties = res.forceProperties ++ forceMavenProperties
-          )
+        ammInterp0.resolutionHooks += { fetch =>
+          val params0 = Tmp.resolutionParams(fetch)
+          val params = params0
+            .withForcedProperties(params0.forcedProperties ++ forceMavenProperties)
+          fetch.withResolutionParams(params)
         }
 
       if (mavenProfiles.nonEmpty)
-        ammInterp0.resolutionHooks += { res =>
-          res.copy(
-            userActivations = Some(res.userActivations.getOrElse(Map.empty[String, Boolean]) ++ mavenProfiles)
-          )
+        ammInterp0.resolutionHooks += { fetch =>
+          val mavenProfiles0 = mavenProfiles.toVector.map {
+            case (p, true) => p
+            case (p, false) => "!" + p
+          }
+          val params0 = Tmp.resolutionParams(fetch)
+          val params = params0
+            .withProfiles(params0.profiles ++ mavenProfiles0)
+          fetch.withResolutionParams(params)
         }
 
       ammInterp0
