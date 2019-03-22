@@ -66,7 +66,7 @@ def main(publishLocal: Boolean = false, npmInstall: Boolean = false, yarnRunBuil
   assert(!(watch && relativize), "Cannot specify both --watch and --relativize")
 
   if (publishLocal)
-    Util.runCmd(Seq("sbt", "set version in ThisBuild := \"" + version + "\"", "interpreter-api/publishLocal", "scala-kernel-api/publishLocal", "almond-spark/publishLocal"))
+    Util.runCmd(Seq("sbt", "set version in ThisBuild := \"" + version + "\"", "interpreter-api/publishLocal", "jupyter-api/publishLocal", "scala-kernel-api/publishLocal", "almond-spark/publishLocal"))
 
   // be sure to adjust that
   val websiteDir = new File("docs/website")
