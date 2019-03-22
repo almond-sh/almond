@@ -5,7 +5,7 @@ import jupyter.{Displayer, Displayers}
 
 import scala.reflect.{ClassTag, classTag}
 
-trait JupyterApi { api =>
+abstract class JupyterApi { api =>
 
   /** Request input from the the Jupyter UI */
   final def stdin(prompt: String = "", password: Boolean = false): String =
@@ -47,7 +47,7 @@ trait JupyterApi { api =>
 
 object JupyterApi {
 
-  trait UpdatableResults {
+  abstract class UpdatableResults {
     def addVariable(k: String, v: String): Unit
     def updateVariable(k: String, v: String, last: Boolean): Unit
   }

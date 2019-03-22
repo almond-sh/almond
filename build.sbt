@@ -64,7 +64,8 @@ lazy val protocol = project
 lazy val `interpreter-api` = project
   .underShared
   .settings(
-    shared
+    shared,
+    mima
   )
 
 lazy val interpreter = project
@@ -100,9 +101,18 @@ lazy val test = project
     shared
   )
 
-lazy val `scala-kernel-api` = project
+lazy val `jupyter-api` = project
   .underScala
   .dependsOn(`interpreter-api`)
+  .settings(
+    shared,
+    mima,
+    libraryDependencies += Deps.jvmRepr
+  )
+
+lazy val `scala-kernel-api` = project
+  .underScala
+  .dependsOn(`interpreter-api`, `jupyter-api`)
   .settings(
     shared,
     crossVersion := CrossVersion.full,
@@ -190,6 +200,7 @@ lazy val almond = project
     echo,
     `interpreter-api`,
     interpreter,
+    `jupyter-api`,
     kernel,
     logger,
     protocol,

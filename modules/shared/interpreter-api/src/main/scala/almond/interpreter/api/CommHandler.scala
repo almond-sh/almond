@@ -19,7 +19,7 @@ import java.util.UUID
   *   comm.send('{"c": 2, "d": {"foo": [1, 2]}}');
   * }}}
   */
-abstract class CommHandler extends OutputHandler.UpdateDisplay with OutputHandler.UpdateHelpers {
+abstract class CommHandler extends OutputHandler.UpdateHelpers {
 
   import CommHandler.Comm
 

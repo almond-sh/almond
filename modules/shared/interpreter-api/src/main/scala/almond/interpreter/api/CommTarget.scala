@@ -5,7 +5,7 @@ package almond.interpreter.api
   *
   * See [[CommHandler]] to register it.
   */
-trait CommTarget {
+abstract class CommTarget {
   def open(id: String, data: String): Unit
   def message(id: String, data: String): Unit
   def close(id: String, data: String): Unit

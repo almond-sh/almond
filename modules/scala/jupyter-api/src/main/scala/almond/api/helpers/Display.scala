@@ -97,12 +97,10 @@ object Display {
 
   object Image {
 
-    sealed trait Format {
-      val contentType: String
-    }
-    case object JPG extends Format { val contentType = ContentType.jpg }
-    case object PNG extends Format { val contentType = ContentType.png }
-    case object GIF extends Format { val contentType = ContentType.gif }
+    sealed abstract class Format(val contentType: String) extends Product with Serializable
+    case object JPG extends Format(ContentType.jpg)
+    case object PNG extends Format(ContentType.png)
+    case object GIF extends Format(ContentType.gif)
 
     private val imageTypes = Set(JPG, PNG, GIF).map(_.contentType)
 

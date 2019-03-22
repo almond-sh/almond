@@ -2,6 +2,7 @@
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 
+import com.typesafe.tools.mima.plugin.MimaPlugin
 import sbt._
 import sbt.Keys._
 
@@ -154,5 +155,13 @@ object Settings {
       ver
     }
   }
+
+  lazy val mima = Seq(
+    MimaPlugin.autoImport.mimaPreviousArtifacts := {
+      Mima.binaryCompatibilityVersions.map { ver =>
+        (organization.value % moduleName.value % ver).cross(crossVersion.value)
+      }
+    }
+  )
 
 }
