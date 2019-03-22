@@ -13,7 +13,7 @@ package almond.interpreter.api
   *
   * If no cell is currently running, no new elements can be pushed to the UI, but previous ones can still be updated.
   */
-abstract class OutputHandler extends OutputHandler.UpdateDisplay with OutputHandler.Helpers with OutputHandler.UpdateHelpers {
+abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.UpdateHelpers {
 
   /** Sends stdout output the the Jupyter UI */
   def stdout(s: String): Unit
@@ -39,7 +39,8 @@ object OutputHandler {
     def updateDisplay(displayData: DisplayData): Unit
   }
 
-  trait Helpers { self: OutputHandler =>
+  abstract class Helpers extends UpdateDisplay {
+    def display(displayData: DisplayData): Unit
     final def html(html0: String): Unit =
       display(DisplayData(Map("text/html" -> html0)))
     final def html(html0: String, id: String): Unit =
@@ -51,7 +52,7 @@ object OutputHandler {
       display(DisplayData(Map("application/javascript" -> js0), idOpt = Some(id)))
   }
 
-  trait UpdateHelpers { self: UpdateDisplay =>
+  trait UpdateHelpers extends UpdateDisplay {
     final def updateHtml(html0: String, id: String): Unit =
       updateDisplay(DisplayData(Map("text/html" -> html0), idOpt = Some(id)))
   }
