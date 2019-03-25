@@ -1,7 +1,7 @@
 package almond.kernel.install
 
 import java.io.{ByteArrayOutputStream, InputStream}
-import java.net.URL
+import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
 
@@ -77,11 +77,14 @@ object Install {
     val dir = jupyterDir.resolve(kernelId)
 
     if (Files.exists(dir)) {
-      if (force) {
-        deleteRecursively(dir)
-        if (Files.exists(dir))
-          throw new Exception(s"Could not delete $dir")
-      } else
+      if (force)
+        // not deleting dir itself - on Windows, sometimes running into java.nio.file.AccessDeniedException in
+        // createDirectories below else
+        Files.list(dir)
+          .iterator()
+          .asScala
+          .foreach(deleteRecursively)
+      else
         throw new InstallException.InstallDirAlreadyExists(dir)
     }
 
@@ -132,13 +135,20 @@ object Install {
   def currentAppCommand(filterOutArgs: Set[String] = Set.empty): Option[List[String]] =
     for {
       mainJar <- sys.props.get("coursier.mainJar")
+      mainJar0 =
+        if (mainJar.startsWith("/"))
+          // Paths.get throws if given paths like "C:\\foo" on Windows, without
+          // this URI stuff
+          Paths.get(new URI("file://" + mainJar)).toString
+        else
+          mainJar // that case shouldn't happen
       mainArgs = Iterator.from(0)
         .map(i => s"coursier.main.arg-$i")
         .map(sys.props.get)
         .takeWhile(_.nonEmpty)
         .collect { case Some(arg) if !filterOutArgs(arg) => arg }
         .toList
-    } yield "java" :: "-jar" :: mainJar :: mainArgs
+    } yield "java" :: "-jar" :: mainJar0 :: mainArgs
 
   /**
     * Gets the command that launched the current application if possible.
