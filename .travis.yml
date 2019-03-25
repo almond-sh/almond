@@ -11,13 +11,13 @@ git:
 before_install:
   - source scripts/website/setup-build-tools.sh
 sudo: required
+services:
+  - docker
 stages:
   - name: test
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
-  - name: upload-launcher
-    if: tag IS present
-  - name: update-docker-images # after upload-launcher, that waited for the sync to Maven Central
+  - name: upload-artifacts
     if: tag IS present
   - name: update-versioned-docs
     if: tag IS present
@@ -48,10 +48,10 @@ jobs:
     script: amm scripts/site.sc --publishLocal true
   - stage: release
     script: sbt ci-release
-  - stage: upload-launcher
+  - stage: upload-artifacts
     name: "Upload launcher"
     script: scripts/upload-launcher.sh
-  - stage: update-docker-images
+  - stage: upload-artifacts
     name: "Update docker images"
     script: scripts/update-docker-images.sh
   - stage: update-versioned-docs

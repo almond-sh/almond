@@ -8,8 +8,8 @@ ARG LOCAL_IVY=no
 
 FROM almondsh/almond:coursier as local_ivy_yes
 USER $NB_UID
-RUN mkdir -p $HOME/.ivy2/local/
-ONBUILD COPY --chown=1000:100 ivy-local/ $HOME/.ivy2/local/
+ONBUILD RUN mkdir -p .ivy2/local/
+ONBUILD COPY --chown=1000:100 ivy-local/ .ivy2/local/
 
 FROM almondsh/almond:coursier as local_ivy_no
 

@@ -1,49 +1,34 @@
 #!/usr/bin/env bash
 set -euv
 
+if [[ ${TRAVIS_TAG} != v* ]]; then
+  echo "Not on a git tag"
+  exit 1
+fi
+
 SCALA212_VERSION="$(grep -oP '(?<=def scala212 = ")[^"]*(?<!")' project/Settings.scala)"
 SCALA211_VERSION="$(grep -oP '(?<=def scala211 = ")[^"]*(?<!")' project/Settings.scala)"
 
-VERSION="$(git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')"
+ALMOND_VERSION="$(git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')"
 
-mkdir -p target
-cd target
+DOCKER_REPO=almondsh/almond
+IMAGE_NAME=${DOCKER_REPO}:${ALMOND_VERSION}
 
-git clone "https://$GH_TOKEN@github.com/almond-sh/docker-images.git" -b template
-cd docker-images
+sbt '+ publishLocal'
+cp -r $HOME/.ivy2/local/ ivy-local/
 
-BRANCHES=()
+docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} --build-arg=LOCAL_IVY=yes \
+  --build-arg SCALA_VERSIONS="$SCALA211_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .
+docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} --build-arg=LOCAL_IVY=yes \
+  --build-arg SCALA_VERSIONS="$SCALA211_VERSION" -t ${IMAGE_NAME}-scala-${SCALA211_VERSION} .
+docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} --build-arg=LOCAL_IVY=yes \
+  --build-arg SCALA_VERSIONS="$SCALA212_VERSION" -t ${IMAGE_NAME}-scala-${SCALA212_VERSION} .
 
-for sv in "$SCALA211_VERSION" "$SCALA212_VERSION"; do
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-  BRANCH="almond-$VERSION-scala-$sv"
-  git checkout -b "$BRANCH" template
-  BRANCHES+=("$BRANCH")
+docker push ${IMAGE_NAME}-scala-${SCALA211_VERSION}
+docker push ${IMAGE_NAME}-scala-${SCALA212_VERSION}
+docker push ${IMAGE_NAME}
 
-  mv Dockerfile Dockerfile.tmp
-  cat Dockerfile.tmp |
-    sed 's@{SCALA_VERSION}@'"$sv"'@g' |
-    sed 's@{VERSION}@'"$VERSION"'@g' > Dockerfile
-  rm -f Dockerfile.tmp
-
-  git add Dockerfile
-  git commit -m "almond $VERSION, scala $sv"
-done
-
-DEFAULT_BRANCH="almond-$VERSION-scala-$SCALA212_VERSION"
-
-BRANCH="almond-$VERSION"
-git checkout -b "$BRANCH" "$DEFAULT_BRANCH"
-BRANCHES+=("$BRANCH")
-
-BRANCH="latest"
-git checkout -b "$BRANCH" "$DEFAULT_BRANCH"
-BRANCHES+=("$BRANCH")
-
-for b in "${BRANCHES[@]}"; do
-  if [ "$b" = "latest" ]; then
-    git push -f origin "$b"
-  else
-    git push origin "$b"
-  fi
-done
+docker tag ${IMAGE_NAME} ${DOCKER_REPO}:latest
+docker push ${DOCKER_REPO}:latest
