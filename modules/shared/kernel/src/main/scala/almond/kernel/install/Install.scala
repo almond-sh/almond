@@ -70,7 +70,7 @@ object Install {
       case Left(p) => p
       case Right(j) =>
         j.paths.headOption.getOrElse(
-          throw new Exception(s"No Jupyter ${j.name} directory found")
+          throw new InstallException.JupyterDirectoryTypeNotFound(j.name)
         )
     }
 
@@ -82,7 +82,7 @@ object Install {
         if (Files.exists(dir))
           throw new Exception(s"Could not delete $dir")
       } else
-        throw new Exception(s"$dir already exists, pass --force to force erasing it")
+        throw new InstallException.InstallDirAlreadyExists(dir)
     }
 
     Files.createDirectories(dir)
@@ -218,10 +218,7 @@ object Install {
         case None =>
           if (options.arg.isEmpty)
             Install.currentAppCommand(Set("--install", "--force", "--global").flatMap(s => Seq(s, s"$s=true"))).getOrElse {
-              throw new Exception(
-                "Could not determine the command that launches the kernel. Run the kernel with coursier, or " +
-                  "pass the kernel command via -c first-arg -c second-arg …"
-              )
+              throw new InstallException.CannotGetKernelCommand
             }
           else
             options.arg
