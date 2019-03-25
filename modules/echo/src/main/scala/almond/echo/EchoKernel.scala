@@ -11,6 +11,16 @@ object EchoKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
 
+    val logCtx = Level.fromString(options.log) match {
+      case Left(err) =>
+        Console.err.println(err)
+        sys.exit(1)
+      case Right(level) =>
+        LoggerContext.stderr(level)
+    }
+
+    val log = logCtx(getClass)
+
     if (options.install)
       Install.installOrError(
         defaultId = "echo",
@@ -19,7 +29,8 @@ object EchoKernel extends CaseApp[Options] {
         options = options.installOptions
       ) match {
         case Left(e) =>
-          Console.err.println(s"Error: $e")
+          log.debug("Cannot install kernel", e)
+          Console.err.println(s"Error: ${e.getMessage}")
           sys.exit(1)
         case Right(dir) =>
           println(s"Installed echo kernel under $dir")
@@ -33,16 +44,6 @@ object EchoKernel extends CaseApp[Options] {
       )
       sys.exit(1)
     }
-
-    val logCtx = Level.fromString(options.log) match {
-      case Left(err) =>
-        Console.err.println(err)
-        sys.exit(1)
-      case Right(level) =>
-        LoggerContext.stderr(level)
-    }
-
-    val log = logCtx(getClass)
 
     val zeromqThreads = ZeromqThreads.create("echo-kernel")
     val kernelThreads = KernelThreads.create("echo-kernel")

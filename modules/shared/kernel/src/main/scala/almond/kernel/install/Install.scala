@@ -257,7 +257,7 @@ object Install {
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
     interruptMode: Option[String] = None
-  ): Either[String, Path] =
+  ): Either[InstallException, Path] =
     try {
       val dir = install(
         defaultId,
@@ -270,8 +270,8 @@ object Install {
       )
       Right(dir)
     } catch {
-      case NonFatal(e) =>
-        Left(Option(e.getMessage).getOrElse(e.toString))
+      case e: InstallException =>
+        Left(e)
     }
 
 }
