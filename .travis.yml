@@ -17,7 +17,9 @@ stages:
   - name: test
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
-  - name: upload-artifacts
+  - name: upload-launcher
+    if: (branch = master AND type = push) OR tag IS present
+  - name: update-docker-images # after upload-launcher, that waited for the sync to Maven Central
     if: tag IS present
   - name: update-versioned-docs
     if: tag IS present
@@ -48,10 +50,10 @@ jobs:
     script: amm scripts/site.sc --publishLocal true
   - stage: release
     script: sbt ci-release
-  - stage: upload-artifacts
+  - stage: upload-launcher
     name: "Upload launcher"
     script: scripts/upload-launcher.sh
-  - stage: upload-artifacts
+  - stage: update-docker-images
     name: "Update docker images"
     script: scripts/update-docker-images.sh
   - stage: update-versioned-docs
