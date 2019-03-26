@@ -1,7 +1,7 @@
 package almond.kernel.install
 
 import java.io.{ByteArrayOutputStream, InputStream}
-import java.net.URL
+import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
 
@@ -70,19 +70,22 @@ object Install {
       case Left(p) => p
       case Right(j) =>
         j.paths.headOption.getOrElse(
-          throw new Exception(s"No Jupyter ${j.name} directory found")
+          throw new InstallException.JupyterDirectoryTypeNotFound(j.name)
         )
     }
 
     val dir = jupyterDir.resolve(kernelId)
 
     if (Files.exists(dir)) {
-      if (force) {
-        deleteRecursively(dir)
-        if (Files.exists(dir))
-          throw new Exception(s"Could not delete $dir")
-      } else
-        throw new Exception(s"$dir already exists, pass --force to force erasing it")
+      if (force)
+        // not deleting dir itself - on Windows, sometimes running into java.nio.file.AccessDeniedException in
+        // createDirectories below else
+        Files.list(dir)
+          .iterator()
+          .asScala
+          .foreach(deleteRecursively)
+      else
+        throw new InstallException.InstallDirAlreadyExists(dir)
     }
 
     Files.createDirectories(dir)
@@ -132,13 +135,20 @@ object Install {
   def currentAppCommand(filterOutArgs: Set[String] = Set.empty): Option[List[String]] =
     for {
       mainJar <- sys.props.get("coursier.mainJar")
+      mainJar0 =
+        if (mainJar.startsWith("/"))
+          // Paths.get throws if given paths like "C:\\foo" on Windows, without
+          // this URI stuff
+          Paths.get(new URI("file://" + mainJar)).toString
+        else
+          mainJar // that case shouldn't happen
       mainArgs = Iterator.from(0)
         .map(i => s"coursier.main.arg-$i")
         .map(sys.props.get)
         .takeWhile(_.nonEmpty)
         .collect { case Some(arg) if !filterOutArgs(arg) => arg }
         .toList
-    } yield "java" :: "-jar" :: mainJar :: mainArgs
+    } yield "java" :: "-jar" :: mainJar0 :: mainArgs
 
   /**
     * Gets the command that launched the current application if possible.
@@ -218,10 +228,7 @@ object Install {
         case None =>
           if (options.arg.isEmpty)
             Install.currentAppCommand(Set("--install", "--force", "--global").flatMap(s => Seq(s, s"$s=true"))).getOrElse {
-              throw new Exception(
-                "Could not determine the command that launches the kernel. Run the kernel with coursier, or " +
-                  "pass the kernel command via -c first-arg -c second-arg …"
-              )
+              throw new InstallException.CannotGetKernelCommand
             }
           else
             options.arg
@@ -260,7 +267,7 @@ object Install {
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
     interruptMode: Option[String] = None
-  ): Either[String, Path] =
+  ): Either[InstallException, Path] =
     try {
       val dir = install(
         defaultId,
@@ -273,8 +280,8 @@ object Install {
       )
       Right(dir)
     } catch {
-      case NonFatal(e) =>
-        Left(Option(e.getMessage).getOrElse(e.toString))
+      case e: InstallException =>
+        Left(e)
     }
 
 }

@@ -10,6 +10,14 @@ title: Installation
 $ SCALA_VERSION=@SCALA_VERSION@ ALMOND_VERSION=@VERSION@
 ```
 
+<details>
+<summary>Equivalent Windows command</summary>
+```bat
+> set SCALA_VERSION=@SCALA_VERSION@
+> set ALMOND_VERSION=@VERSION@
+```
+</details>
+
 The available versions of Scala and Almond are can be found [here](https://github.com/almond-sh/almond/releases).
 Adjust `ALMOND_VERSION` and `SCALA_VERSION` at your convenience to meet your
 needs. Not all combinations are guaranteed to be available. See the available
@@ -27,6 +35,21 @@ $ ./coursier bootstrap @EXTRA_COURSIER_ARGS@\
     -o almond
 ```
 
+<details>
+<summary>Equivalent Windows command</summary>
+From Windows, run instead
+```bat
+> bitsadmin /transfer downloadCoursierCli https://git.io/coursier-cli "%cd%\coursier"
+> bitsadmin /transfer downloadCoursierBat https://git.io/coursier-bat "%cd%\coursier.bat"
+> .\coursier bootstrap ^
+    -r jitpack ^
+    -i user -I user:sh.almond:scala-kernel-api_%SCALA_VERSION%:%ALMOND_VERSION% ^
+    sh.almond:scala-kernel_%SCALA_VERSION%:%ALMOND_VERSION% ^
+    -o almond
+> .\almond --install
+```
+</details>
+
 ## Install the almond kernel
 
 3. Run the launcher to install the almond kernel:
@@ -34,6 +57,13 @@ $ ./coursier bootstrap @EXTRA_COURSIER_ARGS@\
 ```bash
 $ ./almond --install
 ```
+
+<details>
+<summary>Equivalent Windows command</summary>
+```bat
+$ .\almond --install
+```
+</details>
 
 4. Once the kernel is installed, you can use it within Jupyter or nteract.
 

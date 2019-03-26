@@ -38,7 +38,16 @@ object Settings {
     // with same major and minor numbers (e.g. 2.12.6 and 2.12.7)
     publishConfiguration := publishConfiguration.value.withOverwrite(true),
     exportVersionsSetting
-  )
+  ) ++ {
+    val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(java.util.Locale.ROOT)
+    if (prop == "0" || prop == "false")
+      Seq(
+        sources in (Compile, doc) := Seq.empty,
+        publishArtifact in (Compile, packageDoc) := false
+      )
+    else
+      Nil
+  }
 
   lazy val dontPublish = Seq(
     publish := {},

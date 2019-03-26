@@ -1,0 +1,34 @@
+version: '{build}'
+os: Windows Server 2012
+install:
+  - cmd: mkdir C:\utils
+  - cmd: curl -Lo C:\utils\sbt https://github.com/coursier/sbt-launcher/releases/download/v1.2.6/csbt
+  - cmd: curl -Lo C:\utils\sbt.bat https://github.com/coursier/sbt-launcher/releases/download/v1.2.6/csbt.bat
+  - cmd: curl -Lo C:\utils\coursier https://git.io/coursier-cli
+  - cmd: curl -Lo C:\utils\coursier.bat https://git.io/coursier-bat
+  - cmd: SET JAVA_HOME=C:\Program Files\Java\jdk1.8.0
+  - cmd: SET PATH=C:\utils;%JAVA_HOME%\bin;%PATH%
+  - cmd: SET JAVA_OPTS=-Xmx4g -Xss2m -Dpublish.javadoc=0
+  - cmd: SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
+  - "python --version"
+  - "python -m pip install --upgrade pip"
+  - "python -m pip install jupyter" # TODO freeze that for better reproducibility?
+environment:
+  PYTHON: C:\Miniconda37-x64
+  TEST_SCALA_VERSION: 2.12.8
+  TEST_ALMOND_VERSION: 0.1.1-local
+
+build_script:
+  - jupyter kernelspec list
+  - sbt "set version in ThisBuild := \"%TEST_ALMOND_VERSION%\"" ++%TEST_SCALA_VERSION% publishLocal
+
+test_script:
+  - coursier bootstrap -r jitpack -i user -I user:sh.almond:scala-kernel-api_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% --sources --default=true --embed-files=false sh.almond:scala-kernel_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% -o launcher
+  - .\launcher --install
+  - jupyter kernelspec list
+  - jupyter nbconvert --to notebook --execute --ExecutePreprocessor.kernel_name=scala examples/test.ipynb --output=test-output.ipynb
+  - fc examples\test.ipynb examples\test-output.ipynb
+
+branches:
+  only:
+    - master
