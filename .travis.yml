@@ -18,7 +18,7 @@ stages:
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
   - name: upload-launcher
-    if: (branch = master AND type = push) OR tag IS present
+    if: tag IS present
   - name: update-docker-images # after upload-launcher, that waited for the sync to Maven Central
     if: tag IS present
   - name: update-versioned-docs
