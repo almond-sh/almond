@@ -11,6 +11,8 @@ git:
 before_install:
   - source scripts/website/setup-build-tools.sh
 sudo: required
+services:
+  - docker
 stages:
   - name: test
   - name: release
