@@ -14,7 +14,7 @@ if [[ ${TRAVIS_TAG} != v* ]]; then
   echo "Not on a git tag, creating snapshot image"
   ALMOND_VERSION=${ALMOND_VERSION%.*}.$((${ALMOND_VERSION##*.} + 1))-SNAPSHOT
   IMAGE_NAME=${DOCKER_REPO}:snapshot
-  sbt '+ publishLocal'
+  sbt 'set version in ThisBuild := "'${ALMOND_VERSION}'"' '+ publishLocal'
   cp -r $HOME/.ivy2/local/ ivy-local/
   docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} --build-arg=LOCAL_IVY=yes \
     --build-arg SCALA_VERSIONS="$SCALA211_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .
