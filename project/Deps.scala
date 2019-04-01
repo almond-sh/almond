@@ -25,7 +25,7 @@ object Deps {
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.26"
 
   def sparkSql20 = "org.apache.spark" %% "spark-sql" % "2.0.2" // no need to bump that version much, to ensure we don't rely on too new stuff
-  def sparkSql24 = "org.apache.spark" %% "spark-sql" % "2.4.0" // that version's required for scala 2.12
+  def sparkSql24 = "org.apache.spark" %% "spark-sql" % "2.4.1" // that version's required for scala 2.12
   def sparkSql = setting {
     if (Settings.isAtLeast212.value)
       sparkSql24
