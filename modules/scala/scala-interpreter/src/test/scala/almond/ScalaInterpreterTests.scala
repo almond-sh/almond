@@ -5,6 +5,7 @@ import java.nio.file.{Path, Paths}
 import almond.interpreter.api.DisplayData
 import almond.interpreter.{Completion, ExecuteResult, Interpreter}
 import almond.TestLogging.logCtx
+import almond.TestUtil._
 import ammonite.util.Colors
 import utest._
 
@@ -168,15 +169,21 @@ object ScalaInterpreterTests extends TestSuite {
 
       * - {
         val code = "HashM"
+
+        val extraCompletions =
+          if (isScala211 || isScala212)
+            Seq("scala.collection.parallel.immutable.HashMapCombiner")
+          else
+            Nil
+
         val expectedRes = Completion(
           0,
           5,
           Seq(
             "java.util.HashMap",
             "scala.collection.immutable.HashMap",
-            "scala.collection.mutable.HashMap",
-            "scala.collection.parallel.immutable.HashMapCombiner"
-          )
+            "scala.collection.mutable.HashMap"
+          ) ++ extraCompletions
         )
         val res0 = interpreter.complete(code, code.length)
         val res = res0.copy(

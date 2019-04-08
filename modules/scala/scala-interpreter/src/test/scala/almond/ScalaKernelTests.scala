@@ -8,8 +8,8 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol._
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
-import almond.logger.{Level, LoggerContext}
 import almond.TestLogging.logCtx
+import almond.TestUtil._
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
 import argonaut.Json
@@ -411,87 +411,89 @@ object ScalaKernelTests extends TestSuite {
 
     "auto-update Rx stuff upon change" - {
 
-      // How the pseudo-client behaves
+      if (isScala211 || isScala212) {
+        // How the pseudo-client behaves
 
-      val sessionId = UUID.randomUUID().toString
-      val lastMsgId = UUID.randomUUID().toString
+        val sessionId = UUID.randomUUID().toString
+        val lastMsgId = UUID.randomUUID().toString
 
-      // When the pseudo-client exits
+        // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+        val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+          (_, m) =>
+            IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
-      // Initial messages from client
+        // Initial messages from client
 
-      val input = Stream(
-        execute(sessionId, "almondrx.setup()"),
-        execute(sessionId, "val a = rx.Var(1)"),
-        execute(sessionId, "a() = 2"),
-        execute(sessionId, "a() = 3", lastMsgId)
-      )
+        val input = Stream(
+          execute(sessionId, "almondrx.setup()"),
+          execute(sessionId, "val a = rx.Var(1)"),
+          execute(sessionId, "a() = 2"),
+          execute(sessionId, "a() = 3", lastMsgId)
+        )
 
 
-      val streams = ClientStreams.create(input, stopWhen)
+        val streams = ClientStreams.create(input, stopWhen)
 
-      val interpreter = new ScalaInterpreter(
-        updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite,
-        logCtx = logCtx
-      )
+        val interpreter = new ScalaInterpreter(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite,
+          logCtx = logCtx
+        )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+          .flatMap(_.run(streams.source, streams.sink))
 
-      t.unsafeRunTimedOrThrow()
+        t.unsafeRunTimedOrThrow()
 
-      val messageTypes = streams.generatedMessageTypes()
+        val messageTypes = streams.generatedMessageTypes()
 
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "stream",
-        "execute_reply",
-        "execute_input",
-        "display_data",
-        "execute_reply",
-        "execute_input",
-        "update_display_data",
-        "execute_reply",
-        "execute_input",
-        "update_display_data",
-        "execute_reply"
-      )
+        val expectedMessageTypes = Seq(
+          "execute_input",
+          "stream",
+          "execute_reply",
+          "execute_input",
+          "display_data",
+          "execute_reply",
+          "execute_input",
+          "update_display_data",
+          "execute_reply",
+          "execute_input",
+          "update_display_data",
+          "execute_reply"
+        )
 
-      assert(messageTypes == expectedMessageTypes)
+        assert(messageTypes == expectedMessageTypes)
 
-      val displayData = streams.displayData
-      val id = {
-        val ids = displayData.flatMap(_._1.transient.display_id).toSet
-        assert(ids.size == 1)
-        ids.head
+        val displayData = streams.displayData
+        val id = {
+          val ids = displayData.flatMap(_._1.transient.display_id).toSet
+          assert(ids.size == 1)
+          ids.head
+        }
+
+        val expectedDisplayData = Seq(
+          Execute.DisplayData(
+            Map("text/plain" -> Json.jString("a: rx.Var[Int] = 1")),
+            Map(),
+            Execute.DisplayData.Transient(Some(id))
+          ) -> false,
+          Execute.DisplayData(
+            Map("text/plain" -> Json.jString("a: rx.Var[Int] = 2")),
+            Map(),
+            Execute.DisplayData.Transient(Some(id))
+          ) -> true,
+          Execute.DisplayData(
+            Map("text/plain" -> Json.jString("a: rx.Var[Int] = 3")),
+            Map(),
+            Execute.DisplayData.Transient(Some(id))
+          ) -> true
+        )
+
+        displayData.foreach(println)
+
+        assert(displayData == expectedDisplayData)
       }
-
-      val expectedDisplayData = Seq(
-        Execute.DisplayData(
-          Map("text/plain" -> Json.jString("a: rx.Var[Int] = 1")),
-          Map(),
-          Execute.DisplayData.Transient(Some(id))
-        ) -> false,
-        Execute.DisplayData(
-          Map("text/plain" -> Json.jString("a: rx.Var[Int] = 2")),
-          Map(),
-          Execute.DisplayData.Transient(Some(id))
-        ) -> true,
-        Execute.DisplayData(
-          Map("text/plain" -> Json.jString("a: rx.Var[Int] = 3")),
-          Map(),
-          Execute.DisplayData.Transient(Some(id))
-        ) -> true
-      )
-
-      displayData.foreach(println)
-
-      assert(displayData == expectedDisplayData)
     }
 
     "handle interrupt messages" - {

@@ -10,6 +10,7 @@ object Settings {
 
   def scala211 = "2.11.12"
   def scala212 = "2.12.8"
+  def scala213 = "2.13.0-M5"
 
   lazy val isAtLeast212 = Def.setting {
     CrossVersion.partialVersion(scalaVersion.value) match {
@@ -18,9 +19,38 @@ object Settings {
     }
   }
 
+  def onlyIn(sbv: String*) = {
+
+    val sbv0 = sbv.toSet
+    val ok = Def.setting {
+      CrossVersion.partialVersion(scalaBinaryVersion.value)
+        .map { case (maj, min) => s"$maj.$min" }
+        .exists(sbv0)
+    }
+
+    Seq(
+      baseDirectory := {
+        val baseDir = baseDirectory.value
+
+        if (ok.value)
+          baseDir
+        else
+          baseDir / "target" / "dummy"
+      },
+      libraryDependencies := {
+        val deps = libraryDependencies.value
+        if (ok.value)
+          deps
+        else
+          Nil
+      },
+      publishArtifact := ok.value
+    )
+  }
+
   lazy val shared = Seq(
     scalaVersion := scala212,
-    crossScalaVersions := Seq(scala212, "2.12.7", "2.12.6", scala211),
+    crossScalaVersions := Seq(scala213, scala212, "2.12.7", "2.12.6", scala211),
     scalacOptions ++= Seq(
       // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
       "-deprecation",
@@ -37,7 +67,17 @@ object Settings {
     // Seems required when cross-publishing for several scala versions
     // with same major and minor numbers (e.g. 2.12.6 and 2.12.7)
     publishConfiguration := publishConfiguration.value.withOverwrite(true),
-    exportVersionsSetting
+    exportVersionsSetting,
+    unmanagedSourceDirectories.in(Compile) ++= {
+      val sbv = scalaBinaryVersion.value
+      CrossVersion.partialVersion(sbv) match {
+        case Some((2, n)) if n == 11 || n == 12 =>
+          Seq(baseDirectory.value / "src" / "main" / "scala-2.11_2.12")
+        case Some((2, 13)) if sbv != "2.13" =>
+          Seq(baseDirectory.value / "src" / "main" / "scala-2.13")
+        case _ => Nil
+      }
+    }
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(java.util.Locale.ROOT)
     if (prop == "0" || prop == "false")
@@ -120,7 +160,7 @@ object Settings {
     fork.in(Test) := true, // Java serialization goes awry without that
     testFrameworks += new TestFramework("utest.runner.Framework"),
     javaOptions.in(Test) ++= Seq("-Xmx3g", "-Dfoo=bzz"),
-    libraryDependencies += Deps.utest % "test"
+    libraryDependencies += Deps.utest.value % "test"
   )
 
   implicit class ProjectOps(val project: Project) extends AnyVal {
@@ -167,9 +207,17 @@ object Settings {
 
   lazy val mima = Seq(
     MimaPlugin.autoImport.mimaPreviousArtifacts := {
-      Mima.binaryCompatibilityVersions.map { ver =>
-        (organization.value % moduleName.value % ver).cross(crossVersion.value)
+      val sbv = scalaBinaryVersion.value
+      val isSimpleVersion = CrossVersion.partialVersion(sbv) match {
+        case Some((maj, min)) => s"$maj.$min" == sbv
+        case _ => true // ???
       }
+      if (isSimpleVersion)
+        Mima.binaryCompatibilityVersions.map { ver =>
+          (organization.value % moduleName.value % ver).cross(crossVersion.value)
+        }
+      else
+        Set.empty
     }
   )
 
