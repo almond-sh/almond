@@ -74,7 +74,6 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.metabrowseServer,
       Deps.scalatags,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
@@ -129,6 +128,7 @@ lazy val `scala-interpreter` = project
   .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test", `almond-rx` % Test)
   .settings(
     shared,
+    libraryDependencies += Deps.metabrowseServer,
     crossVersion := CrossVersion.full,
     testSettings
   )
