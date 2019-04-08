@@ -83,7 +83,7 @@ object Settings {
     resourceGenerators.in(Compile) += Def.task {
 
       val dir = classDirectory.in(Compile).value / "almond"
-      val res = coursier.CoursierPlugin.autoImport.coursierResolutions
+      val res = coursier.sbtcoursier.CoursierPlugin.autoImport.coursierResolutions
         .value
         .collectFirst {
           case (scopes, r) if scopes(coursier.core.Configuration.compile) =>
