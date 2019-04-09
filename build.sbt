@@ -74,7 +74,6 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.metabrowseServer,
       Deps.scalatags,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
@@ -129,6 +128,14 @@ lazy val `scala-interpreter` = project
   .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test", `almond-rx` % Test)
   .settings(
     shared,
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaBinaryVersion.value) match {
+        case Some((2, n)) if n == 11 || n == 12 =>
+          Seq(Deps.metabrowseServer)
+        case _ =>
+          Nil
+      }
+    },
     crossVersion := CrossVersion.full,
     testSettings
   )
@@ -180,7 +187,8 @@ lazy val `almond-spark` = project
       Deps.ammoniteSpark,
       Deps.argonautShapeless,
       Deps.sparkSql.value % "provided"
-    )
+    ),
+    onlyIn("2.11", "2.12")
   )
 
 lazy val `almond-rx` = project
@@ -188,7 +196,8 @@ lazy val `almond-rx` = project
   .dependsOn(`scala-kernel-api` % Provided)
   .settings(
     shared,
-    libraryDependencies += Deps.scalaRx
+    libraryDependencies += Deps.scalaRx,
+    onlyIn("2.11", "2.12")
   )
 
 lazy val almond = project

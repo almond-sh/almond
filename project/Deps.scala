@@ -1,12 +1,12 @@
 
 import sbt._
 import sbt.Def.setting
-import sbt.Keys.scalaVersion
+import sbt.Keys.{scalaBinaryVersion, scalaVersion}
 
 object Deps {
 
   object Versions {
-    def ammonite = "1.6.5"
+    def ammonite = "1.6.5-7-189109d"
   }
 
   def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
@@ -33,6 +33,12 @@ object Deps {
       sparkSql20
   }
 
-  def utest = "com.lihaoyi" %% "utest" % "0.6.7"
+  def utest = setting {
+    val sbv = scalaBinaryVersion.value
+    val ver =
+      if (sbv == "2.13.0-M5") "0.6.6"
+      else "0.6.7"
+    "com.lihaoyi" %% "utest" % ver
+  }
 
 }
