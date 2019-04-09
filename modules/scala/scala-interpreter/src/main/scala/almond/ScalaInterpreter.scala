@@ -222,25 +222,36 @@ final class ScalaInterpreter(
               custom: Option[String]
             )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Iterator[String] = {
 
-              val displayerPublishOpt =
-                if (classTagT == null)
-                  None
-                else
-                  currentPublishOpt.flatMap { p =>
-                    Some(Displayers.registration().find(classTagT.runtimeClass))
-                      .filter(_ ne defaultDisplayer)
-                      .map(d => (d.asInstanceOf[Displayer[T]], p))
-                  }
-
-              displayerPublishOpt match {
+              currentPublishOpt match {
                 case None =>
                   super.print(value, ident, custom)(tprint, tcolors, classTagT)
-                case Some((displayer, publish)) =>
-                  import scala.collection.JavaConverters._
-                  val m = displayer.display(value)
-                  val data = DisplayData(m.asScala.toMap)
-                  publish.display(data)
-                  Iterator()
+                case Some(p) =>
+
+                  val isUpdatableDisplay =
+                    classTagT != null &&
+                      classOf[almond.display.Display]
+                        .isAssignableFrom(classTagT.runtimeClass)
+
+                  val jvmReprDisplayer: Displayer[_] =
+                    Displayers.registration().find(classTagT.runtimeClass)
+                  val useJvmReprDisplay =
+                    jvmReprDisplayer ne defaultDisplayer
+
+                  if (isUpdatableDisplay) {
+                    val d = value.asInstanceOf[almond.display.Display]
+                    d.display()(p)
+                    Iterator()
+                  } else if (useJvmReprDisplay) {
+                    import scala.collection.JavaConverters._
+                    val m = jvmReprDisplayer
+                      .asInstanceOf[Displayer[T]]
+                      .display(value)
+                      .asScala
+                      .toMap
+                    p.display(DisplayData(m))
+                    Iterator()
+                  } else
+                    super.print(value, ident, custom)(tprint, tcolors, classTagT)
               }
             }
           }

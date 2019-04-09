@@ -247,8 +247,8 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute(sessionId, """val handle = html("<b>foo</b>")"""),
-        execute(sessionId, """handle.update("<i>bzz</i>")"""),
+        execute(sessionId, """val handle = Html("<b>foo</b>")"""),
+        execute(sessionId, """handle.withContent("<i>bzz</i>").update()"""),
         execute(sessionId, """val s = "other"""", lastMsgId)
       )
 
@@ -265,22 +265,26 @@ object ScalaKernelTests extends TestSuite {
 
       t.unsafeRunTimedOrThrow()
 
-      val messageTypes = streams.generatedMessageTypes()
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "display_data",
-        "execute_result",
+      val expectedRequestsMessageTypes = Seq(
         "execute_reply",
-        "execute_input",
-        "update_display_data",
         "execute_reply",
-        "execute_input",
-        "execute_result",
         "execute_reply"
       )
 
-      assert(messageTypes == expectedMessageTypes)
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "display_data",
+        "execute_input",
+        "update_display_data",
+        "execute_input",
+        "execute_result"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
 
       val displayData = streams.displayData
       val id = {
@@ -465,7 +469,13 @@ object ScalaKernelTests extends TestSuite {
 
         assert(messageTypes == expectedMessageTypes)
 
-        val displayData = streams.displayData
+        val displayData = streams.displayData.map {
+          case (d, b) =>
+            val d0 = d.copy(
+              data = d.data.filterKeys(_ == "text/plain").toMap
+            )
+            (d0, b)
+        }
         val id = {
           val ids = displayData.flatMap(_._1.transient.display_id).toSet
           assert(ids.size == 1)
