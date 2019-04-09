@@ -33,6 +33,6 @@ object Deps {
       sparkSql20
   }
 
-  def utest = "com.lihaoyi" %% "utest" % "0.6.6"
+  def utest = "com.lihaoyi" %% "utest" % "0.6.7"
 
 }
