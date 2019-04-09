@@ -4,7 +4,7 @@ import java.io.File
 import java.lang.{Boolean => JBoolean}
 
 import almond.interpreter.api.{CommHandler, OutputHandler}
-import almond.api.helpers.Display.html
+import almond.display.Display.html
 import ammonite.interp.InterpAPI
 import ammonite.repl.ReplAPI
 import org.apache.log4j.{Category, Logger, RollingFileAppender}

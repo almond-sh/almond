@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 
 import almond.api.JupyterApi
-import almond.api.helpers.Display
+import almond.display.UpdatableDisplay
 import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
@@ -493,7 +493,7 @@ final class ScalaInterpreter(
                           DisplayData.text(res0)
                         case Some(r) =>
                           val d = r.add(
-                            DisplayData.text(res0).withId(Display.newId()),
+                            DisplayData.text(res0).withId(UpdatableDisplay.generateId()),
                             variables
                           )
                           outputHandler match {
@@ -678,7 +678,8 @@ object ScalaInterpreter {
       |}
       |import almond.api.JupyterAPIHolder.value.publish.display
       |import almond.interpreter.api.DisplayData.DisplayDataSyntax
-      |import almond.api.helpers.Display.{html, js, latex, markdown, text, svg, Image}
+      |import almond.display._
+      |import almond.display.Display.{markdown, html, latex, text, js, svg}
     """.stripMargin
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =

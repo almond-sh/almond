@@ -1,5 +1,8 @@
 package almond.display
 
+import java.util.{Locale, UUID}
+import java.util.concurrent.atomic.AtomicInteger
+
 import almond.interpreter.api.{DisplayData, OutputHandler}
 
 trait UpdatableDisplay extends Display {
@@ -20,7 +23,26 @@ trait UpdatableDisplay extends Display {
 
 object UpdatableDisplay {
 
+  def useRandomIds(): Boolean =
+    sys.props
+      .get("almond.ids.random")
+      .forall(s => s == "1" || s.toLowerCase(Locale.ROOT) == "true")
+
+  private val idCounter = new AtomicInteger
+  private val divCounter = new AtomicInteger
+
   def generateId(): String =
-    almond.api.helpers.Display.newId()
+    if (useRandomIds())
+      UUID.randomUUID().toString
+    else
+      idCounter.incrementAndGet().toString
+
+  def generateDiv(prefix: String = "data-"): String =
+    prefix + {
+      if (useRandomIds())
+        UUID.randomUUID().toString
+      else
+        divCounter.incrementAndGet().toString
+    }
 
 }
