@@ -7,7 +7,7 @@ import almond.interpreter.api.{DisplayData, OutputHandler}
 
 trait UpdatableDisplay extends Display {
   def displayId: String
-  protected override def displayData(): DisplayData =
+  override def displayData(): DisplayData =
     DisplayData(data(), metadata = metadata(), idOpt = Some(displayId))
   protected def emptyDisplayData(): DisplayData = {
     val data = displayData()

@@ -1,6 +1,4 @@
 
-import java.util.UUID
-
 import almond.api.JupyterApi
 import ammonite.repl.ReplAPI
 import rx._
@@ -14,6 +12,8 @@ package object almondrx {
     jupyterApi: JupyterApi
   ): Unit = {
 
+    import jupyterApi.updatableResults._
+
     implicit val ownerCtx0 = ownerCtx
 
     // only really needed when the code wrapper passed to ScalaInterpreter is CodeClassWrapper
@@ -24,17 +24,17 @@ package object almondrx {
       p.copy(
         additionalHandlers = p.additionalHandlers.orElse {
           case f: Rx[_] =>
-            val id = "<rx-" + UUID.randomUUID() + ">"
-            val current = replApi.pprinter().tokenize(f.now).mkString
-            jupyterApi.updatableResults.addVariable(id, current)
+            val value = updatable(
+              replApi.pprinter().tokenize(f.now).mkString
+            )
             f.foreach { t =>
-              jupyterApi.updatableResults.updateVariable(
-                id,
+              update(
+                value,
                 replApi.pprinter().tokenize(t).mkString,
                 last = false
               )
             }
-            pprint.Tree.Literal(id)
+            pprint.Tree.Literal(value)
         }
       )
     }

@@ -13,7 +13,7 @@ import scala.collection.JavaConverters._
 trait Display {
   def data(): Map[String, String]
   def metadata(): Map[String, String] = Map()
-  protected def displayData(): DisplayData =
+  def displayData(): DisplayData =
     DisplayData(data(), metadata = metadata())
 
   def display()(implicit output: OutputHandler): Unit =

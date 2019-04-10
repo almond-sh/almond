@@ -271,9 +271,9 @@ final class ScalaInterpreter(
 
         protected def updatableResults0: JupyterApi.UpdatableResults =
           new JupyterApi.UpdatableResults {
-            override def addVariable(k: String, v: String) =
+            def updatable(k: String, v: String) =
               resultVariables += k -> v
-            override def updateVariable(k: String, v: String, last: Boolean) =
+            def update(k: String, v: String, last: Boolean) =
               updatableResultsOpt match {
                 case None => throw new Exception("Results updating not available")
                 case Some(r) => r.update(k, v, last)
@@ -493,7 +493,7 @@ final class ScalaInterpreter(
                           DisplayData.text(res0)
                         case Some(r) =>
                           val d = r.add(
-                            DisplayData.text(res0).withId(UpdatableDisplay.generateId()),
+                            almond.display.Text(res0).displayData(),
                             variables
                           )
                           outputHandler match {
