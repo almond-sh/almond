@@ -16,7 +16,7 @@ package object almondrx {
 
     implicit val ownerCtx0 = ownerCtx
 
-    // only really needed when the code wrapper passed to ScalaInterpreter is Preprocessor.CodeClassWrapper
+    // only really needed when the code wrapper passed to ScalaInterpreter is CodeClassWrapper
     replApi.load("import _root_.rx.Ctx.Owner.Unsafe.Unsafe")
 
     replApi.pprinter() = {

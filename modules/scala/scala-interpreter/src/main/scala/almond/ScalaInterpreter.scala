@@ -12,7 +12,7 @@ import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
-import ammonite.interp.{Parsers, Preprocessor}
+import ammonite.interp.{CodeClassWrapper, CodeWrapper, Parsers, Preprocessor}
 import ammonite.ops.read
 import ammonite.repl._
 import ammonite.runtime._
@@ -40,7 +40,7 @@ final class ScalaInterpreter(
   automaticDependencies: Map[String, Seq[String]] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
   mavenProfiles: Map[String, Boolean] = Map(),
-  codeWrapper: Preprocessor.CodeWrapper = Preprocessor.CodeClassWrapper,
+  codeWrapper: CodeWrapper = CodeClassWrapper,
   initialColors: Colors = Colors.Default,
   initialClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader,
   val logCtx: LoggerContext = LoggerContext.nop,
