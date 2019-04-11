@@ -23,13 +23,14 @@ final class JupyterApiImpl(
     value: => T,
     ident: String,
     custom: Option[String],
-    onChange: Option[(T => Unit) => Unit]
+    onChange: Option[(T => Unit) => Unit],
+    onChangeOrError: Option[(Either[Throwable, T] => Unit) => Unit]
   )(implicit
     tprint: TPrint[T],
     tcolors: TPrintColors,
     classTagT: ClassTag[T]
   ): Iterator[String] =
-    replApi.printSpecial(value, ident, custom, onChange, replApi.pprinter, Some(updatableResults))(tprint, tcolors, classTagT).getOrElse {
+    replApi.printSpecial(value, ident, custom, onChange, onChangeOrError, replApi.pprinter, Some(updatableResults))(tprint, tcolors, classTagT).getOrElse {
       replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
     }
 

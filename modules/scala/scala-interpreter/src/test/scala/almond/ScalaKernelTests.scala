@@ -839,6 +839,91 @@ object ScalaKernelTests extends TestSuite {
         assert(displayData == expectedDisplayData)
       }
     }
+
+    "update lazy vals" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """lazy val n = 2"""),
+        execute(sessionId, """val a = { n; () }"""),
+        execute(sessionId, """val b = { n; () }""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes = Seq(
+        "execute_reply",
+        "execute_reply",
+        "execute_reply"
+      )
+
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "display_data",
+        "execute_input",
+        "update_display_data",
+        "execute_input"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val displayData = streams.displayData.map {
+        case (d, b) =>
+          val d0 = d.copy(
+            data = d.data.filterKeys(_ == "text/plain").toMap
+          )
+          (d0, b)
+      }
+      val id = {
+        val ids = displayData.flatMap(_._1.transient.display_id).toSet
+        assert(ids.size == 1)
+        ids.head
+      }
+
+      val expectedDisplayData = List(
+        ProtocolExecute.DisplayData(
+          Map("text/plain" -> Json.jString("n: Int = [lazy]")),
+          Map(),
+          ProtocolExecute.DisplayData.Transient(Some(id))
+        ) -> false,
+        ProtocolExecute.DisplayData(
+          Map("text/plain" -> Json.jString("n: Int = 2")),
+          Map(),
+          ProtocolExecute.DisplayData.Transient(Some(id))
+        ) -> true
+      )
+
+      assert(displayData == expectedDisplayData)
+    }
   }
 
 }

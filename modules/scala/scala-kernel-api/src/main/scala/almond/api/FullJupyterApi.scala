@@ -7,7 +7,8 @@ trait FullJupyterApi extends JupyterApi { self =>
   protected def printOnChange[T](value: => T,
                                       ident: String,
                                       custom: Option[String],
-                                      onChange: Option[(T => Unit) => Unit])
+                                      onChange: Option[(T => Unit) => Unit],
+                                      onChangeOrError: Option[(Either[Throwable, T] => Unit) => Unit])
                                      (implicit tprint: pprint.TPrint[T],
                                       tcolors: pprint.TPrintColors,
                                       classTagT: ClassTag[T] = null): Iterator[String]
@@ -18,11 +19,12 @@ trait FullJupyterApi extends JupyterApi { self =>
     def printOnChange[T](value: => T,
                                         ident: String,
                                         custom: Option[String],
-                                        onChange: Option[(T => Unit) => Unit])
+                                        onChange: Option[(T => Unit) => Unit],
+                                        onChangeOrError: Option[(Either[Throwable, T] => Unit) => Unit])
                                        (implicit tprint: pprint.TPrint[T],
                                         tcolors: pprint.TPrintColors,
                                         classTagT: ClassTag[T] = null): Iterator[String] =
-      self.printOnChange(value, ident, custom, onChange)(tprint, tcolors, classTagT)
+      self.printOnChange(value, ident, custom, onChange, onChangeOrError)(tprint, tcolors, classTagT)
     def ansiTextToHtml(text: String): String =
       self.ansiTextToHtml(text)
   }

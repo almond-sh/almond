@@ -341,7 +341,7 @@ object Execute {
     fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
   }
 
-  private def showException(ex: Throwable,
+  def showException(ex: Throwable,
                     error: fansi.Attrs,
                     highlightError: fansi.Attrs,
                     source: fansi.Attrs) = {

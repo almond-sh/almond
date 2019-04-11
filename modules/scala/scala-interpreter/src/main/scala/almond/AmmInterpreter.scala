@@ -101,21 +101,45 @@ object AmmInterpreter {
             new CompilerLifecycleManager(storage, headFrame) {
               import scala.reflect.internal.Flags
               import scala.tools.nsc.{Global => G}
-              def customPprintSignature(ident: String, customMsg: Option[String], modOpt: Option[String]) = {
+              def customPprintSignature(ident: String, customMsg: Option[String], modOpt: Option[String], modErrOpt: Option[String]) = {
                 val customCode = customMsg.fold("_root_.scala.None")(x => s"""_root_.scala.Some("$x")""")
                 val modOptCode = modOpt.fold("_root_.scala.None")(x => s"""_root_.scala.Some($x)""")
+                val modErrOptCode = modErrOpt.fold("_root_.scala.None")(x => s"""_root_.scala.Some($x)""")
                 s"""_root_.almond
                    |  .api
                    |  .JupyterAPIHolder
                    |  .value
                    |  .Internal
-                   |  .printOnChange($ident, ${fastparse.internal.Util.literalize(ident)}, $customCode, $modOptCode)""".stripMargin
+                   |  .printOnChange($ident, ${fastparse.internal.Util.literalize(ident)}, $customCode, $modOptCode, $modErrOptCode)""".stripMargin
               }
               override def preprocess(fileName: String): Preprocessor =
                 synchronized {
                   if (compiler == null) init(force = true)
                   new DefaultPreprocessor(compiler.parse(fileName, _)) {
-                    val CustomPatVarDef = Processor {
+
+                    val CustomLazyDef = Processor {
+                      case (_, code, t: G#ValDef)
+                        if !DefaultPreprocessor.isPrivate(t) &&
+                          !t.name.decoded.contains("$") &&
+                          t.mods.hasFlag(Flags.LAZY) =>
+                        val (code0, modOpt) = fastparse.parse(code, Parsers.PatVarSplitter(_)) match {
+                          case Parsed.Success((lhs, rhs), _) if lhs.startsWith("lazy val ") =>
+                            val mod = Name.backtickWrap(t.name.decoded + "$value")
+                            val c = s"""val $mod = new _root_.almond.api.internal.Lazy(() => $rhs)
+                                       |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
+                                       |""".stripMargin
+                            (c, Some(mod + ".onChange"))
+                          case _ =>
+                            (code, None)
+                        }
+                        DefaultPreprocessor.Expanded(
+                          code0,
+                          Seq(customPprintSignature(Name.backtickWrap(t.name.decoded), Some("[lazy]"), None, modOpt))
+                        )
+                    }
+
+                    val CustomVarDef = Processor {
+
                       case (_, code, t: G#ValDef)
                         if isAtLeast_2_12_7 &&
                           !DefaultPreprocessor.isPrivate(t) &&
@@ -133,11 +157,12 @@ object AmmInterpreter {
                         }
                         DefaultPreprocessor.Expanded(
                           code0,
-                          Seq(customPprintSignature(Name.backtickWrap(t.name.decoded), None, modOpt))
+                          Seq(customPprintSignature(Name.backtickWrap(t.name.decoded), None, modOpt, None))
                         )
+
                     }
                     override val decls = Seq[(String, String, G#Tree) => Option[DefaultPreprocessor.Expanded]](
-                      CustomPatVarDef,
+                      CustomLazyDef, CustomVarDef,
                       // same as super.decls
                       ObjectDef, ClassDef, TraitDef, DefDef, TypeDef, PatVarDef, Import, Expr
                     )

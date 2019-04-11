@@ -7,6 +7,7 @@ import ammonite.repl.{FrontEnd, FullReplAPI, ReplLoad, SessionApiImpl}
 import ammonite.runtime.{History, Storage}
 import ammonite.util.{Bind, Colors, CompilationError, Ref, Res}
 import ammonite.util.Util.normalizeNewlines
+import fansi.Attr
 import jupyter.{Displayer, Displayers}
 import pprint.{TPrint, TPrintColors}
 
@@ -31,6 +32,7 @@ final class ReplApiImpl(
     ident: String,
     custom: Option[String],
     onChange: Option[(T => Unit) => Unit],
+    onChangeOrError: Option[(Either[Throwable, T] => Unit) => Unit],
     pprinter: Ref[pprint.PPrinter],
     updatableResultsOpt: Option[JupyterApi.UpdatableResults]
   )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Option[Iterator[String]] =
@@ -63,7 +65,7 @@ final class ReplApiImpl(
           p.display(DisplayData(m))
           Some(Iterator())
         } else
-          for (updatableResults <- updatableResultsOpt; onChange0 <- onChange) yield {
+          for (updatableResults <- updatableResultsOpt if (onChange.nonEmpty && custom.isEmpty) || (onChangeOrError.nonEmpty && custom.nonEmpty)) yield {
 
             // Pre-compute how many lines and how many columns the prefix of the
             // printed output takes, so we can feed that information into the
@@ -94,7 +96,7 @@ final class ReplApiImpl(
                   ).map(_.render).mkString
                 }
 
-                onChange0 { value0 =>
+                onChange.foreach(_ { value0 =>
                   if (value0 != currentValue) {
                     val s = pprinter().tokenize(
                       value0,
@@ -104,12 +106,40 @@ final class ReplApiImpl(
                     updatableResults.update(id, s.map(_.render).mkString, last = false)
                     currentValue = value0
                   }
-                }
+                })
 
                 id
 
               case Some(s) =>
-                pprinter().colorLiteral(s).render
+
+                val messageColor = Some(pprinter().colorLiteral)
+                  .filter(_ == fansi.Attrs.Empty)
+                  .getOrElse(fansi.Color.LightGray)
+
+                val id = updatableResults.updatable {
+                  messageColor(s).render
+                }
+
+                onChangeOrError.foreach(_ {
+                  case Left(ex) =>
+
+                    val messageColor = Some(pprinter().colorLiteral)
+                      .filter(_ == fansi.Attrs.Empty)
+                      .getOrElse(fansi.Color.LightGray)
+
+                    val err = Execute.showException(ex, colors0().error(), Attr.Reset, colors0().literal())
+                    val s = messageColor("[last attempt failed]").render + "\n" + err
+                    updatableResults.update(id, s, last = false)
+                  case Right(value0) =>
+                    val s = pprinter().tokenize(
+                      value0,
+                      height = pprinter().defaultHeight - prefix.completedLineCount,
+                      initialOffset = prefix.lastLineLength
+                    )
+                    updatableResults.update(id, s.map(_.render).mkString, last = true)
+                })
+
+                id
             }
 
             output.iterator.map(_.render) ++ Iterator(rhs)
@@ -165,7 +195,7 @@ final class ReplApiImpl(
                              ident: String,
                              custom: Option[String]
                            )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Iterator[String] =
-        printSpecial(value, ident, custom, None, pprinter, None)(tprint, tcolors, classTagT).getOrElse {
+        printSpecial(value, ident, custom, None, None, pprinter, None)(tprint, tcolors, classTagT).getOrElse {
           super.print(value, ident, custom)(tprint, tcolors, classTagT)
         }
     }
