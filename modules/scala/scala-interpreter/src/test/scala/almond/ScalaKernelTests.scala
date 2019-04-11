@@ -464,24 +464,29 @@ object ScalaKernelTests extends TestSuite {
 
         t.unsafeRunTimedOrThrow()
 
-        val messageTypes = streams.generatedMessageTypes()
+        val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+        val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
-        val expectedMessageTypes = Seq(
-          "execute_input",
-          "stream",
+        val expectedRequestsMessageTypes = Seq(
           "execute_reply",
-          "execute_input",
-          "display_data",
           "execute_reply",
-          "execute_input",
-          "update_display_data",
           "execute_reply",
-          "execute_input",
-          "update_display_data",
           "execute_reply"
         )
 
-        assert(messageTypes == expectedMessageTypes)
+        val expectedPublishMessageTypes = Seq(
+          "execute_input",
+          "stream",
+          "execute_input",
+          "display_data",
+          "execute_input",
+          "update_display_data",
+          "execute_input",
+          "update_display_data"
+        )
+
+        assert(requestsMessageTypes == expectedRequestsMessageTypes)
+        assert(publishMessageTypes == expectedPublishMessageTypes)
 
         val displayData = streams.displayData.map {
           case (d, b) =>
