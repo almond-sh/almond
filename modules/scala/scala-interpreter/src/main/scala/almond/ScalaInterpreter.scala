@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 
-import almond.api.JupyterApi
+import almond.api.{FullJupyterApi, JupyterApi}
 import almond.display.UpdatableDisplay
 import almond.internals._
 import almond.interpreter._
@@ -259,8 +259,16 @@ final class ScalaInterpreter(
           }
       }
 
-    val jupyterApi: JupyterApi =
-      new JupyterApi {
+    val jupyterApi: FullJupyterApi =
+      new FullJupyterApi {
+
+        protected def ansiTextToHtml(text: String): String = {
+          val baos = new ByteArrayOutputStream
+          val haos = new HtmlAnsiOutputStream(baos)
+          haos.write(text.getBytes(StandardCharsets.UTF_8))
+          haos.close()
+          baos.toString("UTF-8")
+        }
 
         def stdinOpt(prompt: String, password: Boolean): Option[String] =
           for (m <- currentInputManagerOpt)
