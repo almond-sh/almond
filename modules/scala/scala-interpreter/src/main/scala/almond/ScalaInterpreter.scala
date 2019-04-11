@@ -1,5 +1,7 @@
 package almond
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 
@@ -492,8 +494,20 @@ final class ScalaInterpreter(
                         case None =>
                           DisplayData.text(res0)
                         case Some(r) =>
+                          val baos = new ByteArrayOutputStream
+                          val haos = new HtmlAnsiOutputStream(baos)
+                          haos.write(res0.getBytes(StandardCharsets.UTF_8))
+                          haos.close()
+                          val html =
+                            s"""<div class="jp-RenderedText">
+                               |<pre>${baos.toString("UTF-8")}</pre>
+                               |</div>""".stripMargin
+                          log.info(s"HTML: $html")
                           val d = r.add(
-                            almond.display.Text(res0).displayData(),
+                            almond.display.Data(
+                              almond.display.Text.mimeType -> res0,
+                              almond.display.Html.mimeType -> html
+                            ).displayData(),
                             variables
                           )
                           outputHandler match {

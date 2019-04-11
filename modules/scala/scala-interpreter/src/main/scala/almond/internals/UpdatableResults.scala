@@ -1,5 +1,7 @@
 package almond.internals
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 
 import almond.interpreter.api.DisplayData
@@ -33,7 +35,7 @@ final class UpdatableResults(
             refs.put(k, ref)
           k -> vOpt.fold(v)(_._1)
       }
-      UpdatableResults.substituteVariables(data, variables0)
+      UpdatableResults.substituteVariables(data, variables0, isFirst = true)
     }
   }
 
@@ -42,7 +44,7 @@ final class UpdatableResults(
     def updateRef(data: DisplayData, ref: Ref[Map[String, String]]): Unit = {
       val m0 = ref()
       val m = m0 + (k -> v)
-      val data0 = UpdatableResults.substituteVariables(data, m)
+      val data0 = UpdatableResults.substituteVariables(data, m, isFirst = false)
       log.debug(s"Updating variable $k with $v: $data0")
       ref() = m
       Future(updateData(data0))(ec)
@@ -71,7 +73,7 @@ final class UpdatableResults(
 
 object UpdatableResults {
 
-  def substituteVariables(d: DisplayData, m: Map[String, String]): DisplayData =
+  def substituteVariables(d: DisplayData, m: Map[String, String], isFirst: Boolean): DisplayData =
     d.copy(
       data = d.data.map {
         case ("text/plain", t) =>
@@ -81,7 +83,24 @@ object UpdatableResults {
               // needed
               acc.replace(k, v)
           }
-        case kv => kv
+        case ("text/html", t) =>
+          "text/html" -> m.foldLeft(t) {
+            case (acc, (k, v)) =>
+              val baos = new ByteArrayOutputStream
+              val haos = new HtmlAnsiOutputStream(baos)
+              haos.write(v.getBytes(StandardCharsets.UTF_8))
+              haos.close()
+
+              val (prefix, suffix) =
+                if (isFirst) ("", "")
+                else (
+                  """<style>@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }</style><span style="animation: fadein 2s;">""",
+                  "</span>"
+                )
+              acc.replace(k, prefix + baos.toString("UTF-8") + suffix)
+          }
+        case kv =>
+          kv
       }
     )
 
