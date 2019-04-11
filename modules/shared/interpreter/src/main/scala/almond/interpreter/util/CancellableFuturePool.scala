@@ -1,9 +1,8 @@
-package almond.internals
+package almond.interpreter.util
 
 import java.lang.Thread.UncaughtExceptionHandler
 import java.util.concurrent.{Executors, ThreadFactory}
 
-import almond.interpreter.util.CancellableFuture
 import almond.logger.LoggerContext
 
 import scala.concurrent.{Future, Promise}

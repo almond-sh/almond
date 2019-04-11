@@ -6,7 +6,7 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.protocol._
+import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
@@ -46,10 +46,10 @@ object ScalaKernelTests extends TestSuite {
         msgId,
         "test",
         sessionId,
-        Execute.requestType.messageType,
+        ProtocolExecute.requestType.messageType,
         Some(Protocol.versionStr)
       ),
-      Execute.Request(code, stop_on_error = Some(true))
+      ProtocolExecute.Request(code, stop_on_error = Some(true))
     ).on(Channel.Requests)
 
 
@@ -95,7 +95,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -140,7 +142,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -195,7 +199,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -222,7 +228,7 @@ object ScalaKernelTests extends TestSuite {
       val displayData = streams.displayData
 
       val expectedDisplayData = Seq(
-        Execute.DisplayData(
+        ProtocolExecute.DisplayData(
           Map("text/plain" -> Json.jString("Bar(other)")),
           Map()
         ) -> false
@@ -256,7 +262,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -294,15 +302,15 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val expectedDisplayData = Seq(
-        Execute.DisplayData(
+        ProtocolExecute.DisplayData(
           Map("text/html" -> Json.jString("<b>foo</b>")),
           Map(),
-          Execute.DisplayData.Transient(Some(id))
+          ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> false,
-        Execute.DisplayData(
+        ProtocolExecute.DisplayData(
           Map("text/html" -> Json.jString("<i>bzz</i>")),
           Map(),
-          Execute.DisplayData.Transient(Some(id))
+          ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> true
       )
 
@@ -334,8 +342,10 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -388,8 +398,10 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -440,8 +452,10 @@ object ScalaKernelTests extends TestSuite {
         val streams = ClientStreams.create(input, stopWhen)
 
         val interpreter = new ScalaInterpreter(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite,
+          params = ScalaInterpreterParams(
+            updateBackgroundVariablesEcOpt = Some(bgVarEc),
+            initialColors = Colors.BlackWhite
+          ),
           logCtx = logCtx
         )
 
@@ -483,20 +497,20 @@ object ScalaKernelTests extends TestSuite {
         }
 
         val expectedDisplayData = Seq(
-          Execute.DisplayData(
+          ProtocolExecute.DisplayData(
             Map("text/plain" -> Json.jString("a: rx.Var[Int] = 1")),
             Map(),
-            Execute.DisplayData.Transient(Some(id))
+            ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> false,
-          Execute.DisplayData(
+          ProtocolExecute.DisplayData(
             Map("text/plain" -> Json.jString("a: rx.Var[Int] = 2")),
             Map(),
-            Execute.DisplayData.Transient(Some(id))
+            ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true,
-          Execute.DisplayData(
+          ProtocolExecute.DisplayData(
             Map("text/plain" -> Json.jString("a: rx.Var[Int] = 3")),
             Map(),
-            Execute.DisplayData.Transient(Some(id))
+            ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true
         )
 
@@ -528,7 +542,7 @@ object ScalaKernelTests extends TestSuite {
 
       val ignoreExpectedReplies = MessageHandler.discard {
         case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == Execute.replyType.messageType =>
+        case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
         case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType =>
       }
 
@@ -536,7 +550,7 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == Execute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
 
 
       // Initial messages from client
@@ -550,7 +564,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -611,8 +627,10 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        initialClassLoader = loader,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          initialClassLoader = loader
+        ),
         logCtx = logCtx
       )
 
@@ -648,7 +666,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        )
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
@@ -698,8 +718,10 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        trapOutput = true
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          trapOutput = true
+        )
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)

@@ -49,7 +49,7 @@ object EchoKernel extends CaseApp[Options] {
     val kernelThreads = KernelThreads.create("echo-kernel")
     val interpreterEc = singleThreadedExecutionContext("echo-interpreter")
 
-    log.info("Running kernel")
+    log.debug("Running kernel")
     Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, logCtx)
       .flatMap(_.runOnConnectionFile(connectionFile, "echo", zeromqThreads))
       .unsafeRunSync()

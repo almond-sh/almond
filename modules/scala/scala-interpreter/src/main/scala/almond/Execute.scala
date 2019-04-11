@@ -1,6 +1,6 @@
 package almond
 
-import java.io.{ByteArrayOutputStream, PrintStream}
+import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -20,11 +20,15 @@ import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
+/**
+  * Wraps contextual things around when executing code (capturing output, stdin via front-ends, interruption, etc.)
+  */
 final class Execute(
   trapOutput: Boolean,
+  automaticDependencies: Map[String, Seq[String]],
   logCtx: LoggerContext,
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
-  commHandlerOpt: Option[CommHandler]
+  commHandlerOpt: => Option[CommHandler]
 ) {
 
   private val log = logCtx(getClass)
@@ -105,9 +109,9 @@ final class Execute(
 
   lazy val updatableResults: JupyterApi.UpdatableResults =
     new JupyterApi.UpdatableResults {
-      def updatable(k: String, v: String) =
+      override def updatable(k: String, v: String) =
         resultVariables += k -> v
-      def update(k: String, v: String, last: Boolean) =
+      override def update(k: String, v: String, last: Boolean) =
         updatableResultsOpt0 match {
           case None => throw new Exception("Results updating not available")
           case Some(r) => r.update(k, v, last)
@@ -199,20 +203,20 @@ final class Execute(
             Preprocessor.formatFastparseError("(console)", code, f)
           )
         }
-        _ = log.info(s"splitted $code")
+        _ = log.debug(s"splitted $code")
         ev <- interruptible {
           withInputManager(inputManager) {
             withClientStdin {
               capturingOutput {
                 resultOutput.clear()
                 resultVariables.clear()
-                log.info(s"Compiling / evaluating $code ($stmts)")
+                log.debug(s"Compiling / evaluating $code ($stmts)")
                 val r = ammInterp.processLine(code, stmts, currentLine0, silent = false, incrementLine = () => currentLine0 += 1)
-                log.info(s"Handling output of $code")
+                log.debug(s"Handling output of $code")
                 Repl.handleOutput(ammInterp, r)
                 val variables = resultVariables.toMap
                 val res0 = resultOutput.result()
-                log.info(s"Result of $code: $res0")
+                log.debug(s"Result of $code: $res0")
                 resultOutput.clear()
                 resultVariables.clear()
                 val data =
@@ -234,7 +238,7 @@ final class Execute(
                           s"""<div class="jp-RenderedText">
                              |<pre>${baos.toString("UTF-8")}</pre>
                              |</div>""".stripMargin
-                        log.info(s"HTML: $html")
+                        log.debug(s"HTML: $html")
                         val d = r.add(
                           almond.display.Data(
                             almond.display.Text.mimeType -> res0,
@@ -258,14 +262,28 @@ final class Execute(
       } yield ev
     }
 
-  def execute(
+  def apply(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler],
     colors0: Ref[Colors]
-  ): ExecuteResult =
-    ammResult(ammInterp, code, inputManager, outputHandler) match {
+  ): ExecuteResult = {
+
+    val hackedLine =
+      if (code.contains("$ivy.`"))
+        automaticDependencies.foldLeft(code) {
+          case (line0, (triggerDep, autoDeps)) =>
+            if (line0.contains(triggerDep)) {
+              log.info(s"Adding auto dependencies $autoDeps")
+              autoDeps.map(dep => s"import $$ivy.`$dep`; ").mkString + line0
+            } else
+              line0
+        }
+      else
+        code
+
+    ammResult(ammInterp, hackedLine, inputManager, outputHandler) match {
       case Res.Success((_, data)) =>
         ExecuteResult.Success(data)
       case Res.Failure(msg) =>
@@ -297,6 +315,7 @@ final class Execute(
       case Res.Exit(_) =>
         ExecuteResult.Exit
     }
+  }
 }
 
 object Execute {
@@ -329,7 +348,7 @@ object Execute {
 
     val cutoff = Set("$main", "evaluatorRunPrinter")
     val traces = Ex.unapplySeq(ex).get.map(exception =>
-      error(exception.toString) + System.lineSeparator() +
+      error(exception.toString).render + System.lineSeparator() +
         exception
           .getStackTrace
           .takeWhile(x => !cutoff(x.getMethodName))
