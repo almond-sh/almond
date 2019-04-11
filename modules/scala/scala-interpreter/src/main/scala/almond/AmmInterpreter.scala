@@ -9,6 +9,8 @@ import ammonite.util.{Colors, Name, PredefInfo, Ref, Res}
 import coursier.almond.tmp.Tmp
 import fastparse.Parsed
 
+import scala.util.Properties
+
 object AmmInterpreter {
 
   private def predef =
@@ -21,6 +23,13 @@ object AmmInterpreter {
       |import almond.display._
       |import almond.display.Display.{markdown, html, latex, text, js, svg}
     """.stripMargin
+
+  private[almond] val isAtLeast_2_12_7 = {
+    val v = Properties.versionNumberString
+    !v.startsWith("2.11.") && (!v.startsWith("2.12.") || {
+      v.stripPrefix("2.12.").takeWhile(_.isDigit).toInt >= 7
+    })
+  }
 
   /**
     * Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
@@ -108,14 +117,16 @@ object AmmInterpreter {
                   new DefaultPreprocessor(compiler.parse(fileName, _)) {
                     val CustomPatVarDef = Processor {
                       case (_, code, t: G#ValDef)
-                        if !DefaultPreprocessor.isPrivate(t) &&
+                        if isAtLeast_2_12_7 &&
+                          !DefaultPreprocessor.isPrivate(t) &&
                           !t.name.decoded.contains("$") &&
                           !t.mods.hasFlag(Flags.LAZY) =>
                         val (code0, modOpt) = fastparse.parse(code, Parsers.PatVarSplitter(_)) match {
                           case Parsed.Success((lhs, rhs), _) if lhs.startsWith("var ") =>
                             val mod = Name.backtickWrap(t.name.decoded + "$value")
                             val c = s"""val $mod = new _root_.almond.api.internal.Modifiable($rhs)
-                                       |import $mod.{value => ${t.name.encoded}}""".stripMargin
+                                       |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
+                                       |""".stripMargin
                             (c, Some(mod + ".onChange"))
                           case _ =>
                             (code, None)

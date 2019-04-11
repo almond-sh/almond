@@ -83,7 +83,8 @@ final class ReplApiImpl(
             val rhs = custom match {
               case None =>
 
-                var currentValue = value
+                var currentValue = value // FIXME May be better to only hold weak references here
+                                         //       (in case we allow to wipe previous values at some point)
 
                 val id = updatableResults.updatable {
                   pprinter().tokenize(
