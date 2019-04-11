@@ -2,11 +2,9 @@ package almond
 
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 
 import almond.api.{FullJupyterApi, JupyterApi}
-import almond.display.UpdatableDisplay
 import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
@@ -19,7 +17,7 @@ import ammonite.ops.read
 import ammonite.repl._
 import ammonite.runtime._
 import ammonite.util._
-import ammonite.util.Util.{newLine, normalizeNewlines}
+import ammonite.util.Util.normalizeNewlines
 import coursier.almond.tmp.Tmp
 import fastparse.Parsed
 import io.github.soc.directories.ProjectDirectories
@@ -30,7 +28,6 @@ import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success}
 
 final class ScalaInterpreter(
   updateBackgroundVariablesEcOpt: Option[ExecutionContext] = None,
@@ -61,54 +58,9 @@ final class ScalaInterpreter(
   private val colors0 = Ref[Colors](initialColors)
   private val history0 = new History(Vector())
 
-  private var currentInputManagerOpt = Option.empty[InputManager]
-
-  private var currentPublishOpt = Option.empty[OutputHandler]
-
-  private val input = new FunctionInputStream(
-    UTF_8,
-    currentInputManagerOpt.flatMap { m =>
-
-      val res = {
-        implicit val ec = ExecutionContext.global // just using that one to map over an existing future…
-        log.info("Awaiting input")
-        Await.result(
-          m.readInput()
-            .map(s => Success(s + newLine))
-            .recover { case t => Failure(t) },
-          Duration.Inf
-        )
-      }
-      log.info("Received input")
-
-      res match {
-        case Success(s) => Some(s)
-        case Failure(_: InputManager.NoMoreInputException) => None
-        case Failure(e) => throw new Exception("Error getting more input", e)
-      }
-    }
-  )
-
-  private val capture =
-    if (trapOutput)
-      Capture.nop()
-    else
-      Capture.create()
-
   private var commHandlerOpt = Option.empty[CommHandler]
 
-  private val updatableResultsOpt =
-    updateBackgroundVariablesEcOpt.map { ec =>
-      new UpdatableResults(
-        ec,
-        logCtx,
-        data => commHandlerOpt.foreach(_.updateDisplay(data)) // throw if commHandlerOpt is empty?
-      )
-    }
-
-  private val resultVariables = new mutable.HashMap[String, String]
-  private val resultOutput = new StringBuilder
-  private val resultStream = new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
+  private val execute0 = new Execute(trapOutput, logCtx, updateBackgroundVariablesEcOpt, commHandlerOpt)
 
   private val storage =
     if (disableCache)
@@ -118,58 +70,8 @@ final class ScalaInterpreter(
 
   private val frames0 = Ref(List(Frame.createInitial(initialClassLoader)))
   private val sess0 = new SessionApiImpl(frames0)
-  private var currentLine0 = 0
 
   def frames(): List[Frame] = frames0()
-
-  private val printer0 = Printer(
-    capture.out,
-    capture.err,
-    resultStream,
-    s => currentPublishOpt.fold(Console.err.println(s))(_.stderr(s)),
-    s => currentPublishOpt.fold(Console.err.println(s))(_.stderr(s)),
-    s => currentPublishOpt.fold(println(s))(_.stdout(s))
-  )
-
-
-  private def withInputManager[T](m: Option[InputManager])(f: => T): T = {
-    val previous = currentInputManagerOpt
-    try {
-      currentInputManagerOpt = m
-      f
-    } finally {
-      currentInputManagerOpt = previous
-      m.foreach(_.done())
-    }
-  }
-
-  private def withOutputHandler[T](handlerOpt: Option[OutputHandler])(f: => T): T = {
-    val previous = currentPublishOpt
-    try {
-      currentPublishOpt = handlerOpt
-      f
-    } finally {
-      currentPublishOpt = previous
-    }
-  }
-
-  private def withClientStdin[T](t: => T): T =
-    Console.withIn(input) {
-      val previous = System.in
-      try {
-        System.setIn(input)
-        t
-      } finally {
-        System.setIn(previous)
-        input.clear()
-      }
-    }
-
-  private def capturingOutput[T](t: => T): T =
-    currentPublishOpt match {
-      case None => t
-      case Some(p) => capture(p.stdout, p.stderr)(t)
-    }
 
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
@@ -185,7 +87,7 @@ final class ScalaInterpreter(
               updatableResultsOpt: Option[JupyterApi.UpdatableResults]
             )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Option[Iterator[String]] = {
 
-              currentPublishOpt match {
+      execute0.currentPublishOpt match {
                 case None =>
                   None
                 case Some(p) =>
@@ -270,7 +172,7 @@ final class ScalaInterpreter(
     val replApi: ReplApiImpl =
       new ReplApiImpl { self =>
         def replArgs0 = Vector.empty[Bind[_]]
-        def printer = printer0
+        def printer = execute0.printer
 
         def sess = sess0
         val prompt = Ref("nope")
@@ -291,7 +193,7 @@ final class ScalaInterpreter(
         val load: ReplLoad =
           new ReplLoad {
             def apply(line: String) =
-              ammInterp.processExec(line, currentLine0, () => currentLine0 += 1) match {
+              ammInterp.processExec(line, execute0.currentLine, () => execute0.incrementLineCount()) match {
                 case Res.Failure(s) => throw new CompilationError(s)
                 case Res.Exception(t, _) => throw t
                 case _ =>
@@ -348,24 +250,16 @@ final class ScalaInterpreter(
         }
 
         def stdinOpt(prompt: String, password: Boolean): Option[String] =
-          for (m <- currentInputManagerOpt)
+          for (m <- execute0.currentInputManagerOpt)
             yield Await.result(m.readInput(prompt, password), Duration.Inf)
 
         override def changingPublish =
-          currentPublishOpt.getOrElse(super.changingPublish)
+          execute0.currentPublishOpt.getOrElse(super.changingPublish)
         override def commHandler =
           commHandlerOpt.getOrElse(super.commHandler)
 
         protected def updatableResults0: JupyterApi.UpdatableResults =
-          new JupyterApi.UpdatableResults {
-            def updatable(k: String, v: String) =
-              resultVariables += k -> v
-            def update(k: String, v: String, last: Boolean) =
-              updatableResultsOpt match {
-                case None => throw new Exception("Results updating not available")
-                case Some(r) => r.update(k, v, last)
-              }
-          }
+          execute0.updatableResults
       }
 
     for (ec <- updateBackgroundVariablesEcOpt)
@@ -390,7 +284,7 @@ final class ScalaInterpreter(
 
       val ammInterp0: ammonite.interp.Interpreter =
         new ammonite.interp.Interpreter(
-          printer0,
+          execute0.printer,
           storage = storage,
           wd = ammonite.ops.pwd,
           basePredefs = Seq(
@@ -527,42 +421,10 @@ final class ScalaInterpreter(
     // eagerly initialize ammInterp
     ammInterp
 
-  private var interruptedStackTraceOpt = Option.empty[Array[StackTraceElement]]
-  private var currentThreadOpt = Option.empty[Thread]
-
   override def interruptSupported: Boolean =
     true
-  override def interrupt(): Unit = {
-    currentThreadOpt match {
-      case None =>
-        log.warn("Interrupt asked, but no execution is running")
-      case Some(t) =>
-        log.debug(s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
-        t.stop()
-    }
-  }
-
-  private def interruptible[T](t: => T): T = {
-    interruptedStackTraceOpt = None
-    currentThreadOpt = Some(Thread.currentThread())
-    try {
-      Signaller("INT") {
-        currentThreadOpt match {
-          case None =>
-            log.warn("Received SIGINT, but no execution is running")
-          case Some(t) =>
-            interruptedStackTraceOpt = Some(t.getStackTrace)
-            log.debug(s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt.map("  " + _).mkString("\n")}")
-            t.stop()
-        }
-      }.apply {
-        t
-      }
-    } finally {
-      currentThreadOpt = None
-    }
-  }
-
+  override def interrupt(): Unit =
+    execute0.interrupt()
 
   override def supportComm: Boolean = true
   override def setCommHandler(commHandler0: CommHandler): Unit =
@@ -590,111 +452,11 @@ final class ScalaInterpreter(
 
     val ammInterp0 = ammInterp // ensures we don't capture output / catch signals during interp initialization
 
-    val ammResult =
-      withOutputHandler(outputHandler) {
-        for {
-          (code, stmts) <- fastparse.parse(hackedLine, Parsers.Splitter(_)) match {
-            case Parsed.Success(value, _) =>
-              Res.Success((hackedLine, value))
-            case f: Parsed.Failure => Res.Failure(
-              Preprocessor.formatFastparseError("(console)", code, f)
-            )
-          }
-          _ = log.info(s"splitted $hackedLine")
-          ev <- interruptible {
-            withInputManager(inputManager) {
-              withClientStdin {
-                capturingOutput {
-                  resultOutput.clear()
-                  resultVariables.clear()
-                  log.info(s"Compiling / evaluating $code ($stmts)")
-                  val r = ammInterp0.processLine(code, stmts, currentLine0, silent = false, incrementLine = () => currentLine0 += 1)
-                  log.info(s"Handling output of $hackedLine")
-                  Repl.handleOutput(ammInterp0, r)
-                  val variables = resultVariables.toMap
-                  val res0 = resultOutput.result()
-                  log.info(s"Result of $hackedLine: $res0")
-                  resultOutput.clear()
-                  resultVariables.clear()
-                  val data =
-                    if (variables.isEmpty) {
-                      if (res0.isEmpty)
-                        DisplayData.empty
-                      else
-                        DisplayData.text(res0)
-                    } else
-                      updatableResultsOpt match {
-                        case None =>
-                          DisplayData.text(res0)
-                        case Some(r) =>
-                          val baos = new ByteArrayOutputStream
-                          val haos = new HtmlAnsiOutputStream(baos)
-                          haos.write(res0.getBytes(StandardCharsets.UTF_8))
-                          haos.close()
-                          val html =
-                            s"""<div class="jp-RenderedText">
-                               |<pre>${baos.toString("UTF-8")}</pre>
-                               |</div>""".stripMargin
-                          log.info(s"HTML: $html")
-                          val d = r.add(
-                            almond.display.Data(
-                              almond.display.Text.mimeType -> res0,
-                              almond.display.Html.mimeType -> html
-                            ).displayData(),
-                            variables
-                          )
-                          outputHandler match {
-                            case None =>
-                              d
-                            case Some(h) =>
-                              h.display(d)
-                              DisplayData.empty
-                          }
-                      }
-                  r.map((_, data))
-                }
-              }
-            }
-          }
-        } yield ev
-      }
-
-    ammResult match {
-      case Res.Success((_, data)) =>
-        ExecuteResult.Success(data)
-      case Res.Failure(msg) =>
-        interruptedStackTraceOpt match {
-          case None =>
-            val err = ScalaInterpreter.error(colors0(), None, msg)
-            outputHandler.foreach(_.stderr(err.message)) // necessary?
-            err
-          case Some(st) =>
-
-            val cutoff = Set("$main", "evaluatorRunPrinter")
-
-            ExecuteResult.Error(
-              (
-                "Interrupted!" +: st
-                  .takeWhile(x => !cutoff(x.getMethodName))
-                  .map(ScalaInterpreter.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
-              ).mkString(newLine)
-            )
-        }
-
-      case Res.Exception(ex, msg) =>
-        log.error(s"exception in user code (${ex.getMessage})", ex)
-        ScalaInterpreter.error(colors0(), Some(ex), msg)
-
-      case Res.Skip =>
-        ExecuteResult.Success()
-
-      case Res.Exit(_) =>
-        ExecuteResult.Exit
-    }
+    execute0.execute(ammInterp0, hackedLine, inputManager, outputHandler, colors0)
   }
 
   def currentLine(): Int =
-    currentLine0
+    execute0.currentLine
 
   override def isComplete(code: String): Option[IsCompleteResult] = {
 
@@ -780,44 +542,6 @@ object ScalaInterpreter {
         s"Caught exception while running predef: $msg"
   }
 
-  // these come from Ammonite
-  // exception display was tweaked a bit (too much red for notebooks else)
-
-  private def highlightFrame(f: StackTraceElement,
-                     highlightError: fansi.Attrs,
-                     source: fansi.Attrs) = {
-    val src =
-      if (f.isNativeMethod) source("Native Method")
-      else if (f.getFileName == null) source("Unknown Source")
-      else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
-
-    val prefix :+ clsName = f.getClassName.split('.').toSeq
-    val prefixString = prefix.map(_+'.').mkString("")
-    val clsNameString = clsName //.replace("$", error("$"))
-    val method =
-    fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
-      highlightError(f.getMethodName)
-
-    fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
-  }
-
-  private def showException(ex: Throwable,
-                    error: fansi.Attrs,
-                    highlightError: fansi.Attrs,
-                    source: fansi.Attrs) = {
-
-    val cutoff = Set("$main", "evaluatorRunPrinter")
-    val traces = Ex.unapplySeq(ex).get.map(exception =>
-      error(exception.toString) + newLine +
-        exception
-          .getStackTrace
-          .takeWhile(x => !cutoff(x.getMethodName))
-          .map(highlightFrame(_, highlightError, source))
-          .mkString(newLine)
-    )
-    traces.mkString(newLine)
-  }
-
   private def predef =
     """import almond.api.JupyterAPIHolder.value.{
       |  publish,
@@ -828,13 +552,6 @@ object ScalaInterpreter {
       |import almond.display._
       |import almond.display.Display.{markdown, html, latex, text, js, svg}
     """.stripMargin
-
-  private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error(
-      msg + exOpt.fold("")(ex => (if (msg.isEmpty) "" else "\n") + showException(
-        ex, colors.error(), fansi.Attr.Reset, colors.literal()
-      ))
-    )
 
   private class Foo
 }
