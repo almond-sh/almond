@@ -14,7 +14,7 @@ import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
-import ammonite.interp.{CodeClassWrapper, CodeWrapper, Parsers, Preprocessor}
+import ammonite.interp.{CodeClassWrapper, CodeWrapper, CompilerLifecycleManager, DefaultPreprocessor, Parsers, Preprocessor}
 import ammonite.ops.read
 import ammonite.repl._
 import ammonite.runtime._
@@ -174,6 +174,99 @@ final class ScalaInterpreter(
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
 
+    val defaultDisplayer = Displayers.registration().find(classOf[ScalaInterpreter.Foo])
+
+    def printSpecial[T](
+              value: => T,
+              ident: String,
+              custom: Option[String],
+              onChange: Option[(T => Unit) => Unit],
+              pprinter: Ref[pprint.PPrinter],
+              updatableResultsOpt: Option[JupyterApi.UpdatableResults]
+            )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Option[Iterator[String]] = {
+
+              currentPublishOpt match {
+                case None =>
+                  None
+                case Some(p) =>
+
+                  val isUpdatableDisplay =
+                    classTagT != null &&
+                      classOf[almond.display.Display]
+                        .isAssignableFrom(classTagT.runtimeClass)
+
+                  val jvmReprDisplayer: Displayer[_] =
+                    Displayers.registration().find(classTagT.runtimeClass)
+                  val useJvmReprDisplay =
+                    jvmReprDisplayer ne defaultDisplayer
+
+                  if (isUpdatableDisplay) {
+                    val d = value.asInstanceOf[almond.display.Display]
+                    d.display()(p)
+                    Some(Iterator())
+                  } else if (useJvmReprDisplay) {
+                    import scala.collection.JavaConverters._
+                    val m = jvmReprDisplayer
+                      .asInstanceOf[Displayer[T]]
+                      .display(value)
+                      .asScala
+                      .toMap
+                    p.display(DisplayData(m))
+                    Some(Iterator())
+                  } else
+                    for (updatableResults <- updatableResultsOpt; onChange0 <- onChange) yield {
+
+                      // Pre-compute how many lines and how many columns the prefix of the
+                      // printed output takes, so we can feed that information into the
+                      // pretty-printing of the main body
+                      val prefix = new pprint.Truncated(
+                        Iterator(
+                          colors0().ident()(ident).render, ": ",
+                          implicitly[pprint.TPrint[T]].render(tcolors), " = "
+                        ),
+                        pprinter().defaultWidth,
+                        pprinter().defaultHeight
+                      )
+                      val output = mutable.Buffer.empty[fansi.Str]
+
+                      prefix.foreach(output.+=)
+
+                      val rhs = custom match {
+                        case None =>
+
+                          var currentValue = value
+
+                          val id = updatableResults.updatable {
+                            pprinter().tokenize(
+                              currentValue,
+                              height = pprinter().defaultHeight - prefix.completedLineCount,
+                              initialOffset = prefix.lastLineLength
+                            ).map(_.render).mkString
+                          }
+
+                          onChange0 { value0 =>
+                            if (value0 != currentValue) {
+                              val s = pprinter().tokenize(
+                                value0,
+                                height = pprinter().defaultHeight - prefix.completedLineCount,
+                                initialOffset = prefix.lastLineLength
+                              )
+                              updatableResults.update(id, s.map(_.render).mkString, last = false)
+                              currentValue = value0
+                            }
+                          }
+
+                          id
+
+                        case Some(s) =>
+                          pprinter().colorLiteral(s).render
+                      }
+
+                      output.iterator.map(_.render) ++ Iterator(rhs)
+                    }
+              }
+            }
+
     val replApi: ReplApiImpl =
       new ReplApiImpl { self =>
         def replArgs0 = Vector.empty[Bind[_]]
@@ -222,45 +315,29 @@ final class ScalaInterpreter(
               value: => T,
               ident: String,
               custom: Option[String]
-            )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Iterator[String] = {
-
-              currentPublishOpt match {
-                case None =>
-                  super.print(value, ident, custom)(tprint, tcolors, classTagT)
-                case Some(p) =>
-
-                  val isUpdatableDisplay =
-                    classTagT != null &&
-                      classOf[almond.display.Display]
-                        .isAssignableFrom(classTagT.runtimeClass)
-
-                  val jvmReprDisplayer: Displayer[_] =
-                    Displayers.registration().find(classTagT.runtimeClass)
-                  val useJvmReprDisplay =
-                    jvmReprDisplayer ne defaultDisplayer
-
-                  if (isUpdatableDisplay) {
-                    val d = value.asInstanceOf[almond.display.Display]
-                    d.display()(p)
-                    Iterator()
-                  } else if (useJvmReprDisplay) {
-                    import scala.collection.JavaConverters._
-                    val m = jvmReprDisplayer
-                      .asInstanceOf[Displayer[T]]
-                      .display(value)
-                      .asScala
-                      .toMap
-                    p.display(DisplayData(m))
-                    Iterator()
-                  } else
-                    super.print(value, ident, custom)(tprint, tcolors, classTagT)
+            )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Iterator[String] =
+              printSpecial(value, ident, custom, None, pprinter, None)(tprint, tcolors, classTagT).getOrElse {
+                super.print(value, ident, custom)(tprint, tcolors, classTagT)
               }
-            }
           }
       }
 
     val jupyterApi: FullJupyterApi =
       new FullJupyterApi {
+
+        protected def printOnChange[T](
+          value: => T,
+          ident: String,
+          custom: Option[String],
+          onChange: Option[(T => Unit) => Unit]
+        )(implicit
+          tprint: TPrint[T],
+          tcolors: TPrintColors,
+          classTagT: ClassTag[T]
+        ): Iterator[String] =
+          printSpecial(value, ident, custom, onChange, replApi.pprinter, Some(updatableResults))(tprint, tcolors, classTagT).getOrElse {
+            replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
+          }
 
         protected def ansiTextToHtml(text: String): String = {
           val baos = new ByteArrayOutputStream
@@ -339,7 +416,55 @@ final class ScalaInterpreter(
           replCodeWrapper = codeWrapper,
           scriptCodeWrapper = codeWrapper,
           alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
-        )
+        ) {
+          override val compilerManager =
+            new CompilerLifecycleManager(storage, headFrame) {
+              import scala.reflect.internal.Flags
+              import scala.tools.nsc.{Global => G}
+              def customPprintSignature(ident: String, customMsg: Option[String], modOpt: Option[String]) = {
+                val customCode = customMsg.fold("_root_.scala.None")(x => s"""_root_.scala.Some("$x")""")
+                val modOptCode = modOpt.fold("_root_.scala.None")(x => s"""_root_.scala.Some($x)""")
+                s"""
+    _root_.almond
+          .api
+          .JupyterAPIHolder
+          .value
+          .Internal
+          .printOnChange($ident, ${fastparse.internal.Util.literalize(ident)}, $customCode, $modOptCode)
+    """
+              }
+              override def preprocess(fileName: String): Preprocessor =
+                synchronized {
+                  if (compiler == null) init(force = true)
+                  new DefaultPreprocessor(compiler.parse(fileName, _)) {
+                    val CustomPatVarDef = Processor {
+                      case (_, code, t: G#ValDef)
+                        if !DefaultPreprocessor.isPrivate(t) &&
+                          !t.name.decoded.contains("$") &&
+                          !t.mods.hasFlag(Flags.LAZY) =>
+                        val (code0, modOpt) = fastparse.parse(code, Parsers.PatVarSplitter(_)) match {
+                          case Parsed.Success((lhs, rhs), _) if lhs.startsWith("var ") =>
+                            val mod = Name.backtickWrap(t.name.decoded + "$value")
+                            val c = s"""val $mod = new _root_.almond.api.internal.Modifiable($rhs)
+                                       |import $mod.{value => ${t.name.encoded}}""".stripMargin
+                            (c, Some(mod + ".onChange"))
+                          case _ =>
+                            (code, None)
+                        }
+                        DefaultPreprocessor.Expanded(
+                          code0,
+                          Seq(customPprintSignature(Name.backtickWrap(t.name.decoded), None, modOpt))
+                        )
+                    }
+                    override val decls = Seq[(String, String, G#Tree) => Option[DefaultPreprocessor.Expanded]](
+                      CustomPatVarDef,
+                      // same as super.decls
+                      ObjectDef, ClassDef, TraitDef, DefDef, TypeDef, PatVarDef, Import, Expr
+                    )
+                  }
+                }
+            }
+        }
 
       log.info("Initializing interpreter predef")
 
