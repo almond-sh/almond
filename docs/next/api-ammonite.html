@@ -89,9 +89,9 @@
           <h3 class="navGroupCategoryTitle">User API</h3>
           <ul>
            <li class="navListItem"><a class="navItem" href="api">Intro</a></li>
-           <li class="navListItem"><a class="navItem" href="api-access-instances">Access API instances</a></li>
            <li class="navListItem navListItemActive"><a class="navItem" href="api-ammonite">Ammonite API</a></li>
            <li class="navListItem"><a class="navItem" href="api-jupyter">Almond Jupyter API</a></li>
+           <li class="navListItem"><a class="navItem" href="api-access-instances">Access API instances</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -161,23 +161,49 @@
           </ul> <h3><a class="anchor" aria-hidden="true" id="load-dependencies"></a><a href="api-ammonite.html#load-dependencies" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Load dependencies</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="load-compiler-plugins"></a><a href="api-ammonite.html#load-compiler-plugins" aria-hidden="true" class="hash-link">
+            </svg></a>Load dependencies</h3> <p><code>interp.load.ivy</code> accepts one or several <a href="https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19"><code>coursier.Dependency</code></a>.</p> <p>Load simple dependencies</p> <pre><code class="hljs css language-scala">interp.load.ivy(<span class="hljs-string">"org.platanios"</span> %% <span class="hljs-string">"tensorflow-data"</span> % <span class="hljs-string">"0.4.1"</span>)
+</code></pre> <p>Load dependencies while adjusting some parameters</p> <pre><code class="hljs css language-scala">interp.load.ivy(
+  coursier.<span class="hljs-type">Dependency</span>(
+    module = coursier.<span class="hljs-type">Module</span>(<span class="hljs-string">"org.platanios"</span>, <span class="hljs-string">"tensorflow_2.12"</span>),
+    version = <span class="hljs-string">"0.4.1"</span>,
+    <span class="hljs-comment">// replace with linux-gpu-x86_64 on linux with nvidia gpu or with darwin-cpu-x86_64 on macOS</span>
+    attributes = coursier.<span class="hljs-type">Attributes</span>(<span class="hljs-string">""</span>, <span class="hljs-string">"linux-cpu-x86_64"</span>)
+  )
+)
+</code></pre> <p>The dependencies can then be used in the cell right <em>after</em> the one calling <code>interp.load.ivy</code>.</p> <p>Note that in the case of simple dependencies, when directly entering code in a notebook, the following syntax is preferred and allows to use the dependency in the current cell rather than the next one:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.platanios::tensorflow-data:<span class="hljs-number">0.4</span><span class="hljs-number">.1</span>`
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="load-compiler-plugins"></a><a href="api-ammonite.html#load-compiler-plugins" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Load compiler plugins</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="add-repositories"></a><a href="api-ammonite.html#add-repositories" aria-hidden="true" class="hash-link">
+            </svg></a>Load compiler plugins</h3> <p><code>interp.load.plugin.ivy</code> accepts one or several <a href="https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19"><code>coursier.Dependency</code></a>.</p> <pre><code class="hljs css language-scala">interp.load.plugin.ivy(<span class="hljs-string">"org.spire-math"</span> %% <span class="hljs-string">"kind-projector"</span> % <span class="hljs-string">"0.9.9"</span>)
+</code></pre> <p>The plugins can then be used in the cell right <em>after</em> the one calling <code>interp.load.plugin.ivy</code>.</p> <p>Note that when directly entering code in a notebook, the following syntax is more concise, and allows to use the compiler plugin in the current cell:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $plugin.$ivy.`org.spire-math::kind-projector:<span class="hljs-number">0.9</span><span class="hljs-number">.9</span>`
+
+<span class="hljs-comment">// example of use</span>
+<span class="hljs-class"><span class="hljs-keyword">trait</span> <span class="hljs-title">T</span>[<span class="hljs-type">F</span>[_]]</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">T2</span> </span>= <span class="hljs-type">T</span>[<span class="hljs-type">Either</span>[<span class="hljs-type">String</span>, ?]]
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="add-repositories"></a><a href="api-ammonite.html#add-repositories" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Add repositories</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="add-exit-hooks"></a><a href="api-ammonite.html#add-exit-hooks" aria-hidden="true" class="hash-link">
+            </svg></a>Add repositories</h3> <p>One can add extra <a href="https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L69"><code>coursier.Repository</code></a> via</p> <pre><code class="hljs css language-scala">interp.repositories() ++= <span class="hljs-type">Seq</span>(<span class="hljs-type">MavenRepository</span>(
+  <span class="hljs-string">"https://nexus.corp.com/content/repositories/releases"</span>,
+  authentication = <span class="hljs-type">Some</span>(<span class="hljs-type">Authentication</span>(<span class="hljs-string">"user"</span>, <span class="hljs-string">"pass"</span>))
+))
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="add-exit-hooks"></a><a href="api-ammonite.html#add-exit-hooks" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Add exit hooks</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="configure-compiler-options"></a><a href="api-ammonite.html#configure-compiler-options" aria-hidden="true" class="hash-link">
+            </svg></a>Add exit hooks</h3> <pre><code class="hljs css language-scala">interp.beforeExitHooks += { _ =&gt;
+  <span class="hljs-comment">// called before the kernel exits</span>
+}
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="configure-compiler-options"></a><a href="api-ammonite.html#configure-compiler-options" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Configure compiler options</h3> <p>???</p> <h2><a class="anchor" aria-hidden="true" id="replapi"></a><a href="api-ammonite.html#replapi" aria-hidden="true" class="hash-link">
+            </svg></a>Configure compiler options</h3> <pre><code class="hljs css language-scala"><span class="hljs-comment">// enable warnings</span>
+interp.configureCompiler(_.settings.nowarn.value = <span class="hljs-literal">false</span>)
+</code></pre> <h2><a class="anchor" aria-hidden="true" id="replapi"></a><a href="api-ammonite.html#replapi" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a><code>ReplAPI</code></h2> <p><a href="https://github.com/lihaoyi/Ammonite/blob/master/amm/repl/src/main/scala/ammonite/repl/ReplAPI.scala"><code>ReplAPI</code></a> allows to</p> 
           <ul> 
+           <li><a href="api-ammonite.html#pretty-printer">access the pretty-printer and customize its behavior</a>,</li> 
            <li><a href="api-ammonite.html#latest-thrown-exception">access the latest thrown exception</a>,</li> 
            <li><a href="api-ammonite.html#command-history">access the command history</a>,</li> 
            <li><a href="api-ammonite.html#refresh-compiler-instance">request the compiler instance to be re-created</a>,</li> 
@@ -185,33 +211,56 @@
            <li><a href="api-ammonite.html#get-current-imports">get the current imports</a>,</li> 
            <li><a href="api-ammonite.html#evaluate-code">evaluate code from strings or files</a>, and lastly</li> 
            <li><a href="api-ammonite.html#byte-code-of-repl-inputs">get the class names and byte code</a> of the code entered during the current session.</li> 
-          </ul> <h3><a class="anchor" aria-hidden="true" id="latest-thrown-exception"></a><a href="api-ammonite.html#latest-thrown-exception" aria-hidden="true" class="hash-link">
+          </ul> <h3><a class="anchor" aria-hidden="true" id="pretty-printer"></a><a href="api-ammonite.html#pretty-printer" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Latest thrown exception</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="command-history"></a><a href="api-ammonite.html#command-history" aria-hidden="true" class="hash-link">
+            </svg></a>Pretty-printer</h3> <pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Foo</span>(<span class="hljs-params">val x: <span class="hljs-type">Int</span></span>)</span>
+
+repl.pprinter() = {
+  <span class="hljs-keyword">val</span> p = repl.pprinter()
+  p.copy(
+    additionalHandlers = p.additionalHandlers.orElse {
+      <span class="hljs-keyword">case</span> f: <span class="hljs-type">Foo</span> =&gt;
+        pprint.<span class="hljs-type">Tree</span>.<span class="hljs-type">Lazy</span>(_ =&gt; <span class="hljs-type">Iterator</span>(fansi.<span class="hljs-type">Color</span>.<span class="hljs-type">Yellow</span>(<span class="hljs-string">s"foo: <span class="hljs-subst">${f.x}</span>"</span>).render))
+    }
+  )
+}
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="latest-thrown-exception"></a><a href="api-ammonite.html#latest-thrown-exception" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Command history</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="refresh-compiler-instance"></a><a href="api-ammonite.html#refresh-compiler-instance" aria-hidden="true" class="hash-link">
+            </svg></a>Latest thrown exception</h3> <pre><code class="hljs css language-scala">repl.lastException <span class="hljs-comment">// last thrown exception, or null if none were thrown</span>
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="command-history"></a><a href="api-ammonite.html#command-history" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Refresh compiler instance</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="get-compiler-instance"></a><a href="api-ammonite.html#get-compiler-instance" aria-hidden="true" class="hash-link">
+            </svg></a>Command history</h3> <pre><code class="hljs css language-scala">repl.history <span class="hljs-comment">// current session history</span>
+repl.fullHistory <span class="hljs-comment">// shared history</span>
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="refresh-compiler-instance"></a><a href="api-ammonite.html#refresh-compiler-instance" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Get compiler instance</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="get-current-imports"></a><a href="api-ammonite.html#get-current-imports" aria-hidden="true" class="hash-link">
+            </svg></a>Refresh compiler instance</h3> <pre><code class="hljs css language-scala">repl.newCompiler()
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="get-compiler-instance"></a><a href="api-ammonite.html#get-compiler-instance" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Get current imports</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="evaluate-code"></a><a href="api-ammonite.html#evaluate-code" aria-hidden="true" class="hash-link">
+            </svg></a>Get compiler instance</h3> <pre><code class="hljs css language-scala">repl.compiler <span class="hljs-comment">// has type scala.tools.nsc.Global</span>
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="get-current-imports"></a><a href="api-ammonite.html#get-current-imports" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Evaluate code</h3> <p>???</p> <h3><a class="anchor" aria-hidden="true" id="byte-code-of-repl-inputs"></a><a href="api-ammonite.html#byte-code-of-repl-inputs" aria-hidden="true" class="hash-link">
+            </svg></a>Get current imports</h3> <pre><code class="hljs css language-scala">repl.imports
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="evaluate-code"></a><a href="api-ammonite.html#evaluate-code" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Byte code of REPL inputs</h3> <p>???</p> </span>
+            </svg></a>Evaluate code</h3> <pre><code class="hljs css language-scala">repl.load(<span class="hljs-string">"val a = 2"</span>)
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="byte-code-of-repl-inputs"></a><a href="api-ammonite.html#byte-code-of-repl-inputs" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Byte code of REPL inputs</h3> <pre><code class="hljs css language-scala">repl.sess.frames.flatMap(_.classloader.newFileDict).toMap
+<span class="hljs-comment">// Map[String, Array[Byte]], keys: class names, values: byte code</span>
+</code></pre> </span>
         </div>
        </article>
       </div>
       <div class="docs-prevnext">
-       <a class="docs-prev button" href="api-access-instances"><span class="arrow-prev">← </span><span>Previous</span></a>
+       <a class="docs-prev button" href="api"><span class="arrow-prev">← </span><span>Previous</span></a>
        <a class="docs-next button" href="api-jupyter"><span>Next</span><span class="arrow-next"> →</span></a>
       </div>
      </div>
@@ -228,6 +277,7 @@
        </ul></li>
       <li><a href="api-ammonite.html#replapi"><code>ReplAPI</code></a>
        <ul class="toc-headings">
+        <li><a href="api-ammonite.html#pretty-printer">Pretty-printer</a></li>
         <li><a href="api-ammonite.html#latest-thrown-exception">Latest thrown exception</a></li>
         <li><a href="api-ammonite.html#command-history">Command history</a></li>
         <li><a href="api-ammonite.html#refresh-compiler-instance">Refresh compiler instance</a></li>

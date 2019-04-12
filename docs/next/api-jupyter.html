@@ -89,9 +89,9 @@
           <h3 class="navGroupCategoryTitle">User API</h3>
           <ul>
            <li class="navListItem"><a class="navItem" href="api">Intro</a></li>
-           <li class="navListItem"><a class="navItem" href="api-access-instances">Access API instances</a></li>
            <li class="navListItem"><a class="navItem" href="api-ammonite">Ammonite API</a></li>
            <li class="navListItem navListItemActive"><a class="navItem" href="api-jupyter">Almond Jupyter API</a></li>
+           <li class="navListItem"><a class="navItem" href="api-access-instances">Access API instances</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -145,21 +145,64 @@
        </header>
        <article>
         <div>
-         <span><p>The Almond Jupyter API can be accessed via an instance of <a href="api-jupyter.html#jupyterapi"><code>almond.api.JupyterAPI</code></a>. Such an instance is created by almond upon start-up. This instance accessible via the <code>kernel</code> variable and in the implicit scope via e.g. <code>implicitly[almond.api.JupyterAPI]</code>.</p> <h2><a class="anchor" aria-hidden="true" id="jupyterapi"></a><a href="api-jupyter.html#jupyterapi" aria-hidden="true" class="hash-link">
+         <span><p>The Almond Jupyter API can be accessed via an instance of <a href="api-jupyter.html#jupyterapi"><code>almond.api.JupyterAPI</code></a>. Such an instance is created by almond upon start-up. This instance accessible via the <code>kernel</code> variable and in the implicit scope via e.g. <code>implicitly[almond.api.JupyterAPI]</code>.</p> <p>A number of higher level helpers rely on it, and provide <a href="api-jupyter.html#display">a more convenient API to display objects</a>.</p> <h2><a class="anchor" aria-hidden="true" id="high-level-api"></a><a href="api-jupyter.html#high-level-api" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>High level API</h2> <h3><a class="anchor" aria-hidden="true" id="display"></a><a href="api-jupyter.html#display" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Display</h3> <p>A number of classes under <a href="https://github.com/almond-sh/almond/tree/master/modules/scala/jupyter-api/src/main/scala/almond/display"><code>almond.display</code></a> provide an API similar to the <a href="https://ipython.readthedocs.io/en/7.4.0/api/generated/IPython.display.html">IPython display module</a>.</p> <p>Examples:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">// These can be used to display things straightaway</span>
+<span class="hljs-type">Html</span>(<span class="hljs-string">"&lt;b&gt;Bold&lt;/b&gt;"</span>)
+</code></pre> <pre><code class="hljs css language-scala">// A handle can also be retained, to later update or clear things
+val handle = Markdown("""
+# title
+## section
+text
+""")
+
+// can be updated in later cells
+// (this updates the previous display)
+handle.withContent("""
+# updated title
+## new section
+_content_
+""").update()
+
+// can be later cleared
+handle.clear()
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="input"></a><a href="api-jupyter.html#input" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Input</h3> <pre><code class="hljs css language-scala"><span class="hljs-comment">// Request input from user</span>
+<span class="hljs-keyword">val</span> result = <span class="hljs-type">Input</span>().request()
+</code></pre> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> result = <span class="hljs-type">Input</span>().withPrompt(<span class="hljs-string">"&gt;&gt;&gt; "</span>).request()
+</code></pre> <pre><code class="hljs css language-scala"><span class="hljs-comment">// Request input via password field</span>
+<span class="hljs-keyword">val</span> result = <span class="hljs-type">Input</span>().withPassword().request()
+</code></pre> <h2><a class="anchor" aria-hidden="true" id="jupyterapi"></a><a href="api-jupyter.html#jupyterapi" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a><code>JupyterAPI</code></h2> <p><code>almond.api.JupyterAPI</code> allows to</p> 
           <ul> 
            <li><a href="api-jupyter.html#request-input">request input</a> (password input in particular),</li> 
+           <li><a href="api-jupyter.html#comm-messages">exchange comm messages</a> with the front-end.</li> 
            <li><a href="api-jupyter.html#display-data">display data</a> (HTML, text, images, …) in the front-end while a cell is running,</li> 
            <li><a href="api-jupyter.html#updatable-display-data">update a previous display</a> in the background (while the initial cell is running or not),</li> 
-           <li><a href="api-jupyter.html#comm-messages">exchange comm messages</a> with the front-end.</li> 
-          </ul> <h3><a class="anchor" aria-hidden="true" id="request-input"></a><a href="api-jupyter.html#request-input" aria-hidden="true" class="hash-link">
+          </ul> <p>Note that most of its capabilities have more convenient alternatives, see <a href="api-jupyter.html#high-level-api">High level API</a>.</p> <h3><a class="anchor" aria-hidden="true" id="request-input"></a><a href="api-jupyter.html#request-input" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a>Request input</h3> <p>Call <code>stdin</code> on <code>JupyterAPI</code> to request user input, e.g.</p> <pre><code class="hljs css language-scala">kernel.stdin() <span class="hljs-comment">// clear text input</span>
 kernel.stdin(prompt = <span class="hljs-string">"&gt;&gt; "</span>, password = <span class="hljs-literal">true</span>) <span class="hljs-comment">// password input, with custom prompt</span>
-</code></pre> <p><img src="../../../demo/stdin.gif" alt=""></p> <h3><a class="anchor" aria-hidden="true" id="display-data"></a><a href="api-jupyter.html#display-data" aria-hidden="true" class="hash-link">
+</code></pre> <p><img src="../../../demo/stdin.gif" alt=""></p> <h3><a class="anchor" aria-hidden="true" id="comm-messages"></a><a href="api-jupyter.html#comm-messages" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Comm messages</h3> <p><a href="https://jupyter-notebook.readthedocs.io/en/5.7.2/comms.html">Comm messages</a> are part of the <a href="https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html">Jupyter messaging protocol</a>. They allow the exchange of arbitrary messages between code running in the front-end (typically JavaScript code) and kernels.</p> <p>The comm API can be used to receive messages, or send them.</p> <p><code>kernel.comm.receiver</code> allows to register a target to receive messages from the front-end, like</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> id = java.util.<span class="hljs-type">UUID</span>.randomUUID().toString
+kernel.publish.html(<span class="hljs-string">"Waiting"</span>, id)
+
+kernel.comm.receiver(<span class="hljs-string">"A"</span>) { data =&gt;
+  <span class="hljs-comment">// received message `data` from front-end</span>
+  kernel.publish.updateHtml(<span class="hljs-string">s"&lt;code&gt;<span class="hljs-subst">$data</span>&lt;/code&gt;"</span>, id)
+}
+</code></pre> <p><img src="../../../demo/comm-receive.gif" alt=""></p> <p>TODO Send to client</p> <h3><a class="anchor" aria-hidden="true" id="display-data"></a><a href="api-jupyter.html#display-data" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a>Display data</h3> <p>The <code>publish</code> field, of type <a href="https://github.com/almond-sh/almond/blob/master/modules/shared/interpreter-api/src/main/scala/almond/interpreter/api/OutputHandler.scala"><code>almond.interpreter.api.OutputHandler</code></a>, has numerous methods to push display data to the front-end.</p> <p>The most generic is <code>display</code>, accepting a <code>almond.api.DisplayData</code>.</p> <pre><code class="hljs css language-scala">kernel.publish.display(
@@ -188,34 +231,29 @@ kernel.publish.html(<span class="hljs-string">"Starting"</span>, id)
 }
 
 kernel.publish.updateHtml(<span class="hljs-string">"Got all items"</span>, id)
-</code></pre> <p><img src="../../../demo/updatable.gif" alt=""></p> <h3><a class="anchor" aria-hidden="true" id="comm-messages"></a><a href="api-jupyter.html#comm-messages" aria-hidden="true" class="hash-link">
-            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
-             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Comm messages</h3> <p><a href="https://jupyter-notebook.readthedocs.io/en/5.7.2/comms.html">Comm messages</a> are part of the <a href="https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html">Jupyter messaging protocol</a>. They allow the exchange of arbitrary messages between code running in the front-end (typically JavaScript code) and kernels.</p> <p>The comm API can be used to receive messages, or send them.</p> <p><code>kernel.comm.receiver</code> allows to register a target to receive messages from the front-end, like</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> id = java.util.<span class="hljs-type">UUID</span>.randomUUID().toString
-kernel.publish.html(<span class="hljs-string">"Waiting"</span>, id)
-
-kernel.comm.receiver(<span class="hljs-string">"A"</span>) { data =&gt;
-  <span class="hljs-comment">// received message `data` from front-end</span>
-  kernel.publish.updateHtml(<span class="hljs-string">s"&lt;code&gt;<span class="hljs-subst">$data</span>&lt;/code&gt;"</span>, id)
-}
-</code></pre> <p><img src="../../../demo/comm-receive.gif" alt=""></p> <p>TODO Send to client</p> </span>
+</code></pre> <p><img src="../../../demo/updatable.gif" alt=""></p> </span>
         </div>
        </article>
       </div>
       <div class="docs-prevnext">
        <a class="docs-prev button" href="api-ammonite"><span class="arrow-prev">← </span><span>Previous</span></a>
-       <a class="docs-next button" href="dev-from-sources"><span>Next</span><span class="arrow-next"> →</span></a>
+       <a class="docs-next button" href="api-access-instances"><span>Next</span><span class="arrow-next"> →</span></a>
       </div>
      </div>
     </div>
     <nav class="onPageNav docOnPageNav">
      <ul class="toc-headings">
+      <li><a href="api-jupyter.html#high-level-api">High level API</a>
+       <ul class="toc-headings">
+        <li><a href="api-jupyter.html#display">Display</a></li>
+        <li><a href="api-jupyter.html#input">Input</a></li>
+       </ul></li>
       <li><a href="api-jupyter.html#jupyterapi"><code>JupyterAPI</code></a>
        <ul class="toc-headings">
         <li><a href="api-jupyter.html#request-input">Request input</a></li>
+        <li><a href="api-jupyter.html#comm-messages">Comm messages</a></li>
         <li><a href="api-jupyter.html#display-data">Display data</a></li>
         <li><a href="api-jupyter.html#updatable-display-data">Updatable display data</a></li>
-        <li><a href="api-jupyter.html#comm-messages">Comm messages</a></li>
        </ul></li>
      </ul>
     </nav>
