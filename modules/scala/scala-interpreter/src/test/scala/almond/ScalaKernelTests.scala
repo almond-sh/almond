@@ -524,8 +524,6 @@ object ScalaKernelTests extends TestSuite {
           ) -> true
         )
 
-        displayData.foreach(println)
-
         assert(displayData == expectedDisplayData)
       }
     }
