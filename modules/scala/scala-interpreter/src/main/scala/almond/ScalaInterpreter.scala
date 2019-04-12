@@ -86,6 +86,8 @@ final class ScalaInterpreter(
       params.extraRepos,
       params.forceMavenProperties,
       params.mavenProfiles,
+      params.autoUpdateLazyVals,
+      params.autoUpdateVars,
       logCtx
     )
   }

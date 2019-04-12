@@ -115,7 +115,9 @@ object ScalaKernel extends CaseApp[Options] {
         metabrowse = options.metabrowse,
         lazyInit = true,
         trapOutput = options.trapOutput,
-        disableCache = options.disableCache
+        disableCache = options.disableCache,
+        autoUpdateLazyVals = options.autoUpdateLazyVals,
+        autoUpdateVars = options.autoUpdateVars
       ),
       logCtx = logCtx
     )

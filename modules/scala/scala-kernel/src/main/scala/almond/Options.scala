@@ -39,7 +39,11 @@ final case class Options(
   @HelpMessage("Trap what user code sends to stdout and stderr")
     trapOutput: Boolean = false,
   @HelpMessage("Disable ammonite compilation cache")
-    disableCache: Boolean = false
+    disableCache: Boolean = false,
+  @HelpMessage("Whether to automatically update lazy val-s upon computation")
+    autoUpdateLazyVals: Boolean = true,
+  @HelpMessage("Whether to automatically update var-s upon change")
+    autoUpdateVars: Boolean = true
 ) {
 
   def autoDependencyMap(): Map[String, Seq[String]] =

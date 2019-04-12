@@ -47,6 +47,8 @@ object AmmInterpreter {
     extraRepos: Seq[String],
     forceMavenProperties: Map[String, String],
     mavenProfiles: Map[String, Boolean],
+    autoUpdateLazyVals: Boolean,
+    autoUpdateVars: Boolean,
     logCtx: LoggerContext
   ): ammonite.interp.Interpreter = {
 
@@ -120,7 +122,8 @@ object AmmInterpreter {
 
                     val CustomLazyDef = Processor {
                       case (_, code, t: G#ValDef)
-                        if !DefaultPreprocessor.isPrivate(t) &&
+                        if autoUpdateLazyVals &&
+                          !DefaultPreprocessor.isPrivate(t) &&
                           !t.name.decoded.contains("$") &&
                           t.mods.hasFlag(Flags.LAZY) =>
                         val (code0, modOpt) = fastparse.parse(code, Parsers.PatVarSplitter(_)) match {
@@ -142,7 +145,8 @@ object AmmInterpreter {
                     val CustomVarDef = Processor {
 
                       case (_, code, t: G#ValDef)
-                        if isAtLeast_2_12_7 &&
+                        if autoUpdateVars &&
+                          isAtLeast_2_12_7 && // https://github.com/scala/bug/issues/10886
                           !DefaultPreprocessor.isPrivate(t) &&
                           !t.name.decoded.contains("$") &&
                           !t.mods.hasFlag(Flags.LAZY) =>
