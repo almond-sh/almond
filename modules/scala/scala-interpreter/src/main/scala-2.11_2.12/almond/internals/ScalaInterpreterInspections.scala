@@ -9,20 +9,21 @@ import almond.interpreter._
 import almond.interpreter.api.DisplayData
 import almond.logger.{Logger, LoggerContext}
 import ammonite.runtime.Frame
+import ammonite.util.Ref
 import ammonite.util.Util.newLine
 import metabrowse.server.{MetabrowseServer, Sourcepath}
 
 import scala.tools.nsc.Global
 import scala.util.Random
 
-trait ScalaInterpreterInspections extends Interpreter {
-
-  def logCtx: LoggerContext
-  def metabrowse: Boolean
-  def metabrowseHost: String
-  def metabrowsePort: Int
-  def pressy: scala.tools.nsc.interactive.Global
-  def frames(): List[Frame]
+final class ScalaInterpreterInspections(
+  logCtx: LoggerContext,
+  metabrowse: Boolean,
+  metabrowseHost: String,
+  metabrowsePort: Int,
+  pressy: => scala.tools.nsc.interactive.Global,
+  frames: Ref[List[Frame]]
+) {
 
   private val log = logCtx(getClass)
 
@@ -105,7 +106,7 @@ trait ScalaInterpreterInspections extends Interpreter {
     (server, port, windowName)
   }
 
-  override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+  def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
     metabrowseServerOpt().flatMap {
       case (metabrowseServer, metabrowsePort0, metabrowseWindowId) =>
         val pressy0 = pressy
@@ -163,7 +164,7 @@ trait ScalaInterpreterInspections extends Interpreter {
         }
       }
 
-  def inspectionsShutdown(): Unit =
+  def shutdown(): Unit =
     for ((metabrowseServer, _, _) <- metabrowseServerOpt0) {
       log.info("Stopping metabrowse server")
       metabrowseServer.stop()

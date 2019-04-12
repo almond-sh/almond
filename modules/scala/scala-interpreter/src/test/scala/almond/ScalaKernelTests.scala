@@ -6,7 +6,7 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.protocol._
+import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
@@ -40,16 +40,21 @@ object ScalaKernelTests extends TestSuite {
       println(s"Don't know how to shutdown $interpreterEc")
   }
 
-  private def execute(sessionId: String, code: String, msgId: String = UUID.randomUUID().toString) =
+  private def execute(
+    sessionId: String,
+    code: String,
+    msgId: String = UUID.randomUUID().toString,
+    stopOnError: Boolean = true
+  ) =
     Message(
       Header(
         msgId,
         "test",
         sessionId,
-        Execute.requestType.messageType,
+        ProtocolExecute.requestType.messageType,
         Some(Protocol.versionStr)
       ),
-      Execute.Request(code, stop_on_error = Some(true))
+      ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
     ).on(Channel.Requests)
 
 
@@ -95,7 +100,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -140,7 +147,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -195,7 +204,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -222,7 +233,7 @@ object ScalaKernelTests extends TestSuite {
       val displayData = streams.displayData
 
       val expectedDisplayData = Seq(
-        Execute.DisplayData(
+        ProtocolExecute.DisplayData(
           Map("text/plain" -> Json.jString("Bar(other)")),
           Map()
         ) -> false
@@ -247,8 +258,8 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute(sessionId, """val handle = html("<b>foo</b>")"""),
-        execute(sessionId, """handle.update("<i>bzz</i>")"""),
+        execute(sessionId, """val handle = Html("<b>foo</b>")"""),
+        execute(sessionId, """handle.withContent("<i>bzz</i>").update()"""),
         execute(sessionId, """val s = "other"""", lastMsgId)
       )
 
@@ -256,7 +267,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -265,22 +278,26 @@ object ScalaKernelTests extends TestSuite {
 
       t.unsafeRunTimedOrThrow()
 
-      val messageTypes = streams.generatedMessageTypes()
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "display_data",
-        "execute_result",
+      val expectedRequestsMessageTypes = Seq(
         "execute_reply",
-        "execute_input",
-        "update_display_data",
         "execute_reply",
-        "execute_input",
-        "execute_result",
         "execute_reply"
       )
 
-      assert(messageTypes == expectedMessageTypes)
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "display_data",
+        "execute_input",
+        "update_display_data",
+        "execute_input",
+        "execute_result"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
 
       val displayData = streams.displayData
       val id = {
@@ -290,15 +307,15 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val expectedDisplayData = Seq(
-        Execute.DisplayData(
+        ProtocolExecute.DisplayData(
           Map("text/html" -> Json.jString("<b>foo</b>")),
           Map(),
-          Execute.DisplayData.Transient(Some(id))
+          ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> false,
-        Execute.DisplayData(
+        ProtocolExecute.DisplayData(
           Map("text/html" -> Json.jString("<i>bzz</i>")),
           Map(),
-          Execute.DisplayData.Transient(Some(id))
+          ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> true
       )
 
@@ -330,8 +347,10 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -384,8 +403,10 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        updateBackgroundVariablesEcOpt = Some(bgVarEc),
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -436,8 +457,10 @@ object ScalaKernelTests extends TestSuite {
         val streams = ClientStreams.create(input, stopWhen)
 
         val interpreter = new ScalaInterpreter(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite,
+          params = ScalaInterpreterParams(
+            updateBackgroundVariablesEcOpt = Some(bgVarEc),
+            initialColors = Colors.BlackWhite
+          ),
           logCtx = logCtx
         )
 
@@ -446,26 +469,37 @@ object ScalaKernelTests extends TestSuite {
 
         t.unsafeRunTimedOrThrow()
 
-        val messageTypes = streams.generatedMessageTypes()
+        val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+        val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
-        val expectedMessageTypes = Seq(
-          "execute_input",
-          "stream",
+        val expectedRequestsMessageTypes = Seq(
           "execute_reply",
-          "execute_input",
-          "display_data",
           "execute_reply",
-          "execute_input",
-          "update_display_data",
           "execute_reply",
-          "execute_input",
-          "update_display_data",
           "execute_reply"
         )
 
-        assert(messageTypes == expectedMessageTypes)
+        val expectedPublishMessageTypes = Seq(
+          "execute_input",
+          "stream",
+          "execute_input",
+          "display_data",
+          "execute_input",
+          "update_display_data",
+          "execute_input",
+          "update_display_data"
+        )
 
-        val displayData = streams.displayData
+        assert(requestsMessageTypes == expectedRequestsMessageTypes)
+        assert(publishMessageTypes == expectedPublishMessageTypes)
+
+        val displayData = streams.displayData.map {
+          case (d, b) =>
+            val d0 = d.copy(
+              data = d.data.filterKeys(_ == "text/plain").toMap
+            )
+            (d0, b)
+        }
         val id = {
           val ids = displayData.flatMap(_._1.transient.display_id).toSet
           assert(ids.size == 1)
@@ -473,24 +507,22 @@ object ScalaKernelTests extends TestSuite {
         }
 
         val expectedDisplayData = Seq(
-          Execute.DisplayData(
+          ProtocolExecute.DisplayData(
             Map("text/plain" -> Json.jString("a: rx.Var[Int] = 1")),
             Map(),
-            Execute.DisplayData.Transient(Some(id))
+            ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> false,
-          Execute.DisplayData(
+          ProtocolExecute.DisplayData(
             Map("text/plain" -> Json.jString("a: rx.Var[Int] = 2")),
             Map(),
-            Execute.DisplayData.Transient(Some(id))
+            ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true,
-          Execute.DisplayData(
+          ProtocolExecute.DisplayData(
             Map("text/plain" -> Json.jString("a: rx.Var[Int] = 3")),
             Map(),
-            Execute.DisplayData.Transient(Some(id))
+            ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true
         )
-
-        displayData.foreach(println)
 
         assert(displayData == expectedDisplayData)
       }
@@ -518,7 +550,7 @@ object ScalaKernelTests extends TestSuite {
 
       val ignoreExpectedReplies = MessageHandler.discard {
         case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == Execute.replyType.messageType =>
+        case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
         case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType =>
       }
 
@@ -526,7 +558,7 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == Execute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
 
 
       // Initial messages from client
@@ -540,7 +572,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -601,8 +635,10 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        initialClassLoader = loader,
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          initialClassLoader = loader
+        ),
         logCtx = logCtx
       )
 
@@ -638,7 +674,9 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        )
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
@@ -688,8 +726,10 @@ object ScalaKernelTests extends TestSuite {
       val streams = ClientStreams.create(input)
 
       val interpreter = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        trapOutput = true
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          trapOutput = true
+        )
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
@@ -715,6 +755,317 @@ object ScalaKernelTests extends TestSuite {
       assert(messageTypes == expectedMessageTypes)
     }
 
+    "last exception" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """val nullBefore = repl.lastException == null"""),
+        execute(sessionId, """sys.error("foo")""", stopOnError = false),
+        execute(sessionId, """val nullAfter = repl.lastException == null""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes = Seq(
+        "execute_reply",
+        "execute_reply",
+        "execute_reply"
+      )
+
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "error",
+        "execute_input",
+        "execute_result"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val replies = streams.executeReplies
+      val expectedReplies = Map(
+        1 -> "nullBefore: Boolean = true",
+        3 -> "nullAfter: Boolean = false"
+      )
+      assert(replies == expectedReplies)
+    }
+
+    "history" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """val before = repl.history.toVector"""),
+        execute(sessionId, """val a = 2"""),
+        execute(sessionId, """val b = a + 1"""),
+        execute(sessionId, """val after = repl.history.toVector.mkString(",").toString""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes = Seq(
+        "execute_reply",
+        "execute_reply",
+        "execute_reply",
+        "execute_reply"
+      )
+
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "execute_result"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val replies = streams.executeReplies
+      val expectedReplies = Map(
+        1 -> """before: Vector[String] = Vector("val before = repl.history.toVector")""",
+        2 -> """a: Int = 2""",
+        3 -> """b: Int = 3""",
+        4 -> """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
+      )
+      assert(replies == expectedReplies)
+    }
+
+    "update vars" - {
+      if (AmmInterpreter.isAtLeast_2_12_7) {
+
+        // How the pseudo-client behaves
+
+        val sessionId = UUID.randomUUID().toString
+        val lastMsgId = UUID.randomUUID().toString
+
+        // When the pseudo-client exits
+
+        val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+          (_, m) =>
+            IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+        // Initial messages from client
+
+        val input = Stream(
+          execute(sessionId, """var n = 2"""),
+          execute(sessionId, """n = n + 1"""),
+          execute(sessionId, """n += 2""", lastMsgId)
+        )
+
+        val streams = ClientStreams.create(input, stopWhen)
+
+        val interpreter = new ScalaInterpreter(
+          params = ScalaInterpreterParams(
+            updateBackgroundVariablesEcOpt = Some(bgVarEc),
+            initialColors = Colors.BlackWhite
+          ),
+          logCtx = logCtx
+        )
+
+        val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+          .flatMap(_.run(streams.source, streams.sink))
+
+        t.unsafeRunTimedOrThrow()
+
+        val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+        val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+        val expectedRequestsMessageTypes = Seq(
+          "execute_reply",
+          "execute_reply",
+          "execute_reply"
+        )
+
+        val expectedPublishMessageTypes = Seq(
+          "execute_input",
+          "display_data",
+          "execute_input",
+          "update_display_data",
+          "execute_input",
+          "update_display_data"
+        )
+
+        assert(requestsMessageTypes == expectedRequestsMessageTypes)
+        assert(publishMessageTypes == expectedPublishMessageTypes)
+
+        val displayData = streams.displayData.map {
+          case (d, b) =>
+            val d0 = d.copy(
+              data = d.data.filterKeys(_ == "text/plain").toMap
+            )
+            (d0, b)
+        }
+        val id = {
+          val ids = displayData.flatMap(_._1.transient.display_id).toSet
+          assert(ids.size == 1)
+          ids.head
+        }
+
+        val expectedDisplayData = List(
+          ProtocolExecute.DisplayData(
+            Map("text/plain" -> Json.jString("n: Int = 2")),
+            Map(),
+            ProtocolExecute.DisplayData.Transient(Some(id))
+          ) -> false,
+          ProtocolExecute.DisplayData(
+            Map("text/plain" -> Json.jString("n: Int = 3")),
+            Map(),
+            ProtocolExecute.DisplayData.Transient(Some(id))
+          ) -> true,
+          ProtocolExecute.DisplayData(
+            Map("text/plain" -> Json.jString("n: Int = 5")),
+            Map(),
+            ProtocolExecute.DisplayData.Transient(Some(id))
+          ) -> true
+        )
+
+        assert(displayData == expectedDisplayData)
+      }
+    }
+
+    "update lazy vals" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """lazy val n = 2"""),
+        execute(sessionId, """val a = { n; () }"""),
+        execute(sessionId, """val b = { n; () }""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc),
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes = Seq(
+        "execute_reply",
+        "execute_reply",
+        "execute_reply"
+      )
+
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "display_data",
+        "execute_input",
+        "update_display_data",
+        "execute_input"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val displayData = streams.displayData.map {
+        case (d, b) =>
+          val d0 = d.copy(
+            data = d.data.filterKeys(_ == "text/plain").toMap
+          )
+          (d0, b)
+      }
+      val id = {
+        val ids = displayData.flatMap(_._1.transient.display_id).toSet
+        assert(ids.size == 1)
+        ids.head
+      }
+
+      val expectedDisplayData = List(
+        ProtocolExecute.DisplayData(
+          Map("text/plain" -> Json.jString("n: Int = [lazy]")),
+          Map(),
+          ProtocolExecute.DisplayData.Transient(Some(id))
+        ) -> false,
+        ProtocolExecute.DisplayData(
+          Map("text/plain" -> Json.jString("n: Int = 2")),
+          Map(),
+          ProtocolExecute.DisplayData.Transient(Some(id))
+        ) -> true
+      )
+
+      assert(displayData == expectedDisplayData)
+    }
   }
 
 }

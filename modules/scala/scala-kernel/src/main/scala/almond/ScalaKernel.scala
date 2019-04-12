@@ -75,14 +75,15 @@ object ScalaKernel extends CaseApp[Options] {
     val predefFiles = options.predefFiles()
 
 
-    log.info(
-      autoDependencies
-        .flatMap {
-          case (trigger, auto) =>
-            Seq("Auto dependency:", s"  Trigger: $trigger") ++ auto.map(dep => s"  Adds: $dep")
-        }
-        .mkString("\n")
-    )
+    if (autoDependencies.nonEmpty)
+      log.debug(
+        autoDependencies
+          .flatMap {
+            case (trigger, auto) =>
+              Seq("Auto dependency:", s"  Trigger: $trigger") ++ auto.map(dep => s"  Adds: $dep")
+          }
+          .mkString("\n")
+      )
 
 
     val interpreterEc = singleThreadedExecutionContext("scala-interpreter")
@@ -97,26 +98,30 @@ object ScalaKernel extends CaseApp[Options] {
       else
         Thread.currentThread().getContextClassLoader
 
-    log.info("Creating interpreter")
+    log.debug("Creating interpreter")
 
     val interpreter = new ScalaInterpreter(
-      updateBackgroundVariablesEcOpt = Some(updateBackgroundVariablesEc),
-      extraRepos = options.extraRepository,
-      extraBannerOpt = options.banner,
-      extraLinks = extraLinks,
-      predefCode = options.predefCode,
-      predefFiles = predefFiles,
-      automaticDependencies = autoDependencies,
-      forceMavenProperties = forceProperties,
-      mavenProfiles = mavenProfiles,
-      initialClassLoader = initialClassLoader,
-      logCtx = logCtx,
-      metabrowse = options.metabrowse,
-      lazyInit = true,
-      trapOutput = options.trapOutput,
-      disableCache = options.disableCache
+      params = ScalaInterpreterParams(
+        updateBackgroundVariablesEcOpt = Some(updateBackgroundVariablesEc),
+        extraRepos = options.extraRepository,
+        extraBannerOpt = options.banner,
+        extraLinks = extraLinks,
+        predefCode = options.predefCode,
+        predefFiles = predefFiles,
+        automaticDependencies = autoDependencies,
+        forceMavenProperties = forceProperties,
+        mavenProfiles = mavenProfiles,
+        initialClassLoader = initialClassLoader,
+        metabrowse = options.metabrowse,
+        lazyInit = true,
+        trapOutput = options.trapOutput,
+        disableCache = options.disableCache,
+        autoUpdateLazyVals = options.autoUpdateLazyVals,
+        autoUpdateVars = options.autoUpdateVars
+      ),
+      logCtx = logCtx
     )
-    log.info("Created interpreter")
+    log.debug("Created interpreter")
 
 
     // Actually init Ammonite interpreter in background
@@ -125,9 +130,9 @@ object ScalaKernel extends CaseApp[Options] {
       setDaemon(true)
       override def run() =
         try {
-          log.info("Initializing interpreter (background)")
+          log.debug("Initializing interpreter (background)")
           interpreter.ammInterp
-          log.info("Initialized interpreter (background)")
+          log.debug("Initialized interpreter (background)")
         } catch {
           case t: Throwable =>
             log.error(s"Caught exception while initializing interpreter, exiting", t)
@@ -138,10 +143,14 @@ object ScalaKernel extends CaseApp[Options] {
     initThread.start()
 
 
-    log.info("Running kernel")
-    Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
-      .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
-      .unsafeRunSync()
+    log.debug("Running kernel")
+    try {
+      Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
+        .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
+        .unsafeRunSync()
+    } finally {
+      interpreter.shutdown()
+    }
   }
 
 }

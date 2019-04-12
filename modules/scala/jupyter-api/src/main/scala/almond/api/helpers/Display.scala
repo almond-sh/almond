@@ -3,12 +3,13 @@ package almond.api.helpers
 import java.io.{BufferedInputStream, IOException}
 import java.net.{URL, URLConnection}
 import java.nio.file.{Files, Paths}
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.{Base64, Locale, UUID}
+import java.util.Base64
 
+import almond.display.UpdatableDisplay
 import almond.interpreter.api.DisplayData.ContentType
 import almond.interpreter.api.{DisplayData, OutputHandler}
 
+@deprecated("Use almond.display.Data instead", "0.4.1")
 final class Display(id: String, contentType: String) {
   def update(content: String)(implicit outputHandler: OutputHandler): Unit =
     outputHandler.updateDisplay(
@@ -22,31 +23,22 @@ final class Display(id: String, contentType: String) {
 
 object Display {
 
+  @deprecated("Use almond.display.UpdatableDisplay.useRandomIds instead", "0.4.1")
   def useRandomIds(): Boolean =
-    sys.props
-      .get("almond.ids.random")
-      .forall(s => s == "1" || s.toLowerCase(Locale.ROOT) == "true")
+    UpdatableDisplay.useRandomIds()
 
-  private val idCounter = new AtomicInteger
-  private val divCounter = new AtomicInteger
-
+  @deprecated("Use almond.display.UpdatableDisplay.generateId instead", "0.4.1")
   def newId(): String =
-    if (useRandomIds())
-      UUID.randomUUID().toString
-    else
-      idCounter.incrementAndGet().toString
+    UpdatableDisplay.generateId()
 
+  @deprecated("Use almond.display.UpdatableDisplay.newDiv instead", "0.4.1")
   def newDiv(prefix: String = "data-"): String =
-    prefix + {
-      if (useRandomIds())
-        UUID.randomUUID().toString
-      else
-        divCounter.incrementAndGet().toString
-    }
+    UpdatableDisplay.generateDiv(prefix)
 
 
+  @deprecated("Use almond.display.Markdown instead", "0.4.1")
   def markdown(content: String)(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
+    val id = UpdatableDisplay.generateId()
     outputHandler.display(
       DisplayData.markdown(content)
         .withId(id)
@@ -54,8 +46,9 @@ object Display {
     new Display(id, DisplayData.ContentType.markdown)
   }
 
+  @deprecated("Use almond.display.Html instead", "0.4.1")
   def html(content: String)(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
+    val id = UpdatableDisplay.generateId()
     outputHandler.display(
       DisplayData.html(content)
         .withId(id)
@@ -63,8 +56,9 @@ object Display {
     new Display(id, DisplayData.ContentType.html)
   }
 
+  @deprecated("Use almond.display.Latex instead", "0.4.1")
   def latex(content: String)(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
+    val id = UpdatableDisplay.generateId()
     outputHandler.display(
       DisplayData.latex(content)
         .withId(id)
@@ -72,8 +66,9 @@ object Display {
     new Display(id, DisplayData.ContentType.latex)
   }
 
+  @deprecated("Use almond.display.Text instead", "0.4.1")
   def text(content: String)(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
+    val id = UpdatableDisplay.generateId()
     outputHandler.display(
       DisplayData.text(content)
         .withId(id)
@@ -81,13 +76,15 @@ object Display {
     new Display(id, DisplayData.ContentType.text)
   }
 
+  @deprecated("Use almond.display.Javascript instead", "0.4.1")
   def js(content: String)(implicit outputHandler: OutputHandler): Unit =
     outputHandler.display(
       DisplayData.js(content)
     )
 
+  @deprecated("Use almond.display.Svg instead", "0.4.1")
   def svg(content: String)(implicit outputHandler: OutputHandler): Display = {
-    val id = newId()
+    val id = UpdatableDisplay.generateId()
     outputHandler.display(
       DisplayData.svg(content)
         .withId(id)
@@ -95,6 +92,7 @@ object Display {
     new Display(id, DisplayData.ContentType.svg)
   }
 
+  @deprecated("Use almond.display.Image instead", "0.4.1")
   object Image {
 
     sealed abstract class Format(val contentType: String) extends Product with Serializable
@@ -114,7 +112,7 @@ object Display {
       format: Format,
       width: Option[String] = None,
       height: Option[String] = None,
-      id: String = newId()
+      id: String = UpdatableDisplay.generateId()
     )(implicit outputHandler: OutputHandler): Display = {
       DisplayData(
         data = Map(format.contentType -> Base64.getEncoder.encodeToString(content)),
@@ -130,7 +128,7 @@ object Display {
       format: Option[Format] = None,
       width: Option[String] = None,
       height: Option[String] = None,
-      id: String = newId()
+      id: String = UpdatableDisplay.generateId()
     )(implicit outputHandler: OutputHandler): Display = {
       val connection = new URL(url).openConnection()
       connection.setConnectTimeout(5000)
@@ -159,7 +157,7 @@ object Display {
       format: Option[Format] = None,
       width: Option[String] = None,
       height: Option[String] = None,
-      id: String = newId()
+      id: String = UpdatableDisplay.generateId()
     )(implicit outputHandler: OutputHandler): Display = {
       val contentType = format.map(_.contentType).getOrElse(URLConnection.guessContentTypeFromName(path))
       if(!imageTypes.contains(contentType))

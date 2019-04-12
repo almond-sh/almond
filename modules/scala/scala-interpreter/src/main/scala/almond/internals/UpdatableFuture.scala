@@ -1,7 +1,5 @@
 package almond.internals
 
-import java.util.UUID
-
 import almond.api.JupyterApi
 import ammonite.repl.ReplAPI
 
@@ -15,21 +13,26 @@ object UpdatableFuture {
     ec: ExecutionContext
   ): Unit =
     replApi.pprinter() = {
+      import jupyterApi.updatableResults._
       val p = replApi.pprinter()
       p.copy(
         additionalHandlers = p.additionalHandlers.orElse {
           case f: Future[_] =>
             implicit val ec0 = ec
-            val id = "<future-" + UUID.randomUUID() + ">"
-            jupyterApi.updatableResults.addVariable(id, "[running future]")
+
+            val messageColor = Some(p.colorLiteral)
+              .filter(_ == fansi.Attrs.Empty)
+              .getOrElse(fansi.Color.LightGray)
+
+            val value = updatable(messageColor("[running]").render)
             f.onComplete { t =>
-              jupyterApi.updatableResults.updateVariable(
-                id,
+              update(
+                value,
                 replApi.pprinter().tokenize(t).mkString,
                 last = true
               )
             }
-            pprint.Tree.Literal(id)
+            pprint.Tree.Literal(value)
         }
       )
     }

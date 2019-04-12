@@ -21,27 +21,90 @@ The following instances are available:
 
 ### Load dependencies
 
-???
+`interp.load.ivy` accepts one or several
+[`coursier.Dependency`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19).
+
+Load simple dependencies
+```scala
+interp.load.ivy("org.platanios" %% "tensorflow-data" % "0.4.1")
+```
+
+Load dependencies while adjusting some parameters
+```scala
+interp.load.ivy(
+  coursier.Dependency(
+    module = coursier.Module("org.platanios", "tensorflow_2.12"),
+    version = "0.4.1",
+    // replace with linux-gpu-x86_64 on linux with nvidia gpu or with darwin-cpu-x86_64 on macOS
+    attributes = coursier.Attributes("", "linux-cpu-x86_64")
+  )
+)
+```
+
+The dependencies can then be used in the cell right _after_ the one calling
+`interp.load.ivy`.
+
+Note that in the case of simple dependencies, when directly entering code
+in a notebook,
+the following syntax is preferred
+and allows to use the dependency in the current cell rather than the next one:
+```scala
+import $ivy.`org.platanios::tensorflow-data:0.4.1`
+```
 
 ### Load compiler plugins
 
-???
+`interp.load.plugin.ivy` accepts one or several
+[`coursier.Dependency`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19).
+
+```scala
+interp.load.plugin.ivy("org.spire-math" %% "kind-projector" % "0.9.9")
+```
+The plugins can then be used in the cell right _after_ the one calling
+`interp.load.plugin.ivy`.
+
+
+Note that when directly entering code in a notebook, the following syntax
+is more concise, and allows to use the compiler plugin in the current cell:
+```scala
+import $plugin.$ivy.`org.spire-math::kind-projector:0.9.9`
+
+// example of use
+trait T[F[_]]
+type T2 = T[Either[String, ?]]
+```
 
 ### Add repositories
 
-???
+One can add extra
+[`coursier.Repository`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L69) via
+
+```scala
+interp.repositories() ++= Seq(MavenRepository(
+  "https://nexus.corp.com/content/repositories/releases",
+  authentication = Some(Authentication("user", "pass"))
+))
+```
 
 ### Add exit hooks
 
-???
+```scala
+interp.beforeExitHooks += { _ =>
+  // called before the kernel exits
+}
+```
 
 ### Configure compiler options
 
-???
+```scala
+// enable warnings
+interp.configureCompiler(_.settings.nowarn.value = false)
+```
 
 ## `ReplAPI`
 
 [`ReplAPI`](https://github.com/lihaoyi/Ammonite/blob/master/amm/repl/src/main/scala/ammonite/repl/ReplAPI.scala) allows to
+- [access the pretty-printer and customize its behavior](#pretty-printer),
 - [access the latest thrown exception](#latest-thrown-exception),
 - [access the command history](#command-history),
 - [request the compiler instance to be re-created](#refresh-compiler-instance),
@@ -51,30 +114,63 @@ The following instances are available:
 - [get the class names and byte code](#byte-code-of-repl-inputs) of the code entered during the current
 session.
 
+### Pretty-printer
+
+```scala
+class Foo(val x: Int)
+
+repl.pprinter() = {
+  val p = repl.pprinter()
+  p.copy(
+    additionalHandlers = p.additionalHandlers.orElse {
+      case f: Foo =>
+        pprint.Tree.Lazy(_ => Iterator(fansi.Color.Yellow(s"foo: ${f.x}").render))
+    }
+  )
+}
+```
+
 ### Latest thrown exception
 
-???
+```scala
+repl.lastException // last thrown exception, or null if none were thrown
+```
 
 ### Command history
 
-???
+```scala
+repl.history // current session history
+repl.fullHistory // shared history
+```
 
 ### Refresh compiler instance
 
-???
+```scala
+repl.newCompiler()
+```
 
 ### Get compiler instance
 
-???
+```scala
+repl.compiler // has type scala.tools.nsc.Global
+```
 
 ### Get current imports
 
-???
+```scala
+repl.imports
+```
 
 ### Evaluate code
 
-???
+```scala
+repl.load("val a = 2")
+```
 
 ### Byte code of REPL inputs
 
-???
+```scala
+repl.sess.frames.flatMap(_.classloader.newFileDict).toMap
+// Map[String, Array[Byte]], keys: class names, values: byte code
+```
+

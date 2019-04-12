@@ -136,6 +136,7 @@ lazy val `scala-interpreter` = project
           Nil
       }
     },
+    libraryDependencies += "org.fusesource.jansi" % "jansi" % "1.18",
     crossVersion := CrossVersion.full,
     testSettings
   )

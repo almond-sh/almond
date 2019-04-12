@@ -1,5 +1,7 @@
 package almond.api
 
+import java.util.UUID
+
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import jupyter.{Displayer, Displayers}
 
@@ -48,8 +50,25 @@ abstract class JupyterApi { api =>
 object JupyterApi {
 
   abstract class UpdatableResults {
-    def addVariable(k: String, v: String): Unit
-    def updateVariable(k: String, v: String, last: Boolean): Unit
+
+    @deprecated("Use updatable instead", "0.4.1")
+    def addVariable(k: String, v: String): Unit =
+      updatable(k, v)
+    @deprecated("Use update instead", "0.4.1")
+    def updateVariable(k: String, v: String, last: Boolean): Unit =
+      update(k, v, last)
+
+    def updatable(k: String, v: String): Unit = {
+      // temporary dummy implementation for binary compatibility
+    }
+    def updatable(v: String): String = {
+      val id = UUID.randomUUID().toString
+      updatable(id, v)
+      id
+    }
+    def update(k: String, v: String, last: Boolean): Unit = {
+      // temporary dummy implementation for binary compatibility
+    }
   }
 
 }

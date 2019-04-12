@@ -13,7 +13,9 @@ object ScalaInterpreterTests extends TestSuite {
 
   private val interpreter: Interpreter =
     new ScalaInterpreter(
-      initialColors = Colors.BlackWhite,
+      params = ScalaInterpreterParams(
+        initialColors = Colors.BlackWhite
+      ),
       logCtx = logCtx
     )
 
@@ -30,9 +32,11 @@ object ScalaInterpreterTests extends TestSuite {
           ("val n = 2", Nil)
 
       val interp = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        predefCode = predefCode,
-        predefFiles = predefFiles,
+        params = ScalaInterpreterParams(
+          predefCode = predefCode,
+          predefFiles = predefFiles,
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -54,9 +58,11 @@ object ScalaInterpreterTests extends TestSuite {
           (code, Nil)
         }
       val interp = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        predefCode = predefCode,
-        predefFiles = predefFiles,
+        params = ScalaInterpreterParams(
+          predefCode = predefCode,
+          predefFiles = predefFiles,
+          initialColors = Colors.BlackWhite
+        ),
         logCtx = logCtx
       )
 
@@ -74,10 +80,12 @@ object ScalaInterpreterTests extends TestSuite {
           ("val n = 2z", Nil)
 
       val interp = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        predefCode = predefCode,
-        predefFiles = predefFiles,
-        lazyInit = true, // predef throws here else
+        params = ScalaInterpreterParams(
+          predefCode = predefCode,
+          predefFiles = predefFiles,
+          initialColors = Colors.BlackWhite,
+          lazyInit = true // predef throws here else
+        ),
         logCtx = logCtx
       )
 
@@ -86,7 +94,7 @@ object ScalaInterpreterTests extends TestSuite {
           interp.execute("val m = 2 * n")
           false
         } catch {
-          case e: ScalaInterpreter.PredefException =>
+          case e: AmmInterpreter.PredefException =>
             assert(e.getCause == null)
             true
         }
@@ -102,10 +110,12 @@ object ScalaInterpreterTests extends TestSuite {
         else
           ("""val n: Int = sys.error("foo")""", Nil)
       val interp = new ScalaInterpreter(
-        initialColors = Colors.BlackWhite,
-        predefCode = predefCode,
-        predefFiles = predefFiles,
-        lazyInit = true, // predef throws here else
+        params = ScalaInterpreterParams(
+          predefCode = predefCode,
+          predefFiles = predefFiles,
+          initialColors = Colors.BlackWhite,
+          lazyInit = true // predef throws here else
+        ),
         logCtx = logCtx
       )
 
@@ -114,7 +124,7 @@ object ScalaInterpreterTests extends TestSuite {
           interp.execute("val m = 2 * n")
           false
         } catch {
-          case e: ScalaInterpreter.PredefException =>
+          case e: AmmInterpreter.PredefException =>
             val msgOpt = Option(e.getCause).flatMap(e0 => Option(e0.getMessage))
             assert(msgOpt.contains("foo"))
             true
@@ -152,6 +162,13 @@ object ScalaInterpreterTests extends TestSuite {
       // particular attention to the position parameter that it returns
       // (the Jupyter UI will replace some of the user code with a completion
       // using that parameter).
+
+      * - {
+        val code = "repl.la"
+        val expectedRes = Completion(5, 7, Seq("lastException"))
+        val res = interpreter.complete(code, code.length)
+        assert(res == expectedRes)
+      }
 
       * - {
         val code = "Lis"

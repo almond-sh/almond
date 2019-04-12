@@ -64,7 +64,7 @@ final class InterpreterToIOInterpreter(
         IO.pure(ExecuteResult.Abort)
       case false =>
         IO {
-          log.info(s"Executing $line")
+          log.debug(s"Executing $line")
           val res =
             try interpreter.execute(line, storeHistory, inputManager, outputHandler)
             catch {
@@ -72,7 +72,7 @@ final class InterpreterToIOInterpreter(
                 log.error(s"Error when executing $line", t)
                 throw t
             }
-          log.info(s"Result: $res")
+          log.debug(s"Result: $res")
           res
         }
     }
