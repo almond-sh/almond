@@ -138,24 +138,39 @@ repl.lastException // last thrown exception, or null if none were thrown
 
 ### Command history
 
-???
+```scala
+repl.history // current session history
+repl.fullHistory // shared history
+```
 
 ### Refresh compiler instance
 
-???
+```scala
+repl.newCompiler()
+```
 
 ### Get compiler instance
 
-???
+```scala
+repl.compiler // has type scala.tools.nsc.Global
+```
 
 ### Get current imports
 
-???
+```scala
+repl.imports
+```
 
 ### Evaluate code
 
-???
+```scala
+repl.load("val a = 2")
+```
 
 ### Byte code of REPL inputs
 
-???
+```scala
+repl.sess.frames.flatMap(_.classloader.newFileDict).toMap
+// Map[String, Array[Byte]], keys: class names, values: byte code
+```
+
