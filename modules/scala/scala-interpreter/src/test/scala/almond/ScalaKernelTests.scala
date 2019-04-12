@@ -40,7 +40,12 @@ object ScalaKernelTests extends TestSuite {
       println(s"Don't know how to shutdown $interpreterEc")
   }
 
-  private def execute(sessionId: String, code: String, msgId: String = UUID.randomUUID().toString) =
+  private def execute(
+    sessionId: String,
+    code: String,
+    msgId: String = UUID.randomUUID().toString,
+    stopOnError: Boolean = true
+  ) =
     Message(
       Header(
         msgId,
@@ -49,7 +54,7 @@ object ScalaKernelTests extends TestSuite {
         ProtocolExecute.requestType.messageType,
         Some(Protocol.versionStr)
       ),
-      ProtocolExecute.Request(code, stop_on_error = Some(true))
+      ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
     ).on(Channel.Requests)
 
 
@@ -750,6 +755,70 @@ object ScalaKernelTests extends TestSuite {
       )
 
       assert(messageTypes == expectedMessageTypes)
+    }
+
+    "last exception" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """val nullBefore = repl.lastException == null"""),
+        execute(sessionId, """sys.error("foo")""", stopOnError = false),
+        execute(sessionId, """val nullAfter = repl.lastException == null""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes = Seq(
+        "execute_reply",
+        "execute_reply",
+        "execute_reply"
+      )
+
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "error",
+        "execute_input",
+        "execute_result"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val replies = streams.executeReplies
+      val expectedReplies = Map(
+        1 -> "nullBefore: Boolean = true",
+        3 -> "nullAfter: Boolean = false"
+      )
+      assert(replies == expectedReplies)
     }
 
     "update vars" - {

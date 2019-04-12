@@ -154,7 +154,7 @@ final class ReplApiImpl(
   def sess = sess0
   val prompt = Ref("nope")
   val frontEnd = Ref[FrontEnd](null)
-  def lastException: Throwable = null
+  def lastException: Throwable = execute0.lastExceptionOpt.orNull
   def fullHistory = storage.fullHistory()
   def history = history0
   val colors = colors0

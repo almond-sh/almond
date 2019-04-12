@@ -188,6 +188,11 @@ final class Execute(
     }
 
 
+  private var lastExceptionOpt0 = Option.empty[Throwable]
+
+  def lastExceptionOpt: Option[Throwable] = lastExceptionOpt0
+
+
   private def ammResult(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
@@ -212,8 +217,15 @@ final class Execute(
                 resultVariables.clear()
                 log.debug(s"Compiling / evaluating $code ($stmts)")
                 val r = ammInterp.processLine(code, stmts, currentLine0, silent = false, incrementLine = () => currentLine0 += 1)
+
                 log.debug(s"Handling output of $code")
                 Repl.handleOutput(ammInterp, r)
+                r match {
+                  case Res.Exception(ex, _) =>
+                    lastExceptionOpt0 = Some(ex)
+                  case _ =>
+                }
+
                 val variables = resultVariables.toMap
                 val res0 = resultOutput.result()
                 log.debug(s"Result of $code: $res0")
