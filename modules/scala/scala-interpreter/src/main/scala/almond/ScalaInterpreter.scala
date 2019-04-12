@@ -14,11 +14,15 @@ import ammonite.util._
 import fastparse.Parsed
 import io.github.soc.directories.ProjectDirectories
 
+import scala.util.control.NonFatal
+
 /** Holds bits of state for the interpreter, and implements [[almond.interpreter.Interpreter]]. */
 final class ScalaInterpreter(
   params: ScalaInterpreterParams = ScalaInterpreterParams(),
   val logCtx: LoggerContext = LoggerContext.nop
 ) extends Interpreter with AsyncInterpreterOps {
+
+  private val log = logCtx(getClass)
 
   private val frames0: Ref[List[Frame]] = Ref(List(Frame.createInitial(params.initialClassLoader)))
 
@@ -167,7 +171,13 @@ final class ScalaInterpreter(
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
 
-  override def shutdown(): Unit =
+  override def shutdown(): Unit = {
+    try Function.chain(ammInterp.beforeExitHooks).apply(())
+    catch {
+      case NonFatal(e) =>
+        log.warn("Caught exception while trying to run exit hooks", e)
+    }
     inspections.shutdown()
+  }
 
 }

@@ -142,9 +142,13 @@ object ScalaKernel extends CaseApp[Options] {
 
 
     log.debug("Running kernel")
-    Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
-      .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
-      .unsafeRunSync()
+    try {
+      Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
+        .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
+        .unsafeRunSync()
+    } finally {
+      interpreter.shutdown()
+    }
   }
 
 }
