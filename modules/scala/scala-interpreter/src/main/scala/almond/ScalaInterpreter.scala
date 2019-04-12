@@ -36,23 +36,23 @@ final class ScalaInterpreter(
   )
 
   private val colors0: Ref[Colors] = Ref(params.initialColors)
-  private val history0 = new History(Vector())
 
   private var commHandlerOpt = Option.empty[CommHandler]
-
-  private val execute0 = new Execute(
-    params.trapOutput,
-    params.automaticDependencies,
-    logCtx,
-    params.updateBackgroundVariablesEcOpt,
-    commHandlerOpt
-  )
 
   private val storage =
     if (params.disableCache)
       Storage.InMemory()
     else
       new Storage.Folder(os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite")
+
+  private val execute0 = new Execute(
+    params.trapOutput,
+    params.automaticDependencies,
+    storage,
+    logCtx,
+    params.updateBackgroundVariablesEcOpt,
+    commHandlerOpt
+  )
 
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
@@ -63,7 +63,6 @@ final class ScalaInterpreter(
       new ReplApiImpl(
         execute0,
         storage,
-        history0,
         colors0,
         ammInterp,
         sessApi

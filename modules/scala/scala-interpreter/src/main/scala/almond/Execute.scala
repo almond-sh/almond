@@ -12,6 +12,7 @@ import almond.interpreter.input.InputManager
 import almond.logger.LoggerContext
 import ammonite.interp.{Parsers, Preprocessor}
 import ammonite.repl.{Repl, Signaller}
+import ammonite.runtime.{History, Storage}
 import ammonite.util.{Colors, Ex, Printer, Ref, Res}
 import fastparse.Parsed
 
@@ -26,6 +27,7 @@ import scala.util.{Failure, Success}
 final class Execute(
   trapOutput: Boolean,
   automaticDependencies: Map[String, Seq[String]],
+  storage: Storage,
   logCtx: LoggerContext,
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
   commHandlerOpt: => Option[CommHandler]
@@ -37,6 +39,8 @@ final class Execute(
 
   private var interruptedStackTraceOpt0 = Option.empty[Array[StackTraceElement]]
   private var currentThreadOpt0 = Option.empty[Thread]
+
+  private var history0 = new History(Vector())
 
   private val input0 = new FunctionInputStream(
     UTF_8,
@@ -93,6 +97,9 @@ final class Execute(
     s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s)),
     s => currentPublishOpt0.fold(println(s))(_.stdout(s))
   )
+
+  def history: History =
+    history0
 
   def printer: Printer =
     printer0
@@ -281,6 +288,9 @@ final class Execute(
     outputHandler: Option[OutputHandler],
     colors0: Ref[Colors]
   ): ExecuteResult = {
+
+    storage.fullHistory() = storage.fullHistory() :+ code
+    history0 = history0 :+ code
 
     val hackedLine =
       if (code.contains("$ivy.`"))

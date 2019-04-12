@@ -821,6 +821,76 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
+    "history" - {
+
+      // How the pseudo-client behaves
+
+      val sessionId = UUID.randomUUID().toString
+      val lastMsgId = UUID.randomUUID().toString
+
+      // When the pseudo-client exits
+
+      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+
+      // Initial messages from client
+
+      val input = Stream(
+        execute(sessionId, """val before = repl.history.toVector"""),
+        execute(sessionId, """val a = 2"""),
+        execute(sessionId, """val b = a + 1"""),
+        execute(sessionId, """val after = repl.history.toVector.mkString(",").toString""", lastMsgId)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .flatMap(_.run(streams.source, streams.sink))
+
+      t.unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes = Seq(
+        "execute_reply",
+        "execute_reply",
+        "execute_reply",
+        "execute_reply"
+      )
+
+      val expectedPublishMessageTypes = Seq(
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "execute_result",
+        "execute_input",
+        "execute_result"
+      )
+
+      assert(requestsMessageTypes == expectedRequestsMessageTypes)
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val replies = streams.executeReplies
+      val expectedReplies = Map(
+        1 -> """before: Vector[String] = Vector("val before = repl.history.toVector")""",
+        2 -> """a: Int = 2""",
+        3 -> """b: Int = 3""",
+        4 -> """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
+      )
+      assert(replies == expectedReplies)
+    }
+
     "update vars" - {
       if (AmmInterpreter.isAtLeast_2_12_7) {
 

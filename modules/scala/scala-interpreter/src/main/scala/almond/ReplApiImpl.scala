@@ -4,7 +4,7 @@ import almond.api.JupyterApi
 import almond.interpreter.api.DisplayData
 import ammonite.ops.read
 import ammonite.repl.{FrontEnd, FullReplAPI, ReplLoad, SessionApiImpl}
-import ammonite.runtime.{History, Storage}
+import ammonite.runtime.Storage
 import ammonite.util.{Bind, Colors, CompilationError, Ref, Res}
 import ammonite.util.Util.normalizeNewlines
 import fansi.Attr
@@ -18,7 +18,6 @@ import scala.reflect.ClassTag
 final class ReplApiImpl(
   execute0: Execute,
   storage: Storage,
-  history0: History,
   colors0: Ref[Colors],
   ammInterp: => ammonite.interp.Interpreter,
   sess0: SessionApiImpl
@@ -156,7 +155,7 @@ final class ReplApiImpl(
   val frontEnd = Ref[FrontEnd](null)
   def lastException: Throwable = execute0.lastExceptionOpt.orNull
   def fullHistory = storage.fullHistory()
-  def history = history0
+  def history = execute0.history
   val colors = colors0
   def newCompiler() = ammInterp.compilerManager.init(force = true)
   def compiler = ammInterp.compilerManager.compiler.compiler
