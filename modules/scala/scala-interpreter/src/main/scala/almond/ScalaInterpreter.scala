@@ -132,7 +132,7 @@ final class ScalaInterpreter(
 
     val (newPos, completions0, _) = ammInterp.compilerManager.complete(
       pos,
-      frames0().head.imports.toString(),
+      (ammInterp.predefImports ++ frames0().head.imports).toString(),
       code
     )
 

@@ -164,6 +164,13 @@ object ScalaInterpreterTests extends TestSuite {
       // using that parameter).
 
       * - {
+        val code = "repl.la"
+        val expectedRes = Completion(5, 7, Seq("lastException"))
+        val res = interpreter.complete(code, code.length)
+        assert(res == expectedRes)
+      }
+
+      * - {
         val code = "Lis"
         val expectedRes = Completion(0, 3, Seq("List"))
         val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
