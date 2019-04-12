@@ -19,7 +19,12 @@ object UpdatableFuture {
         additionalHandlers = p.additionalHandlers.orElse {
           case f: Future[_] =>
             implicit val ec0 = ec
-            val value = updatable(fansi.Color.LightGray("[running]").render)
+
+            val messageColor = Some(p.colorLiteral)
+              .filter(_ == fansi.Attrs.Empty)
+              .getOrElse(fansi.Color.LightGray)
+
+            val value = updatable(messageColor("[running]").render)
             f.onComplete { t =>
               update(
                 value,
