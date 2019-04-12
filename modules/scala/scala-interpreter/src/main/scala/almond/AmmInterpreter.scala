@@ -22,6 +22,7 @@ object AmmInterpreter {
       |import almond.interpreter.api.DisplayData.DisplayDataSyntax
       |import almond.display._
       |import almond.display.Display.{markdown, html, latex, text, js, svg}
+      |import almond.input._
     """.stripMargin
 
   private[almond] val isAtLeast_2_12_7 = {
