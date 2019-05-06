@@ -10,6 +10,7 @@ import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
+import almond.amm.AlmondPreprocessor
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
 import argonaut.Json
@@ -890,7 +891,7 @@ object ScalaKernelTests extends TestSuite {
     }
 
     "update vars" - {
-      if (AmmInterpreter.isAtLeast_2_12_7) {
+      if (AlmondPreprocessor.isAtLeast_2_12_7) {
 
         // How the pseudo-client behaves
 

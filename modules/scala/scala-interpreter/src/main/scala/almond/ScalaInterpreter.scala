@@ -1,5 +1,6 @@
 package almond
 
+import almond.amm.AmmInterpreter
 import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, OutputHandler}
