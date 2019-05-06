@@ -11,7 +11,7 @@ object AlmondParsers {
 
   def PatVarSplitter[_: P] = {
     def Prefixes = P(Prelude ~ (`var` | `val`))
-    def Lhs = P( Prefixes ~/ BindPattern.rep(1, "," ~/ Pass) )
+    def Lhs = P( Prefixes ~/ VarId )
     def TypeAnnotation = P( (`:` ~/ Type.!).? )
     P( Lhs.! ~ TypeAnnotation ~ (`=` ~/ WL ~ StatCtx.Expr.!) ~ End )
   }

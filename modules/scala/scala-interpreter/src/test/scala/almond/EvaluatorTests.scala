@@ -88,6 +88,17 @@ object EvaluatorTests extends TestSuite {
           "x = 'a'" -> ifVarUpdates("x: Any = 'a'")
         )
     }
+
+    "pattern match still compile" - {
+      // no updates for var-s defined via pattern matching
+      runner.run(
+        "var (a, b) = (1, 'a')" ->
+          """a: Int = 1
+            |b: Char = 'a'""".stripMargin,
+        "a = 2" -> "",
+        "b = 'c'" -> ""
+      )
+    }
   }
 
 }
