@@ -80,6 +80,14 @@ object EvaluatorTests extends TestSuite {
         )
       }
     }
+
+    "type annotation" - {
+      if (AlmondPreprocessor.isAtLeast_2_12_7)
+        runner.run(
+          "var x: Any = 2" -> "x: Any = 2",
+          "x = 'a'" -> ifVarUpdates("x: Any = 'a'")
+        )
+    }
   }
 
 }
