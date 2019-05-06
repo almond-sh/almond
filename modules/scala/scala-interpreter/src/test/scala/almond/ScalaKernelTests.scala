@@ -18,17 +18,7 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
-import scala.concurrent.duration.Duration
-
 object ScalaKernelTests extends TestSuite {
-
-  private implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
-    // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
-    def unsafeRunTimedOrThrow(duration: Duration = Duration.Inf): T =
-      io.unsafeRunTimed(duration).getOrElse {
-        throw new Exception("Timeout")
-      }
-  }
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
   val bgVarEc = singleThreadedExecutionContext("test-bg-var")
@@ -40,23 +30,6 @@ object ScalaKernelTests extends TestSuite {
     if (!attemptShutdownExecutionContext(interpreterEc))
       println(s"Don't know how to shutdown $interpreterEc")
   }
-
-  private def execute(
-    sessionId: String,
-    code: String,
-    msgId: String = UUID.randomUUID().toString,
-    stopOnError: Boolean = true
-  ) =
-    Message(
-      Header(
-        msgId,
-        "test",
-        sessionId,
-        ProtocolExecute.requestType.messageType,
-        Some(Protocol.versionStr)
-      ),
-      ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
-    ).on(Channel.Requests)
 
 
   val tests = Tests {
