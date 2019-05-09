@@ -20,7 +20,7 @@ To use it, import the *almond-spark* dependency as well as Spark 2.x itself.
 
 ```scala
 import $ivy.`org.apache.spark::spark-sql:2.4.0` // Or use any other 2.x version here
-import $ivy.`sh.almond::almond-spark:0.3.0`
+import $ivy.`sh.almond::almond-spark:@VERSION@`
 ```
 
 Usually you want to disable logging in order to avoid polluting your cell outputs:
