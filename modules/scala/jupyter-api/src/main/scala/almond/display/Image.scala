@@ -1,8 +1,11 @@
 package almond.display
 
-import java.io.{ByteArrayInputStream, IOException}
+import java.awt.image.RenderedImage
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, IOException}
 import java.net.{HttpURLConnection, URL, URLConnection}
 import java.util.Base64
+
+import javax.imageio.ImageIO
 
 import scala.util.Try
 
@@ -108,14 +111,30 @@ final class Image private (
 
 object Image extends Display.Builder[Array[Byte], Image] {
 
+  def fromRenderedImage(image: RenderedImage): Image =
+    fromRenderedImage(image, format = JPG)
+
+  def fromRenderedImage(image: RenderedImage, format: Format): Image = {
+    val output: ByteArrayOutputStream = new ByteArrayOutputStream()
+    ImageIO.write(image, format.toString, output)
+    new Image(
+      width = Some(image.getWidth.toString),
+      height = Some(image.getHeight.toString),
+      format = Some(format),
+      byteArrayOrUrl = Right(output.toByteArray),
+      embed = true,
+      displayId = UpdatableDisplay.generateId()
+    )
+  }
+
   protected def build(contentOrUrl: Either[URL, Array[Byte]]): Image =
     new Image(
-      None,
-      None,
-      None,
-      contentOrUrl,
+      width = None,
+      height = None,
+      format = None,
+      byteArrayOrUrl = contentOrUrl,
       embed = contentOrUrl.left.exists(_.getProtocol == "file"),
-      UpdatableDisplay.generateId()
+      displayId = UpdatableDisplay.generateId()
     )
 
   sealed abstract class Format(val contentType: String) extends Product with Serializable
