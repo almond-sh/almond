@@ -6,7 +6,7 @@ import sbt.Keys.{scalaBinaryVersion, scalaVersion}
 object Deps {
 
   object Versions {
-    def ammonite = "1.6.6"
+    def ammonite = "1.6.7"
   }
 
   def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
