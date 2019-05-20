@@ -70,9 +70,6 @@ class AlmondPreprocessor(
         !DefaultPreprocessor.isPrivate(t) &&
         !t.name.decoded.contains("$") &&
         !t.mods.hasFlag(Flags.LAZY) =>
-      println(s"t.name=${t.name}")
-      println(s"t=$t")
-      println(s"code=$code")
       val (code0, modOpt) = fastparse.parse(code, AlmondParsers.PatVarSplitter(_)) match {
         case Parsed.Success((lhs, tpeOpt, rhs), _) if lhs.startsWith("var ") =>
           val mod = Name.backtickWrap(t.name.decoded + "$value")
