@@ -92,7 +92,7 @@ object AmmInterpreter {
           alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
         ) {
           override val compilerManager: CompilerLifecycleManager =
-            new CompilerLifecycleManager(storage, headFrame) {
+            new CompilerLifecycleManager(storage, headFrame, Some(dependencyComplete)) {
               override def preprocess(fileName: String): Preprocessor =
                 synchronized {
                   if (compiler == null) init(force = true)
