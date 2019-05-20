@@ -45,13 +45,14 @@ final class PrettyPrint private(
         """<style>@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }</style><div style="animation: fadein 2s;">"""
       else
         ""
-    extra + """<div class="jp-RenderedText"><pre>"""
+    // pre and div are for jupyterlab, code is for nteract
+    extra + """<div class="jp-RenderedText"><pre><code>"""
   }
   private def suffix = {
     val extra =
       if (fadeIn0) "</div>"
       else ""
-    "</pre></div>" + extra
+    "</code></pre></div>" + extra
   }
 
   private def html: String =

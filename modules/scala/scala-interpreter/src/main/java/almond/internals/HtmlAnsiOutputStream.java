@@ -22,6 +22,8 @@ public class HtmlAnsiOutputStream extends AnsiOutputStream {
 
     private static final String[] ANSI_COLOR_MAP = {"black", "red",
             "green", "yellow", "blue", "magenta", "cyan", "white",};
+    private static final String[] RGB_COLOR_MAP = {"black", "red",
+            "rgb(0, 187, 0)", "yellow", "blue", "magenta", "rgb(0, 187, 187)", "white",};
 
     private static final byte[] BYTES_QUOT = "&quot;".getBytes();
     private static final byte[] BYTES_AMP = "&amp;".getBytes();
@@ -118,11 +120,18 @@ public class HtmlAnsiOutputStream extends AnsiOutputStream {
 
     @Override
     protected void processSetForegroundColor(int color, boolean bright) throws IOException {
+        // hard-coded color are for nteract (where the ansi-* classes are defined), and it might be useful from nbviewer too
+        // ansi-* classes are for jupyterlab (and classic too I think)
+        writeAttribute("span style=\"color: " + RGB_COLOR_MAP[color] + "\"");
         writeAttribute("span class=\"ansi-" + ANSI_COLOR_MAP[color] + "-fg\"");
     }
 
     @Override
     protected void processSetBackgroundColor(int color, boolean bright) throws IOException {
+        String extra = "";
+        if (color == 7)
+            extra = "; color: rgb(255, 255, 255);";
+        writeAttribute("span style=\"background-color: " + RGB_COLOR_MAP[color] + extra + "\"");
         writeAttribute("span class=\"ansi-" + ANSI_COLOR_MAP[color] + "-bg\"");
     }
 }
