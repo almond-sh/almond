@@ -255,7 +255,7 @@ final class Execute(
                         haos.close()
                         val html =
                           s"""<div class="jp-RenderedText">
-                             |<pre>${baos.toString("UTF-8")}</pre>
+                             |<pre><code>${baos.toString("UTF-8")}</code></pre>
                              |</div>""".stripMargin
                         log.debug(s"HTML: $html")
                         val d = r.add(
