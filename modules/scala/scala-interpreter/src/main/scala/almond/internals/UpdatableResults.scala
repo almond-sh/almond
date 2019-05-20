@@ -44,7 +44,7 @@ final class UpdatableResults(
     def updateRef(data: DisplayData, ref: Ref[Map[String, String]]): Unit = {
       val m0 = ref()
       val m = m0 + (k -> v)
-      val data0 = UpdatableResults.substituteVariables(data, m, isFirst = false)
+      val data0 = UpdatableResults.substituteVariables(data, m, isFirst = false, onlyHighlightOpt = Some(k))
       log.debug(s"Updating variable $k with $v: $data0")
       ref() = m
       Future(updateData(data0))(ec)
@@ -73,7 +73,7 @@ final class UpdatableResults(
 
 object UpdatableResults {
 
-  def substituteVariables(d: DisplayData, m: Map[String, String], isFirst: Boolean): DisplayData =
+  def substituteVariables(d: DisplayData, m: Map[String, String], isFirst: Boolean, onlyHighlightOpt: Option[String] = None): DisplayData =
     d.copy(
       data = d.data.map {
         case ("text/plain", t) =>
@@ -92,7 +92,7 @@ object UpdatableResults {
               haos.close()
 
               val (prefix, suffix) =
-                if (isFirst) ("", "")
+                if (isFirst || onlyHighlightOpt.exists(_ != k)) ("", "")
                 else (
                   """<style>@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }</style><span style="animation: fadein 2s;">""",
                   "</span>"
