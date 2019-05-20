@@ -37,7 +37,6 @@ $ ./coursier bootstrap @EXTRA_COURSIER_ARGS@\
 
 <details>
 <summary>Equivalent Windows command</summary>
-From Windows, run instead
 ```bat
 > bitsadmin /transfer downloadCoursierCli https://git.io/coursier-cli "%cd%\coursier"
 > bitsadmin /transfer downloadCoursierBat https://git.io/coursier-bat "%cd%\coursier.bat"
@@ -61,7 +60,7 @@ $ ./almond --install
 <details>
 <summary>Equivalent Windows command</summary>
 ```bat
-$ .\almond --install
+> .\almond --install
 ```
 </details>
 
