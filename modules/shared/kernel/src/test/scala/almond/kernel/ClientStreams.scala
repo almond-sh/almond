@@ -139,6 +139,19 @@ final case class ClientStreams(
       .flatten
       .toList
 
+  def displayDataText: Seq[String] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
+          m.decodeAs[Execute.DisplayData] match {
+            case Left(_) => Nil
+            case Right(m) => Seq(m.content.data.get("text/plain").fold("")(_.stringOrEmpty))
+          }
+      }
+      .flatten
+      .toList
+
   def output: Seq[String] =
     generatedMessages
       .iterator

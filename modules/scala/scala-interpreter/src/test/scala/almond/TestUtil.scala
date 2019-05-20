@@ -55,7 +55,9 @@ object TestUtil {
     threads: KernelThreads
   ) {
 
-    def run(session: (String, String)*): Unit = {
+    def run(inputs: Seq[(String, String)], publish: Seq[String] = Nil): Unit = {
+
+      val (input, replies) = inputs.unzip
 
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
@@ -64,9 +66,7 @@ object TestUtil {
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
-      assert(session.nonEmpty)
-
-      val input = session.map(_._1)
+      assert(input.nonEmpty)
 
       val input0 = Stream(
         input.init.map(s => execute(sessionId, s)) :+
@@ -88,16 +88,28 @@ object TestUtil {
 
       t.unsafeRunTimedOrThrow()
 
-      val output = streams.output.flatMap(_.split('\n')).filter(_.nonEmpty)
-      val expectedOutput = session.flatMap(_._2.split('\n')).filter(_.nonEmpty)
+      val replies0 = streams.executeReplies.filter(_._2.nonEmpty)
+      val expectedReplies = replies
+        .zipWithIndex
+        .collect {
+          case (r, idx) if r.nonEmpty =>
+            (idx + 1) -> r
+        }
+        .toMap
 
-      for (((a, b), idx) <- output.zip(expectedOutput).zipWithIndex if a != b)
-        System.err.println(s"At line $idx: expected $b, got $a")
-      for (elem <- output.drop(expectedOutput.length))
-        System.err.println(s"Got extra element: $elem")
-      for (elem <- expectedOutput.drop(output.length))
-        System.err.println(s"Expected extra element: $elem")
-      assert(output == expectedOutput)
+      val publish0 = streams.displayDataText
+
+      for ((a, b) <- publish0.zip(publish) if a != b)
+        System.err.println(s"Expected $b, got $a")
+      for (k <- replies0.keySet.intersect(expectedReplies.keySet) if replies0.get(k) != expectedReplies.get(k))
+        System.err.println(s"At line $k: expected ${expectedReplies(k)}, got ${replies0(k)}")
+      for (k <- replies0.keySet.--(expectedReplies.keySet))
+        System.err.println(s"At line $k: expected nothing, got ${replies0(k)}")
+      for (k <- expectedReplies.keySet.--(replies0.keySet))
+        System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
+
+      assert(replies0 == expectedReplies)
+      assert(publish0 == publish)
     }
   }
 

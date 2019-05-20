@@ -25,6 +25,10 @@ object EvaluatorTests extends TestSuite {
     if (AlmondPreprocessor.isAtLeast_2_12_7) s
     else ""
 
+  def ifNotVarUpdates(s: String): String =
+    if (AlmondPreprocessor.isAtLeast_2_12_7) ""
+    else s
+
 
   val tests = Tests {
 
@@ -35,48 +39,64 @@ object EvaluatorTests extends TestSuite {
 
       "multistatement" - {
         runner.run(
-          ";1; 2L; '3';" ->
-            """res0_0: Int = 1
-              |res0_1: Long = 2L
-              |res0_2: Char = '3'""".stripMargin,
-          "val x = 1; x;" ->
-            """x: Int = 1
-              |res1_1: Int = 1""".stripMargin,
-          "var x = 1; x = 2; x" ->
-            """x: Int = 2
-              |res2_2: Int = 2""".stripMargin,
-          "var y = 1; case class C(i: Int = 0){ def foo = x + y }; new C().foo" ->
-            """y: Int = 1
-              |defined class C
-              |res3_2: Int = 3""".stripMargin,
-          "C()" ->
-            "res4: C = C(0)"
+          Seq(
+            ";1; 2L; '3';" ->
+              """res0_0: Int = 1
+                |res0_1: Long = 2L
+                |res0_2: Char = '3'""".stripMargin,
+            "val x = 1; x;" ->
+              """x: Int = 1
+                |res1_1: Int = 1""".stripMargin,
+            "var x = 1; x = 2; x" ->
+              """x: Int = 2
+                |res2_2: Int = 2""".stripMargin,
+            "var y = 1; case class C(i: Int = 0){ def foo = x + y }; new C().foo" ->
+              """y: Int = 1
+                |defined class C
+                |res3_2: Int = 3""".stripMargin,
+            "C()" -> "res4: C = C(0)"
+          )
         )
       }
 
       "lazy vals" - {
         runner.run(
-          "lazy val x = 'h'" -> "x: Char = [lazy]",
-          "x" ->
-            """x: Char = 'h'
-              |res1: Char = 'h'""".stripMargin,
-          "var w = 'l'" -> "w: Char = 'l'",
-          "lazy val y = {w = 'a'; 'A'}" -> "y: Char = [lazy]",
-          "lazy val z = {w = 'b'; 'B'}" -> "z: Char = [lazy]",
-          "z" ->
-            Seq(ifVarUpdates("w: Char = 'b'"), "z: Char = 'B'", "res5: Char = 'B'").mkString("\n"),
-          "y" ->
-            Seq(ifVarUpdates("w: Char = 'a'"), "y: Char = 'A'", "res6: Char = 'A'").mkString("\n"),
-          "w" -> "res7: Char = 'a'"
+          Seq(
+            "lazy val x = 'h'" -> "",
+            "x" -> "res1: Char = 'h'",
+            "var w = 'l'" -> ifNotVarUpdates("w: Char = 'l'"),
+            "lazy val y = {w = 'a'; 'A'}" -> "",
+            "lazy val z = {w = 'b'; 'B'}" -> "",
+            "z" -> "res5: Char = 'B'",
+            "y" -> "res6: Char = 'A'",
+            "w" -> "res7: Char = 'a'"
+          ),
+          Seq(
+            "x: Char = [lazy]",
+            "x: Char = 'h'",
+            ifVarUpdates("w: Char = 'l'"),
+            "y: Char = [lazy]",
+            "z: Char = [lazy]",
+            ifVarUpdates("w: Char = 'b'"),
+            "z: Char = 'B'",
+            ifVarUpdates("w: Char = 'a'"),
+            "y: Char = 'A'"
+          ).filter(_.nonEmpty)
         )
       }
 
       "vars" - {
         runner.run(
-          "var x: Int = 10" -> "x: Int = 10",
-          "x" -> "res1: Int = 10",
-          "x = 1" -> ifVarUpdates("x: Int = 1"),
-          "x" -> "res3: Int = 1"
+          Seq(
+            "var x: Int = 10" -> ifNotVarUpdates("x: Int = 10"),
+            "x" -> "res1: Int = 10",
+            "x = 1" -> "",
+            "x" -> "res3: Int = 1"
+          ),
+          Seq(
+            ifVarUpdates("x: Int = 10"),
+            ifVarUpdates("x: Int = 1")
+          ).filter(_.nonEmpty)
         )
       }
     }
@@ -84,19 +104,27 @@ object EvaluatorTests extends TestSuite {
     "type annotation" - {
       if (AlmondPreprocessor.isAtLeast_2_12_7)
         runner.run(
-          "var x: Any = 2" -> "x: Any = 2",
-          "x = 'a'" -> ifVarUpdates("x: Any = 'a'")
+          Seq(
+            "var x: Any = 2" -> "",
+            "x = 'a'" -> ""
+          ),
+          Seq(
+            "x: Any = 2",
+            ifVarUpdates("x: Any = 'a'")
+          )
         )
     }
 
     "pattern match still compile" - {
       // no updates for var-s defined via pattern matching
       runner.run(
-        "var (a, b) = (1, 'a')" ->
-          """a: Int = 1
-            |b: Char = 'a'""".stripMargin,
-        "a = 2" -> "",
-        "b = 'c'" -> ""
+        Seq(
+          "var (a, b) = (1, 'a')" ->
+            """a: Int = 1
+              |b: Char = 'a'""".stripMargin,
+          "a = 2" -> "",
+          "b = 'c'" -> ""
+        )
       )
     }
   }
