@@ -9,8 +9,8 @@ object Mima {
       .replace("-RC", "-")
       .forall(c => c == '.' || c == '-' || c.isDigit)
 
-  def binaryCompatibilityVersions: Set[String] =
-    Seq("git", "tag", "--merged", "HEAD^", "--contains", "v0.3.1")
+  def binaryCompatibilityVersions(contains: String): Set[String] =
+    Seq("git", "tag", "--merged", "HEAD^", "--contains", contains)
       .!!
       .linesIterator
       .map(_.trim)

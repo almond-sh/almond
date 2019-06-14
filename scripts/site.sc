@@ -4,8 +4,10 @@ import java.nio.file._
 
 import $file.website.Website, Website.{Mdoc, Relativize, Util}
 
+val sbtCmd = Seq("sbt", "++2.12.8")
+
 lazy val version = Util.cached("version") {
-  Util.outputOf(Seq("sbt", "export channels/version"))
+  Util.outputOf(sbtCmd ++ Seq("export channels/version"))
     .linesIterator
     .map(_.trim)
     .filter(_.nonEmpty)
@@ -25,7 +27,7 @@ lazy val latestRelease = Util.cached("latest-release") {
 
 
 lazy val scalaVersion = Util.cached("scala-version") {
-  Util.outputOf(Seq("sbt", "export channels/scalaVersion"))
+  Util.outputOf(sbtCmd ++ Seq("export channels/scalaVersion"))
     .linesIterator
     .map(_.trim)
     .filter(_.nonEmpty)
@@ -34,7 +36,7 @@ lazy val scalaVersion = Util.cached("scala-version") {
 }
 
 lazy val ammoniteVersion = Util.cached("ammonite-version") {
-  Util.runCmd(Seq("sbt", "interpreter-api/exportVersions"))
+  Util.runCmd(sbtCmd ++ Seq("interpreter-api/exportVersions"))
   new String(Files.readAllBytes(Paths.get("modules/shared/interpreter-api/target/ammonite-version")), "UTF-8").trim
 }
 
@@ -66,7 +68,8 @@ def main(publishLocal: Boolean = false, npmInstall: Boolean = false, yarnRunBuil
   assert(!(watch && relativize), "Cannot specify both --watch and --relativize")
 
   if (publishLocal)
-    Util.runCmd(Seq("sbt", "set version in ThisBuild := \"" + version + "\"", "interpreter-api/publishLocal", "jupyter-api/publishLocal", "scala-kernel-api/publishLocal", "almond-spark/publishLocal"))
+    // Staying in scala 2.12 for mdoc for now
+    Util.runCmd(sbtCmd ++ Seq("set version in ThisBuild := \"" + version + "\"", "interpreter-api/publishLocal", "jupyter-api/publishLocal", "scala-kernel-api/publishLocal", "almond-spark/publishLocal"))
 
   // be sure to adjust that
   val websiteDir = new File("docs/website")

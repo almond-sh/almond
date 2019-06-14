@@ -6,22 +6,34 @@ import sbt.Keys.{scalaBinaryVersion, scalaVersion}
 object Deps {
 
   object Versions {
-    def ammonite = "1.6.7"
+    def ammonite = setting {
+      val sv = scalaVersion.value
+      if (sv.startsWith("2.11.")) "1.6.7"
+      else "1.6.8-1-c7a656e"
+    }
+    def caseApp = "2.0.0-M9"
   }
 
-  def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
+  def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite.value).cross(CrossVersion.full))
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.4.2"
-  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M10"
-  def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % "2.0.0-M6"
-  def caseApp = "com.github.alexarchambault" %% "case-app" % "2.0.0-M6"
+  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11"
+  def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
+  def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
   def directories = "io.github.soc" % "directories" % "11"
-  def fs2 = "co.fs2" %% "fs2-core" % "1.0.4"
+  def fs2 = "co.fs2" %% "fs2-core" % "1.1.0-M1"
+  def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
   def jeromq = "org.zeromq" % "jeromq" % "0.5.1"
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
   def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.2"
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
-  def scalatags = "com.lihaoyi" %% "scalatags" % "0.6.8"
+  def scalatags = setting {
+    val sv = scalaVersion.value
+    val ver =
+      if (sv.startsWith("2.11.")) "0.6.8"
+      else "0.7.0"
+    "com.lihaoyi" %% "scalatags" % ver
+  }
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.26"
 
   def sparkSql20 = "org.apache.spark" %% "spark-sql" % "2.0.2" // no need to bump that version much, to ensure we don't rely on too new stuff
@@ -34,10 +46,10 @@ object Deps {
   }
 
   def utest = setting {
-    val sbv = scalaBinaryVersion.value
+    val sv = scalaVersion.value
     val ver =
-      if (sbv == "2.13.0-M5") "0.6.6"
-      else "0.6.7"
+      if (sv.startsWith("2.11.")) "0.6.7"
+      else "0.6.9"
     "com.lihaoyi" %% "utest" % ver
   }
 

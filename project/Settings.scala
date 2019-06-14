@@ -10,7 +10,7 @@ object Settings {
 
   def scala211 = "2.11.12"
   def scala212 = "2.12.8"
-  def scala213 = "2.13.0-M5"
+  def scala213 = "2.13.0"
 
   lazy val isAtLeast212 = Def.setting {
     CrossVersion.partialVersion(scalaVersion.value) match {
@@ -49,7 +49,7 @@ object Settings {
   }
 
   lazy val shared = Seq(
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     crossScalaVersions := Seq(scala213, scala212, "2.12.7", "2.12.6", scala211),
     scalacOptions ++= Seq(
       // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
@@ -183,7 +183,7 @@ object Settings {
   lazy val exportVersionsSetting: Setting[_] = {
     exportVersions := {
       val ver = version.value
-      val ammoniteVer = Deps.Versions.ammonite
+      val ammoniteVer = Deps.Versions.ammonite.value
       val scalaVer = scalaVersion.value
       val outputDir = target.value
 
@@ -207,17 +207,14 @@ object Settings {
 
   lazy val mima = Seq(
     MimaPlugin.autoImport.mimaPreviousArtifacts := {
-      val sbv = scalaBinaryVersion.value
-      val isSimpleVersion = CrossVersion.partialVersion(sbv) match {
-        case Some((maj, min)) => s"$maj.$min" == sbv
-        case _ => true // ???
+      val sv = scalaVersion.value
+      val contains =
+        if (sv.startsWith("2.13.")) "4e9441b9"
+        else "v0.3.1"
+
+      Mima.binaryCompatibilityVersions(contains).map { ver =>
+        (organization.value % moduleName.value % ver).cross(crossVersion.value)
       }
-      if (isSimpleVersion)
-        Mima.binaryCompatibilityVersions.map { ver =>
-          (organization.value % moduleName.value % ver).cross(crossVersion.value)
-        }
-      else
-        Set.empty
     }
   )
 
