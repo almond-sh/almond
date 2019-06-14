@@ -9,7 +9,7 @@ object Deps {
     def ammonite = setting {
       val sv = scalaVersion.value
       if (sv.startsWith("2.11.")) "1.6.7"
-      else "1.6.8"
+      else "1.6.8-1-c7a656e"
     }
     def caseApp = "2.0.0-M9"
   }

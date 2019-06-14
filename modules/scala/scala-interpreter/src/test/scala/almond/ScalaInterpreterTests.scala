@@ -158,60 +158,56 @@ object ScalaInterpreterTests extends TestSuite {
 
     "completion" - {
 
-      // disabled in 2.13 until we can use https://github.com/lihaoyi/Ammonite/pull/973
-      if (!scala.util.Properties.versionNumberString.startsWith("2.13.")) {
+      // Completions are tested in more detail in Ammonite too.
+      // Compared to it, we filter out stuff that contains '$', and pay
+      // particular attention to the position parameter that it returns
+      // (the Jupyter UI will replace some of the user code with a completion
+      // using that parameter).
 
-        // Completions are tested in more detail in Ammonite too.
-        // Compared to it, we filter out stuff that contains '$', and pay
-        // particular attention to the position parameter that it returns
-        // (the Jupyter UI will replace some of the user code with a completion
-        // using that parameter).
+      * - {
+        val code = "repl.la"
+        val expectedRes = Completion(5, 7, Seq("lastException"))
+        val res = interpreter.complete(code, code.length)
+        assert(res == expectedRes)
+      }
 
-        * - {
-          val code = "repl.la"
-          val expectedRes = Completion(5, 7, Seq("lastException"))
-          val res = interpreter.complete(code, code.length)
-          assert(res == expectedRes)
-        }
+      * - {
+        val code = "Lis"
+        val expectedRes = Completion(0, 3, Seq("List"))
+        val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
+        val res0 = interpreter.complete(code, code.length)
+        val res = res0.copy(
+          completions = res0.completions.filter(expectedRes.completions.toSet)
+        )
+        val alternativeRes = res0.copy(
+          completions = res0.completions.filter(alternativeExpectedRes.completions.toSet)
+        )
+        assert(res == expectedRes || alternativeRes == alternativeExpectedRes)
+      }
 
-        * - {
-          val code = "Lis"
-          val expectedRes = Completion(0, 3, Seq("List"))
-          val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
-          val res0 = interpreter.complete(code, code.length)
-          val res = res0.copy(
-            completions = res0.completions.filter(expectedRes.completions.toSet)
-          )
-          val alternativeRes = res0.copy(
-            completions = res0.completions.filter(alternativeExpectedRes.completions.toSet)
-          )
-          assert(res == expectedRes || alternativeRes == alternativeExpectedRes)
-        }
+      * - {
+        val code = "HashM"
 
-        * - {
-          val code = "HashM"
+        val extraCompletions =
+          if (isScala211 || isScala212)
+            Seq("scala.collection.parallel.immutable.HashMapCombiner")
+          else
+            Nil
 
-          val extraCompletions =
-            if (isScala211 || isScala212)
-              Seq("scala.collection.parallel.immutable.HashMapCombiner")
-            else
-              Nil
-
-          val expectedRes = Completion(
-            0,
-            5,
-            Seq(
-              "java.util.HashMap",
-              "scala.collection.immutable.HashMap",
-              "scala.collection.mutable.HashMap"
-            ) ++ extraCompletions
-          )
-          val res0 = interpreter.complete(code, code.length)
-          val res = res0.copy(
-            completions = res0.completions.filter(expectedRes.completions.toSet)
-          )
-          assert(res == expectedRes)
-        }
+        val expectedRes = Completion(
+          0,
+          5,
+          Seq(
+            "java.util.HashMap",
+            "scala.collection.immutable.HashMap",
+            "scala.collection.mutable.HashMap"
+          ) ++ extraCompletions
+        )
+        val res0 = interpreter.complete(code, code.length)
+        val res = res0.copy(
+          completions = res0.completions.filter(expectedRes.completions.toSet)
+        )
+        assert(res == expectedRes)
       }
 
     }
