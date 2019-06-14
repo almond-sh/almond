@@ -74,7 +74,7 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.scalatags,
+      Deps.scalatags.value,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
     ),
@@ -118,7 +118,7 @@ lazy val `scala-kernel-api` = project
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
     libraryDependencies ++= Seq(
-      Deps.ammoniteRepl,
+      Deps.ammoniteRepl.value,
       Deps.jvmRepr
     )
   )
@@ -136,7 +136,7 @@ lazy val `scala-interpreter` = project
           Nil
       }
     },
-    libraryDependencies += "org.fusesource.jansi" % "jansi" % "1.18",
+    libraryDependencies += Deps.jansi,
     crossVersion := CrossVersion.full,
     testSettings
   )
@@ -184,7 +184,7 @@ lazy val `almond-spark` = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.ammoniteRepl % "provided",
+      Deps.ammoniteRepl.value % "provided",
       Deps.ammoniteSpark,
       Deps.argonautShapeless,
       Deps.sparkSql.value % "provided"
