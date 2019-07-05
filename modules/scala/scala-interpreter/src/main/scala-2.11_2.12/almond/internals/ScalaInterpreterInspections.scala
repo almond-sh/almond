@@ -22,7 +22,7 @@ final class ScalaInterpreterInspections(
   metabrowseHost: String,
   metabrowsePort: Int,
   pressy: => scala.tools.nsc.interactive.Global,
-  frames: Ref[List[Frame]]
+  frames: => List[Frame]
 ) {
 
   private val log = logCtx(getClass)
@@ -69,7 +69,7 @@ final class ScalaInterpreterInspections(
     }
 
     val baseSourcepath = ScalaInterpreterInspections.baseSourcePath(
-      frames()
+      frames
         .last
         .classloader
         .getParent,
@@ -80,7 +80,7 @@ final class ScalaInterpreterInspections(
 
       import ScalaInterpreterInspections.SourcepathOps
 
-      val sessionJars = frames()
+      val sessionJars = frames
         .flatMap(_.classpath)
         .collect {
           // FIXME We're ignoring jars-in-jars of standalone bootstraps of coursier in particular
@@ -111,7 +111,7 @@ final class ScalaInterpreterInspections(
       case (metabrowseServer, metabrowsePort0, metabrowseWindowId) =>
         val pressy0 = pressy
 
-        val prefix = frames().head.imports.toString() + newLine + "object InspectWrapper{" + newLine
+        val prefix = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
         val suffix = newLine + "}"
         val allCode = prefix + code + suffix
         val index = prefix.length + pos

@@ -1,9 +1,10 @@
 package almond
 
 import almond.api.JupyterApi
+import almond.internals.AmmCompat._
 import almond.interpreter.api.DisplayData
 import ammonite.ops.read
-import ammonite.repl.{FrontEnd, FullReplAPI, ReplLoad, SessionApiImpl}
+import ammonite.repl.{FullReplAPI, SessionApiImpl}
 import ammonite.runtime.Storage
 import ammonite.util.{Bind, Colors, CompilationError, Ref, Res}
 import ammonite.util.Util.normalizeNewlines
@@ -14,7 +15,7 @@ import pprint.{TPrint, TPrintColors}
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-/** Actual [[ammonite.repl.ReplAPI]] instance */
+/** Actual [[ammonite.repl.api.ReplAPI]] instance */
 final class ReplApiImpl(
   execute0: Execute,
   storage: Storage,

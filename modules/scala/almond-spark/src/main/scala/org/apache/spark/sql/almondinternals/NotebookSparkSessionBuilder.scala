@@ -5,8 +5,8 @@ import java.lang.{Boolean => JBoolean}
 
 import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.display.Display.html
-import ammonite.interp.InterpAPI
-import ammonite.repl.ReplAPI
+import ammonite.interp.api.InterpAPI
+import ammonite.repl.api.ReplAPI
 import org.apache.log4j.{Category, Logger, RollingFileAppender}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.ammonitesparkinternals.AmmoniteSparkSessionBuilder

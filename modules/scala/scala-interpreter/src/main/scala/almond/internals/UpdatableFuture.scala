@@ -1,7 +1,7 @@
 package almond.internals
 
 import almond.api.JupyterApi
-import ammonite.repl.ReplAPI
+import almond.internals.AmmCompat._
 
 import scala.concurrent.{ExecutionContext, Future}
 

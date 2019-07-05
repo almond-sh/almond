@@ -1,7 +1,7 @@
 
 import sbt._
 import sbt.Def.setting
-import sbt.Keys.{scalaBinaryVersion, scalaVersion}
+import sbt.Keys.scalaVersion
 
 object Deps {
 
@@ -9,13 +9,20 @@ object Deps {
     def ammonite = setting {
       val sv = scalaVersion.value
       if (sv.startsWith("2.11.")) "1.6.7"
-      else "1.6.8-1-c7a656e"
+      else "1.6.9-8-2a27ffe"
     }
     def caseApp = "2.0.0-M9"
   }
 
   def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite.value).cross(CrossVersion.full))
-  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.4.2"
+  def ammoniteReplApi = setting {
+    val sv = scalaVersion.value
+    val module =
+      if (sv.startsWith("2.11.")) "ammonite-repl"
+      else "ammonite-repl-api"
+    ("com.lihaoyi" % module % Versions.ammonite.value).cross(CrossVersion.full)
+  }
+  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.5.0"
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp

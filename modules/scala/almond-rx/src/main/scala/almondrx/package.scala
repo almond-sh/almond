@@ -1,6 +1,6 @@
 
 import almond.api.JupyterApi
-import ammonite.repl.ReplAPI
+import almondrx.internals.Compat._
 import rx._
 
 package object almondrx {
