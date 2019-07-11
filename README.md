@@ -1,3 +1,7 @@
+<div align="center">
+<img src="docs/website/static/logos/impure-logos-almond-1.svg" alt="logo" width="40%">
+</div>
+
 # almond
 
 *almond* is a [Scala](https://scala-lang.org) kernel for [Jupyter](https://jupyter.org).
