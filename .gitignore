@@ -1,6 +1,7 @@
 target/
 .DS_Store
 .idea/
+.bloop
 
 # website stuff
 processed-pages/

@@ -9,3 +9,17 @@
 .fixedHeaderContainer {
   background-color: rgb(0, 0, 0);
 }
+
+/* override default docusaurus logo placement */
+@media all {
+  .homeContainer .homeWrapper .projectLogo {
+    display: block;
+    position: static;
+    padding: 0;
+  }
+}
+
+.homeContainer .homeWrapper .projectLogo img {
+  height: 100%;
+  max-height: 250px;
+}

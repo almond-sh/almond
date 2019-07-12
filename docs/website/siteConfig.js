@@ -22,6 +22,8 @@ const siteConfig = {
 
   users: [],
 
+  headerIcon: 'logos/impure-logos-almond-1.svg',
+
   colors: {
     primaryColor: '#287cdc',
     secondaryColor: '#3498DB',
