@@ -2,10 +2,11 @@ package almond.amm
 
 import java.nio.file.{Files, Path}
 
+import almond.internals.AmmCompat.CustomCompilerLifecycleManager
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.logger.LoggerContext
 import ammonite.interp.{CodeWrapper, CompilerLifecycleManager, Preprocessor}
-import ammonite.runtime.{Frame, Storage}
+import ammonite.runtime.{Frame, ImportHook, Storage}
 import ammonite.util.{Colors, Name, PredefInfo, Ref, Res}
 import coursier.almond.tmp.Tmp
 
@@ -40,6 +41,7 @@ object AmmInterpreter {
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
+    initialClassLoader: ClassLoader,
     logCtx: LoggerContext
   ): ammonite.interp.Interpreter = {
 
@@ -64,9 +66,8 @@ object AmmInterpreter {
 
       val ammInterp0: ammonite.interp.Interpreter =
         new ammonite.interp.Interpreter(
-          execute0.printer,
+          printer = execute0.printer,
           storage = storage,
-          wd = ammonite.ops.pwd,
           basePredefs = Seq(
             PredefInfo(
               Name("defaultPredef"),
@@ -82,7 +83,9 @@ object AmmInterpreter {
             (ammonite.repl.ReplBridge.getClass.getName.stripSuffix("$"), "repl", replApi),
             (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
           ),
+          wd = ammonite.ops.pwd,
           colors = Ref(Colors.Default),
+          verboseOutput = true, // ???
           getFrame = () => frames0().head,
           createFrame = () => {
             val f = replApi.sess.childFrame(frames0().head); frames0() = f :: frames0(); f
@@ -92,7 +95,7 @@ object AmmInterpreter {
           alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
         ) {
           override val compilerManager: CompilerLifecycleManager =
-            new CompilerLifecycleManager(storage, headFrame, Some(dependencyComplete)) {
+            new CustomCompilerLifecycleManager(storage, headFrame, Some(dependencyComplete)) {
               override def preprocess(fileName: String): Preprocessor =
                 synchronized {
                   if (compiler == null) init(force = true)

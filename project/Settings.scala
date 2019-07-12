@@ -71,10 +71,15 @@ object Settings {
     unmanagedSourceDirectories.in(Compile) ++= {
       val sbv = scalaBinaryVersion.value
       CrossVersion.partialVersion(sbv) match {
-        case Some((2, n)) if n == 11 || n == 12 =>
+        case Some((2, 11)) =>
           Seq(baseDirectory.value / "src" / "main" / "scala-2.11_2.12")
-        case Some((2, 13)) if sbv != "2.13" =>
-          Seq(baseDirectory.value / "src" / "main" / "scala-2.13")
+        case Some((2, 12)) =>
+          Seq(
+            baseDirectory.value / "src" / "main" / "scala-2.11_2.12",
+            baseDirectory.value / "src" / "main" / "scala-2.12_2.13"
+          )
+        case Some((2, 13)) =>
+          Seq(baseDirectory.value / "src" / "main" / "scala-2.12_2.13")
         case _ => Nil
       }
     }

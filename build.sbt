@@ -118,7 +118,7 @@ lazy val `scala-kernel-api` = project
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
     libraryDependencies ++= Seq(
-      Deps.ammoniteRepl.value,
+      Deps.ammoniteReplApi.value,
       Deps.jvmRepr
     )
   )
@@ -136,7 +136,10 @@ lazy val `scala-interpreter` = project
           Nil
       }
     },
-    libraryDependencies += Deps.jansi,
+    libraryDependencies ++= Seq(
+      Deps.jansi,
+      Deps.ammoniteRepl.value
+    ),
     crossVersion := CrossVersion.full,
     testSettings
   )
@@ -184,7 +187,7 @@ lazy val `almond-spark` = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.ammoniteRepl.value % "provided",
+      Deps.ammoniteReplApi.value % "provided",
       Deps.ammoniteSpark,
       Deps.argonautShapeless,
       Deps.sparkSql.value % "provided"

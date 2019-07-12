@@ -33,7 +33,7 @@ final class ScalaInterpreter(
     params.metabrowseHost,
     params.metabrowsePort,
     ammInterp.compilerManager.pressy.compiler,
-    frames0
+    frames0()
   )
 
   private val colors0: Ref[Colors] = Ref(params.initialColors)
@@ -89,6 +89,7 @@ final class ScalaInterpreter(
       params.mavenProfiles,
       params.autoUpdateLazyVals,
       params.autoUpdateVars,
+      params.initialClassLoader,
       logCtx
     )
   }
