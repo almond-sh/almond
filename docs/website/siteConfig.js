@@ -22,11 +22,11 @@ const siteConfig = {
 
   users: [],
 
-  headerIcon: 'logos/impure-logos-almond-1.svg',
+  headerIcon: 'logos/impure-logos-almond-0.svg',
 
   colors: {
-    primaryColor: '#287cdc',
-    secondaryColor: '#3498DB',
+    primaryColor: '#39808a',
+    secondaryColor: '#69b5c0',
   },
 
   copyright: `Copyright © ${new Date().getFullYear()} almond contributors`,

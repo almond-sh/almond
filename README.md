@@ -1,5 +1,5 @@
 <div align="center">
-<img src="docs/website/static/logos/impure-logos-almond-1.svg" alt="logo" width="40%">
+<img src="docs/website/static/logos/impure-logos-almond-0.svg" alt="logo" width="40%">
 </div>
 
 # almond
