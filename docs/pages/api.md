@@ -8,7 +8,7 @@ hide_title: true
 The API of almond is two-fold:
 - the [Ammonite API](api-ammonite.md) gives access to the REPL internals
 (loading dependencies, evaluating code, getting the full classpath),
-- the [almond Jupyter API](api-usage-jupyter.md) allows to communicate with
+- the [almond Jupyter API](api-jupyter.md) allows to communicate with
 Jupyter front-ends.
 
 Both of these APIs can be used:

@@ -69,7 +69,7 @@ class HomeSplash extends React.Component {
         <div className="inner">
           <ProjectTitle />
           <PromoSection>
-            <Button href="https://mybinder.org/v2/gh/almond-sh/examples/master?urlpath=lab">Try it online</Button>
+            <Button href="https://mybinder.org/v2/gh/almond-sh/examples/master?urlpath=lab%2Ftree%2Fnotebooks%2Findex.ipynb">Try it online</Button>
             <Button href={docUrl('try-docker', language)}>Try it with docker</Button>
             <Button href={docUrl('quick-start-install', language)}>Install</Button>
           </PromoSection>

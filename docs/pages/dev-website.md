@@ -2,38 +2,35 @@
 title: Generate the website
 ---
 
-Install pre-requisites with
-```bash
-$ sbt \
-    interpreter-api/exportVersions \
-    interpreter-api/publishLocal \
-    scala-kernel-api/publishLocal
-```
+Make sure you have installed *Ammonite*, *npm* and yarn.
 
 Then run
 ```bash
-$ scripts/generate-website.sh
+amm scripts/site.sc --npmInstall true --yarnRunBuild true --publishLocal true
 ```
 
-If the generation is successful, this should print instructions to run
-a small webserver serving the website, like
+If you're getting an error message like `Cannot resolve $file import: almond/scripts/website/Website.sc`
+make sure you have checked out the git submodule for the website script:
+
 ```bash
-$ npx http-server docs/website/build/almond
+git submodule init
+git submodule update
 ```
 
-This command should itself print the address to access the local website,
-like `http://127.0.0.1:8080`.
+If the generation is successful, you can run a small webserver to serve the website locally, like
+
+```bash
+$ npx http-server docs/website/build
+```
+
+This command should print the address to access the local website, like `http://127.0.0.1:8080`.
 
 ## Watch sources
 
-Pass `--watch` to `generate-website.sh` above,
-```bash
-$ scripts/generate-website.sh --watch
-```
+To watch sources and rebuild/hot-reload on changes in `docs/pages` or `docs/website` run
 
-In another terminal, go under the `docs/website` directory, and run
 ```bash
-$ yarn start
+$ amm scripts/site.sc --yarnRunBuild true --watch true
 ```
 
 This should open a browser window, pointing at the locally running website.
