@@ -42,20 +42,19 @@ final class DefaultCommHandler(
       .enqueueOn(Channel.Publish, queue)
       .unsafeRunSync()
 
-  private def parseJsonObj(s: String): Try[JsonObject] =
+  private def parseJsonObj(s: String): JsonObject =
     parseJson(s)
       .right.flatMap(_.obj.toRight("Not a JSON object"))
-      .left.map(new IllegalArgumentException(_))
-      .toTry
+      .fold(left => throw new IllegalArgumentException(left), identity)
 
   def commOpen(targetName: String, id: String, data: String, metadata: String): Unit =
-    publish(Comm.openType, Comm.Open(id, targetName, parseJsonObj(data).get), parseJsonObj(metadata).get.toMap)
+    publish(Comm.openType, Comm.Open(id, targetName, parseJsonObj(data)), parseJsonObj(metadata).toMap)
 
   def commMessage(id: String, data: String, metadata: String): Unit =
-    publish(Comm.messageType, Comm.Message(id, parseJsonObj(data).get), parseJsonObj(metadata).get.toMap)
+    publish(Comm.messageType, Comm.Message(id, parseJsonObj(data)), parseJsonObj(metadata).toMap)
 
   def commClose(id: String, data: String, metadata: String): Unit =
-    publish(Comm.closeType, Comm.Close(id, parseJsonObj(data).get), parseJsonObj(metadata).get.toMap)
+    publish(Comm.closeType, Comm.Close(id, parseJsonObj(data)), parseJsonObj(metadata).toMap)
 
 
   def updateDisplay(data: DisplayData): Unit = {
