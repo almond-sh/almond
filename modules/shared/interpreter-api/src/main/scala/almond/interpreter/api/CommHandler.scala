@@ -26,9 +26,12 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
   def registerCommTarget(name: String, target: CommTarget): Unit
   def unregisterCommTarget(name: String): Unit
 
-  def commOpen(targetName: String, id: String, data: String): Unit
-  def commMessage(id: String, data: String): Unit
-  def commClose(id: String, data: String): Unit
+  @throws(classOf[IllegalArgumentException])
+  def commOpen(targetName: String, id: String, data: String, metadata: String): Unit
+  @throws(classOf[IllegalArgumentException])
+  def commMessage(id: String, data: String, metadata: String): Unit
+  @throws(classOf[IllegalArgumentException])
+  def commClose(id: String, data: String, metadata: String): Unit
 
 
   final def receiver(
@@ -50,14 +53,15 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
   final def sender(
     targetName: String,
     id: String = UUID.randomUUID().toString,
-    data: String = "{}"
+    data: String = "{}",
+    metadata: String = "{}"
   ): Comm = {
-    commOpen(targetName, id, data)
+    commOpen(targetName, id, data, metadata)
     new Comm {
-      def message(data: String) =
-        commMessage(id, data)
-      def close(data: String) =
-        commClose(id, data)
+      def message(data: String, metadata: String = "{}") =
+        commMessage(id, data, metadata)
+      def close(data: String, metadata: String = "{}") =
+        commClose(id, data, metadata)
     }
   }
 }
@@ -65,8 +69,8 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
 object CommHandler {
 
   abstract class Comm {
-    def message(data: String): Unit
-    def close(data: String): Unit
+    def message(data: String, metadata: String): Unit
+    def close(data: String, metadata: String): Unit
   }
 
 }

@@ -5,12 +5,13 @@ import almond.interpreter.api.{CommHandler, CommTarget, DisplayData}
 import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.Message
 import almond.protocol._
-import argonaut.{EncodeJson, JsonObject}
+import argonaut.{EncodeJson, Json, JsonObject}
 import argonaut.Parse.{parse => parseJson}
 import cats.effect.IO
 import fs2.concurrent.Queue
 
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 final class DefaultCommHandler(
   queue: Queue[IO, (Channel, RawMessage)],
@@ -21,8 +22,8 @@ final class DefaultCommHandler(
 
   private val message: Message[_] =
     Message(
-      Header("", "username", "", "", Some(Protocol.versionStr)), // FIXME Hardcoded user / session id
-      ()
+      header = Header("", "username", "", "", Some(Protocol.versionStr)), // FIXME Hardcoded user / session id
+      content = ()
     )
 
 
@@ -35,31 +36,26 @@ final class DefaultCommHandler(
     commTargetManager.addTarget(name, target)
 
 
-  private def publish[T: EncodeJson](messageType: MessageType[T], content: T): Unit =
+  private def publish[T: EncodeJson](messageType: MessageType[T], content: T, metadata: Map[String, Json]): Unit =
     message
-      .publish(messageType, content)
+      .publish(messageType, content, metadata)
       .enqueueOn(Channel.Publish, queue)
       .unsafeRunSync()
 
-  private def parseJsonObj(s: String): Option[JsonObject] =
+  private def parseJsonObj(s: String): Try[JsonObject] =
     parseJson(s)
-      .right
-      .toOption
-      .flatMap(_.obj)
+      .right.flatMap(_.obj.toRight("Not a JSON object"))
+      .left.map(new IllegalArgumentException(_))
+      .toTry
 
-  // TODO Throw an exception if bad data is passed
+  def commOpen(targetName: String, id: String, data: String, metadata: String): Unit =
+    publish(Comm.openType, Comm.Open(id, targetName, parseJsonObj(data).get), parseJsonObj(metadata).get.toMap)
 
-  def commOpen(targetName: String, id: String, data: String): Unit =
-    for (obj <- parseJsonObj(data))
-      publish(Comm.openType, Comm.Open(id, targetName, obj))
+  def commMessage(id: String, data: String, metadata: String): Unit =
+    publish(Comm.messageType, Comm.Message(id, parseJsonObj(data).get), parseJsonObj(metadata).get.toMap)
 
-  def commMessage(id: String, data: String): Unit =
-    for (obj <- parseJsonObj(data))
-      publish(Comm.messageType, Comm.Message(id, obj))
-
-  def commClose(id: String, data: String): Unit =
-    for (obj <- parseJsonObj(data))
-      publish(Comm.closeType, Comm.Close(id, obj))
+  def commClose(id: String, data: String, metadata: String): Unit =
+    publish(Comm.closeType, Comm.Close(id, parseJsonObj(data).get), parseJsonObj(metadata).get.toMap)
 
 
   def updateDisplay(data: DisplayData): Unit = {
@@ -72,6 +68,6 @@ final class DefaultCommHandler(
       Execute.DisplayData.Transient(data.idOpt)
     )
 
-    publish(Execute.updateDisplayDataType, content)
+    publish(Execute.updateDisplayDataType, content, Map.empty)
   }
 }
