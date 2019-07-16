@@ -5,6 +5,7 @@ import java.nio.file.Path
 import almond.protocol.KernelInfo
 import ammonite.interp.{CodeClassWrapper, CodeWrapper}
 import ammonite.util.Colors
+import coursier.core.{Dependency, Module}
 
 import scala.concurrent.ExecutionContext
 
@@ -15,7 +16,7 @@ final case class ScalaInterpreterParams(
   extraLinks: Seq[KernelInfo.Link] = Nil,
   predefCode: String = "",
   predefFiles: Seq[Path] = Nil,
-  automaticDependencies: Map[String, Seq[String]] = Map(),
+  automaticDependencies: Map[Module, Seq[Dependency]] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
   mavenProfiles: Map[String, Boolean] = Map(),
   codeWrapper: CodeWrapper = CodeClassWrapper,

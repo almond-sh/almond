@@ -2,13 +2,14 @@ package almond.amm
 
 import java.nio.file.{Files, Path}
 
+import almond.internals.AmmCompat
 import almond.internals.AmmCompat.CustomCompilerLifecycleManager
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.logger.LoggerContext
 import ammonite.interp.{CodeWrapper, CompilerLifecycleManager, Preprocessor}
-import ammonite.runtime.{Frame, ImportHook, Storage}
+import ammonite.runtime.{Frame, Storage}
 import ammonite.util.{Colors, Name, PredefInfo, Ref, Res}
-import coursier.almond.tmp.Tmp
+import coursier.core.{Dependency, Module}
 
 object AmmInterpreter {
 
@@ -37,6 +38,7 @@ object AmmInterpreter {
     frames0: Ref[List[Frame]],
     codeWrapper: CodeWrapper,
     extraRepos: Seq[String],
+    automaticDependencies: Map[Module, Seq[Dependency]],
     forceMavenProperties: Map[String, String],
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
@@ -123,9 +125,9 @@ object AmmInterpreter {
 
       log.debug("Loading base dependencies")
 
-      ammInterp0.repositories() = ammInterp0.repositories() ++ extraRepos.map { repo =>
-        coursier.MavenRepository(repo)
-      }
+      AmmCompat.addMavenRepositories(ammInterp0, extraRepos)
+
+      AmmCompat.addAutomaticDependencies(ammInterp0, automaticDependencies)
 
       log.debug("Initializing Ammonite interpreter")
 
@@ -138,24 +140,10 @@ object AmmInterpreter {
       log.debug("Processing dependency-related params")
 
       if (forceMavenProperties.nonEmpty)
-        ammInterp0.resolutionHooks += { fetch =>
-          val params0 = Tmp.resolutionParams(fetch)
-          val params = params0
-            .withForcedProperties(params0.forcedProperties ++ forceMavenProperties)
-          fetch.withResolutionParams(params)
-        }
+        AmmCompat.forceMavenProperties(ammInterp0, forceMavenProperties)
 
       if (mavenProfiles.nonEmpty)
-        ammInterp0.resolutionHooks += { fetch =>
-          val mavenProfiles0 = mavenProfiles.toVector.map {
-            case (p, true) => p
-            case (p, false) => "!" + p
-          }
-          val params0 = Tmp.resolutionParams(fetch)
-          val params = params0
-            .withProfiles(params0.profiles ++ mavenProfiles0)
-          fetch.withResolutionParams(params)
-        }
+        AmmCompat.mavenProfiles(ammInterp0, mavenProfiles)
 
       log.info("Ammonite interpreter initialized")
 

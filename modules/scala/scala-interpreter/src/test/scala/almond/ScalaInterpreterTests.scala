@@ -7,7 +7,9 @@ import almond.interpreter.{Completion, ExecuteResult, Interpreter}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
+import almond.api.Properties
 import ammonite.util.Colors
+import coursier.{Dependency, moduleString}
 import utest._
 
 object ScalaInterpreterTests extends TestSuite {
@@ -15,7 +17,10 @@ object ScalaInterpreterTests extends TestSuite {
   private val interpreter: Interpreter =
     new ScalaInterpreter(
       params = ScalaInterpreterParams(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        automaticDependencies = Map(
+          mod"org.apache.spark:*" -> Seq(Dependency(mod"sh.almond::almond-spark", Properties.version))
+        )
       ),
       logCtx = logCtx
     )
@@ -224,6 +229,21 @@ object ScalaInterpreterTests extends TestSuite {
       "no variable name" - Predef.noVariableName(fileBased = true)
       "compilation error" - Predef.compilationError(fileBased = true)
       "exception" - Predef.exception(fileBased = true)
+    }
+
+    "dependencies" - {
+      "auto dependency" - {
+        "example" - {
+          if (TestUtil.isScala212) {
+            val code =
+              """import $ivy.`org.apache.spark::spark-core:2.4.3`
+                |import org.apache.spark.sql.NotebookSparkSession
+                |""".stripMargin
+            val res = interpreter.execute(code)
+            assert(res.success)
+          }
+        }
+      }
     }
 
   }

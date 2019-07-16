@@ -7,6 +7,8 @@ import almond.protocol.KernelInfo
 import almond.kernel.install.{Options => InstallOptions}
 import caseapp._
 import caseapp.core.help.Help
+import coursier.core.{Dependency, Module}
+import coursier.parse.{DependencyParser, ModuleParser}
 
 @ProgName("almond")
 final case class Options(
@@ -46,14 +48,26 @@ final case class Options(
     autoUpdateVars: Boolean = true
 ) {
 
-  def autoDependencyMap(): Map[String, Seq[String]] =
+  def autoDependencyMap(): Map[Module, Seq[Dependency]] =
     autoDependency
       .map(_.trim)
       .filter(_.nonEmpty)
       .map { s =>
         s.split("=>") match {
           case Array(trigger, auto) =>
-            trigger -> auto
+            val trigger0 = ModuleParser.javaOrScalaModule(trigger) match {
+              case Left(err) =>
+                sys.error(s"Malformed module '$trigger' in --auto-dependency argument '$s': $err")
+              case Right(m) =>
+                m.module(scala.util.Properties.versionNumberString)
+            }
+            val auto0 = DependencyParser.javaOrScalaDependencyParams(auto) match {
+              case Left(err) =>
+                sys.error(s"Malformed dependency '$auto' in --auto-dependency argument '$s': $err")
+              case Right((d, _)) =>
+                d.dependency(scala.util.Properties.versionNumberString)
+            }
+            trigger0 -> auto0
           case _ =>
             sys.error(s"Unrecognized --auto-dependency argument: $s")
         }

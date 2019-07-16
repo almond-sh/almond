@@ -48,7 +48,6 @@ final class ScalaInterpreter(
 
   private val execute0 = new Execute(
     params.trapOutput,
-    params.automaticDependencies,
     storage,
     logCtx,
     params.updateBackgroundVariablesEcOpt,
@@ -85,6 +84,7 @@ final class ScalaInterpreter(
       frames0,
       params.codeWrapper,
       params.extraRepos,
+      params.automaticDependencies,
       params.forceMavenProperties,
       params.mavenProfiles,
       params.autoUpdateLazyVals,
