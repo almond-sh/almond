@@ -190,9 +190,9 @@ lazy val `almond-spark` = project
       Deps.ammoniteReplApi.value % "provided",
       Deps.ammoniteSpark,
       Deps.argonautShapeless,
-      Deps.sparkSql.value % "provided"
+      Deps.sparkSql % "provided"
     ),
-    onlyIn("2.11", "2.12")
+    onlyIn("2.12")
   )
 
 lazy val `almond-rx` = project
