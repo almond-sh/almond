@@ -10,6 +10,7 @@ import ammonite.interp.{CodeWrapper, CompilerLifecycleManager, Preprocessor}
 import ammonite.runtime.{Frame, Storage}
 import ammonite.util.{Colors, Name, PredefInfo, Ref, Res}
 import coursier.core.{Dependency, Module}
+import coursier.util.ModuleMatcher
 
 object AmmInterpreter {
 
@@ -47,6 +48,14 @@ object AmmInterpreter {
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext
   ): ammonite.interp.Interpreter = {
+
+    val automaticDependenciesMatchers = automaticDependencies
+      .iterator
+      .collect {
+        case (m, l) if m.organization.value.contains("*") || m.name.value.contains("*") =>
+          ModuleMatcher(m) -> l
+      }
+      .toVector
 
     val predefFileInfos =
       predefFiles.zipWithIndex.map {
@@ -128,7 +137,7 @@ object AmmInterpreter {
 
       AmmCompat.addMavenRepositories(ammInterp0, extraRepos)
 
-      AmmCompat.addAutomaticDependencies(ammInterp0, automaticDependencies, automaticVersions)
+      AmmCompat.addAutomaticDependencies(ammInterp0, automaticDependencies, automaticDependenciesMatchers, automaticVersions)
 
       log.debug("Initializing Ammonite interpreter")
 

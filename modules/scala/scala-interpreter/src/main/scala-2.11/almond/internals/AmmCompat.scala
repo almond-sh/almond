@@ -45,11 +45,18 @@ object AmmCompat {
   def addAutomaticDependencies(
     interp: Interpreter,
     automaticDependencies: Map[coursier.core.Module, scala.Seq[coursier.core.Dependency]],
+    automaticDependenciesMatchers: Seq[(coursier.util.ModuleMatcher, scala.Seq[coursier.core.Dependency])],
     automaticVersions: Map[coursier.core.Module, String]
   ): Unit = {
     interp.resolutionHooks += { f =>
       val extraDependencies = f.dependencies.flatMap { dep =>
-        automaticDependencies.getOrElse(dep.module, Nil)
+        automaticDependencies.getOrElse(
+          dep.module,
+          automaticDependenciesMatchers
+            .find(_._1.matches(dep.module))
+            .map(_._2)
+            .getOrElse(Nil)
+        )
       }
       val f0 = f.addDependencies(extraDependencies: _*)
       val deps = f0.dependencies

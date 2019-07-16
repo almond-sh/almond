@@ -7,9 +7,8 @@ import almond.interpreter.{Completion, ExecuteResult, Interpreter}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
-import almond.api.Properties
 import ammonite.util.Colors
-import coursier.{Dependency, moduleString}
+import coursier.{dependencyString, moduleString}
 import utest._
 
 object ScalaInterpreterTests extends TestSuite {
@@ -19,7 +18,7 @@ object ScalaInterpreterTests extends TestSuite {
       params = ScalaInterpreterParams(
         initialColors = Colors.BlackWhite,
         automaticDependencies = Map(
-          mod"org.apache.spark:*" -> Seq(Dependency(mod"sh.almond::almond-spark", Properties.version))
+          mod"org.scalacheck::*" -> Seq(dep"com.github.alexarchambault::scalacheck-shapeless_1.14:1.2.3")
         ),
         automaticVersions = Map(
           mod"org.scalacheck::scalacheck" -> "1.14.0"
@@ -239,8 +238,8 @@ object ScalaInterpreterTests extends TestSuite {
         "example" - {
           if (TestUtil.isScala212) {
             val code =
-              """import $ivy.`org.apache.spark::spark-core:2.4.3`
-                |import org.apache.spark.sql.NotebookSparkSession
+              """import $ivy.`org.scalacheck::scalacheck:1.14.0`
+                |import org.scalacheck.ScalacheckShapeless._
                 |""".stripMargin
             val res = interpreter.execute(code)
             assert(res.success)

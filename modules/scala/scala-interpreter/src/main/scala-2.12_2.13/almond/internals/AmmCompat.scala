@@ -53,6 +53,7 @@ object AmmCompat {
   def addAutomaticDependencies(
     interp: Interpreter,
     automaticDependencies: Map[coursier.core.Module, scala.Seq[coursier.core.Dependency]],
+    automaticDependenciesMatchers: Seq[(coursier.util.ModuleMatcher, scala.Seq[coursier.core.Dependency])],
     automaticVersions: Map[coursier.core.Module, String]
   ): Unit =
     interp.resolutionHooks += { f =>
@@ -61,7 +62,13 @@ object AmmCompat {
         .toVector
         .flatMap { dep =>
           val mod = module(dep.getModule)
-          automaticDependencies.getOrElse(mod, Nil)
+          automaticDependencies.getOrElse(
+            mod,
+            automaticDependenciesMatchers
+              .find(_._1.matches(mod))
+              .map(_._2)
+              .getOrElse(Nil)
+          )
         }
         .map { dep =>
           // other fields ignored for now
