@@ -24,4 +24,6 @@ object Properties {
   lazy val version = Option(props.getProperty("version")).getOrElse("[unknown]")
   lazy val commitHash = Option(props.getProperty("commit-hash")).getOrElse("[unknown]")
 
+  lazy val ammoniteSparkVersion = Option(props.getProperty("ammonite-spark-version")).getOrElse("[unknown]")
+
 }

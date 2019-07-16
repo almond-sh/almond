@@ -25,6 +25,7 @@ final case class Options(
   autoDependency: List[String] = Nil,
   autoVersion: List[String] = Nil,
   defaultAutoDependencies: Boolean = true,
+  defaultAutoVersions: Boolean = true,
   @HelpMessage("Force Maven properties during dependency resolution")
     forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
@@ -93,8 +94,18 @@ final case class Options(
     default ++ fromArgs
   }
 
-  def autoVersionsMap(): Map[Module, String] =
-    autoDependency
+  def autoVersionsMap(): Map[Module, String] = {
+
+    val default =
+      if (defaultAutoVersions)
+        Map(
+          mod"sh.almond::almond-spark" -> Properties.version,
+          mod"sh.almond::ammonite-spark" -> Properties.ammoniteSparkVersion
+        )
+      else
+        Map.empty[Module, String]
+
+    val fromArgs = autoDependency
       .map(_.trim)
       .filter(_.nonEmpty)
       .map { s =>
@@ -115,6 +126,9 @@ final case class Options(
         }
       }
       .toMap
+
+    default ++ fromArgs
+  }
 
   def forceProperties(): Map[String, String] =
     forceProperty

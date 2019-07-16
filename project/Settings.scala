@@ -106,6 +106,7 @@ object Settings {
 
       val dir = classDirectory.in(Compile).value
       val ver = version.value
+      val ammSparkVer = Deps.ammoniteSpark.revision
 
       val f = path.split('/').foldLeft(dir)(_ / _)
       f.getParentFile.mkdirs()
@@ -114,6 +115,8 @@ object Settings {
 
       p.setProperty("version", ver)
       p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
+      // FIXME Only set if ammonite-spark is available for the current scala version?
+      p.setProperty("ammonite-spark-version", ammSparkVer)
 
       val w = new java.io.FileOutputStream(f)
       p.store(w, "Almond properties")
