@@ -85,6 +85,7 @@ final class ScalaInterpreter(
       params.codeWrapper,
       params.extraRepos,
       params.automaticDependencies,
+      params.automaticVersions,
       params.forceMavenProperties,
       params.mavenProfiles,
       params.autoUpdateLazyVals,

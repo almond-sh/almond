@@ -43,17 +43,24 @@ object AmmCompat {
     }
   }
 
-  def addAutomaticDependencies(interp: Interpreter, automaticDependencies: Map[coursier.core.Module, scala.Seq[coursier.core.Dependency]]): Unit = {
+  private def module(mod: coursierapi.Module): coursier.core.Module =
+    coursier.core.Module(
+      coursier.core.Organization(mod.getOrganization),
+      coursier.core.ModuleName(mod.getName),
+      Map.empty // ignored for now
+    )
+
+  def addAutomaticDependencies(
+    interp: Interpreter,
+    automaticDependencies: Map[coursier.core.Module, scala.Seq[coursier.core.Dependency]],
+    automaticVersions: Map[coursier.core.Module, String]
+  ): Unit =
     interp.resolutionHooks += { f =>
       val extraDependencies = f.getDependencies
         .asScala
         .toVector
         .flatMap { dep =>
-          val mod = coursier.core.Module(
-            coursier.core.Organization(dep.getModule.getOrganization),
-            coursier.core.ModuleName(dep.getModule.getName),
-            Map.empty // ignored for now
-          )
+          val mod = module(dep.getModule)
           automaticDependencies.getOrElse(mod, Nil)
         }
         .map { dep =>
@@ -64,8 +71,28 @@ object AmmCompat {
             dep.version
           )
         }
-      f.addDependencies(extraDependencies: _*)
+      val f0 = f.addDependencies(extraDependencies: _*)
+
+      val deps = f0.getDependencies.asScala.toVector
+      if (deps.exists(_.getVersion == "_")) {
+        val dependencies0 = deps.map { dep =>
+          if (dep.getVersion == "_") {
+            automaticVersions.get(module(dep.getModule)) match {
+              case None =>
+                System.err.println(
+                  s"Warning: version ${"\"_\""} specified for ${dep.getModule}, " +
+                    "but no automatic version available for it"
+                )
+                dep
+              case Some(ver) =>
+                dep.withVersion(ver)
+            }
+          } else
+            dep
+        }
+        f0.withDependencies(dependencies0: _*)
+      } else
+        f0
     }
-  }
 
 }

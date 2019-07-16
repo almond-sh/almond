@@ -39,6 +39,7 @@ object AmmInterpreter {
     codeWrapper: CodeWrapper,
     extraRepos: Seq[String],
     automaticDependencies: Map[Module, Seq[Dependency]],
+    automaticVersions: Map[Module, String],
     forceMavenProperties: Map[String, String],
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
@@ -127,7 +128,7 @@ object AmmInterpreter {
 
       AmmCompat.addMavenRepositories(ammInterp0, extraRepos)
 
-      AmmCompat.addAutomaticDependencies(ammInterp0, automaticDependencies)
+      AmmCompat.addAutomaticDependencies(ammInterp0, automaticDependencies, automaticVersions)
 
       log.debug("Initializing Ammonite interpreter")
 

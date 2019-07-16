@@ -20,6 +20,9 @@ object ScalaInterpreterTests extends TestSuite {
         initialColors = Colors.BlackWhite,
         automaticDependencies = Map(
           mod"org.apache.spark:*" -> Seq(Dependency(mod"sh.almond::almond-spark", Properties.version))
+        ),
+        automaticVersions = Map(
+          mod"org.scalacheck::scalacheck" -> "1.14.0"
         )
       ),
       logCtx = logCtx
@@ -242,6 +245,17 @@ object ScalaInterpreterTests extends TestSuite {
             val res = interpreter.execute(code)
             assert(res.success)
           }
+        }
+      }
+
+      "auto version" - {
+        "simple" - {
+          val code =
+            """import $ivy.`org.scalacheck::scalacheck:_`
+              |import org.scalacheck.Arbitrary
+              |""".stripMargin
+          val res = interpreter.execute(code)
+          assert(res.success)
         }
       }
     }

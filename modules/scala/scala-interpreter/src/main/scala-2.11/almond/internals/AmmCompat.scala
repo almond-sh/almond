@@ -42,12 +42,36 @@ object AmmCompat {
     }
   }
 
-  def addAutomaticDependencies(interp: Interpreter, automaticDependencies: Map[coursier.core.Module, scala.Seq[coursier.core.Dependency]]): Unit = {
+  def addAutomaticDependencies(
+    interp: Interpreter,
+    automaticDependencies: Map[coursier.core.Module, scala.Seq[coursier.core.Dependency]],
+    automaticVersions: Map[coursier.core.Module, String]
+  ): Unit = {
     interp.resolutionHooks += { f =>
       val extraDependencies = f.dependencies.flatMap { dep =>
         automaticDependencies.getOrElse(dep.module, Nil)
       }
-      f.addDependencies(extraDependencies: _*)
+      val f0 = f.addDependencies(extraDependencies: _*)
+      val deps = f0.dependencies
+      if (deps.exists(_.version == "_")) {
+        val dependencies0 = deps.map { dep =>
+          if (dep.version == "_") {
+            automaticVersions.get(dep.module) match {
+              case None =>
+                System.err.println(
+                  s"Warning: version ${"\"_\""} specified for ${dep.module.repr}, " +
+                    "but no automatic version available for it"
+                )
+                dep
+              case Some(ver) =>
+                dep.withVersion(ver)
+            }
+          } else
+            dep
+        }
+        f0.withDependencies(dependencies0)
+      } else
+        f0
     }
   }
 

@@ -21,6 +21,7 @@ final case class Options(
   predefCode: String = "",
   predef: List[String] = Nil,
   autoDependency: List[String] = Nil,
+  autoVersion: List[String] = Nil,
   @HelpMessage("Force Maven properties during dependency resolution")
     forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
@@ -75,6 +76,29 @@ final case class Options(
       .groupBy(_._1)
       .mapValues(_.map(_._2))
       .iterator
+      .toMap
+
+  def autoVersionsMap(): Map[Module, String] =
+    autoDependency
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map { s =>
+        val idx = s.lastIndexOf(':')
+        if (idx < 0)
+          sys.error(s"Malformed --auto-version argument '$s'")
+        else {
+          val before = s.substring(0, idx)
+          val ver = s.substring(idx + 1)
+          val mod = ModuleParser.javaOrScalaModule(before) match {
+            case Left(err) =>
+              sys.error(s"Malformed module '$before' in --auto-version argument '$s': $err")
+            case Right(m) =>
+              m.module(scala.util.Properties.versionNumberString)
+          }
+
+          mod -> ver
+        }
+      }
       .toMap
 
   def forceProperties(): Map[String, String] =

@@ -17,6 +17,7 @@ final case class ScalaInterpreterParams(
   predefCode: String = "",
   predefFiles: Seq[Path] = Nil,
   automaticDependencies: Map[Module, Seq[Dependency]] = Map(),
+  automaticVersions: Map[Module, String] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
   mavenProfiles: Map[String, Boolean] = Map(),
   codeWrapper: CodeWrapper = CodeClassWrapper,
