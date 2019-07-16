@@ -3,11 +3,13 @@ package almond
 import java.nio.file.{Files, Path, Paths}
 import java.util.regex.Pattern
 
+import almond.api.Properties
 import almond.protocol.KernelInfo
 import almond.kernel.install.{Options => InstallOptions}
 import caseapp._
 import caseapp.core.help.Help
-import coursier.core.{Dependency, Module}
+import coursier.{Dependency, moduleString}
+import coursier.core.Module
 import coursier.parse.{DependencyParser, ModuleParser}
 
 @ProgName("almond")
@@ -22,6 +24,7 @@ final case class Options(
   predef: List[String] = Nil,
   autoDependency: List[String] = Nil,
   autoVersion: List[String] = Nil,
+  defaultAutoDependencies: Boolean = true,
   @HelpMessage("Force Maven properties during dependency resolution")
     forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
@@ -49,8 +52,17 @@ final case class Options(
     autoUpdateVars: Boolean = true
 ) {
 
-  def autoDependencyMap(): Map[Module, Seq[Dependency]] =
-    autoDependency
+  def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
+
+    val default =
+      if (defaultAutoDependencies)
+        Map(
+          mod"org.apache.spark:*" -> Seq(Dependency.of(mod"sh.almond::almond-spark", Properties.version))
+        )
+      else
+        Map.empty[Module, Seq[Dependency]]
+
+    val fromArgs = autoDependency
       .map(_.trim)
       .filter(_.nonEmpty)
       .map { s =>
@@ -77,6 +89,9 @@ final case class Options(
       .mapValues(_.map(_._2))
       .iterator
       .toMap
+
+    default ++ fromArgs
+  }
 
   def autoVersionsMap(): Map[Module, String] =
     autoDependency
