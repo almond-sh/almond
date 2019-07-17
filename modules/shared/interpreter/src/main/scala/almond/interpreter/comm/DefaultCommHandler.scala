@@ -11,7 +11,6 @@ import cats.effect.IO
 import fs2.concurrent.Queue
 
 import scala.concurrent.ExecutionContext
-import scala.util.Try
 
 final class DefaultCommHandler(
   queue: Queue[IO, (Channel, RawMessage)],
@@ -34,6 +33,11 @@ final class DefaultCommHandler(
 
   def registerCommTarget(name: String, target: IOCommTarget): Unit =
     commTargetManager.addTarget(name, target)
+
+  def registerCommId(id: String, target: CommTarget): Unit =
+    commTargetManager.addId(IOCommTarget.fromCommTarget(target, commEc), id)
+  def unregisterCommId(id: String): Unit =
+    commTargetManager.removeId(id)
 
 
   private def publish[T: EncodeJson](messageType: MessageType[T], content: T, metadata: Map[String, Json]): Unit =

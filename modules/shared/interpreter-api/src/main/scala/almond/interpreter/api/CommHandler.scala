@@ -25,6 +25,8 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
 
   def registerCommTarget(name: String, target: CommTarget): Unit
   def unregisterCommTarget(name: String): Unit
+  def registerCommId(id: String, target: CommTarget): Unit
+  def unregisterCommId(id: String): Unit
 
   @throws(classOf[IllegalArgumentException])
   def commOpen(targetName: String, id: String, data: String, metadata: String): Unit
@@ -54,9 +56,17 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
     targetName: String,
     id: String = UUID.randomUUID().toString,
     data: String = "{}",
-    metadata: String = "{}"
+    metadata: String = "{}",
+    onMessage: (String, String) => Unit = (_, _) => (),
+    onClose: (String, String) => Unit = (_, _) => ()
   ): Comm = {
     commOpen(targetName, id, data, metadata)
+    val t = CommTarget(
+      onMessage = (id, data) => onMessage(id, data),
+      onOpen = (_, _) => (), // ignore since we open the comm from the kernel
+      onClose = (id, data) => onClose(id, data)
+    )
+    registerCommId(id, t)
     new Comm {
       def message(data: String, metadata: String = "{}") =
         commMessage(id, data, metadata)
