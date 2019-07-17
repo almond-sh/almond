@@ -1,9 +1,9 @@
 package almond
 
 import almond.api.JupyterApi
-import almond.internals.AmmCompat._
 import almond.interpreter.api.DisplayData
 import ammonite.ops.read
+import ammonite.repl.api.{FrontEnd, ReplLoad}
 import ammonite.repl.{FullReplAPI, SessionApiImpl}
 import ammonite.runtime.Storage
 import ammonite.util.{Bind, Colors, CompilationError, Ref, Res}

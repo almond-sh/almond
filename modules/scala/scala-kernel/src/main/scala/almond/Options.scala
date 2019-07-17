@@ -8,9 +8,10 @@ import almond.protocol.KernelInfo
 import almond.kernel.install.{Options => InstallOptions}
 import caseapp._
 import caseapp.core.help.Help
-import coursier.{Dependency, moduleString}
-import coursier.core.Module
+import coursierapi.{Dependency, Module}
 import coursier.parse.{DependencyParser, ModuleParser}
+
+import scala.collection.JavaConverters._
 
 @ProgName("almond")
 final case class Options(
@@ -53,12 +54,14 @@ final case class Options(
     autoUpdateVars: Boolean = true
 ) {
 
+  private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+
   def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
 
     val default =
       if (defaultAutoDependencies)
         Map(
-          mod"org.apache.spark:*" -> Seq(Dependency.of(mod"sh.almond::almond-spark", Properties.version))
+          Module.of("org.apache.spark", "*") -> Seq(Dependency.of(Module.of("sh.almond", s"almond-spark_$sbv"), Properties.version))
         )
       else
         Map.empty[Module, Seq[Dependency]]
@@ -73,13 +76,18 @@ final case class Options(
               case Left(err) =>
                 sys.error(s"Malformed module '$trigger' in --auto-dependency argument '$s': $err")
               case Right(m) =>
-                m.module(scala.util.Properties.versionNumberString)
+                val mod0 = m.module(scala.util.Properties.versionNumberString)
+                Module.of(mod0.organization.value, mod0.name.value, mod0.attributes.asJava)
             }
             val auto0 = DependencyParser.javaOrScalaDependencyParams(auto) match {
               case Left(err) =>
                 sys.error(s"Malformed dependency '$auto' in --auto-dependency argument '$s': $err")
               case Right((d, _)) =>
-                d.dependency(scala.util.Properties.versionNumberString)
+                val dep = d.dependency(scala.util.Properties.versionNumberString)
+                Dependency.of(dep.module.organization.value, dep.module.name.value, dep.version)
+                  .withConfiguration(dep.configuration.value)
+                  .withClassifier(dep.attributes.classifier.value)
+                  .withType(dep.attributes.`type`.value)
             }
             trigger0 -> auto0
           case _ =>
@@ -99,8 +107,8 @@ final case class Options(
     val default =
       if (defaultAutoVersions)
         Map(
-          mod"sh.almond::almond-spark" -> Properties.version,
-          mod"sh.almond::ammonite-spark" -> Properties.ammoniteSparkVersion
+          Module.of("sh.almond", s"almond-spark_$sbv") -> Properties.version,
+          Module.of("sh.almond", s"ammonite-spark_$sbv") -> Properties.ammoniteSparkVersion
         )
       else
         Map.empty[Module, String]
@@ -119,7 +127,8 @@ final case class Options(
             case Left(err) =>
               sys.error(s"Malformed module '$before' in --auto-version argument '$s': $err")
             case Right(m) =>
-              m.module(scala.util.Properties.versionNumberString)
+              val mod0 = m.module(scala.util.Properties.versionNumberString)
+              Module.of(mod0.organization.value, mod0.name.value, mod0.attributes.asJava)
           }
 
           mod -> ver

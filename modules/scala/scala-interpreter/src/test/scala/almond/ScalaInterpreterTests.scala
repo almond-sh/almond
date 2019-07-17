@@ -8,20 +8,24 @@ import almond.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
 import ammonite.util.Colors
-import coursier.{dependencyString, moduleString}
+import coursierapi.{Dependency, Module}
 import utest._
 
 object ScalaInterpreterTests extends TestSuite {
+
+  private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
   private val interpreter: Interpreter =
     new ScalaInterpreter(
       params = ScalaInterpreterParams(
         initialColors = Colors.BlackWhite,
         automaticDependencies = Map(
-          mod"org.scalacheck::*" -> Seq(dep"com.github.alexarchambault::scalacheck-shapeless_1.14:1.2.3")
+          Module.of("org.scalacheck", "*") -> Seq(
+            Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
+          )
         ),
         automaticVersions = Map(
-          mod"org.scalacheck::scalacheck" -> "1.14.0"
+          Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
         )
       ),
       logCtx = logCtx

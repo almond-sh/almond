@@ -8,7 +8,6 @@ import sbt.Keys._
 
 object Settings {
 
-  def scala211 = "2.11.12"
   def scala212 = "2.12.8"
   def scala213 = "2.13.0"
 
@@ -50,7 +49,7 @@ object Settings {
 
   lazy val shared = Seq(
     scalaVersion := scala213,
-    crossScalaVersions := Seq(scala213, scala212, "2.12.7", "2.12.6", scala211),
+    crossScalaVersions := Seq(scala213, scala212, "2.12.7", "2.12.6"),
     scalacOptions ++= Seq(
       // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
       "-deprecation",
@@ -72,12 +71,9 @@ object Settings {
       val sbv = scalaBinaryVersion.value
       CrossVersion.partialVersion(sbv) match {
         case Some((2, 11)) =>
-          Seq(baseDirectory.value / "src" / "main" / "scala-2.11_2.12")
+          Nil
         case Some((2, 12)) =>
-          Seq(
-            baseDirectory.value / "src" / "main" / "scala-2.11_2.12",
-            baseDirectory.value / "src" / "main" / "scala-2.12_2.13"
-          )
+          Seq(baseDirectory.value / "src" / "main" / "scala-2.12_2.13")
         case Some((2, 13)) =>
           Seq(baseDirectory.value / "src" / "main" / "scala-2.12_2.13")
         case _ => Nil

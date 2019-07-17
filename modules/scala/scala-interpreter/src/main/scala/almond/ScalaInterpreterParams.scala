@@ -5,7 +5,7 @@ import java.nio.file.Path
 import almond.protocol.KernelInfo
 import ammonite.interp.{CodeClassWrapper, CodeWrapper}
 import ammonite.util.Colors
-import coursier.core.{Dependency, Module}
+import coursierapi.{Dependency, Module}
 
 import scala.concurrent.ExecutionContext
 

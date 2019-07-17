@@ -130,7 +130,7 @@ lazy val `scala-interpreter` = project
     shared,
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaBinaryVersion.value) match {
-        case Some((2, n)) if n == 11 || n == 12 =>
+        case Some((2, n)) if n == 12 =>
           Seq(Deps.metabrowseServer)
         case _ =>
           Nil
@@ -203,7 +203,7 @@ lazy val `almond-rx` = project
   .settings(
     shared,
     libraryDependencies += Deps.scalaRx,
-    onlyIn("2.11", "2.12")
+    onlyIn("2.12")
   )
 
 lazy val almond = project

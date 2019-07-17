@@ -5,13 +5,13 @@ import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.api.JupyterApi
-import almond.internals.AmmCompat._
 import almond.internals.{Capture, FunctionInputStream, FunctionOutputStream, HtmlAnsiOutputStream, UpdatableResults}
 import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.logger.LoggerContext
 import ammonite.interp.{Parsers, Preprocessor}
+import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Ex, Printer, Ref, Res}
