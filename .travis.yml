@@ -40,7 +40,6 @@ jobs:
       - pip3 -V
       - sudo pip3 install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
-  - scala: 2.11.12
   - scala: 2.12.6
   - scala: 2.12.7
   - scala: 2.12.8

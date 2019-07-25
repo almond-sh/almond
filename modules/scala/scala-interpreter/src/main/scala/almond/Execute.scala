@@ -5,13 +5,13 @@ import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.api.JupyterApi
-import almond.internals.AmmCompat._
 import almond.internals.{Capture, FunctionInputStream, FunctionOutputStream, HtmlAnsiOutputStream, UpdatableResults}
 import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.logger.LoggerContext
 import ammonite.interp.{Parsers, Preprocessor}
+import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Ex, Printer, Ref, Res}
@@ -27,7 +27,6 @@ import scala.util.{Failure, Success}
   */
 final class Execute(
   trapOutput: Boolean,
-  automaticDependencies: Map[String, Seq[String]],
   storage: Storage,
   logCtx: LoggerContext,
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
@@ -293,20 +292,7 @@ final class Execute(
     storage.fullHistory() = storage.fullHistory() :+ code
     history0 = history0 :+ code
 
-    val hackedLine =
-      if (code.contains("$ivy.`"))
-        automaticDependencies.foldLeft(code) {
-          case (line0, (triggerDep, autoDeps)) =>
-            if (line0.contains(triggerDep)) {
-              log.info(s"Adding auto dependencies $autoDeps")
-              autoDeps.map(dep => s"import $$ivy.`$dep`; ").mkString + line0
-            } else
-              line0
-        }
-      else
-        code
-
-    ammResult(ammInterp, hackedLine, inputManager, outputHandler) match {
+    ammResult(ammInterp, code, inputManager, outputHandler) match {
       case Res.Success((_, data)) =>
         ExecuteResult.Success(data)
       case Res.Failure(msg) =>

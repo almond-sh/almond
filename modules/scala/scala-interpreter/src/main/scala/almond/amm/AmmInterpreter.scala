@@ -2,13 +2,15 @@ package almond.amm
 
 import java.nio.file.{Files, Path}
 
-import almond.internals.AmmCompat.CustomCompilerLifecycleManager
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.logger.LoggerContext
 import ammonite.interp.{CodeWrapper, CompilerLifecycleManager, Preprocessor}
-import ammonite.runtime.{Frame, ImportHook, Storage}
+import ammonite.runtime.{Frame, Storage}
 import ammonite.util.{Colors, Name, PredefInfo, Ref, Res}
-import coursier.almond.tmp.Tmp
+import coursierapi.{Dependency, Module}
+import coursier.util.ModuleMatcher
+
+import scala.collection.JavaConverters._
 
 object AmmInterpreter {
 
@@ -37,6 +39,8 @@ object AmmInterpreter {
     frames0: Ref[List[Frame]],
     codeWrapper: CodeWrapper,
     extraRepos: Seq[String],
+    automaticDependencies: Map[Module, Seq[Dependency]],
+    automaticVersions: Map[Module, String],
     forceMavenProperties: Map[String, String],
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
@@ -44,6 +48,14 @@ object AmmInterpreter {
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext
   ): ammonite.interp.Interpreter = {
+
+    val automaticDependenciesMatchers = automaticDependencies
+      .iterator
+      .collect {
+        case (m, l) if m.getOrganization.contains("*") || m.getName.contains("*") =>
+          ModuleMatcher(coursier.Module(coursier.Organization(m.getOrganization), coursier.ModuleName(m.getName))) -> l
+      }
+      .toVector
 
     val predefFileInfos =
       predefFiles.zipWithIndex.map {
@@ -95,7 +107,7 @@ object AmmInterpreter {
           alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
         ) {
           override val compilerManager: CompilerLifecycleManager =
-            new CustomCompilerLifecycleManager(storage, headFrame, Some(dependencyComplete)) {
+            new CompilerLifecycleManager(storage, headFrame, Some(dependencyComplete), Set.empty, headFrame.classloader) {
               override def preprocess(fileName: String): Preprocessor =
                 synchronized {
                   if (compiler == null) init(force = true)
@@ -123,8 +135,47 @@ object AmmInterpreter {
 
       log.debug("Loading base dependencies")
 
-      ammInterp0.repositories() = ammInterp0.repositories() ++ extraRepos.map { repo =>
-        coursier.MavenRepository(repo)
+      ammInterp0.repositories() = ammInterp0.repositories() ++ extraRepos.map(coursierapi.MavenRepository.of(_))
+
+      ammInterp0.resolutionHooks += { f =>
+        val extraDependencies = f.getDependencies
+          .asScala
+          .toVector
+          .flatMap { dep =>
+            val mod = coursier.Module(
+              coursier.Organization(dep.getModule.getOrganization),
+              coursier.ModuleName(dep.getModule.getName)
+            )
+            automaticDependencies.getOrElse(
+              dep.getModule,
+              automaticDependenciesMatchers
+                .find(_._1.matches(mod))
+                .map(_._2)
+                .getOrElse(Nil)
+            )
+          }
+        val f0 = f.addDependencies(extraDependencies: _*)
+
+        val deps = f0.getDependencies.asScala.toVector
+        if (deps.exists(_.getVersion == "_")) {
+          val dependencies0 = deps.map { dep =>
+            if (dep.getVersion == "_") {
+              automaticVersions.get(dep.getModule) match {
+                case None =>
+                  System.err.println(
+                    s"Warning: version ${"\"_\""} specified for ${dep.getModule}, " +
+                      "but no automatic version available for it"
+                  )
+                  dep
+                case Some(ver) =>
+                  dep.withVersion(ver)
+              }
+            } else
+              dep
+          }
+          f0.withDependencies(dependencies0: _*)
+        } else
+          f0
       }
 
       log.debug("Initializing Ammonite interpreter")
@@ -139,10 +190,11 @@ object AmmInterpreter {
 
       if (forceMavenProperties.nonEmpty)
         ammInterp0.resolutionHooks += { fetch =>
-          val params0 = Tmp.resolutionParams(fetch)
-          val params = params0
-            .withForcedProperties(params0.forcedProperties ++ forceMavenProperties)
-          fetch.withResolutionParams(params)
+          fetch.withResolutionParams(
+            fetch
+              .getResolutionParams
+              .forceProperties(forceMavenProperties.asJava)
+          )
         }
 
       if (mavenProfiles.nonEmpty)
@@ -151,10 +203,9 @@ object AmmInterpreter {
             case (p, true) => p
             case (p, false) => "!" + p
           }
-          val params0 = Tmp.resolutionParams(fetch)
-          val params = params0
-            .withProfiles(params0.profiles ++ mavenProfiles0)
-          fetch.withResolutionParams(params)
+          fetch.withResolutionParams(
+            mavenProfiles0.foldLeft(fetch.getResolutionParams)(_.addProfile(_))
+          )
         }
 
       log.info("Ammonite interpreter initialized")

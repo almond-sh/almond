@@ -8,14 +8,25 @@ import almond.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
 import ammonite.util.Colors
+import coursierapi.{Dependency, Module}
 import utest._
 
 object ScalaInterpreterTests extends TestSuite {
 
+  private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+
   private val interpreter: Interpreter =
     new ScalaInterpreter(
       params = ScalaInterpreterParams(
-        initialColors = Colors.BlackWhite
+        initialColors = Colors.BlackWhite,
+        automaticDependencies = Map(
+          Module.of("org.scalacheck", "*") -> Seq(
+            Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
+          )
+        ),
+        automaticVersions = Map(
+          Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
+        )
       ),
       logCtx = logCtx
     )
@@ -224,6 +235,32 @@ object ScalaInterpreterTests extends TestSuite {
       "no variable name" - Predef.noVariableName(fileBased = true)
       "compilation error" - Predef.compilationError(fileBased = true)
       "exception" - Predef.exception(fileBased = true)
+    }
+
+    "dependencies" - {
+      "auto dependency" - {
+        "example" - {
+          if (TestUtil.isScala212) {
+            val code =
+              """import $ivy.`org.scalacheck::scalacheck:1.14.0`
+                |import org.scalacheck.ScalacheckShapeless._
+                |""".stripMargin
+            val res = interpreter.execute(code)
+            assert(res.success)
+          }
+        }
+      }
+
+      "auto version" - {
+        "simple" - {
+          val code =
+            """import $ivy.`org.scalacheck::scalacheck:_`
+              |import org.scalacheck.Arbitrary
+              |""".stripMargin
+          val res = interpreter.execute(code)
+          assert(res.success)
+        }
+      }
     }
 
   }
