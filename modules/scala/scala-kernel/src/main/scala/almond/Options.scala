@@ -113,7 +113,7 @@ final case class Options(
       else
         Map.empty[Module, String]
 
-    val fromArgs = autoDependency
+    val fromArgs = autoVersion
       .map(_.trim)
       .filter(_.nonEmpty)
       .map { s =>
