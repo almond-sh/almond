@@ -81,12 +81,13 @@ final class SendLog(
         try {
           withExponentialBackOff {
             commHandler.commOpen(
-              commTarget,
-              commId,
-              Json.obj(
+              targetName = commTarget,
+              id = commId,
+              data = Json.obj(
                 "file_name" -> Json.jString(fileName0),
                 "prefix" -> prefix.fold(Json.jNull)(Json.jString)
-              ).nospaces
+              ).nospaces,
+              metadata = "{}"
             )
           }
 
@@ -122,7 +123,7 @@ final class SendLog(
               lines.clear()
 
               withExponentialBackOff {
-                commHandler.commMessage(commId, res)
+                commHandler.commMessage(commId, res, "{}")
               }
             }
           }
@@ -133,7 +134,7 @@ final class SendLog(
           if (r != null)
             r.close()
           // no re-attempt here…
-          commHandler.commClose(commId, "{}")
+          commHandler.commClose(commId, "{}", "{}")
         }
       }
     }

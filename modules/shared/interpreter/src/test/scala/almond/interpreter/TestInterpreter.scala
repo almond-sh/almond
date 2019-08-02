@@ -34,7 +34,7 @@ final class TestInterpreter extends Interpreter {
           ExecuteResult.Error("comm not available")
         case Some(h) =>
           val target = code.stripPrefix("comm-open:")
-          h.commOpen(target, target, "{}")
+          h.commOpen(target, target, "{}", "{}")
           count += 1
           ExecuteResult.Success()
       }
@@ -44,7 +44,7 @@ final class TestInterpreter extends Interpreter {
           ExecuteResult.Error("comm not available")
         case Some(h) =>
           val target = code.stripPrefix("comm-message:")
-          h.commMessage(target, """{"a": "b"}""")
+          h.commMessage(target, """{"a": "b"}""", "{}")
           count += 1
           ExecuteResult.Success()
       }
@@ -54,7 +54,7 @@ final class TestInterpreter extends Interpreter {
           ExecuteResult.Error("comm not available")
         case Some(h) =>
           val target = code.stripPrefix("comm-close:")
-          h.commClose(target, "{}")
+          h.commClose(target, "{}", "{}")
           count += 1
           ExecuteResult.Success()
       }
