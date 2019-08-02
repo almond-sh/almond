@@ -213,11 +213,8 @@ object Settings {
   lazy val mima = Seq(
     MimaPlugin.autoImport.mimaPreviousArtifacts := {
       val sv = scalaVersion.value
-      val contains =
-        if (sv.startsWith("2.13.")) "4e9441b9"
-        else "v0.3.1"
 
-      Mima.binaryCompatibilityVersions(contains).map { ver =>
+      Mima.binaryCompatibilityVersions().map { ver =>
         (organization.value % moduleName.value % ver).cross(crossVersion.value)
       }
     }
