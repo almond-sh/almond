@@ -26,7 +26,7 @@ object Deps {
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
-  def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC2-6"
+  def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC3-1"
   def coursierApi = "io.get-coursier" % "interface" % "0.0.10"
   def directories = "io.github.soc" % "directories" % "11"
   def fs2 = "co.fs2" %% "fs2-core" % "1.1.0-M1"
