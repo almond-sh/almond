@@ -43,7 +43,7 @@ object Deps {
       else "0.7.0"
     "com.lihaoyi" %% "scalatags" % ver
   }
-  def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.26"
+  def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.27"
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
 
