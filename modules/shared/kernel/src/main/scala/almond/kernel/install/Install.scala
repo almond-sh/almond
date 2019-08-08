@@ -148,7 +148,7 @@ object Install {
         .takeWhile(_.nonEmpty)
         .collect { case Some(arg) if !filterOutArgs(arg) => arg }
         .toList
-    } yield "java" :: "-jar" :: mainJar0 :: mainArgs
+    } yield "java" :: "-jar" :: mainJar0 :: "-Xss12m" :: mainArgs
 
   /**
     * Gets the command that launched the current application if possible.
