@@ -8,7 +8,7 @@ import sbt.Keys._
 
 object Settings {
 
-  def scala212 = "2.12.8"
+  def scala212 = "2.12.9"
   def scala213 = "2.13.0"
 
   lazy val isAtLeast212 = Def.setting {
@@ -49,7 +49,7 @@ object Settings {
 
   lazy val shared = Seq(
     scalaVersion := scala213,
-    crossScalaVersions := Seq(scala213, scala212, "2.12.7", "2.12.6"),
+    crossScalaVersions := Seq(scala213, scala212, "2.12.8", "2.12.7", "2.12.6"),
     scalacOptions ++= Seq(
       // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
       "-deprecation",
@@ -78,6 +78,19 @@ object Settings {
           Seq(baseDirectory.value / "src" / "main" / "scala-2.12_2.13")
         case _ => Nil
       }
+    },
+    unmanagedSourceDirectories.in(Compile) ++= {
+      val sv = scalaVersion.value
+      if (sv.startsWith("2.12.")) {
+        val patch = sv.stripPrefix("2.12.").takeWhile(_.isDigit).toInt
+        val dirName =
+          if (patch <= 8)
+            "scala-2.12.0_8"
+          else
+            "scala-2.12.9+"
+        Seq(baseDirectory.value / "src" / "main" / dirName)
+      } else
+        Nil
     }
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(java.util.Locale.ROOT)
