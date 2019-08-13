@@ -2,7 +2,7 @@
 set -e
 
 SCALA212_VERSION="$(grep -oP '(?<=def scala212 = ")[^"]*(?<!")' project/Settings.scala)"
-SCALA211_VERSION="$(grep -oP '(?<=def scala211 = ")[^"]*(?<!")' project/Settings.scala)"
+SCALA213_VERSION="$(grep -oP '(?<=def scala213 = ")[^"]*(?<!")' project/Settings.scala)"
 
 ALMOND_VERSION="$(git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')"
 
@@ -17,19 +17,19 @@ if [[ ${TRAVIS_TAG} != v* ]]; then
   sbt 'set version in ThisBuild := "'${ALMOND_VERSION}'"' '+ publishLocal'
   cp -r $HOME/.ivy2/local/ ivy-local/
   docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} --build-arg=LOCAL_IVY=yes \
-    --build-arg SCALA_VERSIONS="$SCALA211_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .
+    --build-arg SCALA_VERSIONS="$SCALA213_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .
   docker push ${IMAGE_NAME}
 else
   echo "Creating release images for almond ${ALMOND_VERSION}"
   IMAGE_NAME=${DOCKER_REPO}:${ALMOND_VERSION}
   docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} \
-    --build-arg SCALA_VERSIONS="$SCALA211_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .
+    --build-arg SCALA_VERSIONS="$SCALA213_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .
   docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} \
-    --build-arg SCALA_VERSIONS="$SCALA211_VERSION" -t ${IMAGE_NAME}-scala-${SCALA211_VERSION} .
+    --build-arg SCALA_VERSIONS="$SCALA213_VERSION" -t ${IMAGE_NAME}-scala-${SCALA213_VERSION} .
   docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} \
     --build-arg SCALA_VERSIONS="$SCALA212_VERSION" -t ${IMAGE_NAME}-scala-${SCALA212_VERSION} .
 
-  docker push ${IMAGE_NAME}-scala-${SCALA211_VERSION}
+  docker push ${IMAGE_NAME}-scala-${SCALA213_VERSION}
   docker push ${IMAGE_NAME}-scala-${SCALA212_VERSION}
   docker push ${IMAGE_NAME}
   docker tag ${IMAGE_NAME} ${DOCKER_REPO}:latest
