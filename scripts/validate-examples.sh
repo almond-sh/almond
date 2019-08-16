@@ -27,9 +27,10 @@ echo "Generating bootstrap"
 ../scripts/coursier.sh bootstrap \
   -r sonatype:releases \
   -r jitpack \
-  -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \
+  --shared sh.almond:scala-kernel-api_$SCALA_VERSION \
   --sources --default=true \
   --embed-files=false \
+  --scala-version "$SCALA_VERSION" \
   sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
   -o "$(pwd)/../project/target/launcher" \
   -f

@@ -129,12 +129,15 @@ lazy val `scala-interpreter` = project
   .settings(
     shared,
     libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaBinaryVersion.value) match {
-        case Some((2, n)) if n == 12 =>
+      val sv = scalaVersion.value
+      if (sv.startsWith("2.12.")) {
+        val patch = sv.stripPrefix("2.12.").takeWhile(_.isDigit).toInt
+        if (patch <= 8)
           Seq(Deps.metabrowseServer)
-        case _ =>
+        else
           Nil
-      }
+      } else
+        Nil
     },
     libraryDependencies ++= Seq(
       Deps.coursier,
