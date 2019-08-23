@@ -15,9 +15,9 @@ package almond.interpreter.api
   */
 abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.UpdateHelpers {
 
-  /** Sends stdout output the the Jupyter UI */
+  /** Sends stdout output to the Jupyter UI */
   def stdout(s: String): Unit
-  /** Sends stderr output the the Jupyter UI */
+  /** Sends stderr output to the Jupyter UI */
   def stderr(s: String): Unit
 
   /**
