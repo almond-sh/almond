@@ -4,6 +4,7 @@ import argonaut.ArgonautShapeless._
 import argonaut.EncodeJson
 
 final case class KernelInfo(
+  status: String, // "ok"
   protocol_version: String, // X.Y.Z
   implementation: String,
   implementation_version: String, // X.Y.Z
@@ -22,6 +23,7 @@ object KernelInfo {
     help_links: Option[List[KernelInfo.Link]]
   ): KernelInfo =
     KernelInfo(
+      status = "ok",
       Protocol.versionStr,
       implementation,
       implementation_version,
@@ -37,6 +39,7 @@ object KernelInfo {
     banner: String
   ): KernelInfo =
     KernelInfo(
+      status = "ok",
       Protocol.versionStr,
       implementation,
       implementation_version,
