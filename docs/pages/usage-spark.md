@@ -14,13 +14,15 @@ The only limitation is that the Scala version of Spark and the running Almond ke
 kernel uses the same Scala version as your Spark cluster.
 Spark 2.0.x - 2.3.x requires Scala 2.11. Spark 2.4.x supports both Scala 2.11 and 2.12.
 
+Note that as of almond 0.7.0, almond only supports Scala 2.12 and therefore requires Spark 2.4.x for Scala 2.12.
+
 For more information, see the [README](https://github.com/alexarchambault/ammonite-spark/blob/master/README.md) of ammonite-spark.
 
 To use it, import the *almond-spark* dependency as well as Spark 2.x itself.
 
 ```scala
 import $ivy.`org.apache.spark::spark-sql:2.4.0` // Or use any other 2.x version here
-import $ivy.`sh.almond::almond-spark:@VERSION@`
+import $ivy.`sh.almond::almond-spark:@VERSION@` // Not required since almond 0.7.0 (will be automatically added when importing spark)
 ```
 
 Usually you want to disable logging in order to avoid polluting your cell outputs:
