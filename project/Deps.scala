@@ -6,23 +6,13 @@ import sbt.Keys.scalaVersion
 object Deps {
 
   object Versions {
-    def ammonite = setting {
-      val sv = scalaVersion.value
-      if (sv.startsWith("2.11.")) "1.6.7"
-      else "1.6.9-19-827dffe"
-    }
+    def ammonite = "1.6.9-19-827dffe"
     def caseApp = "2.0.0-M9"
   }
 
-  def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite.value).cross(CrossVersion.full))
-  def ammoniteReplApi = setting {
-    val sv = scalaVersion.value
-    val module =
-      if (sv.startsWith("2.11.")) "ammonite-repl"
-      else "ammonite-repl-api"
-    ("com.lihaoyi" % module % Versions.ammonite.value).cross(CrossVersion.full)
-  }
-  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.6.0"
+  def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
+  def ammoniteReplApi = setting(("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full))
+  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.6.1"
   def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
@@ -36,23 +26,10 @@ object Deps {
   def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.2"
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
-  def scalatags = setting {
-    val sv = scalaVersion.value
-    val ver =
-      if (sv.startsWith("2.11.")) "0.6.8"
-      else "0.7.0"
-    "com.lihaoyi" %% "scalatags" % ver
-  }
+  def scalatags = "com.lihaoyi" %% "scalatags" % "0.7.0"
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.28"
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
 
-  def utest = setting {
-    val sv = scalaVersion.value
-    val ver =
-      if (sv.startsWith("2.11.")) "0.6.7"
-      else "0.6.9"
-    "com.lihaoyi" %% "utest" % ver
-  }
-
+  def utest = "com.lihaoyi" %% "utest" % "0.6.9"
 }
