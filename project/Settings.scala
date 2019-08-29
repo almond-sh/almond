@@ -177,7 +177,7 @@ object Settings {
     fork.in(Test) := true, // Java serialization goes awry without that
     testFrameworks += new TestFramework("utest.runner.Framework"),
     javaOptions.in(Test) ++= Seq("-Xmx3g", "-Dfoo=bzz"),
-    libraryDependencies += Deps.utest.value % "test"
+    libraryDependencies += Deps.utest % "test"
   )
 
   implicit class ProjectOps(val project: Project) extends AnyVal {
@@ -200,7 +200,7 @@ object Settings {
   lazy val exportVersionsSetting: Setting[_] = {
     exportVersions := {
       val ver = version.value
-      val ammoniteVer = Deps.Versions.ammonite.value
+      val ammoniteVer = Deps.Versions.ammonite
       val scalaVer = scalaVersion.value
       val outputDir = target.value
 
