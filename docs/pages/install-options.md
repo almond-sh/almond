@@ -50,6 +50,7 @@ System-wide kernels get installed under `/usr/local/share/jupyter/kernels` (Linu
 (default) under `~/.local/share/jupyter/kernels` (Linux) or `~/Library/Jupyter/kernels` (Mac).
 
 #### `--jupyter-path`
+Path to your Jupyter kernels directory, i.e. `/opt/conda/share/jupyter/kernels`
 
 #### `--logo`
 
