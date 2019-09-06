@@ -19,7 +19,7 @@ object Deps {
   def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC3-2"
   def coursierApi = "io.get-coursier" % "interface" % "0.0.12"
   def directories = "io.github.soc" % "directories" % "11"
-  def fs2 = "co.fs2" %% "fs2-core" % "1.1.0-M1"
+  def fs2 = "co.fs2" %% "fs2-core" % "1.1.0-M2"
   def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
   def jeromq = "org.zeromq" % "jeromq" % "0.5.1"
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
