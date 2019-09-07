@@ -4,8 +4,8 @@ install:
   - cmd: mkdir C:\utils
   - cmd: curl -Lo C:\utils\sbt https://github.com/coursier/sbt-launcher/releases/download/v1.2.6/csbt
   - cmd: curl -Lo C:\utils\sbt.bat https://github.com/coursier/sbt-launcher/releases/download/v1.2.6/csbt.bat
-  - cmd: curl -Lo C:\utils\coursier https://github.com/coursier/coursier/releases/download/v2.0.0-RC2-6/coursier
-  - cmd: curl -Lo C:\utils\coursier.bat https://github.com/coursier/coursier/releases/download/v2.0.0-RC2-6/coursier.bat
+  - cmd: curl -Lo C:\utils\coursier https://github.com/coursier/coursier/releases/download/v2.0.0-RC3-3/coursier
+  - cmd: curl -Lo C:\utils\coursier.bat https://github.com/coursier/coursier/releases/download/v2.0.0-RC3-3/coursier.bat
   - cmd: SET JAVA_HOME=C:\Program Files\Java\jdk1.8.0
   - cmd: SET PATH=C:\utils;%JAVA_HOME%\bin;%PATH%
   - cmd: SET JAVA_OPTS=-Xmx4g -Xss2m -Dpublish.javadoc=0
@@ -23,7 +23,7 @@ build_script:
   - sbt "set version in ThisBuild := \"%TEST_ALMOND_VERSION%\"" ++%TEST_SCALA_VERSION% publishLocal
 
 test_script:
-  - coursier bootstrap -r jitpack -i user -I user:sh.almond:scala-kernel-api_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% --sources --default=true --embed-files=false sh.almond:scala-kernel_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% -o launcher
+  - coursier bootstrap -r jitpack --shared sh.almond:scala-kernel-api_%TEST_SCALA_VERSION% --scala-version %TEST_SCALA_VERSION% --sources --default=true --embed-files=false sh.almond:scala-kernel_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% -o launcher
   - .\launcher --install
   - jupyter kernelspec list
   - jupyter nbconvert --to notebook --execute --ExecutePreprocessor.kernel_name=scala examples/test.ipynb --output=test-output.ipynb

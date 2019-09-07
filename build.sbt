@@ -142,6 +142,7 @@ lazy val `scala-interpreter` = project
     libraryDependencies ++= Seq(
       Deps.coursier,
       Deps.coursierApi,
+      Deps.directories,
       Deps.jansi,
       Deps.ammoniteRepl.value
     ),
