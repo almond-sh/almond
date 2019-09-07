@@ -9,7 +9,7 @@ picked from the cache of coursier. You may prefer to have the launcher embed all
 so that nothing needs to be downloaded or picked from a cache upon launch. Passing
 `--standalone` to the `coursier bootstrap` command generates such a launcher,
 ```bash
-$ SCALA_VERSION=2.12.6 ALMOND_VERSION=0.1.7
+$ SCALA_VERSION=@SCALA_VERSION@ ALMOND_VERSION=@VERSION@
 $ coursier bootstrap --standalone \
     -r jitpack \
     -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION \

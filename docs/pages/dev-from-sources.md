@@ -138,11 +138,11 @@ $ sbt interpreter/test "~publishLocal"
 
 Note that the sbt start up time is incurred each time you type `sbt` in your shell. Running it once, like `$ sbt`, then entering commands at the sbt prompt allows to avoid this.
 
-Select a specific scala version, for example `2.11.12`, with `++2.11.12`. Example of use
+Select a specific scala version, for example `2.12.9`, with `++2.12.9`. Example of use
 ```
-$ sbt ++2.11.12 "~test:compile"
+$ sbt ++2.12.9 "~test:compile"
 $ sbt
-> ++2.11.12
+> ++2.12.9
 > interpreter/test
 ```
 

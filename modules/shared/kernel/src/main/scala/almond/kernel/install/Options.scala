@@ -14,6 +14,7 @@ final case class Options(
     displayName: Option[String] = None,
   @HelpMessage("whether to install this kernel globally")
     global: Boolean = false,
+  @HelpMessage("Path to your Jupyter kernels directory, i.e. /opt/conda/share/jupyter/kernels")
   jupyterPath: Option[String] = None,
   @HelpMessage("path to a 64x64 PNG logo for this kernel")
     logo: Option[String] = None,
