@@ -23,7 +23,7 @@ build_script:
   - sbt "set version in ThisBuild := \"%TEST_ALMOND_VERSION%\"" ++%TEST_SCALA_VERSION% publishLocal
 
 test_script:
-  - coursier bootstrap -r jitpack -i user -I user:sh.almond:scala-kernel-api_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% --sources --default=true --embed-files=false sh.almond:scala-kernel_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% -o launcher
+  - coursier bootstrap -r jitpack --shared sh.almond:scala-kernel-api_%TEST_SCALA_VERSION% --scala-version %TEST_SCALA_VERSION% --sources --default=true --embed-files=false sh.almond:scala-kernel_%TEST_SCALA_VERSION%:%TEST_ALMOND_VERSION% -o launcher
   - .\launcher --install
   - jupyter kernelspec list
   - jupyter nbconvert --to notebook --execute --ExecutePreprocessor.kernel_name=scala examples/test.ipynb --output=test-output.ipynb
