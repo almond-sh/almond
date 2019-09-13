@@ -40,9 +40,9 @@ jobs:
       - pip3 -V
       - sudo pip3 install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
-  - scala: 2.12.8
   - scala: 2.12.9
-  - scala: 2.12.9
+  - scala: 2.12.10
+  - scala: 2.12.10
     jdk: openjdk11
   - scala: 2.13.0
   - name: "Website"
