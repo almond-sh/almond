@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="## Prerequisites">
-  <meta name="docsearch:version" content="0.6.0">
+  <meta name="docsearch:version" content="0.8.1">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Installing from sources · almond">
   <meta property="og:type" content="website">
@@ -26,7 +26,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.6.0</h3></a>
+     <a href="../versions"><h3>0.8.1</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -202,9 +202,9 @@ $ coursier bootstrap \
            <li><code>publishLocal</code> to publish the projects locally (these land under <code>~/.ivy2/local</code>).</li> 
           </ul> <p>All these commands can be prefixed with a project id, like <code>kernel/test</code> or <code>interpreter/publishLocal</code>. List the available projects with <code>projects</code>.</p> <p>Note that sbt knows about the dependencies between commands, so that you can directly run <code>test</code>. This triggers a compilation of the main and test sources if needed. Sources are automatically compiled incrementally.</p> <p><code>~</code> can be added as prefix to watch sources, like <code>~test:compile</code> or <code>~kernel/publishLocal</code>.</p> <p>To run one or several commands from your shell rather than the sbt prompt, pass those to <code>sbt</code>, like</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt <span class="hljs-string">"~test:compile"</span></span>
 <span class="hljs-meta">$</span><span class="bash"> sbt interpreter/<span class="hljs-built_in">test</span> <span class="hljs-string">"~publishLocal"</span></span>
-</code></pre> <p>Note that the sbt start up time is incurred each time you type <code>sbt</code> in your shell. Running it once, like <code>$ sbt</code>, then entering commands at the sbt prompt allows to avoid this.</p> <p>Select a specific scala version, for example <code>2.11.12</code>, with <code>++2.11.12</code>. Example of use</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt ++2.11.12 <span class="hljs-string">"~test:compile"</span></span>
+</code></pre> <p>Note that the sbt start up time is incurred each time you type <code>sbt</code> in your shell. Running it once, like <code>$ sbt</code>, then entering commands at the sbt prompt allows to avoid this.</p> <p>Select a specific scala version, for example <code>2.12.9</code>, with <code>++2.12.9</code>. Example of use</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt ++2.12.9 <span class="hljs-string">"~test:compile"</span></span>
 <span class="hljs-meta">$</span><span class="bash"> sbt</span>
-<span class="hljs-meta">&gt;</span><span class="bash"> ++2.11.12</span>
+<span class="hljs-meta">&gt;</span><span class="bash"> ++2.12.9</span>
 <span class="hljs-meta">&gt;</span><span class="bash"> interpreter/<span class="hljs-built_in">test</span></span>
 </code></pre> <p>List the available scala versions with the <code>show crossScalaVersions</code> command, like</p> <pre><code class="hljs"><span class="hljs-meta">$</span><span class="bash"> sbt <span class="hljs-string">"show crossScalaVersions"</span></span>
 <span class="hljs-meta">$</span><span class="bash"> sbt</span>

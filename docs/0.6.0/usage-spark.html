@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charSet="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Spark · almond</title>
+  <meta name="viewport" content="width=device-width">
+  <meta name="generator" content="Docusaurus">
+  <meta name="description" content="Almond comes with a Spark integration module called *almond-spark*, which allows you to connect to a Spark cluster and">
+  <meta name="docsearch:version" content="0.6.0">
+  <meta name="docsearch:language" content="en">
+  <meta property="og:title" content="Spark · almond">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
+  <meta property="og:description" content="Almond comes with a Spark integration module called *almond-spark*, which allows you to connect to a Spark cluster and">
+  <meta name="twitter:card" content="summary">
+  <link rel="shortcut icon" href="../../undefined">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+  <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
+  <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
+  <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <link rel="stylesheet" href="../../css/main.css">
+ </head>
+ <body class="sideNavVisible separateOnPageNav">
+  <div class="fixedHeaderContainer">
+   <div class="headerWrapper wrapper">
+    <header>
+     <a href="../.."><img class="logo" src="../../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
+     <a href="../../versions"><h3>0.6.0</h3></a>
+     <div class="navigationWrapper navigationSlider">
+      <nav class="slidingNav">
+       <ul class="nav-site nav-site-internal">
+        <li class="siteNavGroupActive"><a href="intro" target="_self">Docs</a></li>
+        <li class=""><a href="../../blog" target="_self">Blog</a></li>
+        <li class=""><a href="https://github.com/almond-sh/almond" target="_self">GitHub</a></li>
+       </ul>
+      </nav>
+     </div>
+    </header>
+   </div>
+  </div>
+  <div class="navPusher">
+   <div class="docMainWrapper wrapper">
+    <div class="container docsNavContainer" id="docsNav">
+     <nav class="toc">
+      <div class="toggleNav">
+       <section class="navWrapper wrapper">
+        <div class="navBreadcrumb wrapper">
+         <div class="navToggle" id="navToggler">
+          <i></i>
+         </div>
+         <h2><i>›</i><span>Usage</span></h2>
+         <div class="tocToggler" id="tocToggler">
+          <i class="icon-toc"></i>
+         </div>
+        </div>
+        <div class="navGroups">
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Intro</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="intro">Overview</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Try it</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="try-mybinder">mybinder</a></li>
+           <li class="navListItem"><a class="navItem" href="try-docker">docker</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Installation</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="quick-start-install">Installation</a></li>
+           <li class="navListItem"><a class="navItem" href="install-options">Options</a></li>
+           <li class="navListItem"><a class="navItem" href="install-multiple">Multiple kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="install-versions">Versions</a></li>
+           <li class="navListItem"><a class="navItem" href="install-other">Other</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Usage</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="usage-plotting">Plotting</a></li>
+           <li class="navListItem navListItemActive"><a class="navItem" href="usage-spark">Spark</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">User API</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="api">Intro</a></li>
+           <li class="navListItem"><a class="navItem" href="api-ammonite">Ammonite API</a></li>
+           <li class="navListItem"><a class="navItem" href="api-jupyter">Almond Jupyter API</a></li>
+           <li class="navListItem"><a class="navItem" href="api-access-instances">Access API instances</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Development</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="dev-from-sources">Installing from sources</a></li>
+           <li class="navListItem"><a class="navItem" href="dev-custom-kernel">Writing custom kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="dev-libraries">Writing libraries interacting with Jupyter</a></li>
+           <li class="navListItem"><a class="navItem" href="dev-website">Generate the website</a></li>
+          </ul>
+         </div>
+        </div>
+       </section>
+      </div>
+      <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              const headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                if (event.target.tagName === 'A') {
+                  document.body.classList.remove('tocActive');
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script>
+     </nav>
+    </div>
+    <div class="container mainContainer docMainContainer">
+     <div class="wrapper">
+      <div class="post">
+       <header class="postHeader">
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/docs/pages/usage-spark.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <h1 class="postHeaderTitle">Spark</h1>
+       </header>
+       <article>
+        <div>
+         <span><p>Almond comes with a Spark integration module called <em>almond-spark</em>, which allows you to connect to a Spark cluster and to run Spark calculations interactively from a Jupyter notebook.</p> <p>It is based on <a href="https://github.com/alexarchambault/ammonite-spark">ammonite-spark</a>, adding Jupyter specific features such as progress bars and cancellation for running Spark computations.</p> <p><em>ammonite-spark</em> handles loading Spark in a clever way, and does not rely on a specific Spark distribution. Because of that, you can use it with any Spark 2.x version. The only limitation is that the Scala version of Spark and the running Almond kernel must match, so make sure your kernel uses the same Scala version as your Spark cluster. Spark 2.0.x - 2.3.x requires Scala 2.11. Spark 2.4.x supports both Scala 2.11 and 2.12.</p> <p>For more information, see the <a href="https://github.com/alexarchambault/ammonite-spark/blob/master/README.md">README</a> of ammonite-spark.</p> <p>To use it, import the <em>almond-spark</em> dependency as well as Spark 2.x itself.</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.apache.spark::spark-sql:<span class="hljs-number">2.4</span><span class="hljs-number">.0</span>` <span class="hljs-comment">// Or use any other 2.x version here</span>
+<span class="hljs-keyword">import</span> $ivy.`sh.almond::almond-spark:<span class="hljs-number">0.6</span><span class="hljs-number">.0</span>`
+</code></pre> <p>Usually you want to disable logging in order to avoid polluting your cell outputs:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> org.apache.log4j.{<span class="hljs-type">Level</span>, <span class="hljs-type">Logger</span>}
+<span class="hljs-type">Logger</span>.getLogger(<span class="hljs-string">"org"</span>).setLevel(<span class="hljs-type">Level</span>.<span class="hljs-type">OFF</span>)
+
+</code></pre> <p>Then create a <code>SparkSession</code> using the <code>NotebookSparkSessionBuilder</code> provided by <em>almond-spark</em>:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> org.apache.spark.sql._
+
+<span class="hljs-keyword">val</span> spark = {
+  <span class="hljs-type">NotebookSparkSession</span>.builder()
+    .master(<span class="hljs-string">"local[*]"</span>)
+    .getOrCreate()
+}
+</code></pre> <p>When running this, you should see that the cell output contains a link to the Spark UI.</p> <p>Note the use of <code>NotebookSparkSession.builder()</code>, instead of <code>SparkSession.builder()</code> that one would use when e.g. writing a Spark job.</p> <p>The builder returned by <code>NotebookSparkSession.builder()</code> extends the one of <code>SparkSession.builder()</code>, so that one can call <code>.appName("foo")</code>, <code>.config("key", "value")</code>, etc. on it.</p> <p>Now you can get a <code>SparkContext</code> from the <code>SparkSession</code> and run Spark calculations.</p> <pre><code class="hljs css language-scala"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">sc</span> </span>= spark.sparkContext
+
+<span class="hljs-keyword">val</span> rdd = sc.parallelize(<span class="hljs-number">1</span> to <span class="hljs-number">100000000</span>, <span class="hljs-number">100</span>)
+
+<span class="hljs-keyword">val</span> n = rdd.map(_ + <span class="hljs-number">1</span>).sum()
+</code></pre> <p>When you execute a Spark action like <code>sum</code> you should see a progress bar, showing the progress of the running Spark job, as well as a link to cancel the job if you are using the Jupyter classic UI.</p> <h3><a class="anchor" aria-hidden="true" id="syncing-dependencies"></a><a href="usage-spark.html#syncing-dependencies" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Syncing dependencies</h3> <p>If extra dependencies are loaded, via <code>import $ivy.`…`</code> after the <code>SparkSession</code> has been created, one should call <code>NotebookSparkSession.sync()</code> for the newly added JARs to be passed to the Spark executors.</p> <h2><a class="anchor" aria-hidden="true" id="using-with-standalone-cluster"></a><a href="usage-spark.html#using-with-standalone-cluster" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Using with standalone cluster</h2> <p>Simply set the master to <code>spark://…</code> when building the session, e.g.</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> spark = {
+  <span class="hljs-type">NotebookSparkSession</span>.builder()
+    .master(<span class="hljs-string">"spark://localhost:7077"</span>)
+    .config(<span class="hljs-string">"spark.executor.instances"</span>, <span class="hljs-string">"4"</span>)
+    .config(<span class="hljs-string">"spark.executor.memory"</span>, <span class="hljs-string">"2g"</span>)
+    .getOrCreate()
+}
+</code></pre> <p>Ensure the version of Spark used to start the master and executors matches the one loaded in the notebook session (via e.g. <code>import $ivy.`org.apache.spark::spark-sql:X.Y.Z`</code>), and that the machine running the kernel can access / is accessible from all nodes of the standalone cluster.</p> <h2><a class="anchor" aria-hidden="true" id="using-with-yarn-cluster"></a><a href="usage-spark.html#using-with-yarn-cluster" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Using with YARN cluster</h2> <p>Set the master to <code>"yarn"</code> when building the session, e.g.</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> spark = {
+  <span class="hljs-type">NotebookSparkSession</span>.builder()
+    .master(<span class="hljs-string">"yarn"</span>)
+    .config(<span class="hljs-string">"spark.executor.instances"</span>, <span class="hljs-string">"4"</span>)
+    .config(<span class="hljs-string">"spark.executor.memory"</span>, <span class="hljs-string">"2g"</span>)
+    .getOrCreate()
+}
+</code></pre> <p>Local clusters, Mesos, and Kubernetes, aren't supported by <em>ammonite-spark</em> yet.</p> </span>
+        </div>
+       </article>
+      </div>
+      <div class="docs-prevnext">
+       <a class="docs-prev button" href="usage-plotting"><span class="arrow-prev">← </span><span>Previous</span></a>
+       <a class="docs-next button" href="api"><span>Next</span><span class="arrow-next"> →</span></a>
+      </div>
+     </div>
+    </div>
+    <nav class="onPageNav docOnPageNav">
+     <ul class="toc-headings">
+      <li><a href="usage-spark.html#using-with-standalone-cluster">Using with standalone cluster</a></li>
+      <li><a href="usage-spark.html#using-with-yarn-cluster">Using with YARN cluster</a></li>
+     </ul>
+    </nav>
+   </div>
+   <footer class="nav-footer" id="footer">
+    <section class="sitemap">
+     <a href="../.." class="nav-home"></a>
+     <div>
+      <h5>Docs</h5>
+      <a href="../intro.html">Quick start</a>
+     </div>
+     <div>
+      <h5>Community</h5>
+      <a href="https://gitter.im/alexarchambault/jupyter-scala">Gitter room</a>
+     </div>
+     <div>
+      <h5>More</h5>
+      <a href="https://github.com/almond-sh/almond">GitHub</a>
+      <a class="github-button" data-icon="octicon-star" data-count-href="/almond-sh/almond/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a>
+     </div>
+    </section>
+    <section class="copyright">
+     Copyright © 2019 almond contributors
+    </section>
+   </footer>
+  </div>
+ </body>
+</html>
