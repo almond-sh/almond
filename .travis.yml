@@ -45,6 +45,7 @@ jobs:
   - scala: 2.12.10
     jdk: openjdk11
   - scala: 2.13.0
+  - scala: 2.13.1
   - name: "Website"
     script: amm scripts/site.sc --publishLocal true
   - stage: release
