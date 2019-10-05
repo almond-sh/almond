@@ -55,6 +55,10 @@ jobs:
     script: scripts/upload-launcher.sh
   - stage: update-docker-images
     name: "Update docker images"
+    addons:
+      apt:
+        packages:
+          - docker-ce
     script: scripts/update-docker-images.sh
   - stage: update-versioned-docs
     env: WEBSITE_DIR=docs/website VERSIONED_DOCS_REPO=almond-sh/versioned-docs
