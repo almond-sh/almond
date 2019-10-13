@@ -30,7 +30,8 @@ final class Execute(
   storage: Storage,
   logCtx: LoggerContext,
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
-  commHandlerOpt: => Option[CommHandler]
+  commHandlerOpt: => Option[CommHandler],
+  silent: Ref[Boolean]
 ) {
 
   private val log = logCtx(getClass)
@@ -223,7 +224,7 @@ final class Execute(
                 resultOutput.clear()
                 resultVariables.clear()
                 log.debug(s"Compiling / evaluating $code ($stmts)")
-                val r = ammInterp.processLine(code, stmts, currentLine0, silent = false, incrementLine = () => currentLine0 += 1)
+                val r = ammInterp.processLine(code, stmts, currentLine0, silent = silent(), incrementLine = () => currentLine0 += 1)
 
                 log.debug(s"Handling output of $code")
                 Repl.handleOutput(ammInterp, r)

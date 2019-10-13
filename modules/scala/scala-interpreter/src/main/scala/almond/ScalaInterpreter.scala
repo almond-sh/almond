@@ -38,6 +38,8 @@ final class ScalaInterpreter(
 
   private val colors0: Ref[Colors] = Ref(params.initialColors)
 
+  private val silent0: Ref[Boolean] = Ref(false)
+
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private val storage =
@@ -51,7 +53,8 @@ final class ScalaInterpreter(
     storage,
     logCtx,
     params.updateBackgroundVariablesEcOpt,
-    commHandlerOpt
+    commHandlerOpt,
+    silent0
   )
 
 
@@ -69,7 +72,7 @@ final class ScalaInterpreter(
       )
 
     val jupyterApi =
-      new JupyterApiImpl(execute0, commHandlerOpt, replApi)
+      new JupyterApiImpl(execute0, commHandlerOpt, replApi, silent0)
 
     for (ec <- params.updateBackgroundVariablesEcOpt)
       UpdatableFuture.setup(replApi, jupyterApi, ec)

@@ -237,6 +237,42 @@ object ScalaInterpreterTests extends TestSuite {
       "exception" - Predef.exception(fileBased = true)
     }
 
+    "silent" - {
+      "defaults false" - {
+        val code = "val silent = kernel.silent"
+        val res = interpreter.execute(code)
+        val expectedRes = ExecuteResult.Success(DisplayData.text("silent: Boolean = false"))
+        assert(res == expectedRes)
+      }
+      "can be set to true" - {
+        val code =
+          """
+            | val silentBefore = kernel.silent
+            | kernel.silent(true)
+            | val silentAfter = kernel.silent
+            |""".stripMargin
+        val res = interpreter.execute(code)
+        val expectedRes = ExecuteResult.Success(DisplayData.text(
+          """silentBefore: Boolean = false
+            |silentAfter: Boolean = true""".stripMargin))
+        assert(res == expectedRes)
+      }
+//      "can be set to false" - {
+//        val code =
+//          """
+//            | kernel.silent(true)
+//            | val silentBefore = kernel.silent
+//            | kernel.silent(false)
+//            | val silentAfter = kernel.silent
+//            |""".stripMargin
+//        val res = interpreter.execute(code)
+//        val expectedRes = ExecuteResult.Success(DisplayData.text(
+//          """silentBefore: Boolean = true
+//            |silentAfter: Boolean = false""".stripMargin))
+//        assert(res == expectedRes)
+//      }
+    }
+
     "dependencies" - {
       "auto dependency" - {
         "example" - {
