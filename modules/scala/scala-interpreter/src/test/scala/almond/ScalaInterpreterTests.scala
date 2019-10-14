@@ -15,21 +15,22 @@ object ScalaInterpreterTests extends TestSuite {
 
   private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
-  private val interpreter: Interpreter =
-    new ScalaInterpreter(
-      params = ScalaInterpreterParams(
-        initialColors = Colors.BlackWhite,
-        automaticDependencies = Map(
-          Module.of("org.scalacheck", "*") -> Seq(
-            Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
-          )
-        ),
-        automaticVersions = Map(
-          Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
+  private def newInterpreter: Interpreter = new ScalaInterpreter(
+    params = ScalaInterpreterParams(
+      initialColors = Colors.BlackWhite,
+      automaticDependencies = Map(
+        Module.of("org.scalacheck", "*") -> Seq(
+          Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
         )
       ),
-      logCtx = logCtx
-    )
+      automaticVersions = Map(
+        Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
+      )
+    ),
+    logCtx = logCtx
+  )
+
+  private val interpreter: Interpreter = newInterpreter
 
   private object Predef {
     private def predefPath(name: String): Path =
@@ -240,7 +241,7 @@ object ScalaInterpreterTests extends TestSuite {
     "silent" - {
       "defaults false" - {
         val code = "val silent = kernel.silent"
-        val res = interpreter.execute(code)
+        val res = newInterpreter.execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("silent: Boolean = false"))
         assert(res == expectedRes)
       }
@@ -251,26 +252,87 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(true)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = interpreter.execute(code)
+        val res = newInterpreter.execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
             |silentAfter: Boolean = true""".stripMargin))
         assert(res == expectedRes)
       }
-//      "can be set to false" - {
-//        val code =
-//          """
-//            | kernel.silent(true)
-//            | val silentBefore = kernel.silent
-//            | kernel.silent(false)
-//            | val silentAfter = kernel.silent
-//            |""".stripMargin
-//        val res = interpreter.execute(code)
-//        val expectedRes = ExecuteResult.Success(DisplayData.text(
-//          """silentBefore: Boolean = true
-//            |silentAfter: Boolean = false""".stripMargin))
-//        assert(res == expectedRes)
-//      }
+      "can be set to false" - {
+        val code =
+          """
+            | kernel.silent(true)
+            | val silentBefore = kernel.silent
+            | kernel.silent(false)
+            | val silentAfter = kernel.silent
+            |""".stripMargin
+        val res = newInterpreter.execute(code)
+        val expectedRes = ExecuteResult.Success(DisplayData.text(
+          """silentBefore: Boolean = true
+            |silentAfter: Boolean = false""".stripMargin))
+        assert(res == expectedRes)
+      }
+      "affects subsequent calls to execute when enabled" - {
+        val code0 =
+          """
+            | kernel.silent(true)
+            | val noEffectInSameExecute = kernel.silent
+            |""".stripMargin
+        val code1 =
+          """
+            | val effectInNextExecute = 0
+            |""".stripMargin
+        val code2 =
+          """
+            | val effectInNextExecuteAgain = 0
+            |""".stripMargin
+        val i = newInterpreter
+        val res0 = i.execute(code0)
+        val res1 = i.execute(code1)
+        val res2 = i.execute(code2)
+        val expectedRes0 = ExecuteResult.Success(DisplayData.text(
+          "noEffectInSameExecute: Boolean = true"))
+        val expectedRes1 = ExecuteResult.Success(DisplayData.empty)
+        val expectedRes2 = ExecuteResult.Success(DisplayData.empty)
+        assert(res0 == expectedRes0)
+        assert(res1 == expectedRes1)
+        assert(res2 == expectedRes2)
+      }
+
+      "affects subsequent calls to execute when disabled" - {
+        val code0 = "kernel.silent(true)"
+        val code1 =
+          """
+            | kernel.silent(false)
+            | val noEffectInSameExecute = kernel.silent
+            |""".stripMargin
+        val code2 =
+          """
+            | val effectInNextExecute = kernel.silent
+            |""".stripMargin
+        val code3 =
+          """
+            | val effectInNextExecuteAgain = kernel.silent
+            |""".stripMargin
+
+        val i = newInterpreter
+        val res0 = i.execute(code0)
+        val res1 = i.execute(code1)
+        val res2 = i.execute(code2)
+        val res3 = i.execute(code3)
+
+        val expectedRes0 = ExecuteResult.Success(DisplayData.empty)
+        val expectedRes1 = ExecuteResult.Success(DisplayData.empty)
+        val expectedRes2 = ExecuteResult.Success(DisplayData.text(
+          "effectInNextExecute: Boolean = false"))
+        val expectedRes3 = ExecuteResult.Success(DisplayData.text(
+          "effectInNextExecuteAgain: Boolean = false"))
+
+        assert(res0 == expectedRes0)
+        assert(res1 == expectedRes1)
+        assert(res2 == expectedRes2)
+        assert(res3 == expectedRes3)
+      }
     }
 
     "dependencies" - {
