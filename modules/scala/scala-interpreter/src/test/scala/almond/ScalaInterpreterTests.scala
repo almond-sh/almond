@@ -15,20 +15,21 @@ object ScalaInterpreterTests extends TestSuite {
 
   private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
-  private def newInterpreter: Interpreter = new ScalaInterpreter(
-    params = ScalaInterpreterParams(
-      initialColors = Colors.BlackWhite,
-      automaticDependencies = Map(
-        Module.of("org.scalacheck", "*") -> Seq(
-          Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
+  private def newInterpreter: Interpreter =
+    new ScalaInterpreter(
+      params = ScalaInterpreterParams(
+        initialColors = Colors.BlackWhite,
+        automaticDependencies = Map(
+          Module.of("org.scalacheck", "*") -> Seq(
+            Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
+          )
+        ),
+        automaticVersions = Map(
+          Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
         )
       ),
-      automaticVersions = Map(
-        Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
-      )
-    ),
-    logCtx = logCtx
-  )
+      logCtx = logCtx
+    )
 
   private val interpreter: Interpreter = newInterpreter
 
