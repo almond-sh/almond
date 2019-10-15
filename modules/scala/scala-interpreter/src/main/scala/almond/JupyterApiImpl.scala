@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import almond.api.{FullJupyterApi, JupyterApi}
 import almond.internals.HtmlAnsiOutputStream
 import almond.interpreter.api.CommHandler
+import ammonite.util.Ref
 import pprint.{TPrint, TPrintColors}
 
 import scala.concurrent.Await
@@ -16,7 +17,8 @@ import scala.reflect.ClassTag
 final class JupyterApiImpl(
   execute: Execute,
   commHandlerOpt: => Option[CommHandler],
-  replApi: ReplApiImpl
+  replApi: ReplApiImpl,
+  silent0: Ref[Boolean]
 ) extends FullJupyterApi {
 
   protected def printOnChange[T](
@@ -33,6 +35,9 @@ final class JupyterApiImpl(
     replApi.printSpecial(value, ident, custom, onChange, onChangeOrError, replApi.pprinter, Some(updatableResults))(tprint, tcolors, classTagT).getOrElse {
       replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
     }
+
+  override def silent(s: Boolean): Unit = silent0.update(s)
+  override def silent: Boolean = silent0.apply()
 
   protected def ansiTextToHtml(text: String): String = {
     val baos = new ByteArrayOutputStream
