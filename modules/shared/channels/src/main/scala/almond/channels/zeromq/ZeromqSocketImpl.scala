@@ -104,7 +104,12 @@ final class ZeromqSocketImpl(
 
         ensureOpened()
 
-        log.debug(s"Sending message with header ${message.header} and idents ${identsAsStrings(message.idents)})")
+        log.debug(
+          "Sending:\n" +
+          "  header: " + Try(new String(message.header, "UTF-8")).toOption.getOrElse(message.header.toString) + "\n" +
+          "  content: " + Try(new String(message.content, "UTF-8")).toOption.getOrElse(message.content.toString) + "\n" +
+          "  idents: " + identsAsStrings(message.idents)
+        )
 
         for (c <- message.idents)
           channel.send(c.toArray, ZMQ.SNDMORE)
