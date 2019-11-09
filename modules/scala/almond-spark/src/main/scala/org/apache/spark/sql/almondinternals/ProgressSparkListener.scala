@@ -3,9 +3,8 @@ package org.apache.spark.sql.almondinternals
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-import argonaut._
-import argonaut.Argonaut._
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
+import com.github.plokhotnyuk.jsoniter_scala.core._
 import org.apache.spark.scheduler._
 import org.apache.spark.sql.SparkSession
 
@@ -33,7 +32,7 @@ final class ProgressSparkListener(
     commTargetName,
     CommTarget { (_, data) =>
 
-      data.decodeEither(CancelStageReq.decoder) match {
+      Try(readFromArray(data)(CancelStageReq.codec)).toEither match {
         case Left(err) =>
           publish.stderr(s"Error decoding message: $err" + '\n')
         case Right(req) =>
@@ -103,8 +102,9 @@ object ProgressSparkListener {
   final case class CancelStageReq(stageId: Int)
 
   object CancelStageReq {
-    import argonaut.ArgonautShapeless._
-    implicit val decoder = DecodeJson.of[CancelStageReq]
+    import com.github.plokhotnyuk.jsoniter_scala.macros._
+    implicit val codec: JsonValueCodec[CancelStageReq] =
+      JsonCodecMaker.make(CodecMakerConfig)
   }
 
 

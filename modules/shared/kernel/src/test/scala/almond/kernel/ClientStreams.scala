@@ -4,24 +4,28 @@ import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.Execute.DisplayData
-import almond.protocol.{Execute, MessageType}
+import almond.protocol.{Execute, MessageType, RawJson}
 import almond.kernel.KernelTests.threads
-import argonaut.{DecodeJson, Json}
 import cats.effect.IO
 import cats.syntax.apply._
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.concurrent.Queue
 import fs2.{Pipe, Stream}
 
 import scala.collection.mutable
+import scala.util.Try
 
 final case class ClientStreams(
   source: Stream[IO, (Channel, RawMessage)],
   sink: Pipe[IO, (Channel, RawMessage), Unit],
-  generatedMessages: mutable.ListBuffer[Either[(Channel, Message[Json]), (Channel, Message[Json])]]
+  generatedMessages: mutable.ListBuffer[Either[(Channel, Message[RawJson]), (Channel, Message[RawJson])]]
 ) {
 
+  import ClientStreams.RawJsonOps
+
   // to kernel
-  def singleRequest[T: DecodeJson](channel: Channel, msgType: MessageType[T]): Message[T] = {
+  def singleRequest[T: JsonValueCodec](channel: Channel, msgType: MessageType[T]): Message[T] = {
 
     val l = generatedMessages
       .collect {
@@ -43,7 +47,7 @@ final case class ClientStreams(
   }
 
   // from kernel
-  def singleReply[T: DecodeJson](channel: Channel, msgType: MessageType[T]): Message[T] = {
+  def singleReply[T: JsonValueCodec](channel: Channel, msgType: MessageType[T]): Message[T] = {
 
     val l = generatedMessages
       .collect {
@@ -108,7 +112,7 @@ final case class ClientStreams(
       }
       .toMap
 
-  def executeReplyPayloads: Map[Int, Seq[Json]] =
+  def executeReplyPayloads: Map[Int, Seq[RawJson]] =
     generatedMessages
       .iterator
       .collect {
@@ -179,13 +183,23 @@ final case class ClientStreams(
 
 object ClientStreams {
 
+  private val stringCodec: JsonValueCodec[String] =
+    JsonCodecMaker.make(CodecMakerConfig)
+
+  private implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
+    def stringOrEmpty: String = {
+      implicit val stringCodec0 = stringCodec
+      Try(readFromArray[String](rawJson.value)).toOption.getOrElse("")
+    }
+  }
+
   def create(
     initialMessages: Stream[IO, (Channel, RawMessage)],
-    stopWhen: (Channel, Message[Json]) => IO[Boolean] = (_, _) => IO.pure(false),
+    stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = (_, _) => IO.pure(false),
     handler: MessageHandler = MessageHandler.discard { case _ => }
   ): ClientStreams = {
 
-    val b = new mutable.ListBuffer[Either[(Channel, Message[Json]), (Channel, Message[Json])]]
+    val b = new mutable.ListBuffer[Either[(Channel, Message[RawJson]), (Channel, Message[RawJson])]]
 
     val poisonPill: (Channel, RawMessage) = null
 
@@ -202,7 +216,7 @@ object ClientStreams {
       s0.evalMap {
         case (c, m) =>
 
-          Message.parse[Json](m) match {
+          Message.parse[RawJson](m) match {
             case Left(e) =>
               IO.raiseError(new Exception(s"Error decoding message: $e"))
             case Right(m0) =>
@@ -237,7 +251,7 @@ object ClientStreams {
     ClientStreams(
       initialMessages ++ q.dequeue.takeWhile(_ != poisonPill).evalMap {
         case (c, m) =>
-          Message.parse[Json](m) match {
+          Message.parse[RawJson](m) match {
             case Left(e) =>
               IO.raiseError(new Exception(s"Error decoding message: $e"))
             case Right(m0) =>

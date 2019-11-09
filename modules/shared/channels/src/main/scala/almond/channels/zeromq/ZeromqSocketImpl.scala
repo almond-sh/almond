@@ -38,10 +38,10 @@ final class ZeromqSocketImpl(
     macInstance.init(new SecretKeySpec(key.value.getBytes(UTF_8), algorithm0))
   }
 
-  private def hmac(args: String*): String = {
+  private def hmac(args: Array[Byte]*): String = {
     if (enableMac) {
-      for (s <- args)
-        macInstance.update(s.getBytes(UTF_8))
+      for (b <- args)
+        macInstance.update(b)
 
       macInstance
         .doFinal()
@@ -131,10 +131,11 @@ final class ZeromqSocketImpl(
 
       val signature = channel.recvStr()
 
-      val header = channel.recvStr()
-      val parentHeader = channel.recvStr()
-      val metaData = channel.recvStr()
-      val content = channel.recvStr()
+      // FIXME Check for null return values of recv
+      val header = channel.recv()
+      val parentHeader = channel.recv()
+      val metaData = channel.recv()
+      val content = channel.recv()
 
       val message = Message(idents, header, parentHeader, metaData, content)
 

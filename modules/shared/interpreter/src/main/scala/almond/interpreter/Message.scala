@@ -3,14 +3,15 @@ package almond.interpreter
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
-import almond.protocol.{Header, MessageType}
-import almond.interpreter.util.BetterPrinter
-import argonaut.{DecodeJson, EncodeJson, Json}
-import argonaut.Argonaut._
+import almond.protocol.{Header, MessageType, RawJson}
 import cats.effect.IO
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.concurrent.Queue
+import fs2.Stream
+
+import scala.util.Try
 
 /**
   * Fully-decoded message, with content of type [[T]]
@@ -20,8 +21,10 @@ final case class Message[T](
   content: T,
   parent_header: Option[Header] = None,
   idents: List[Seq[Byte]] = Nil,
-  metadata: Map[String, Json] = Map.empty
+  metadata: RawJson = RawJson.emptyObj
 ) {
+
+  import Message._
 
   def messageType: MessageType[T] =
     MessageType(header.msg_type)
@@ -40,7 +43,7 @@ final case class Message[T](
   def publish[U](
     messageType: MessageType[U],
     content: U,
-    metadata: Map[String, Json] = Map.empty,
+    metadata: RawJson = RawJson.emptyObj,
     ident: Option[String] = None
   ): Message[U] =
     Message(
@@ -57,7 +60,7 @@ final case class Message[T](
   def reply[U](
     messageType: MessageType[U],
     content: U,
-    metadata: Map[String, Json] = Map.empty
+    metadata: RawJson = RawJson.emptyObj
   ): Message[U] =
     Message(
       replyHeader(messageType),
@@ -70,39 +73,36 @@ final case class Message[T](
   /**
     * Encodes this [[Message]] as a [[RawMessage]].
     */
-  def asRawMessage(implicit encoder: EncodeJson[T]): RawMessage =
+  def asRawMessage(implicit encoder: JsonValueCodec[T]): RawMessage =
     RawMessage(
       idents,
-      BetterPrinter.noSpaces(header.asJson),
-      parent_header.fold("{}")(h => BetterPrinter.noSpaces(h.asJson)),
-      BetterPrinter.noSpaces(metadata.asJson),
-      BetterPrinter.noSpaces(content.asJson)
+      writeToArray(header),
+      parent_header.fold("{}".getBytes(StandardCharsets.UTF_8))(h => writeToArray(h)),
+      writeToArray(metadata),
+      writeToArray(content)
     )
 
 
   // helpers
 
-  def decodeAs[U](implicit ev: T =:= Json, decoder: DecodeJson[U]): Either[String, Message[U]] =
-    decoder
-      .decodeJson(ev(content))
+  def decodeAs[U](implicit ev: T =:= RawJson, decoder: JsonValueCodec[U]): Either[Throwable, Message[U]] =
+    Try(readFromArray[U](ev(content).value))
+      .toEither
       .map(t => copy(content = t))
-      .result
-      .left
-      .map(c => s"${c._1} (${c._2})")
 
-  def on(channel: Channel)(implicit encoder: EncodeJson[T]): (Channel, RawMessage) =
+  def on(channel: Channel)(implicit encoder: JsonValueCodec[T]): (Channel, RawMessage) =
     channel -> asRawMessage
 
-  def streamOn[F[_]](channel: Channel)(implicit encoder: EncodeJson[T]): Stream[F, (Channel, RawMessage)] =
+  def streamOn[F[_]](channel: Channel)(implicit encoder: JsonValueCodec[T]): Stream[F, (Channel, RawMessage)] =
     Stream(channel -> asRawMessage)
 
-  def enqueueOn(channel: Channel, queue: Queue[IO, (Channel, RawMessage)])(implicit encoder: EncodeJson[T]): IO[Unit] =
+  def enqueueOn(channel: Channel, queue: Queue[IO, (Channel, RawMessage)])(implicit encoder: JsonValueCodec[T]): IO[Unit] =
     queue.enqueue1(channel -> asRawMessage)
 
   def clearParentHeader: Message[T] =
     copy(parent_header = None)
   def clearMetadata: Message[T] =
-    copy(metadata = Map.empty)
+    copy(metadata = RawJson.emptyObj)
 
   def update[U](msgType: MessageType[U], newContent: U): Message[U] =
     copy(
@@ -116,16 +116,15 @@ final case class Message[T](
 
 object Message {
 
-  def parse[T: DecodeJson](rawMessage: RawMessage): Either[String, Message[T]] =
+  def parse[T: JsonValueCodec](rawMessage: RawMessage): Either[Throwable, Message[T]] =
     for {
-      header <- rawMessage.header.decodeEither[Header].right
-      metaData <- rawMessage.metadata.decodeEither[Map[String, Json]].right
-      content <- rawMessage.content.decodeEither[T].right
+      header <- Try(readFromArray[Header](rawMessage.header)).toEither
+      content <- Try(readFromArray[T](rawMessage.content)).toEither
     } yield {
       // FIXME Parent header is optional, but this unnecessarily traps errors
-      val parentHeaderOpt = rawMessage.parentHeader.decodeEither[Header].right.toOption
+      val parentHeaderOpt = Try(readFromArray[Header](rawMessage.parentHeader)).toOption
 
-      Message(header, content, parentHeaderOpt, rawMessage.idents.toList, metaData)
+      Message(header, content, parentHeaderOpt, rawMessage.idents.toList, RawJson(rawMessage.metadata))
     }
 
 }

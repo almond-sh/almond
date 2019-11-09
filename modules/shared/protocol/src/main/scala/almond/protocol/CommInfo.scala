@@ -1,7 +1,7 @@
 package almond.protocol
 
-import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, EncodeJson}
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 object CommInfo {
 
@@ -22,7 +22,9 @@ object CommInfo {
   def replyType = MessageType[Reply]("comm_info_reply")
 
 
-  implicit val requestDecoder = DecodeJson.of[Request]
-  implicit val replyEncoder = EncodeJson.of[Reply]
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make(CodecMakerConfig)
+  implicit val replyCodec: JsonValueCodec[Reply] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

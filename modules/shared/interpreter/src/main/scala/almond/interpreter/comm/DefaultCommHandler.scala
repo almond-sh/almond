@@ -5,9 +5,8 @@ import almond.interpreter.api.{CommHandler, CommTarget, DisplayData}
 import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.Message
 import almond.protocol._
-import argonaut.{EncodeJson, Json, JsonObject}
-import argonaut.Parse.{parse => parseJson}
 import cats.effect.IO
+import com.github.plokhotnyuk.jsoniter_scala.core._
 import fs2.concurrent.Queue
 
 import scala.concurrent.ExecutionContext
@@ -40,25 +39,20 @@ final class DefaultCommHandler(
     commTargetManager.removeId(id)
 
 
-  private def publish[T: EncodeJson](messageType: MessageType[T], content: T, metadata: Map[String, Json]): Unit =
+  private def publish[T: JsonValueCodec](messageType: MessageType[T], content: T, metadata: Array[Byte]): Unit =
     message
-      .publish(messageType, content, metadata)
+      .publish(messageType, content, RawJson(metadata))
       .enqueueOn(Channel.Publish, queue)
       .unsafeRunSync()
 
-  private def parseJsonObj(s: String): JsonObject =
-    parseJson(s)
-      .right.flatMap(_.obj.toRight("Not a JSON object"))
-      .fold(left => throw new IllegalArgumentException(left), identity)
+  def commOpen(targetName: String, id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
+    publish(Comm.openType, Comm.Open(id, targetName, RawJson(data)), metadata)
 
-  def commOpen(targetName: String, id: String, data: String, metadata: String): Unit =
-    publish(Comm.openType, Comm.Open(id, targetName, parseJsonObj(data)), parseJsonObj(metadata).toMap)
+  def commMessage(id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
+    publish(Comm.messageType, Comm.Message(id, RawJson(data)), metadata)
 
-  def commMessage(id: String, data: String, metadata: String): Unit =
-    publish(Comm.messageType, Comm.Message(id, parseJsonObj(data)), parseJsonObj(metadata).toMap)
-
-  def commClose(id: String, data: String, metadata: String): Unit =
-    publish(Comm.closeType, Comm.Close(id, parseJsonObj(data)), parseJsonObj(metadata).toMap)
+  def commClose(id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
+    publish(Comm.closeType, Comm.Close(id, RawJson(data)), metadata)
 
 
   def updateDisplay(data: DisplayData): Unit = {
@@ -71,6 +65,6 @@ final class DefaultCommHandler(
       Execute.DisplayData.Transient(data.idOpt)
     )
 
-    publish(Execute.updateDisplayDataType, content, Map.empty)
+    publish(Execute.updateDisplayDataType, content, RawJson.emptyObj.value)
   }
 }

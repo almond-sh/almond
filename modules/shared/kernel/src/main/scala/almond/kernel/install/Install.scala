@@ -7,6 +7,7 @@ import java.nio.file.{Files, Path, Paths}
 
 import almond.protocol.KernelSpec
 import almond.kernel.util.JupyterPath
+import com.github.plokhotnyuk.jsoniter_scala.core._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -116,7 +117,7 @@ object Install {
       else
         spec
 
-    val kernelJsonContent = KernelSpec.encoder(spec0).spaces2.getBytes(UTF_8)
+    val kernelJsonContent = writeToArray(spec0, WriterConfig.withIndentionStep(2))
 
     Files.write(dir.resolve("kernel.json"), kernelJsonContent)
     for (b <- logoContentOpt)

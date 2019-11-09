@@ -1,12 +1,11 @@
 package almond.protocol
 
-import almond.protocol.internal.ExtraCodecs._
-import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, EncodeJson, JsonObject}
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 sealed abstract class Comm extends Product with Serializable {
   def comm_id: String
-  def data: JsonObject
+  def data: RawJson
 }
 
 object Comm {
@@ -15,18 +14,18 @@ object Comm {
   final case class Open(
     comm_id: String,
     target_name: String,
-    data: JsonObject,
+    data: RawJson,
     target_module: Option[String] = None // spec says: used to select a module that is responsible for handling the target_name.
   ) extends Comm
 
   final case class Message(
     comm_id: String,
-    data: JsonObject
+    data: RawJson
   ) extends Comm
 
   final case class Close(
     comm_id: String,
-    data: JsonObject
+    data: RawJson
   ) extends Comm
 
 
@@ -35,13 +34,11 @@ object Comm {
   def closeType = MessageType[Close]("comm_close")
 
 
-  implicit val openDecoder = DecodeJson.of[Open]
-  implicit val openEncoder = EncodeJson.of[Open]
-
-  implicit val messageDecoder = DecodeJson.of[Message]
-  implicit val messageEncoder = EncodeJson.of[Message]
-
-  implicit val closeDecoder = DecodeJson.of[Close]
-  implicit val closeEncoder = EncodeJson.of[Close]
+  implicit val openCodec: JsonValueCodec[Open] =
+    JsonCodecMaker.make(CodecMakerConfig)
+  implicit val messageCodec: JsonValueCodec[Message] =
+    JsonCodecMaker.make(CodecMakerConfig)
+  implicit val closeCodec: JsonValueCodec[Close] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

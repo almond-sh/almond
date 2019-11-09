@@ -9,6 +9,7 @@ import org.zeromq.{SocketType, ZMQ}
 import utest._
 
 import scala.concurrent.ExecutionContext
+import java.nio.charset.StandardCharsets
 
 object ZeromqSocketTests extends TestSuite {
 
@@ -62,10 +63,10 @@ object ZeromqSocketTests extends TestSuite {
 
       val msg = Message(
         Nil,
-        "header",
-        "parent_header",
-        "metadata",
-        "content"
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        "content".getBytes(StandardCharsets.UTF_8)
       )
 
       val t =
@@ -125,10 +126,10 @@ object ZeromqSocketTests extends TestSuite {
 
       val msg = Message(
         Nil,
-        "header",
-        "parent_header",
-        "metadata",
-        "content"
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        "content".getBytes(StandardCharsets.UTF_8)
       )
 
       val t =

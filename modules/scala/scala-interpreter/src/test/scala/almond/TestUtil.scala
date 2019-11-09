@@ -8,7 +8,6 @@ import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx
 import ammonite.util.Colors
-import argonaut.Json
 import cats.effect.IO
 import fs2.Stream
 import utest._
@@ -62,7 +61,7 @@ object TestUtil {
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 

@@ -8,9 +8,10 @@ import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.{ExecuteResult, IOInterpreter, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
-import argonaut.{Json, JsonObject}
 import cats.effect.IO
 import cats.syntax.apply._
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.Stream
 import fs2.concurrent.{Queue, SignallingRef}
 
@@ -96,10 +97,8 @@ final case class InterpreterMessageHandlers(
           case ExecuteResult.Abort =>
             Execute.Reply.Abort()
           case ExecuteResult.Exit =>
-            val ask_exit_payload = Json.jObject(
-                JsonObject.empty + ("source", Json.jString("ask_exit")) + ("keepkernel", Json.jBool(false))
-            )
-            Execute.Reply.Success(countAfter, Map(), List(ask_exit_payload))
+            val payload = Execute.Reply.Success.AskExitPayload("ask_exit", false)
+            Execute.Reply.Success(countAfter, Map(), List(RawJson(writeToArray(payload))))
         }
         _ <- message
           .reply(Execute.replyType, resp)
@@ -168,7 +167,7 @@ final case class InterpreterMessageHandlers(
 
 
   def kernelInfoHandler: MessageHandler =
-    blocking(Channel.Requests, KernelInfo.requestType, queueEc, logCtx) { (message, queue) =>
+    blocking(Channel.Requests, MessageType[Empty](KernelInfo.requestType.messageType), queueEc, logCtx) { (message, queue) =>
 
       for {
         info <- interpreter.kernelInfo
@@ -218,6 +217,10 @@ final case class InterpreterMessageHandlers(
 
 object InterpreterMessageHandlers {
 
+  // FIXME Define a JsonValueCodec[Unit]
+  private final case class Empty()
+  private implicit val unitCodec: JsonValueCodec[Empty] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
   private final class QueueOutputHandler(
     message: Message[_],

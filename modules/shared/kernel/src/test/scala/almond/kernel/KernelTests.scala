@@ -1,15 +1,15 @@
 package almond.kernel
 
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.interpreter.util.BetterPrinter
 import almond.interpreter.{Message, TestInterpreter}
+import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
-import almond.protocol.{Complete, Execute, Header, History, Input, Shutdown}
+import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shutdown}
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
-import argonaut.Json
 import cats.effect.IO
 import fs2.Stream
 import utest._
@@ -57,7 +57,7 @@ object KernelTests extends TestSuite {
 
       // we stop the pseudo-client at the first execute_reply
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply")
 
@@ -88,9 +88,9 @@ object KernelTests extends TestSuite {
 
     "client comm" - {
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && BetterPrinter.noSpaces(m.content).contains("exit"))
+          IO.pure(m.header.msg_type == "execute_reply" && new String(m.content.value, StandardCharsets.UTF_8).contains("exit"))
 
       val sessionId = UUID.randomUUID().toString
       val input = Stream(
@@ -148,7 +148,7 @@ object KernelTests extends TestSuite {
 
     "history request" - {
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) => IO.pure(m.header.msg_type == "history_reply")
 
       val sessionId = UUID.randomUUID().toString
@@ -177,7 +177,7 @@ object KernelTests extends TestSuite {
 
     "shutdown request" - {
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, _) =>
           IO.pure(false)
 
@@ -217,7 +217,7 @@ object KernelTests extends TestSuite {
 
       // we stop the pseudo-client at the first execute_reply
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply")
 
@@ -256,12 +256,7 @@ object KernelTests extends TestSuite {
 
       val completeReply = streams.singleReply(Channel.Requests, Complete.replyType)
       val metadata = completeReply.content.metadata
-      val expectedMetadata = {
-        import argonaut._
-        import argonaut.Argonaut._
-        import almond.protocol.internal.ExtraCodecs._
-        rawMetadata.decodeEither[JsonObject].right.get
-      }
+      val expectedMetadata = RawJson(rawMetadata.bytes)
 
       assert(metadata == expectedMetadata)
     }

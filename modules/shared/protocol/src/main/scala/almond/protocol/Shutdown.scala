@@ -1,7 +1,7 @@
 package almond.protocol
 
-import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, EncodeJson}
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 object Shutdown {
 
@@ -13,8 +13,9 @@ object Shutdown {
   def replyType = MessageType[Reply]("shutdown_reply")
 
 
-  implicit val requestEncoder = EncodeJson.of[Request]
-  implicit val requestDecoder = DecodeJson.of[Request]
-  implicit val replyDecoder = EncodeJson.of[Reply]
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make(CodecMakerConfig)
+  implicit val replyCodec: JsonValueCodec[Reply] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

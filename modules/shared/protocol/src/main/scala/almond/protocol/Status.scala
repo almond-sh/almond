@@ -1,11 +1,11 @@
 package almond.protocol
 
-import argonaut.ArgonautShapeless._
-import argonaut.EncodeJson
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 final case class Status private (
   execution_state: String
-) extends AnyVal
+)
 
 object Status {
 
@@ -17,6 +17,7 @@ object Status {
   def messageType = MessageType[Status]("status")
 
 
-  implicit val encoder = EncodeJson.of[Status]
+  implicit val codec: JsonValueCodec[Status] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

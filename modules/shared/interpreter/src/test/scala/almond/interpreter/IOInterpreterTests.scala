@@ -2,9 +2,10 @@ package almond.interpreter
 
 import java.util.concurrent.Executors
 
+import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
+import almond.protocol.RawJson
 import almond.util.ThreadUtil
-import argonaut.Json
 import cats.implicits._
 import utest._
 
@@ -95,9 +96,9 @@ object IOInterpreterTests extends TestSuite {
 
         val res = t.unsafeRunSync()
         val expectedRes = Seq(
-          Some(Inspection(Map("cancelled" -> Json.jBool(true)))),
-          Some(Inspection(Map("cancelled" -> Json.jBool(true)))),
-          Some(Inspection(Map("result" -> Json.jString("other: code"))))
+          Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
+          Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
+          Some(Inspection(Map("result" -> RawJson("\"other: code\"".bytes))))
         )
 
         assert(res == expectedRes)

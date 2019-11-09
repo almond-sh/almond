@@ -1,6 +1,7 @@
 package almond.interpreter.api
 
 import java.util.UUID
+import java.nio.charset.StandardCharsets
 
 /**
   * Kind of message broker between the Jupyter UI and the kernel.
@@ -29,20 +30,20 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
   def unregisterCommId(id: String): Unit
 
   @throws(classOf[IllegalArgumentException])
-  def commOpen(targetName: String, id: String, data: String, metadata: String): Unit
+  def commOpen(targetName: String, id: String, data: Array[Byte], metadata: Array[Byte]): Unit
   @throws(classOf[IllegalArgumentException])
-  def commMessage(id: String, data: String, metadata: String): Unit
+  def commMessage(id: String, data: Array[Byte], metadata: Array[Byte]): Unit
   @throws(classOf[IllegalArgumentException])
-  def commClose(id: String, data: String, metadata: String): Unit
+  def commClose(id: String, data: Array[Byte], metadata: Array[Byte]): Unit
 
 
   final def receiver(
     name: String,
-    onOpen: (String, String) => Unit = (_, _) => (),
-    onClose: (String, String) => Unit = (_, _) => ()
+    onOpen: (String, Array[Byte]) => Unit = (_, _) => (),
+    onClose: (String, Array[Byte]) => Unit = (_, _) => ()
   )(
     // scraps the id (first arg of onOpen / onClose)
-    onMessage: String => Unit
+    onMessage: Array[Byte] => Unit
   ): Unit = {
     val t = CommTarget(
       (_, data) => onMessage(data),
@@ -55,10 +56,10 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
   final def sender(
     targetName: String,
     id: String = UUID.randomUUID().toString,
-    data: String = "{}",
-    metadata: String = "{}",
-    onMessage: (String, String) => Unit = (_, _) => (),
-    onClose: (String, String) => Unit = (_, _) => ()
+    data: Array[Byte] = "{}".getBytes(StandardCharsets.UTF_8),
+    metadata: Array[Byte] = "{}".getBytes(StandardCharsets.UTF_8),
+    onMessage: (String, Array[Byte]) => Unit = (_, _) => (),
+    onClose: (String, Array[Byte]) => Unit = (_, _) => ()
   ): Comm = {
     commOpen(targetName, id, data, metadata)
     val t = CommTarget(
@@ -68,9 +69,9 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
     )
     registerCommId(id, t)
     new Comm {
-      def message(data: String, metadata: String = "{}") =
+      def message(data: Array[Byte], metadata: Array[Byte]) =
         commMessage(id, data, metadata)
-      def close(data: String, metadata: String = "{}") =
+      def close(data: Array[Byte], metadata: Array[Byte]) =
         commClose(id, data, metadata)
     }
   }
@@ -79,8 +80,8 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
 object CommHandler {
 
   abstract class Comm {
-    def message(data: String, metadata: String): Unit
-    def close(data: String, metadata: String): Unit
+    def message(data: Array[Byte], metadata: Array[Byte]): Unit
+    def close(data: Array[Byte], metadata: Array[Byte]): Unit
   }
 
 }
