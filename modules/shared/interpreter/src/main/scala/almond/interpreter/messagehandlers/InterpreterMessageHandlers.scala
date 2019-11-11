@@ -8,6 +8,7 @@ import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.{ExecuteResult, IOInterpreter, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
+import almond.protocol.Codecs._
 import cats.effect.IO
 import cats.syntax.apply._
 import com.github.plokhotnyuk.jsoniter_scala.core._

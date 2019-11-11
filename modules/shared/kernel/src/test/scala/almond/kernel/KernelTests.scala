@@ -9,6 +9,7 @@ import almond.interpreter.{Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
 import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shutdown}
+import almond.protocol.Codecs._
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import cats.effect.IO
 import fs2.Stream

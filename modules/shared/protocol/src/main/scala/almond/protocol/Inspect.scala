@@ -1,8 +1,5 @@
 package almond.protocol
 
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
-
 object Inspect {
 
   final case class Request(
@@ -11,7 +8,7 @@ object Inspect {
     detail_level: Int // should be 0 or 1
   )
 
-  final case class Reply private[Inspect](
+  final case class Reply private[protocol] (
     status: String, // "ok"
     found: Boolean,
     data: Map[String, RawJson],
@@ -32,11 +29,5 @@ object Inspect {
 
   def requestType = MessageType[Request]("inspect_request")
   def replyType = MessageType[Reply]("inspect_reply")
-
-
-  implicit val requestCodec: JsonValueCodec[Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
-  implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
 
 }

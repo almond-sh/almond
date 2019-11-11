@@ -3,11 +3,11 @@ package almond.kernel
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
+import almond.protocol.Codecs._
 import almond.protocol.Execute.DisplayData
 import almond.protocol.{Execute, MessageType, RawJson}
 import almond.kernel.KernelTests.threads
 import cats.effect.IO
-import cats.syntax.apply._
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.concurrent.Queue

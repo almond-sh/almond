@@ -4,6 +4,7 @@ import java.util.UUID
 
 import almond.channels.Channel
 import almond.interpreter.Message
+import almond.protocol.Codecs._
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx

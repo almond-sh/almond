@@ -1,9 +1,6 @@
 package almond.protocol
 
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
-
-final case class Status private (
+final case class Status private[protocol] (
   execution_state: String
 )
 
@@ -15,9 +12,5 @@ object Status {
 
 
   def messageType = MessageType[Status]("status")
-
-
-  implicit val codec: JsonValueCodec[Status] =
-    JsonCodecMaker.make(CodecMakerConfig)
 
 }
