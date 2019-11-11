@@ -8,12 +8,12 @@ object Deps {
   object Versions {
     def ammonite = "1.7.4"
     def caseApp = "2.0.0-M9"
+    def jsoniterScala = "2.0.1"
   }
 
   def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
   def ammoniteReplApi = setting(("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full))
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.7.2"
-  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
   def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC3-4"
@@ -22,6 +22,8 @@ object Deps {
   def fs2 = "co.fs2" %% "fs2-core" % "2.0.0"
   def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
   def jeromq = "org.zeromq" % "jeromq" % "0.5.1"
+  def jsoniterScalaCore = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % Versions.jsoniterScala
+  def jsoniterScalaMacros = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % Versions.jsoniterScala
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
   def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.2"
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)

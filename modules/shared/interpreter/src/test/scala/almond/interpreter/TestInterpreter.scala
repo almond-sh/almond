@@ -1,15 +1,18 @@
 package almond.interpreter
 
+import java.nio.charset.StandardCharsets
+
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
-import argonaut.Json
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
 import scala.util.Success
+import almond.protocol.RawJson
 
 final class TestInterpreter extends Interpreter {
+  import TestInterpreter._
   def execute(
     code: String,
     storeHistory: Boolean,
@@ -34,7 +37,7 @@ final class TestInterpreter extends Interpreter {
           ExecuteResult.Error("comm not available")
         case Some(h) =>
           val target = code.stripPrefix("comm-open:")
-          h.commOpen(target, target, "{}", "{}")
+          h.commOpen(target, target, "{}".bytes, "{}".bytes)
           count += 1
           ExecuteResult.Success()
       }
@@ -44,7 +47,7 @@ final class TestInterpreter extends Interpreter {
           ExecuteResult.Error("comm not available")
         case Some(h) =>
           val target = code.stripPrefix("comm-message:")
-          h.commMessage(target, """{"a": "b"}""", "{}")
+          h.commMessage(target, """{"a": "b"}""".bytes, "{}".bytes)
           count += 1
           ExecuteResult.Success()
       }
@@ -54,7 +57,7 @@ final class TestInterpreter extends Interpreter {
           ExecuteResult.Error("comm not available")
         case Some(h) =>
           val target = code.stripPrefix("comm-close:")
-          h.commClose(target, "{}", "{}")
+          h.commClose(target, "{}".bytes, "{}".bytes)
           count += 1
           ExecuteResult.Success()
       }
@@ -76,15 +79,7 @@ final class TestInterpreter extends Interpreter {
         val p = Promise[Completion]()
         CancellableFuture(p.future, () => p.complete(Success(Completion(0, code.length, Seq("cancelled")))))
       } else if (code.startsWith("meta:")) {
-        import argonaut._
-        import argonaut.Argonaut._
-        import almond.protocol.internal.ExtraCodecs._
-        val c = code.drop("meta:".length).decodeEither[JsonObject].right.toOption match {
-          case None =>
-            Completion.empty(pos)
-          case Some(obj) =>
-            Completion(pos, pos, Seq("sent"), obj)
-        }
+        val c = Completion(pos, pos, Seq("sent"), RawJson(code.drop("meta:".length).bytes))
         CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
       } else
         CancellableFuture(Future.successful(Completion(pos, pos, Seq("?"))), () => sys.error("should not happen"))
@@ -105,7 +100,7 @@ final class TestInterpreter extends Interpreter {
           () => p.complete(
             Success(
               Some(
-                Inspection(Map("cancelled" -> Json.jBool(true)))
+                Inspection(Map("cancelled" -> RawJson("true".bytes)))
               )
             )
           )
@@ -114,7 +109,7 @@ final class TestInterpreter extends Interpreter {
         CancellableFuture(
           Future.successful(
             Some(
-              Inspection(Map("result" -> Json.jString(s"$code: code")))
+              Inspection(Map("result" -> RawJson(s""""$code: code"""".bytes)))
             )
           ),
           () => sys.error("should not happen")
@@ -169,4 +164,13 @@ final class TestInterpreter extends Interpreter {
   override def shutdown(): Unit = {
     shutdownCalled0 = true
   }
+}
+
+object TestInterpreter {
+
+  implicit class StringBOps(private val s: String) extends AnyVal {
+    def bytes: Array[Byte] =
+      s.getBytes(StandardCharsets.UTF_8)
+  }
+
 }

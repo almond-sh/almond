@@ -1,7 +1,7 @@
 package almond.protocol
 
-import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, EncodeJson, Json}
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 object Inspect {
 
@@ -14,8 +14,8 @@ object Inspect {
   final case class Reply private[Inspect](
     status: String, // "ok"
     found: Boolean,
-    data: Map[String, Json],
-    metadata: Map[String, Json]
+    data: Map[String, RawJson],
+    metadata: Map[String, RawJson]
   ) {
     assert(status == "ok")
   }
@@ -23,8 +23,8 @@ object Inspect {
   object Reply {
     def apply(
       found: Boolean,
-      data: Map[String, Json],
-      metadata: Map[String, Json]
+      data: Map[String, RawJson],
+      metadata: Map[String, RawJson]
     ): Reply =
       Reply("ok", found, data, metadata)
   }
@@ -34,7 +34,9 @@ object Inspect {
   def replyType = MessageType[Reply]("inspect_reply")
 
 
-  implicit val requestDecoder = DecodeJson.of[Request]
-  implicit val replyEncoder = EncodeJson.of[Reply]
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make(CodecMakerConfig)
+  implicit val replyCodec: JsonValueCodec[Reply] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

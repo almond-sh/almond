@@ -1,5 +1,7 @@
 package almond.channels.zeromq
 
+import java.nio.charset.StandardCharsets
+
 import almond.channels.{Channel, ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import cats.effect.IO
@@ -20,10 +22,10 @@ object ZeromqConnectionTests extends TestSuite {
 
       val msg0 = Message(
         Nil,
-        "header",
-        "parent_header",
-        "metadata",
-        "content"
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        "content".getBytes(StandardCharsets.UTF_8)
       )
 
       val t =

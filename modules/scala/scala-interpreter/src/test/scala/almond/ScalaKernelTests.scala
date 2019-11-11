@@ -6,6 +6,7 @@ import java.util.UUID
 import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
+import almond.interpreter.TestInterpreter.StringBOps
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx
@@ -13,12 +14,13 @@ import almond.TestUtil._
 import almond.amm.AlmondPreprocessor
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
-import argonaut.Json
 import cats.effect.IO
 import fs2.Stream
 import utest._
 
 object ScalaKernelTests extends TestSuite {
+
+  import almond.interpreter.TestInterpreter.StringBOps
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
   val bgVarEc = singleThreadedExecutionContext("test-bg-var")
@@ -56,7 +58,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.content.toString().contains("exit"))
 
@@ -105,7 +107,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -163,7 +165,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -208,7 +210,7 @@ object ScalaKernelTests extends TestSuite {
 
       val expectedDisplayData = Seq(
         ProtocolExecute.DisplayData(
-          Map("text/plain" -> Json.jString("Bar(other)")),
+          Map("text/plain" -> RawJson("\"Bar(other)\"".bytes)),
           Map()
         ) -> false
       )
@@ -225,7 +227,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -282,12 +284,12 @@ object ScalaKernelTests extends TestSuite {
 
       val expectedDisplayData = Seq(
         ProtocolExecute.DisplayData(
-          Map("text/html" -> Json.jString("<b>foo</b>")),
+          Map("text/html" -> RawJson("\"<b>foo</b>\"".bytes)),
           Map(),
           ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> false,
         ProtocolExecute.DisplayData(
-          Map("text/html" -> Json.jString("<i>bzz</i>")),
+          Map("text/html" -> RawJson("\"<i>bzz</i>\"".bytes)),
           Map(),
           ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> true
@@ -305,7 +307,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -362,7 +364,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "update_display_data")
 
@@ -414,7 +416,7 @@ object ScalaKernelTests extends TestSuite {
 
         // When the pseudo-client exits
 
-        val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
             IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -482,17 +484,17 @@ object ScalaKernelTests extends TestSuite {
 
         val expectedDisplayData = Seq(
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> Json.jString("a: rx.Var[Int] = 1")),
+            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 1\"".bytes)),
             Map(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> false,
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> Json.jString("a: rx.Var[Int] = 2")),
+            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 2\"".bytes)),
             Map(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true,
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> Json.jString("a: rx.Var[Int] = 3")),
+            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 3\"".bytes)),
             Map(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true
@@ -530,7 +532,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -586,7 +588,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -672,12 +674,10 @@ object ScalaKernelTests extends TestSuite {
 
       val payloads = streams.executeReplyPayloads
 
+
       val expectedPayloads = Map(
         2 -> Seq(
-          Json.obj(
-            "source" -> Json.jString("ask_exit"),
-            "keepkernel" -> Json.jBool(false)
-          )
+          RawJson("""{"source":"ask_exit","keepkernel":false}""".bytes)
         )
       )
 
@@ -738,7 +738,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -802,7 +802,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -873,7 +873,7 @@ object ScalaKernelTests extends TestSuite {
 
         // When the pseudo-client exits
 
-        val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
             IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -936,17 +936,17 @@ object ScalaKernelTests extends TestSuite {
 
         val expectedDisplayData = List(
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> Json.jString("n: Int = 2")),
+            Map("text/plain" -> RawJson("\"n: Int = 2\"".bytes)),
             Map(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> false,
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> Json.jString("n: Int = 3")),
+            Map("text/plain" -> RawJson("\"n: Int = 3\"".bytes)),
             Map(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true,
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> Json.jString("n: Int = 5")),
+            Map("text/plain" -> RawJson("\"n: Int = 5\"".bytes)),
             Map(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true
@@ -965,7 +965,7 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
-      val stopWhen: (Channel, Message[Json]) => IO[Boolean] =
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
 
@@ -1027,12 +1027,12 @@ object ScalaKernelTests extends TestSuite {
 
       val expectedDisplayData = List(
         ProtocolExecute.DisplayData(
-          Map("text/plain" -> Json.jString("n: Int = [lazy]")),
+          Map("text/plain" -> RawJson("\"n: Int = [lazy]\"".bytes)),
           Map(),
           ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> false,
         ProtocolExecute.DisplayData(
-          Map("text/plain" -> Json.jString("n: Int = 2")),
+          Map("text/plain" -> RawJson("\"n: Int = 2\"".bytes)),
           Map(),
           ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> true

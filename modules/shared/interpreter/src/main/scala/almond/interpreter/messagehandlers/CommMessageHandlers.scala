@@ -4,10 +4,10 @@ import almond.channels.Channel
 import almond.interpreter.comm.CommTargetManager
 import almond.logger.LoggerContext
 import almond.protocol.{Comm, CommInfo}
-import argonaut.JsonObject
 import cats.effect.IO
 
 import scala.concurrent.ExecutionContext
+import almond.protocol.RawJson
 
 final case class CommMessageHandlers(
   commManager: CommTargetManager,
@@ -20,13 +20,13 @@ final case class CommMessageHandlers(
       commManager.target(message.content.target_name) match {
         case None =>
           message
-            .reply(Comm.closeType, Comm.Close(message.content.comm_id, JsonObject.empty))
+            .reply(Comm.closeType, Comm.Close(message.content.comm_id, RawJson.emptyObj))
             .enqueueOn(Channel.Requests, queue)
 
         case Some(target) =>
 
           commManager.addId(target, message.content.comm_id)
-          target.open(message.content.comm_id, message.content.data)
+          target.open(message.content.comm_id, message.content.data.value)
       }
     }
 
@@ -36,7 +36,7 @@ final case class CommMessageHandlers(
         case None => // FIXME Log error
           IO.unit
         case Some(target) =>
-          target.message(message.content.comm_id, message.content.data)
+          target.message(message.content.comm_id, message.content.data.value)
       }
     }
 
@@ -46,7 +46,7 @@ final case class CommMessageHandlers(
         case None => // FIXME Log error
           IO.unit
         case Some(target) =>
-          target.close(message.content.comm_id, message.content.data)
+          target.close(message.content.comm_id, message.content.data.value)
       }
     }
 

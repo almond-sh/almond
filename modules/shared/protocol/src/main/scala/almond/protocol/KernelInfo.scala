@@ -1,7 +1,7 @@
 package almond.protocol
 
-import argonaut.ArgonautShapeless._
-import argonaut.EncodeJson
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 final case class KernelInfo(
   status: String, // "ok"
@@ -66,7 +66,9 @@ object KernelInfo {
   def replyType = MessageType[KernelInfo]("kernel_info_reply")
 
 
-  implicit val linkEncoder = EncodeJson.of[Link]
-  implicit val encoder = EncodeJson.of[KernelInfo]
+  implicit val linkCodec: JsonValueCodec[Link] =
+    JsonCodecMaker.make(CodecMakerConfig)
+  implicit val codec: JsonValueCodec[KernelInfo] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

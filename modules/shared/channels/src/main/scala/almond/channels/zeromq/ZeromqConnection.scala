@@ -174,7 +174,7 @@ final class ZeromqConnection(
   def tryRead(channels: Seq[Channel], pollingDelay: Duration): IO[Option[(Channel, Message)]] =
     IO.shift(threads.pollingEc) *> IO {
 
-      log.debug(s"Trying to read on $params from $channels")
+      // log.debug(s"Trying to read on $params from $channels") // un-comment if you're, like, really debugging hard
 
       val pollItems = channels
         .map { channel =>

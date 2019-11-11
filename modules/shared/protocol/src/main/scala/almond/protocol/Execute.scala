@@ -1,8 +1,7 @@
 package almond.protocol
 
-import argonaut.{DecodeJson, DecodeResult, EncodeJson, Json}
-import argonaut.Argonaut._
-import argonaut.ArgonautShapeless._
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 object Execute {
 
@@ -21,20 +20,26 @@ object Execute {
   object Reply {
 
     // payloads not supported here
-    final case class Success private (
+    final case class Success private[Execute] (
       execution_count: Int,
-      user_expressions: Map[String, Json],
+      user_expressions: Map[String, RawJson],
       status: String, // no default value here for the value not to be swallowed by the JSON encoder
-      payload: List[Json]
+      payload: List[RawJson]
     ) extends Reply {
       assert(status == "ok")
     }
 
     object Success {
+
+      final case class AskExitPayload(
+        source: String,
+        keepkernel: Boolean
+      )
+
       def apply(
         execution_count: Int,
-        user_expressions: Map[String, Json], // value type?
-        payload: List[Json] = List[Json]()
+        user_expressions: Map[String, RawJson], // value type?
+        payload: List[RawJson] = List[RawJson]()
       ): Success =
         Success(
           execution_count,
@@ -45,7 +50,7 @@ object Execute {
     }
 
 
-    final case class Error private (
+    final case class Error private[Execute] (
       ename: String,
       evalue: String,
       traceback: List[String],
@@ -83,7 +88,7 @@ object Execute {
         )
     }
 
-    final case class Abort private (
+    final case class Abort private[Execute] (
       status: String // no default value here for the value not to be swallowed by the JSON encoder
     ) extends Reply {
       assert(status == "abort")
@@ -104,8 +109,8 @@ object Execute {
 
   final case class Result(
     execution_count: Int,
-    data: Map[String, Json], // same as DisplayData
-    metadata: Map[String, Json],
+    data: Map[String, RawJson], // same as DisplayData
+    metadata: Map[String, RawJson],
     transient: DisplayData.Transient = DisplayData.Transient()
   )
 
@@ -115,8 +120,8 @@ object Execute {
   )
 
   final case class DisplayData(
-    data: Map[String, Json], // values are always strings, except if key corresponds to a JSON MIME type
-    metadata: Map[String, Json],
+    data: Map[String, RawJson], // values are always strings, except if key corresponds to a JSON MIME type
+    metadata: Map[String, RawJson],
     transient: DisplayData.Transient = DisplayData.Transient()
   )
 
@@ -144,39 +149,87 @@ object Execute {
   def updateDisplayDataType = MessageType[DisplayData]("update_display_data")
 
 
-  implicit val requestDecoder = DecodeJson.of[Request]
-  implicit val requestEncoder = EncodeJson.of[Request]
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
-  implicit val replyEncoder: EncodeJson[Reply] =
-    EncodeJson {
-      case s: Reply.Success => s.asJson
-      case err: Reply.Error => err.asJson
-      case a: Reply.Abort => a.asJson
-    }
-  implicit val replyDecoder: DecodeJson[Reply] = {
+  implicit val replyCodec: JsonValueCodec[Reply] = {
 
-    final case class Helper(status: String)
-    implicit val helperDecoder = DecodeJson.of[Helper]
+    final case class Probe(status: String)
 
-    DecodeJson { cursor =>
-      helperDecoder(cursor).flatMap {
-        case Helper("abort") => cursor.as[Reply.Abort].map(x => x) // map for variance stuff…
-        case Helper("error") => cursor.as[Reply.Error].map(x => x)
-        case Helper("ok") => cursor.as[Reply.Success].map(x => x)
-        case Helper(other) => DecodeResult.fail(s"Unrecognized execute_reply status: $other", cursor.history)
+    implicit val probeCodec: JsonValueCodec[Probe] =
+      JsonCodecMaker.make(CodecMakerConfig)
+
+    implicit val successCodec: JsonValueCodec[Reply.Success] =
+      JsonCodecMaker.make(CodecMakerConfig)
+    implicit val errorCodec: JsonValueCodec[Reply.Error] =
+      JsonCodecMaker.make(CodecMakerConfig)
+    implicit val abortCodec: JsonValueCodec[Reply.Abort] =
+      JsonCodecMaker.make(CodecMakerConfig)
+
+    new JsonValueCodec[Reply] {
+      def decodeValue(in: JsonReader, default: Reply): Reply = {
+        in.setMark()
+        val probe = probeCodec.decodeValue(in, probeCodec.nullValue)
+        in.rollbackToMark()
+        probe.status match {
+          case "ok" =>
+            successCodec.decodeValue(in, successCodec.nullValue)
+          case "error" =>
+            errorCodec.decodeValue(in, errorCodec.nullValue)
+          case "abort" =>
+            abortCodec.decodeValue(in, abortCodec.nullValue)
+          case other =>
+            ???
+        }
       }
+      def encodeValue(reply: Reply, out: JsonWriter): Unit =
+        reply match {
+          case s: Reply.Success => successCodec.encodeValue(s, out)
+          case e: Reply.Error => errorCodec.encodeValue(e, out)
+          case a: Reply.Abort => abortCodec.encodeValue(a, out)
+        }
+      def nullValue: Reply =
+        Reply.Success(0, Map.empty, "ok", Nil)
     }
   }
 
-  implicit val inputEncoder = EncodeJson.of[Input]
+  // implicit val replyEncoder: EncodeJson[Reply] =
+  //   EncodeJson {
+  //     case s: Reply.Success => s.asJson
+  //     case err: Reply.Error => err.asJson
+  //     case a: Reply.Abort => a.asJson
+  //   }
+  // implicit val replyDecoder: DecodeJson[Reply] = {
 
-  implicit val resultEncoder = EncodeJson.of[Result]
+  //   final case class Helper(status: String)
+  //   implicit val helperDecoder = DecodeJson.of[Helper]
 
-  implicit val streamEncoder = EncodeJson.of[Stream]
+  //   DecodeJson { cursor =>
+  //     helperDecoder(cursor).flatMap {
+  //       case Helper("abort") => cursor.as[Reply.Abort].map(x => x) // map for variance stuff…
+  //       case Helper("error") => cursor.as[Reply.Error].map(x => x)
+  //       case Helper("ok") => cursor.as[Reply.Success].map(x => x)
+  //       case Helper(other) => DecodeResult.fail(s"Unrecognized execute_reply status: $other", cursor.history)
+  //     }
+  //   }
+  // }
 
-  implicit val displayDataDecoder = DecodeJson.of[DisplayData]
-  implicit val displayDataEncoder = EncodeJson.of[DisplayData]
+  implicit val inputCodec: JsonValueCodec[Input] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
-  implicit val errorEncoder = EncodeJson.of[Error]
+  implicit val resultCodec: JsonValueCodec[Result] =
+    JsonCodecMaker.make(CodecMakerConfig.withTransientEmpty(false))
+
+  implicit val streamCodec: JsonValueCodec[Stream] =
+    JsonCodecMaker.make(CodecMakerConfig)
+
+  implicit val displayDataCodec: JsonValueCodec[DisplayData] =
+    JsonCodecMaker.make(CodecMakerConfig.withTransientEmpty(false))
+
+  implicit val errorCodec: JsonValueCodec[Error] =
+    JsonCodecMaker.make(CodecMakerConfig)
+
+  implicit val askExitPayloadCodec: JsonValueCodec[Reply.Success.AskExitPayload] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

@@ -2,8 +2,8 @@ package almond.protocol
 
 import java.util.UUID
 
-import argonaut.{DecodeJson, EncodeJson}
-import argonaut.ArgonautShapeless._
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 final case class Header(
   msg_id: String,
@@ -28,7 +28,7 @@ object Header {
     )
 
 
-  implicit val decoder = DecodeJson.of[Header]
-  implicit val encoder = EncodeJson.of[Header]
+  implicit val codec: JsonValueCodec[Header] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
 }

@@ -1,6 +1,6 @@
 package almond.interpreter
 
-import argonaut.JsonObject
+import almond.protocol.RawJson
 
 /**
   * Completion result
@@ -13,12 +13,12 @@ final case class Completion(
   from: Int,
   until: Int,
   completions: Seq[String],
-  metadata: JsonObject
+  metadata: RawJson
 )
 
 object Completion {
   def apply(from: Int, until: Int, completions: Seq[String]): Completion =
-    Completion(from, until, completions, JsonObject.empty)
+    Completion(from, until, completions, RawJson.emptyObj)
   def empty(pos: Int): Completion =
-    Completion(pos, pos, Nil, JsonObject.empty)
+    Completion(pos, pos, Nil, RawJson.emptyObj)
 }

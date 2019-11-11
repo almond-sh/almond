@@ -17,7 +17,7 @@ object InstallException {
 
   final class CannotGetKernelCommand extends InstallException(
     "Could not determine the command that launches the kernel. Run the kernel with coursier, or " +
-      "pass the kernel command via -c first-arg -c second-arg …"
+      "pass the kernel command via --command first-arg --command second-arg …"
   )
 
 }

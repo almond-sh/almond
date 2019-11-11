@@ -58,14 +58,18 @@ lazy val protocol = project
   .dependsOn(channels)
   .settings(
     shared,
-    libraryDependencies += Deps.argonautShapeless
+    libraryDependencies ++= Seq(
+      Deps.jsoniterScalaCore,
+      Deps.jsoniterScalaMacros % Provided
+    )
   )
 
 lazy val `interpreter-api` = project
   .underShared
   .settings(
     shared,
-    mima
+    mima,
+    libraryDependencies += Deps.jsoniterScalaMacros % Provided
   )
 
 lazy val interpreter = project
@@ -74,6 +78,7 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
+      Deps.jsoniterScalaMacros % Provided,
       Deps.scalatags,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
@@ -89,7 +94,8 @@ lazy val kernel = project
     testSettings,
     libraryDependencies ++= Seq(
       Deps.caseAppAnnotations,
-      Deps.fs2
+      Deps.fs2,
+      Deps.jsoniterScalaMacros % Provided
     )
   )
 
@@ -195,7 +201,8 @@ lazy val `almond-spark` = project
     libraryDependencies ++= Seq(
       Deps.ammoniteReplApi.value % "provided",
       Deps.ammoniteSpark,
-      Deps.argonautShapeless,
+      Deps.jsoniterScalaCore,
+      Deps.jsoniterScalaMacros % Provided,
       Deps.sparkSql % "provided"
     ),
     onlyIn("2.12")

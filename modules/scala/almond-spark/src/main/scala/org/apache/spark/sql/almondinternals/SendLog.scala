@@ -5,11 +5,12 @@ import java.nio.file.{Files, StandardOpenOption}
 import java.util.UUID
 
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
-import argonaut.Json
+import com.github.plokhotnyuk.jsoniter_scala.core._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.util.control.NonFatal
+import java.nio.charset.StandardCharsets
 
 final class SendLog(
   f: File,
@@ -78,16 +79,15 @@ final class SendLog(
 
         var r: FileReader = null
 
+        val msg = writeToArray(SendLog.Open(fileName0, prefix))
+
         try {
           withExponentialBackOff {
             commHandler.commOpen(
               targetName = commTarget,
               id = commId,
-              data = Json.obj(
-                "file_name" -> Json.jString(fileName0),
-                "prefix" -> prefix.fold(Json.jNull)(Json.jString)
-              ).nospaces,
-              metadata = "{}"
+              data = msg,
+              metadata = SendLog.emptyObj
             )
           }
 
@@ -119,11 +119,11 @@ final class SendLog(
                 } else
                   l
               // Beware: nospaces has a bad complexity (super slow when generating a large output)
-              val res = Json.obj("data" -> Json.jArray(l0.map(Json.jString))).nospaces
+              val res = writeToArray(SendLog.Data(l0))
               lines.clear()
 
               withExponentialBackOff {
-                commHandler.commMessage(commId, res, "{}")
+                commHandler.commMessage(commId, res, SendLog.emptyObj)
               }
             }
           }
@@ -134,7 +134,7 @@ final class SendLog(
           if (r != null)
             r.close()
           // no re-attempt here…
-          commHandler.commClose(commId, "{}", "{}")
+          commHandler.commClose(commId, SendLog.emptyObj, SendLog.emptyObj)
         }
       }
     }
@@ -159,6 +159,24 @@ final class SendLog(
 }
 
 object SendLog {
+
+  private final case class Open(file_name: String, prefix: Option[String])
+
+  private object Open {
+    import com.github.plokhotnyuk.jsoniter_scala.macros._
+    implicit val codec: JsonValueCodec[Open] =
+      JsonCodecMaker.make(CodecMakerConfig)
+  }
+
+  private final case class Data(data: Seq[String])
+
+  private object Data {
+    import com.github.plokhotnyuk.jsoniter_scala.macros._
+    implicit val codec: JsonValueCodec[Data] =
+      JsonCodecMaker.make(CodecMakerConfig)
+  }
+
+  private val emptyObj = "{}".getBytes(StandardCharsets.UTF_8)
 
   def start(
     f: File,

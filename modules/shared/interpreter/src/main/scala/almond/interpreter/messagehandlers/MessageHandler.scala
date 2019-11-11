@@ -5,9 +5,9 @@ import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.logger.{Logger, LoggerContext}
-import almond.protocol.{MessageType, Status}
-import argonaut.{DecodeJson, Json}
+import almond.protocol.{MessageType, RawJson, Status}
 import cats.effect.IO
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 
 import scala.concurrent.ExecutionContext
 import scala.util.Either.RightProjection
@@ -20,7 +20,7 @@ import scala.util.Either.RightProjection
   */
 final case class MessageHandler(
   handler: PartialFunction[
-    (Channel, Message[Json]),
+    (Channel, Message[RawJson]),
     Either[Throwable, Stream[IO, (Channel, RawMessage)]]
   ]
 ) {
@@ -32,11 +32,11 @@ final case class MessageHandler(
 
   private lazy val lifted = handler.lift
 
-  def handle(channel: Channel, message: Message[Json]): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
+  def handle(channel: Channel, message: Message[RawJson]): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
     lifted((channel, message))
 
   def handle(channel: Channel, message: RawMessage): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
-    Message.parse[Json](message) match {
+    Message.parse[RawJson](message) match {
       case Left(error) =>
         Some(Left(new Exception(s"Error decoding message: $error")))
       case Right(message0) =>
@@ -70,7 +70,7 @@ object MessageHandler {
     * @param channel: [[Channel]] this [[MessageHandler]] handles [[Message]]s from
     * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
     */
-  def apply[T: DecodeJson](
+  def apply[T: JsonValueCodec](
     channel: Channel,
     messageType: MessageType[T]
   )(
@@ -89,7 +89,7 @@ object MessageHandler {
     * @param channels: Set of [[Channel]]s this [[MessageHandler]] handles [[Message]]s from
     * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
     */
-  def apply[T: DecodeJson](
+  def apply[T: JsonValueCodec](
     channels: Set[Channel],
     messageType: MessageType[T]
   )(
@@ -100,7 +100,7 @@ object MessageHandler {
         tryDecode(message).map(msg => handler(channel, msg))
     }
 
-  private def tryDecode[T: DecodeJson](message: Message[Json]): RightProjection[Exception, Message[T]] =
+  private def tryDecode[T: JsonValueCodec](message: Message[RawJson]): RightProjection[Exception, Message[T]] =
     message
       .decodeAs[T]
       .left
@@ -115,7 +115,7 @@ object MessageHandler {
     * @param channel: [[Channel]] this [[MessageHandler]] handles [[Message]]s from
     * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
     */
-  def blocking[T: DecodeJson](
+  def blocking[T: JsonValueCodec](
     channel: Channel,
     messageType: MessageType[T],
     queueEc: ExecutionContext,
@@ -187,7 +187,7 @@ object MessageHandler {
       .flatMap(x => x)
   }
 
-  def discard(pf: PartialFunction[(Channel, Message[Json]), Unit]): MessageHandler =
+  def discard(pf: PartialFunction[(Channel, Message[RawJson]), Unit]): MessageHandler =
     MessageHandler {
       pf.andThen(_ => Right(Stream.empty))
     }

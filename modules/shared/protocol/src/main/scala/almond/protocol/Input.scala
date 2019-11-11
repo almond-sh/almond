@@ -1,7 +1,7 @@
 package almond.protocol
 
-import argonaut.ArgonautShapeless._
-import argonaut.{DecodeJson, EncodeJson}
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 object Input {
 
@@ -18,10 +18,11 @@ object Input {
   def replyType = MessageType[Reply]("input_reply")
 
 
-  implicit val requestDecoder = DecodeJson.of[Request]
-  implicit val requestEncoder = EncodeJson.of[Request]
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make(CodecMakerConfig)
 
-  implicit val replyDecoder = DecodeJson.of[Reply]
-  implicit val replyEncoder = EncodeJson.of[Reply]
+  implicit val replyCodec: JsonValueCodec[Reply] =
+    JsonCodecMaker.make(CodecMakerConfig)
+
 
 }

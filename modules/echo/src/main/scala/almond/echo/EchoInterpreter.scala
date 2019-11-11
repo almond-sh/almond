@@ -5,10 +5,9 @@ import java.util.Properties
 import almond.interpreter.{Completion, ExecuteResult, Inspection, Interpreter}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
-import almond.protocol.internal.ExtraCodecs._
 import almond.protocol.KernelInfo
-import argonaut._
-import argonaut.Argonaut._
+import java.nio.charset.StandardCharsets
+import almond.protocol.RawJson
 
 final class EchoInterpreter extends Interpreter {
 
@@ -69,12 +68,7 @@ final class EchoInterpreter extends Interpreter {
     if (completePrint)
       Completion(0, firstWord.length, Seq("print"))
     else if (code.startsWith("meta:") && pos == "meta:".length)
-      code.drop("meta:".length).decodeEither[JsonObject].right.toOption match {
-        case None =>
-          Completion.empty(pos)
-        case Some(obj) =>
-          Completion(pos, pos, Seq("sent"), obj)
-      }
+      Completion(pos, pos, Seq("sent"), RawJson(code.drop("meta:".length).getBytes(StandardCharsets.UTF_8)))
     else
       Completion.empty(pos)
   }
