@@ -14,6 +14,7 @@ import ammonite.util.Util.newLine
 import metabrowse.server.{MetabrowseServer, Sourcepath}
 
 import scala.tools.nsc.Global
+import scala.tools.nsc.interactive.{Global => Interactive}
 import scala.util.Random
 
 final class ScalaInterpreterInspections(
@@ -21,7 +22,7 @@ final class ScalaInterpreterInspections(
   metabrowse: Boolean,
   metabrowseHost: String,
   metabrowsePort: Int,
-  pressy: => scala.tools.nsc.interactive.Global,
+  pressy: => Interactive,
   frames: => List[Frame]
 ) {
 
@@ -145,7 +146,16 @@ final class ScalaInterpreterInspections(
                     log.debug(s"url of $tree: $relUrlOpt")
                     val urlOpt = relUrlOpt.map(relUrl => s"http://$metabrowseHost:$metabrowsePort0/$relUrl")
 
-                    val typeStr = ScalaInterpreterInspections.typeOfTree(pressy0)(tree).getOrElse(tree.toString)
+                    val typeStr = ScalaInterpreterInspections.typeOfTree(pressy0)(tree)
+                      .get
+                      .fold(
+                        identity,
+                        { e =>
+                          log.warn("Error getting type string", e)
+                          None
+                        }
+                      )
+                      .getOrElse(tree.toString)
 
                     import scalatags.Text.all._
 
@@ -228,23 +238,23 @@ object ScalaInterpreterInspections {
 
   // from https://github.com/scalameta/metals/blob/cec8b98cba23110d5b2919d9879c78d3b0146ab2/metaserver/src/main/scala/scala/meta/languageserver/providers/HoverProvider.scala#L34-L51
   // (via https://github.com/almond-sh/almond/pull/235#discussion_r222696661)
-  private def typeOfTree(c: Global)(t: c.Tree): Option[String] = {
-    import c._
+  private def typeOfTree(c: Interactive)(t: c.Tree): c.Response[Option[String]] =
+    c.askForResponse { () =>
+      import c._
 
-    val stringOrTree = t match {
-      case t: DefDef => Right(t.symbol.asMethod.info.toLongString)
-      case t: ValDef if t.tpt != null => Left(t.tpt)
-      case t: ValDef if t.rhs != null => Left(t.rhs)
-      case x => Left(x)
+      val stringOrTree = t match {
+        case t: DefDef => Right(t.symbol.asMethod.info.toLongString)
+        case t: ValDef if t.tpt != null => Left(t.tpt)
+        case t: ValDef if t.rhs != null => Left(t.rhs)
+        case x => Left(x)
+      }
+
+      stringOrTree match {
+        case Right(string) => Some(string)
+        case Left(null) => None
+        case Left(tree) if tree.tpe ne NoType => Some(tree.tpe.widen.toString)
+        case _ => None
+      }
     }
-
-    stringOrTree match {
-      case Right(string) => Some(string)
-      case Left(null) => None
-      case Left(tree) if tree.tpe ne NoType => Some(tree.tpe.widen.toString)
-      case _ => None
-    }
-
-  }
 
 }
