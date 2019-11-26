@@ -7,7 +7,6 @@ import almond.interpreter.Message
 import almond.protocol._
 import almond.protocol.Codecs._
 import cats.effect.IO
-import com.github.plokhotnyuk.jsoniter_scala.core._
 import fs2.concurrent.Queue
 
 import scala.concurrent.ExecutionContext
@@ -16,6 +15,8 @@ final class DefaultCommHandler(
   queue: Queue[IO, (Channel, RawMessage)],
   commEc: ExecutionContext
 ) extends CommHandler {
+
+  import com.github.plokhotnyuk.jsoniter_scala.core._
 
   val commTargetManager = CommTargetManager.create()
 

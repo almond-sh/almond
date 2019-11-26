@@ -8,7 +8,6 @@ import almond.logger.{Logger, LoggerContext}
 import almond.protocol.{MessageType, RawJson, Status}
 import almond.protocol.Codecs._
 import cats.effect.IO
-import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 
 import scala.concurrent.ExecutionContext
 import scala.util.Either.RightProjection
@@ -59,6 +58,8 @@ final case class MessageHandler(
 }
 
 object MessageHandler {
+
+  import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 
   def empty: MessageHandler =
     MessageHandler(PartialFunction.empty)

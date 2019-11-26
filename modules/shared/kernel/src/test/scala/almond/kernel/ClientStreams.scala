@@ -8,8 +8,6 @@ import almond.protocol.Execute.DisplayData
 import almond.protocol.{Execute, MessageType, RawJson}
 import almond.kernel.KernelTests.threads
 import cats.effect.IO
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.concurrent.Queue
 import fs2.{Pipe, Stream}
 
@@ -22,6 +20,7 @@ final case class ClientStreams(
   generatedMessages: mutable.ListBuffer[Either[(Channel, Message[RawJson]), (Channel, Message[RawJson])]]
 ) {
 
+  import com.github.plokhotnyuk.jsoniter_scala.core._
   import ClientStreams.RawJsonOps
 
   // to kernel
@@ -182,6 +181,8 @@ final case class ClientStreams(
 }
 
 object ClientStreams {
+
+  import com.github.plokhotnyuk.jsoniter_scala.core._
 
   private implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
     def stringOrEmpty: String =

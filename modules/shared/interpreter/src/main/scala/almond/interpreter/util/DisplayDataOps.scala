@@ -5,8 +5,6 @@ import java.nio.charset.StandardCharsets
 import almond.interpreter.api.DisplayData
 import almond.protocol.Codecs.{stringCodec, unitCodec}
 import almond.protocol.RawJson
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
 
 import scala.language.implicitConversions
 import scala.util.Try
@@ -44,6 +42,8 @@ final class DisplayDataOps(val displayData: DisplayData) extends AnyVal {
 }
 
 object DisplayDataOps {
+
+  import com.github.plokhotnyuk.jsoniter_scala.core._
 
   private def isJson(s: String): Boolean =
     Try(readFromString(s)(unitCodec)).isSuccess

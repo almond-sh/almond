@@ -7,7 +7,6 @@ import almond.channels.{Channel, Message => RawMessage}
 import almond.protocol.{Header, MessageType, RawJson}
 import almond.protocol.Codecs._
 import cats.effect.IO
-import com.github.plokhotnyuk.jsoniter_scala.core._
 import fs2.concurrent.Queue
 import fs2.Stream
 
@@ -24,6 +23,7 @@ final case class Message[T](
   metadata: RawJson = RawJson.emptyObj
 ) {
 
+  import com.github.plokhotnyuk.jsoniter_scala.core._
   import Message._
 
   def messageType: MessageType[T] =
@@ -115,6 +115,8 @@ final case class Message[T](
 }
 
 object Message {
+
+  import com.github.plokhotnyuk.jsoniter_scala.core._
 
   def parse[T: JsonValueCodec](rawMessage: RawMessage): Either[Throwable, Message[T]] =
     for {
