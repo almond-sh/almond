@@ -3,8 +3,6 @@ package almond.protocol
 import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
-import com.github.plokhotnyuk.jsoniter_scala.core._
-
 import scala.util.hashing.MurmurHash3
 import scala.util.Try
 
@@ -22,6 +20,9 @@ final case class RawJson(value: Array[Byte]) {
 }
 
 object RawJson {
+
+  import com.github.plokhotnyuk.jsoniter_scala.core._
+
   implicit val codec: JsonValueCodec[RawJson] = new JsonValueCodec[RawJson] {
     def decodeValue(in: JsonReader, default: RawJson): RawJson =
       new RawJson(in.readRawValAsBytes())

@@ -4,12 +4,12 @@ import java.nio.file.{Files, Path}
 
 import almond.util.Secret
 import cats.effect.IO
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
-
 import scala.util.Try
 
 object Codecs {
+  import com.github.plokhotnyuk.jsoniter_scala.core._
+  import com.github.plokhotnyuk.jsoniter_scala.macros._
+
 
   implicit val commOpenCodec: JsonValueCodec[Comm.Open] =
     JsonCodecMaker.make(CodecMakerConfig)

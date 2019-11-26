@@ -11,8 +11,6 @@ import almond.protocol._
 import almond.protocol.Codecs._
 import cats.effect.IO
 import cats.syntax.apply._
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.Stream
 import fs2.concurrent.{Queue, SignallingRef}
 
@@ -28,6 +26,7 @@ final case class InterpreterMessageHandlers(
   exitSignal: SignallingRef[IO, Boolean]
 ) {
 
+  import com.github.plokhotnyuk.jsoniter_scala.core._
   import InterpreterMessageHandlers._
 
 
