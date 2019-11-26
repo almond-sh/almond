@@ -168,7 +168,7 @@ final case class InterpreterMessageHandlers(
 
 
   def kernelInfoHandler: MessageHandler =
-    blocking(Channel.Requests, MessageType[Empty](KernelInfo.requestType.messageType), queueEc, logCtx) { (message, queue) =>
+    blocking(Channel.Requests, MessageType[Unit](KernelInfo.requestType.messageType), queueEc, logCtx) { (message, queue) =>
 
       for {
         info <- interpreter.kernelInfo
@@ -217,11 +217,6 @@ final case class InterpreterMessageHandlers(
 }
 
 object InterpreterMessageHandlers {
-
-  // FIXME Define a JsonValueCodec[Unit]
-  private final case class Empty()
-  private implicit val unitCodec: JsonValueCodec[Empty] =
-    JsonCodecMaker.make(CodecMakerConfig)
 
   private final class QueueOutputHandler(
     message: Message[_],

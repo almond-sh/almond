@@ -239,4 +239,20 @@ object Codecs {
 
   }
 
+  implicit val unitCodec: JsonValueCodec[Unit] = {
+    final case class Empty()
+    val empty = Empty()
+    val emptyCodec = JsonCodecMaker.make[Empty](CodecMakerConfig)
+
+    new JsonValueCodec[Unit] {
+      def decodeValue(in: JsonReader, default: Unit) = emptyCodec.decodeValue(in, empty)
+      def encodeValue(x: Unit, out: JsonWriter) = emptyCodec.encodeValue(empty, out)
+      def nullValue = ()
+    }
+  }
+
+  implicit val stringCodec: JsonValueCodec[String] =
+    JsonCodecMaker.make(CodecMakerConfig)
+
+
 }

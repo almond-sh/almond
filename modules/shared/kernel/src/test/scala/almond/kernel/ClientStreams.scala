@@ -183,14 +183,9 @@ final case class ClientStreams(
 
 object ClientStreams {
 
-  private val stringCodec: JsonValueCodec[String] =
-    JsonCodecMaker.make(CodecMakerConfig)
-
   private implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
-    def stringOrEmpty: String = {
-      implicit val stringCodec0 = stringCodec
+    def stringOrEmpty: String =
       Try(readFromArray[String](rawJson.value)).toOption.getOrElse("")
-    }
   }
 
   def create(
