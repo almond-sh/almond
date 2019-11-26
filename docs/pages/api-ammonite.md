@@ -32,12 +32,8 @@ interp.load.ivy("org.platanios" %% "tensorflow-data" % "0.4.1")
 Load dependencies while adjusting some parameters
 ```scala
 interp.load.ivy(
-  coursier.Dependency(
-    module = coursier.Module("org.platanios", "tensorflow_2.12"),
-    version = "0.4.1",
-    // replace with linux-gpu-x86_64 on linux with nvidia gpu or with darwin-cpu-x86_64 on macOS
-    attributes = coursier.Attributes("", "linux-cpu-x86_64")
-  )
+  // replace with linux-gpu-x86_64 on linux with nvidia gpu or with darwin-cpu-x86_64 on macOS 
+  ("org.platanios" %% "tensorflow" % "0.4.1").withClassifier("linux-cpu-x86_64")
 )
 ```
 
@@ -80,10 +76,12 @@ One can add extra
 [`coursier.Repository`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L69) via
 
 ```scala
-interp.repositories() ++= Seq(MavenRepository(
-  "https://nexus.corp.com/content/repositories/releases",
-  authentication = Some(Authentication("user", "pass"))
-))
+import coursierapi._
+
+interp.repositories() ++= Seq(
+  MavenRepository.of("https://nexus.corp.com/content/repositories/releases")
+    .withCredentials(Credentials.of("user", "pass"))
+)
 ```
 
 ### Add exit hooks
