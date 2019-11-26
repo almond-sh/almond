@@ -62,7 +62,7 @@ class NotebookSparkSessionBuilder
       val session = super.getOrCreate()
 
       for (url <- session.sparkContext.uiWebUrl)
-        html(s"""<a href="$url">Spark UI</a>""")
+        html(s"""<a target="_blank" href="$url">Spark UI</a>""")
 
       session.sparkContext.addSparkListener(
         new ProgressSparkListener(session, keep0, progress0)
