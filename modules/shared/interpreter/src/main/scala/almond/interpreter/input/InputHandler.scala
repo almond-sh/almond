@@ -8,6 +8,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.logger.LoggerContext
 import almond.protocol.Input
+import almond.protocol.Codecs.{inputRequestCodec, inputReplyCodec}
 import cats.effect.IO
 import fs2.Stream
 

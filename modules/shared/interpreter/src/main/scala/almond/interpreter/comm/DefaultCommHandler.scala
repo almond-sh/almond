@@ -5,6 +5,7 @@ import almond.interpreter.api.{CommHandler, CommTarget, DisplayData}
 import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.Message
 import almond.protocol._
+import almond.protocol.Codecs._
 import cats.effect.IO
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import fs2.concurrent.Queue

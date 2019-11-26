@@ -5,9 +5,9 @@ import java.util.UUID
 
 import almond.channels.{Channel, Message => RawMessage}
 import almond.protocol.{Header, MessageType, RawJson}
+import almond.protocol.Codecs._
 import cats.effect.IO
 import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.concurrent.Queue
 import fs2.Stream
 

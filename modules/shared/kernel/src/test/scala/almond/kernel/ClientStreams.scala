@@ -3,11 +3,11 @@ package almond.kernel
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
+import almond.protocol.Codecs._
 import almond.protocol.Execute.DisplayData
 import almond.protocol.{Execute, MessageType, RawJson}
 import almond.kernel.KernelTests.threads
 import cats.effect.IO
-import cats.syntax.apply._
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import fs2.concurrent.Queue
@@ -183,14 +183,9 @@ final case class ClientStreams(
 
 object ClientStreams {
 
-  private val stringCodec: JsonValueCodec[String] =
-    JsonCodecMaker.make(CodecMakerConfig)
-
   private implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
-    def stringOrEmpty: String = {
-      implicit val stringCodec0 = stringCodec
+    def stringOrEmpty: String =
       Try(readFromArray[String](rawJson.value)).toOption.getOrElse("")
-    }
   }
 
   def create(

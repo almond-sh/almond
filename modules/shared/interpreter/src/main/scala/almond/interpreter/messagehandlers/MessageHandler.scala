@@ -6,6 +6,7 @@ import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.logger.{Logger, LoggerContext}
 import almond.protocol.{MessageType, RawJson, Status}
+import almond.protocol.Codecs._
 import cats.effect.IO
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 
@@ -70,15 +71,15 @@ object MessageHandler {
     * @param channel: [[Channel]] this [[MessageHandler]] handles [[Message]]s from
     * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
     */
-  def apply[T: JsonValueCodec](
+  def apply[T](
     channel: Channel,
     messageType: MessageType[T]
   )(
     handler: Message[T] => Stream[IO, (Channel, RawMessage)]
-  ): MessageHandler =
+  )(implicit codec: JsonValueCodec[T]): MessageHandler =
     MessageHandler {
       case (`channel`, message) if message.messageType == messageType =>
-        tryDecode(message).map(handler)
+        tryDecode(message)(codec).map(handler)
     }
 
   /**
@@ -89,15 +90,15 @@ object MessageHandler {
     * @param channels: Set of [[Channel]]s this [[MessageHandler]] handles [[Message]]s from
     * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
     */
-  def apply[T: JsonValueCodec](
+  def apply[T](
     channels: Set[Channel],
     messageType: MessageType[T]
   )(
     handler: (Channel, Message[T]) => Stream[IO, (Channel, RawMessage)]
-  ): MessageHandler =
+  )(implicit codec: JsonValueCodec[T]): MessageHandler =
     MessageHandler {
       case (channel, message) if message.messageType == messageType && channels.contains(channel) =>
-        tryDecode(message).map(msg => handler(channel, msg))
+        tryDecode(message)(codec).map(msg => handler(channel, msg))
     }
 
   private def tryDecode[T: JsonValueCodec](message: Message[RawJson]): RightProjection[Exception, Message[T]] =

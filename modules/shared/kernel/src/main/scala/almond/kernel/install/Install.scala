@@ -2,16 +2,15 @@ package almond.kernel.install
 
 import java.io.{ByteArrayOutputStream, InputStream}
 import java.net.{URI, URL}
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
 
-import almond.protocol.KernelSpec
 import almond.kernel.util.JupyterPath
+import almond.protocol.KernelSpec
+import almond.protocol.Codecs.kernelSpecCodec
 import com.github.plokhotnyuk.jsoniter_scala.core._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.util.control.NonFatal
 
 object Install {
 

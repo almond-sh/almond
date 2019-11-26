@@ -59,7 +59,16 @@ lazy val protocol = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.jsoniterScalaCore,
+      Deps.jsoniterScalaCore
+    )
+  )
+
+lazy val `protocol-codecs` = project
+  .underShared
+  .dependsOn(protocol)
+  .settings(
+    shared,
+    libraryDependencies ++= Seq(
       Deps.jsoniterScalaMacros % Provided
     )
   )
@@ -74,7 +83,7 @@ lazy val `interpreter-api` = project
 
 lazy val interpreter = project
   .underShared
-  .dependsOn(`interpreter-api`, protocol)
+  .dependsOn(`interpreter-api`, `protocol-codecs`)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -230,6 +239,7 @@ lazy val almond = project
     kernel,
     logger,
     protocol,
+    `protocol-codecs`,
     `scala-interpreter`,
     `scala-kernel-api`,
     `scala-kernel`,

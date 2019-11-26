@@ -5,7 +5,6 @@ import java.nio.file.{Files, StandardOpenOption}
 import java.util.UUID
 
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
-import com.github.plokhotnyuk.jsoniter_scala.core._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
@@ -67,6 +66,8 @@ final class SendLog(
   val thread: Thread =
     new Thread(threadName) {
       override def run(): Unit = {
+
+        import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 
         val fileName0 = Option(fileName).getOrElse {
           val p = f.getAbsolutePath
@@ -163,6 +164,7 @@ object SendLog {
   private final case class Open(file_name: String, prefix: Option[String])
 
   private object Open {
+    import com.github.plokhotnyuk.jsoniter_scala.core._
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     implicit val codec: JsonValueCodec[Open] =
       JsonCodecMaker.make(CodecMakerConfig)
@@ -171,6 +173,7 @@ object SendLog {
   private final case class Data(data: Seq[String])
 
   private object Data {
+    import com.github.plokhotnyuk.jsoniter_scala.core._
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     implicit val codec: JsonValueCodec[Data] =
       JsonCodecMaker.make(CodecMakerConfig)

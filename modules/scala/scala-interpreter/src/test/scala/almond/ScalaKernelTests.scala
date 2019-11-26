@@ -3,15 +3,16 @@ package almond
 import java.net.{URL, URLClassLoader}
 import java.util.UUID
 
+import almond.amm.AlmondPreprocessor
 import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.TestInterpreter.StringBOps
-import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
+import almond.protocol.Codecs._
+import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
-import almond.amm.AlmondPreprocessor
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
 import cats.effect.IO

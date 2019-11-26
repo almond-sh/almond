@@ -2,6 +2,7 @@ package almond.interpreter.messagehandlers
 
 import almond.channels.Channel
 import almond.protocol.Connect
+import almond.protocol.Codecs.{connectRequestCodec, connectReplyCodec}
 
 object ConnectMessageHandler {
 

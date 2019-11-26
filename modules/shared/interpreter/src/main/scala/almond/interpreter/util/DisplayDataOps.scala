@@ -3,6 +3,7 @@ package almond.interpreter.util
 import java.nio.charset.StandardCharsets
 
 import almond.interpreter.api.DisplayData
+import almond.protocol.Codecs.{stringCodec, unitCodec}
 import almond.protocol.RawJson
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
@@ -43,14 +44,6 @@ final class DisplayDataOps(val displayData: DisplayData) extends AnyVal {
 }
 
 object DisplayDataOps {
-
-  private implicit val stringCodec: JsonValueCodec[String] =
-    JsonCodecMaker.make(CodecMakerConfig)
-
-  // FIXME Define a JsonValueCodec[Unit]
-  private final case class Empty()
-  private implicit val unitCodec: JsonValueCodec[Empty] =
-    JsonCodecMaker.make(CodecMakerConfig)
 
   private def isJson(s: String): Boolean =
     Try(readFromString(s)(unitCodec)).isSuccess

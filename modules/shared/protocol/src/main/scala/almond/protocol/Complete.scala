@@ -1,8 +1,5 @@
 package almond.protocol
 
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import com.github.plokhotnyuk.jsoniter_scala.macros._
-
 object Complete {
 
   final case class Request(
@@ -39,11 +36,5 @@ object Complete {
 
   def requestType = MessageType[Request]("complete_request")
   def replyType = MessageType[Reply]("complete_reply")
-
-
-  implicit val requestCodec: JsonValueCodec[Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
-  implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
 
 }
