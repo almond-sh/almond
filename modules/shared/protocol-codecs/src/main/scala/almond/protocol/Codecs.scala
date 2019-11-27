@@ -12,26 +12,26 @@ object Codecs {
 
 
   implicit val commOpenCodec: JsonValueCodec[Comm.Open] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Comm.Open](CodecMakerConfig)
   implicit val commMessageCodec: JsonValueCodec[Comm.Message] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Comm.Message](CodecMakerConfig)
   implicit val commCloseCodec: JsonValueCodec[Comm.Close] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Comm.Close](CodecMakerConfig)
 
   implicit val commInfoRequestCodec: JsonValueCodec[CommInfo.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[CommInfo.Request](CodecMakerConfig)
   implicit val commInfoReplyCodec: JsonValueCodec[CommInfo.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[CommInfo.Reply](CodecMakerConfig)
 
   implicit val completeRequestCodec: JsonValueCodec[Complete.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Complete.Request](CodecMakerConfig)
   implicit val completeReplyCodec: JsonValueCodec[Complete.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Complete.Reply](CodecMakerConfig)
 
   implicit val connectRequestCodec: JsonValueCodec[Connect.Request.type] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Connect.Request.type](CodecMakerConfig)
   implicit val connectReplyCodec: JsonValueCodec[Connect.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Connect.Reply](CodecMakerConfig)
 
   implicit val connectionCodec: JsonValueCodec[Connection] = {
 
@@ -84,7 +84,7 @@ object Codecs {
 
 
     val underlying: JsonValueCodec[RawConnection] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[RawConnection](CodecMakerConfig)
 
     new JsonValueCodec[Connection] {
       def decodeValue(in: JsonReader, default: Connection): Connection =
@@ -97,21 +97,21 @@ object Codecs {
   }
 
   implicit val executeRequestCodec: JsonValueCodec[Execute.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Request](CodecMakerConfig)
 
   implicit val executeReplyCodec: JsonValueCodec[Execute.Reply] = {
 
     final case class Probe(status: String)
 
     implicit val probeCodec: JsonValueCodec[Probe] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[Probe](CodecMakerConfig)
 
     implicit val successCodec: JsonValueCodec[Execute.Reply.Success] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[Execute.Reply.Success](CodecMakerConfig)
     implicit val errorCodec: JsonValueCodec[Execute.Reply.Error] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[Execute.Reply.Error](CodecMakerConfig)
     implicit val abortCodec: JsonValueCodec[Execute.Reply.Abort] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[Execute.Reply.Abort](CodecMakerConfig)
 
     new JsonValueCodec[Execute.Reply] {
       def decodeValue(in: JsonReader, default: Execute.Reply): Execute.Reply = {
@@ -141,35 +141,35 @@ object Codecs {
   }
 
   implicit val executeInputCodec: JsonValueCodec[Execute.Input] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Input](CodecMakerConfig)
 
   implicit val executeResultCodec: JsonValueCodec[Execute.Result] =
-    JsonCodecMaker.make(CodecMakerConfig.withTransientEmpty(false))
+    JsonCodecMaker.make[Execute.Result](CodecMakerConfig.withTransientEmpty(false))
 
   implicit val executeStreamCodec: JsonValueCodec[Execute.Stream] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Stream](CodecMakerConfig)
 
   implicit val executeDisplayDataCodec: JsonValueCodec[Execute.DisplayData] =
-    JsonCodecMaker.make(CodecMakerConfig.withTransientEmpty(false))
+    JsonCodecMaker.make[Execute.DisplayData](CodecMakerConfig.withTransientEmpty(false))
 
   implicit val executeErrorCodec: JsonValueCodec[Execute.Error] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Error](CodecMakerConfig)
 
   implicit val executeAskExitPayloadCodec: JsonValueCodec[Execute.Reply.Success.AskExitPayload] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Reply.Success.AskExitPayload](CodecMakerConfig)
 
   implicit val headerCodec: JsonValueCodec[Header] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Header](CodecMakerConfig)
 
   implicit val historyRequestCodec: JsonValueCodec[History.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[History.Request](CodecMakerConfig)
 
   implicit val historyReplyCodec: JsonValueCodec[History.Reply] = {
 
     implicit val simpleReplyCodec: JsonValueCodec[History.Reply.Simple] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[History.Reply.Simple](CodecMakerConfig)
     implicit val withOutputReplyCodec: JsonValueCodec[History.Reply.WithOutput] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[History.Reply.WithOutput](CodecMakerConfig)
 
     new JsonValueCodec[History.Reply] {
       def decodeValue(in: JsonReader, default: History.Reply): History.Reply = ???
@@ -186,40 +186,40 @@ object Codecs {
   }
 
   implicit val inputRequestCodec: JsonValueCodec[Input.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Input.Request](CodecMakerConfig)
   implicit val inputReplyCodec: JsonValueCodec[Input.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Input.Reply](CodecMakerConfig)
 
   implicit val inspectRequestCodec: JsonValueCodec[Inspect.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Inspect.Request](CodecMakerConfig)
   implicit val inspectReplyCodec: JsonValueCodec[Inspect.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Inspect.Reply](CodecMakerConfig)
 
   implicit val interruptRequestCodec: JsonValueCodec[Interrupt.Request.type] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Interrupt.Request.type](CodecMakerConfig)
   implicit val interruptReplyCodec: JsonValueCodec[Interrupt.Reply.type] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Interrupt.Reply.type](CodecMakerConfig)
 
   implicit val isCompleteRequestCodec: JsonValueCodec[IsComplete.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[IsComplete.Request](CodecMakerConfig)
   implicit val isCompleteReplyCodec: JsonValueCodec[IsComplete.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[IsComplete.Reply](CodecMakerConfig)
 
   implicit val kernelInfoLinkCodec: JsonValueCodec[KernelInfo.Link] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[KernelInfo.Link](CodecMakerConfig)
   implicit val kernelInfoCodec: JsonValueCodec[KernelInfo] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[KernelInfo](CodecMakerConfig)
 
   implicit val kernelSpecCodec: JsonValueCodec[KernelSpec] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[KernelSpec](CodecMakerConfig)
 
   implicit val shutdownRequestCodec: JsonValueCodec[Shutdown.Request] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Shutdown.Request](CodecMakerConfig)
   implicit val shutdownReplyCodec: JsonValueCodec[Shutdown.Reply] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Shutdown.Reply](CodecMakerConfig)
 
   implicit val statusCodec: JsonValueCodec[Status] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[Status](CodecMakerConfig)
 
 
   implicit class ConnectionCompanionOps(private val obj: Connection.type) extends AnyVal {
@@ -252,7 +252,7 @@ object Codecs {
   }
 
   implicit val stringCodec: JsonValueCodec[String] =
-    JsonCodecMaker.make(CodecMakerConfig)
+    JsonCodecMaker.make[String](CodecMakerConfig)
 
 
 }

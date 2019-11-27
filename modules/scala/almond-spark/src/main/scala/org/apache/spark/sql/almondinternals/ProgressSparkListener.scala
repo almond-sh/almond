@@ -104,7 +104,7 @@ object ProgressSparkListener {
     import com.github.plokhotnyuk.jsoniter_scala.core._
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     implicit val codec: JsonValueCodec[CancelStageReq] =
-      JsonCodecMaker.make(CodecMakerConfig)
+      JsonCodecMaker.make[CancelStageReq](CodecMakerConfig)
   }
 
 
