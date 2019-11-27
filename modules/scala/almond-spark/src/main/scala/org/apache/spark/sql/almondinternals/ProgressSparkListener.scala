@@ -19,8 +19,6 @@ final class ProgressSparkListener(
   commHandler: CommHandler
 ) extends SparkListener {
 
-  import ProgressSparkListener._
-
   private val elems = new ConcurrentHashMap[Int, StageElem]
 
   private val commTargetName = s"cancel-stage-${UUID.randomUUID()}"
@@ -93,19 +91,5 @@ final class ProgressSparkListener(
         elem.taskDone()
         elem.update()
       }
-
-}
-
-object ProgressSparkListener {
-
-  final case class CancelStageReq(stageId: Int)
-
-  object CancelStageReq {
-    import com.github.plokhotnyuk.jsoniter_scala.core._
-    import com.github.plokhotnyuk.jsoniter_scala.macros._
-    implicit val codec: JsonValueCodec[CancelStageReq] =
-      JsonCodecMaker.make[CancelStageReq](CodecMakerConfig)
-  }
-
 
 }
