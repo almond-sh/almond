@@ -70,15 +70,16 @@ lazy val `protocol-codecs` = project
     shared,
     libraryDependencies ++= Seq(
       Deps.jsoniterScalaMacros % Provided
-    )
+    ),
+    sources.in(Compile,doc) := Nil,
+    publishArtifact.in(Compile, packageDoc) := false
   )
 
 lazy val `interpreter-api` = project
   .underShared
   .settings(
     shared,
-    mima,
-    libraryDependencies += Deps.jsoniterScalaMacros % Provided
+    mima
   )
 
 lazy val interpreter = project
@@ -87,7 +88,6 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
-      Deps.jsoniterScalaMacros % Provided,
       Deps.scalatags,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
@@ -103,8 +103,7 @@ lazy val kernel = project
     testSettings,
     libraryDependencies ++= Seq(
       Deps.caseAppAnnotations,
-      Deps.fs2,
-      Deps.jsoniterScalaMacros % Provided
+      Deps.fs2
     )
   )
 
@@ -214,7 +213,9 @@ lazy val `almond-spark` = project
       Deps.jsoniterScalaMacros % Provided,
       Deps.sparkSql % "provided"
     ),
-    onlyIn("2.12")
+    onlyIn("2.12"),
+    sources.in(Compile,doc) := Nil,
+    publishArtifact.in(Compile, packageDoc) := false
   )
 
 lazy val `almond-rx` = project
