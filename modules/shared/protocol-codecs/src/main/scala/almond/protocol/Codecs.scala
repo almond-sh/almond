@@ -12,26 +12,26 @@ object Codecs {
 
 
   implicit val commOpenCodec: JsonValueCodec[Comm.Open] =
-    JsonCodecMaker.make[Comm.Open](CodecMakerConfig)
+    JsonCodecMaker.make[Comm.Open](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val commMessageCodec: JsonValueCodec[Comm.Message] =
-    JsonCodecMaker.make[Comm.Message](CodecMakerConfig)
+    JsonCodecMaker.make[Comm.Message](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val commCloseCodec: JsonValueCodec[Comm.Close] =
-    JsonCodecMaker.make[Comm.Close](CodecMakerConfig)
+    JsonCodecMaker.make[Comm.Close](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val commInfoRequestCodec: JsonValueCodec[CommInfo.Request] =
-    JsonCodecMaker.make[CommInfo.Request](CodecMakerConfig)
+    JsonCodecMaker.make[CommInfo.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val commInfoReplyCodec: JsonValueCodec[CommInfo.Reply] =
-    JsonCodecMaker.make[CommInfo.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[CommInfo.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val completeRequestCodec: JsonValueCodec[Complete.Request] =
-    JsonCodecMaker.make[Complete.Request](CodecMakerConfig)
+    JsonCodecMaker.make[Complete.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val completeReplyCodec: JsonValueCodec[Complete.Reply] =
-    JsonCodecMaker.make[Complete.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[Complete.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val connectRequestCodec: JsonValueCodec[Connect.Request.type] =
-    JsonCodecMaker.make[Connect.Request.type](CodecMakerConfig)
+    JsonCodecMaker.make[Connect.Request.type](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val connectReplyCodec: JsonValueCodec[Connect.Reply] =
-    JsonCodecMaker.make[Connect.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[Connect.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val connectionCodec: JsonValueCodec[Connection] = {
 
@@ -84,7 +84,7 @@ object Codecs {
 
 
     val underlying: JsonValueCodec[RawConnection] =
-      JsonCodecMaker.make[RawConnection](CodecMakerConfig)
+      JsonCodecMaker.make[RawConnection](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
     new JsonValueCodec[Connection] {
       def decodeValue(in: JsonReader, default: Connection): Connection =
@@ -97,21 +97,21 @@ object Codecs {
   }
 
   implicit val executeRequestCodec: JsonValueCodec[Execute.Request] =
-    JsonCodecMaker.make[Execute.Request](CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val executeReplyCodec: JsonValueCodec[Execute.Reply] = {
 
     final case class Probe(status: String)
 
     implicit val probeCodec: JsonValueCodec[Probe] =
-      JsonCodecMaker.make[Probe](CodecMakerConfig)
+      JsonCodecMaker.make[Probe](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
     implicit val successCodec: JsonValueCodec[Execute.Reply.Success] =
-      JsonCodecMaker.make[Execute.Reply.Success](CodecMakerConfig)
+      JsonCodecMaker.make[Execute.Reply.Success](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
     implicit val errorCodec: JsonValueCodec[Execute.Reply.Error] =
-      JsonCodecMaker.make[Execute.Reply.Error](CodecMakerConfig)
+      JsonCodecMaker.make[Execute.Reply.Error](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
     implicit val abortCodec: JsonValueCodec[Execute.Reply.Abort] =
-      JsonCodecMaker.make[Execute.Reply.Abort](CodecMakerConfig)
+      JsonCodecMaker.make[Execute.Reply.Abort](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
     new JsonValueCodec[Execute.Reply] {
       def decodeValue(in: JsonReader, default: Execute.Reply): Execute.Reply = {
@@ -141,35 +141,35 @@ object Codecs {
   }
 
   implicit val executeInputCodec: JsonValueCodec[Execute.Input] =
-    JsonCodecMaker.make[Execute.Input](CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Input](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val executeResultCodec: JsonValueCodec[Execute.Result] =
     JsonCodecMaker.make[Execute.Result](CodecMakerConfig.withTransientEmpty(false))
 
   implicit val executeStreamCodec: JsonValueCodec[Execute.Stream] =
-    JsonCodecMaker.make[Execute.Stream](CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Stream](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val executeDisplayDataCodec: JsonValueCodec[Execute.DisplayData] =
     JsonCodecMaker.make[Execute.DisplayData](CodecMakerConfig.withTransientEmpty(false))
 
   implicit val executeErrorCodec: JsonValueCodec[Execute.Error] =
-    JsonCodecMaker.make[Execute.Error](CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Error](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val executeAskExitPayloadCodec: JsonValueCodec[Execute.Reply.Success.AskExitPayload] =
-    JsonCodecMaker.make[Execute.Reply.Success.AskExitPayload](CodecMakerConfig)
+    JsonCodecMaker.make[Execute.Reply.Success.AskExitPayload](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val headerCodec: JsonValueCodec[Header] =
-    JsonCodecMaker.make[Header](CodecMakerConfig)
+    JsonCodecMaker.make[Header](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val historyRequestCodec: JsonValueCodec[History.Request] =
-    JsonCodecMaker.make[History.Request](CodecMakerConfig)
+    JsonCodecMaker.make[History.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val historyReplyCodec: JsonValueCodec[History.Reply] = {
 
     implicit val simpleReplyCodec: JsonValueCodec[History.Reply.Simple] =
-      JsonCodecMaker.make[History.Reply.Simple](CodecMakerConfig)
+      JsonCodecMaker.make[History.Reply.Simple](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
     implicit val withOutputReplyCodec: JsonValueCodec[History.Reply.WithOutput] =
-      JsonCodecMaker.make[History.Reply.WithOutput](CodecMakerConfig)
+      JsonCodecMaker.make[History.Reply.WithOutput](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
     new JsonValueCodec[History.Reply] {
       def decodeValue(in: JsonReader, default: History.Reply): History.Reply = ???
@@ -186,40 +186,40 @@ object Codecs {
   }
 
   implicit val inputRequestCodec: JsonValueCodec[Input.Request] =
-    JsonCodecMaker.make[Input.Request](CodecMakerConfig)
+    JsonCodecMaker.make[Input.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val inputReplyCodec: JsonValueCodec[Input.Reply] =
-    JsonCodecMaker.make[Input.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[Input.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val inspectRequestCodec: JsonValueCodec[Inspect.Request] =
-    JsonCodecMaker.make[Inspect.Request](CodecMakerConfig)
+    JsonCodecMaker.make[Inspect.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val inspectReplyCodec: JsonValueCodec[Inspect.Reply] =
-    JsonCodecMaker.make[Inspect.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[Inspect.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val interruptRequestCodec: JsonValueCodec[Interrupt.Request.type] =
-    JsonCodecMaker.make[Interrupt.Request.type](CodecMakerConfig)
+    JsonCodecMaker.make[Interrupt.Request.type](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val interruptReplyCodec: JsonValueCodec[Interrupt.Reply.type] =
-    JsonCodecMaker.make[Interrupt.Reply.type](CodecMakerConfig)
+    JsonCodecMaker.make[Interrupt.Reply.type](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val isCompleteRequestCodec: JsonValueCodec[IsComplete.Request] =
-    JsonCodecMaker.make[IsComplete.Request](CodecMakerConfig)
+    JsonCodecMaker.make[IsComplete.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val isCompleteReplyCodec: JsonValueCodec[IsComplete.Reply] =
-    JsonCodecMaker.make[IsComplete.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[IsComplete.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val kernelInfoLinkCodec: JsonValueCodec[KernelInfo.Link] =
-    JsonCodecMaker.make[KernelInfo.Link](CodecMakerConfig)
+    JsonCodecMaker.make[KernelInfo.Link](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val kernelInfoCodec: JsonValueCodec[KernelInfo] =
-    JsonCodecMaker.make[KernelInfo](CodecMakerConfig)
+    JsonCodecMaker.make[KernelInfo](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val kernelSpecCodec: JsonValueCodec[KernelSpec] =
-    JsonCodecMaker.make[KernelSpec](CodecMakerConfig)
+    JsonCodecMaker.make[KernelSpec](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val shutdownRequestCodec: JsonValueCodec[Shutdown.Request] =
-    JsonCodecMaker.make[Shutdown.Request](CodecMakerConfig)
+    JsonCodecMaker.make[Shutdown.Request](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
   implicit val shutdownReplyCodec: JsonValueCodec[Shutdown.Reply] =
-    JsonCodecMaker.make[Shutdown.Reply](CodecMakerConfig)
+    JsonCodecMaker.make[Shutdown.Reply](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
   implicit val statusCodec: JsonValueCodec[Status] =
-    JsonCodecMaker.make[Status](CodecMakerConfig)
+    JsonCodecMaker.make[Status](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
 
   implicit class ConnectionCompanionOps(private val obj: Connection.type) extends AnyVal {
@@ -242,7 +242,7 @@ object Codecs {
   implicit val unitCodec: JsonValueCodec[Unit] = {
     final case class Empty()
     val empty = Empty()
-    val emptyCodec = JsonCodecMaker.make[Empty](CodecMakerConfig)
+    val emptyCodec = JsonCodecMaker.make[Empty](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
     new JsonValueCodec[Unit] {
       def decodeValue(in: JsonReader, default: Unit) = emptyCodec.decodeValue(in, empty)
@@ -252,7 +252,7 @@ object Codecs {
   }
 
   implicit val stringCodec: JsonValueCodec[String] =
-    JsonCodecMaker.make[String](CodecMakerConfig)
+    JsonCodecMaker.make[String](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
 
 
 }
