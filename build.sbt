@@ -71,8 +71,7 @@ lazy val `protocol-codecs` = project
     libraryDependencies ++= Seq(
       Deps.jsoniterScalaMacros % Provided
     ),
-    sources.in(Compile,doc) := Nil,
-    publishArtifact.in(Compile, packageDoc) := false
+    sources.in(Compile, doc) := Nil
   )
 
 lazy val `interpreter-api` = project
@@ -214,8 +213,7 @@ lazy val `almond-spark` = project
       Deps.sparkSql % "provided"
     ),
     onlyIn("2.12"),
-    sources.in(Compile,doc) := Nil,
-    publishArtifact.in(Compile, packageDoc) := false
+    sources.in(Compile, doc) := Nil
   )
 
 lazy val `almond-rx` = project
