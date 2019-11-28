@@ -141,23 +141,13 @@ lazy val `scala-interpreter` = project
   .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test", `almond-rx` % Test)
   .settings(
     shared,
-    libraryDependencies ++= {
-      val sv = scalaVersion.value
-      if (sv.startsWith("2.12.")) {
-        val patch = sv.stripPrefix("2.12.").takeWhile(_.isDigit).toInt
-        if (patch <= 8)
-          Seq(Deps.metabrowseServer)
-        else
-          Nil
-      } else
-        Nil
-    },
     libraryDependencies ++= Seq(
+      Deps.ammoniteRepl.value,
       Deps.coursier,
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
-      Deps.ammoniteRepl.value
+      Deps.metabrowseServer
     ),
     crossVersion := CrossVersion.full,
     testSettings
