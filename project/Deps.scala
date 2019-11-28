@@ -25,11 +25,11 @@ object Deps {
   def jsoniterScalaCore = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % Versions.jsoniterScala
   def jsoniterScalaMacros = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % Versions.jsoniterScala
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
-  def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.2"
+  def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.3"
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
   def scalatags = "com.lihaoyi" %% "scalatags" % "0.7.0"
-  def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.7.28"
+  def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.8.0-beta4"
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
 
