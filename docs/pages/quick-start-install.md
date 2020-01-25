@@ -79,3 +79,7 @@ Once the kernel is installed, the generated launcher can then be safely removed,
 ## Update the almond kernel
 
 To update the almond kernel, just re-install it, but passing the `--force` option to almond (like `./almond --install --force`). That will override any previous almond (or kernel with name `scala`).
+
+## Uninstall the almond kernel
+
+To uninstall the almond kernel, use `jupyter kernelspec remove scala`.
