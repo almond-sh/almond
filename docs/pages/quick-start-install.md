@@ -75,3 +75,7 @@ remove the almond launcher: `rm -f almond`
 - Available options:
 
 Once the kernel is installed, the generated launcher can then be safely removed, with `rm -f almond`.
+
+## Uninstall the almond kernel
+
+To uninstall the almond kernel, use `jupyter kernelspec remove scala`.
