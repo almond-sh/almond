@@ -127,6 +127,7 @@ lazy val `scala-kernel-api` = project
   .dependsOn(`interpreter-api`, `jupyter-api`)
   .settings(
     shared,
+    mima,
     crossVersion := CrossVersion.full,
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
@@ -195,6 +196,7 @@ lazy val `almond-spark` = project
   .dependsOn(`scala-kernel-api` % "provided")
   .settings(
     shared,
+    mimaExceptIn("2.13"),
     libraryDependencies ++= Seq(
       Deps.ammoniteReplApi.value % "provided",
       Deps.ammoniteSpark,
@@ -211,6 +213,7 @@ lazy val `almond-rx` = project
   .dependsOn(`scala-kernel-api` % Provided)
   .settings(
     shared,
+    mimaExceptIn("2.13"),
     libraryDependencies += Deps.scalaRx,
     onlyIn("2.12")
   )

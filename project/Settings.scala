@@ -232,4 +232,17 @@ object Settings {
     }
   )
 
+  def mimaExceptIn(scalaVersions: String*) = Seq(
+    MimaPlugin.autoImport.mimaPreviousArtifacts := {
+      val sv = scalaVersion.value
+
+      if (scalaVersions.exists(v => sv.startsWith(v + ".")))
+        Set.empty
+      else
+        Mima.binaryCompatibilityVersions().map { ver =>
+          (organization.value % moduleName.value % ver).cross(crossVersion.value)
+        }
+    }
+  )
+
 }
