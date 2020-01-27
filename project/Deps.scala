@@ -13,7 +13,7 @@ object Deps {
 
   def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
   def ammoniteReplApi = setting(("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full))
-  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.7.2"
+  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.9.0"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
   def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC5-6"
