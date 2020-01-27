@@ -28,7 +28,7 @@ object Deps {
   def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.3"
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
-  def scalatags = "com.lihaoyi" %% "scalatags" % "0.7.0"
+  def scalatags = "com.lihaoyi" %% "scalatags" % "0.8.4"
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.8.0-beta4"
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
