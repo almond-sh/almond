@@ -13,7 +13,7 @@
 
 ## Documentation
 
-See the project [website](https://almond.sh) for more details ([alternative address](https://almond-sh.github.io/almond)).
+See the project [website](https://almond.sh) for more details.
 
 ## Code of Conduct
 
