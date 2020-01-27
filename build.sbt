@@ -35,6 +35,7 @@ inThisBuild(List(
 
 lazy val logger = project
   .underShared
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     testSettings,
@@ -44,6 +45,7 @@ lazy val logger = project
 lazy val channels = project
   .underShared
   .dependsOn(logger)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     testSettings,
@@ -56,6 +58,7 @@ lazy val channels = project
 lazy val protocol = project
   .underShared
   .dependsOn(channels)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -66,6 +69,7 @@ lazy val protocol = project
 lazy val `protocol-codecs` = project
   .underShared
   .dependsOn(protocol)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -84,6 +88,7 @@ lazy val `interpreter-api` = project
 lazy val interpreter = project
   .underShared
   .dependsOn(`interpreter-api`, `protocol-codecs`)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -97,6 +102,7 @@ lazy val interpreter = project
 lazy val kernel = project
   .underShared
   .dependsOn(interpreter, interpreter % "test->test")
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     testSettings,
@@ -109,6 +115,7 @@ lazy val kernel = project
 lazy val test = project
   .underShared
   .dependsOn(`interpreter-api`)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared
   )
@@ -140,6 +147,7 @@ lazy val `scala-kernel-api` = project
 lazy val `scala-interpreter` = project
   .underScala
   .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test", `almond-rx` % Test)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     libraryDependencies ++= Seq(
@@ -157,6 +165,7 @@ lazy val `scala-interpreter` = project
 lazy val `scala-kernel` = project
   .underScala
   .enablePlugins(PackPlugin)
+  .disablePlugins(MimaPlugin)
   .dependsOn(kernel, `scala-interpreter`)
   .settings(
     shared,
@@ -184,6 +193,7 @@ lazy val `scala-kernel` = project
 lazy val echo = project
   .underModules
   .dependsOn(kernel, test % Test)
+  .disablePlugins(MimaPlugin)
   .settings(
     shared,
     generatePropertyFile("almond/echo.properties"),
@@ -220,6 +230,7 @@ lazy val `almond-rx` = project
 
 lazy val almond = project
   .in(file("."))
+  .disablePlugins(MimaPlugin)
   .aggregate(
     `almond-rx`,
     `almond-spark`,
