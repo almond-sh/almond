@@ -21,7 +21,7 @@ object Deps {
   def directories = "io.github.soc" % "directories" % "11"
   def fs2 = "co.fs2" %% "fs2-core" % "2.2.1"
   def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
-  def jeromq = "org.zeromq" % "jeromq" % "0.5.1"
+  def jeromq = "org.zeromq" % "jeromq" % "0.5.2"
   def jsoniterScalaCore = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % Versions.jsoniterScala
   def jsoniterScalaMacros = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % Versions.jsoniterScala
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
