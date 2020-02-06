@@ -31,7 +31,7 @@ object Deps {
   def scalatags = "com.lihaoyi" %% "scalatags" % "0.8.4"
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.8.0-beta4"
 
-  def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
+  def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.4"
 
   def utest = "com.lihaoyi" %% "utest" % "0.7.3"
 }
