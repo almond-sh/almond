@@ -33,5 +33,5 @@ object Deps {
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
 
-  def utest = "com.lihaoyi" %% "utest" % "0.7.3"
+  def utest = "com.lihaoyi" %% "utest" % "0.7.4"
 }
