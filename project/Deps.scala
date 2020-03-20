@@ -27,7 +27,7 @@ object Deps {
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
   def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.3"
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
-  def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.0"
+  def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.1"
   def scalatags = "com.lihaoyi" %% "scalatags" % "0.8.6"
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.8.0-beta4"
 
