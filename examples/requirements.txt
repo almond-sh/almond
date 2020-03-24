@@ -1,6 +1,6 @@
 appnope==0.1.0
 backcall==0.1.0
-bleach==3.0.2
+bleach==3.1.2
 decorator==4.3.0
 defusedxml==0.5.0
 entrypoints==0.2.3
