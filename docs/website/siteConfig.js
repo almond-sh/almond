@@ -2,6 +2,11 @@
 // site configuration options.
 
 const siteConfig = {
+  algolia: {
+    apiKey: '2cf058a89a451066357a2eece168e7af',
+    indexName: 'almond',
+  },
+  
   title: 'almond',
   tagline: 'A Scala kernel for Jupyter',
 
