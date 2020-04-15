@@ -190,9 +190,8 @@ final case class Options(
 
 object Options {
 
-  implicit val help = Help[Options].copy(
+  implicit val help = Help[Options]
     // not sure why the @ProgName annotation above isn't picked here
-    progName = "almond"
-  )
+    .withProgName("almond")
 
 }
