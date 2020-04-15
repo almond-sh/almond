@@ -16,3 +16,8 @@ Almond version | Scala 2.11 version | Scala 2.12 version | Scala 2.13 version
 `0.9.0` - ...      | -         | `2.12.8`, `2.12.9`, `2.12.10`                     | `2.13.0`, `2.13.1`
 
 See also release notes at https://github.com/almond-sh/almond/releases
+
+To find out which version of almond is installed, from a running notebook, go to the menu bar and select:
+
+- `Help -> About`, if using Jupyter Classic
+- `Help -> About the Scala Kernel`, if using JupyterLab
