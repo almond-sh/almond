@@ -31,7 +31,7 @@ object Display {
   def newId(): String =
     UpdatableDisplay.generateId()
 
-  @deprecated("Use almond.display.UpdatableDisplay.newDiv instead", "0.4.1")
+  @deprecated("Use almond.display.UpdatableDisplay.generateDiv instead", "0.4.1")
   def newDiv(prefix: String = "data-"): String =
     UpdatableDisplay.generateDiv(prefix)
 
