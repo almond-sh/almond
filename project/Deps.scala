@@ -17,7 +17,7 @@ object Deps {
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
   def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC6-12"
-  def coursierApi = "io.get-coursier" % "interface" % "0.0.21"
+  def coursierApi = "io.get-coursier" % "interface" % "0.0.22"
   def directories = "io.github.soc" % "directories" % "11"
   def fs2 = "co.fs2" %% "fs2-core" % "2.3.0"
   def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
