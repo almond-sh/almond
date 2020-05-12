@@ -139,29 +139,33 @@ object Settings {
   lazy val generateDependenciesFile =
     resourceGenerators.in(Compile) += Def.task {
 
-      val dir = classDirectory.in(Compile).value / "almond"
-      val res = coursier.sbtcoursier.CoursierPlugin.autoImport.coursierResolutions
+      val sv = scalaVersion.value
+      val sbv = scalaBinaryVersion.value
+      val updateReport = update.value
+      val configReport = updateReport.configuration(Compile).getOrElse {
+        sys.error("Compile report not found")
+      }
+      val deps = configReport
+        .modules
+        .filter(!_.evicted)
+        .map(_.module)
+      val projectDeps = projectDependencies
         .value
-        .collectFirst {
-          case (scopes, r) if scopes(coursier.core.Configuration.compile) =>
-            r
+      val content = (deps ++ projectDeps)
+        .map { mod =>
+          val name = CrossVersion(mod.crossVersion, sv, sbv)
+            .getOrElse(identity[String] _)
+            .apply(mod.name)
+          (mod.organization, name, mod.revision)
         }
-        .getOrElse(
-          sys.error("compile coursier resolution not found")
-        )
-
-      val content = res
-        .minDependencies
-        .toVector
-        .map { d =>
-          (d.module.organization, d.module.name, d.version)
-        }
+        .distinct
         .sorted
         .map {
           case (org, name, ver) =>
           s"$org:$name:$ver"
         }
         .mkString("\n")
+      val dir = classDirectory.in(Compile).value / "almond"
 
       val f = dir / "almond-user-dependencies.txt"
       dir.mkdirs()
