@@ -6,9 +6,9 @@ import sbt.Keys.scalaVersion
 object Deps {
 
   object Versions {
-    def ammonite = "2.1.4"
-    def caseApp = "2.0.0-M16"
-    def jsoniterScala = "2.2.3"
+    def ammonite = "2.0.4"
+    def caseApp = "2.0.0"
+    def jsoniterScala = "2.2.4"
   }
 
   def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
@@ -16,7 +16,7 @@ object Deps {
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.9.0"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
-  def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC6-14"
+  def coursier = "io.get-coursier" %% "coursier" % "2.0.0-RC6-19"
   def coursierApi = "io.get-coursier" % "interface" % "0.0.22"
   def directories = "io.github.soc" % "directories" % "11"
   def fs2 = "co.fs2" %% "fs2-core" % "2.3.0"
