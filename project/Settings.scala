@@ -60,7 +60,6 @@ object Settings {
       "-unchecked"
     ),
     resolvers ++= Seq(
-      Resolver.sonatypeRepo("releases"),
       "jitpack" at "https://jitpack.io"
     ),
     // Seems required when cross-publishing for several scala versions
