@@ -8,7 +8,7 @@ import sbt.Keys._
 
 object Settings {
 
-  def scala212 = "2.12.10"
+  def scala212 = "2.12.11"
   def scala213 = "2.13.1"
 
   lazy val isAtLeast212 = Def.setting {
@@ -49,7 +49,7 @@ object Settings {
 
   lazy val shared = Seq(
     scalaVersion := scala213,
-    crossScalaVersions := Seq(scala213, "2.13.0", scala212, "2.12.9", "2.12.8"),
+    crossScalaVersions := Seq(scala213, "2.13.0", scala212, "2.12.10", "2.12.9", "2.12.8"),
     scalacOptions ++= Seq(
       // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
       "-deprecation",

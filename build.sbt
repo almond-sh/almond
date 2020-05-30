@@ -135,6 +135,14 @@ lazy val `scala-kernel-api` = project
   .settings(
     shared,
     mima,
+    mimaPreviousArtifacts := {
+      val sv = scalaVersion.value
+      val previous = mimaPreviousArtifacts.value
+      if (sv == "2.12.11")
+        previous.filter(mod => mod.revision != "0.9.0" && mod.revision != "0.9.1")
+      else
+        previous
+    },
     crossVersion := CrossVersion.full,
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
