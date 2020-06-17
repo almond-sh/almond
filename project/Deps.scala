@@ -8,7 +8,7 @@ object Deps {
   object Versions {
     def ammonite = "2.0.4"
     def caseApp = "2.0.0"
-    def jsoniterScala = "2.2.5"
+    def jsoniterScala = "2.2.6"
   }
 
   def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
