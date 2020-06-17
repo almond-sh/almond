@@ -15,7 +15,7 @@ install:
   - "python -m pip install jupyter" # TODO freeze that for better reproducibility?
 environment:
   PYTHON: C:\Miniconda37-x64
-  TEST_SCALA_VERSION: 2.12.8
+  TEST_SCALA_VERSION: 2.12.11
   TEST_ALMOND_VERSION: 0.1.1-local
 
 build_script:

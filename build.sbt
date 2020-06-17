@@ -135,6 +135,14 @@ lazy val `scala-kernel-api` = project
   .settings(
     shared,
     mima,
+    mimaPreviousArtifacts := {
+      val sv = scalaVersion.value
+      val previous = mimaPreviousArtifacts.value
+      if (sv == "2.12.11" || sv == "2.13.2")
+        previous.filter(mod => mod.revision != "0.9.0" && mod.revision != "0.9.1")
+      else
+        previous
+    },
     crossVersion := CrossVersion.full,
     generatePropertyFile("almond/almond.properties"),
     generateDependenciesFile,
@@ -144,19 +152,41 @@ lazy val `scala-kernel-api` = project
     )
   )
 
+lazy val addMetabrowse = Def.setting {
+  val sv = scalaVersion.value
+  val patch = sv
+    .split('.')
+    .drop(2)
+    .headOption
+    .flatMap(s => scala.util.Try(s.takeWhile(_.isDigit).toInt).toOption)
+  (sv.startsWith("2.12.") && patch.exists(_ <= 10)) ||
+    (sv.startsWith("2.13.") && patch.exists(_ <= 1))
+}
+
 lazy val `scala-interpreter` = project
   .underScala
   .dependsOn(interpreter, `scala-kernel-api`, kernel % "test->test", `almond-rx` % Test)
   .disablePlugins(MimaPlugin)
   .settings(
     shared,
+    libraryDependencies ++= {
+      if (addMetabrowse.value)
+        Seq(Deps.metabrowseServer)
+      else
+        Nil
+    },
+    unmanagedSourceDirectories.in(Compile) += {
+      val dirName =
+        if (addMetabrowse.value) "scala-has-metabrowse"
+        else "scala-no-metabrowse"
+      baseDirectory.value / "src" / "main" / dirName
+    },
     libraryDependencies ++= Seq(
-      Deps.ammoniteRepl.value,
       Deps.coursier,
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
-      Deps.metabrowseServer
+      Deps.ammoniteRepl.value
     ),
     crossVersion := CrossVersion.full,
     testSettings

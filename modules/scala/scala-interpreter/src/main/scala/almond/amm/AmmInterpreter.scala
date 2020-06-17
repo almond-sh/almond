@@ -80,21 +80,6 @@ object AmmInterpreter {
         new ammonite.interp.Interpreter(
           printer = execute0.printer,
           storage = storage,
-          basePredefs = Seq(
-            PredefInfo(
-              Name("defaultPredef"),
-              predef + ammonite.main.Defaults.replPredef + ammonite.main.Defaults.predefString,
-              true,
-              None
-            )
-          ),
-          customPredefs = predefFileInfos ++ Seq(
-            PredefInfo(Name("CodePredef"), predefCode, false, None)
-          ),
-          extraBridges = Seq(
-            (ammonite.repl.ReplBridge.getClass.getName.stripSuffix("$"), "repl", replApi),
-            (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
-          ),
           wd = ammonite.ops.pwd,
           colors = Ref(Colors.Default),
           verboseOutput = true, // ???
@@ -120,9 +105,22 @@ object AmmInterpreter {
             }
         }
 
+      val basePredefs =
+        if (predef.isEmpty) Nil
+        else Seq(PredefInfo(Name("defaultPredef"), predef, true, None))
+      val customPredefs = predefFileInfos ++ {
+        if (predefCode.isEmpty) Nil
+        else Seq(PredefInfo(Name("CodePredef"), predefCode, false, None))
+      }
+      val extraBridges = Seq(
+        (ammonite.repl.ReplBridge.getClass.getName.stripSuffix("$"), "repl", replApi),
+        (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
+      )
+
       log.debug("Initializing interpreter predef")
 
-      for ((e, _) <- ammInterp0.initializePredef())
+      val imports = ammonite.main.Defaults.replImports ++ ammonite.interp.Interpreter.predefImports
+      for ((e, _) <- ammInterp0.initializePredef(basePredefs, customPredefs, extraBridges, imports))
         e match {
           case Res.Failure(msg) =>
             throw new PredefException(msg, None)
