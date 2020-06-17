@@ -40,12 +40,12 @@ jobs:
       - pip3 -V
       - sudo pip3 install -r examples/requirements.txt
     script: scripts/setup-and-validate-examples.sh
-  - scala: 2.12.9
   - scala: 2.12.10
-  - scala: 2.12.10
+  - scala: 2.12.11
+  - scala: 2.12.11
     jdk: openjdk11
-  - scala: 2.13.0
   - scala: 2.13.1
+  - scala: 2.13.2
   - name: "Website"
     script: amm scripts/site.sc --publishLocal true
   - stage: release
