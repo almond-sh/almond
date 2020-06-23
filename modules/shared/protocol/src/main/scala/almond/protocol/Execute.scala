@@ -196,13 +196,13 @@ object Execute {
     JsonCodecMaker.make[Input]
 
   implicit val resultCodec: JsonValueCodec[Result] =
-    JsonCodecMaker.make[Result](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig.withTransientEmpty(false))
+    JsonCodecMaker.makeWithRequiredCollectionFields[Result]
 
   implicit val streamCodec: JsonValueCodec[Stream] =
     JsonCodecMaker.make[Stream]
 
   implicit val displayDataCodec: JsonValueCodec[DisplayData] =
-    JsonCodecMaker.make[DisplayData](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig.withTransientEmpty(false))
+    JsonCodecMaker.makeWithRequiredCollectionFields[DisplayData]
 
   implicit val errorCodec: JsonValueCodec[Error] =
     JsonCodecMaker.make[Error]
