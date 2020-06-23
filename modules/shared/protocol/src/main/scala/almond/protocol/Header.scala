@@ -2,6 +2,9 @@ package almond.protocol
 
 import java.util.UUID
 
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
 final case class Header(
   msg_id: String,
   username: String,
@@ -23,5 +26,8 @@ object Header {
       msgType.messageType,
       Some(Protocol.versionStr)
     )
+
+  implicit val codec: JsonValueCodec[Header] =
+    JsonCodecMaker.make[Header]
 
 }

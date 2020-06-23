@@ -4,7 +4,6 @@ import almond.channels.Channel
 import almond.interpreter.comm.CommTargetManager
 import almond.logger.LoggerContext
 import almond.protocol.{Comm, CommInfo}
-import almond.protocol.Codecs._
 import cats.effect.IO
 
 import scala.concurrent.ExecutionContext

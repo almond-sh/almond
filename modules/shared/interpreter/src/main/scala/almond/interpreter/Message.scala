@@ -5,7 +5,6 @@ import java.util.UUID
 
 import almond.channels.{Channel, Message => RawMessage}
 import almond.protocol.{Header, MessageType, RawJson}
-import almond.protocol.Codecs._
 import cats.effect.IO
 import fs2.concurrent.Queue
 import fs2.Stream

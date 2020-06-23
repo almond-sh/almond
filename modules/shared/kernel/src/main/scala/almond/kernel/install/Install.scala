@@ -6,7 +6,6 @@ import java.nio.file.{Files, Path, Paths}
 
 import almond.kernel.util.JupyterPath
 import almond.protocol.KernelSpec
-import almond.protocol.Codecs.kernelSpecCodec
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._

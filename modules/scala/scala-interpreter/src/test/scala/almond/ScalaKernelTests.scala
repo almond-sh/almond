@@ -9,7 +9,6 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
-import almond.protocol.Codecs._
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.TestLogging.logCtx
 import almond.TestUtil._
