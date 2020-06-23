@@ -303,7 +303,7 @@ jupyterStart := {
     "display_name": "Scala (sources)",
     "argv": [
       "$pack0",
-      "--metabrowse", "--log", "info",
+      "--log", "info",
       "--connection-file", "{connection_file}"
     ]
   }"""
