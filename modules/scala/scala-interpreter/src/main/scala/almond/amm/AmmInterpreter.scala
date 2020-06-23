@@ -6,7 +6,7 @@ import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.logger.LoggerContext
 import ammonite.interp.{CodeWrapper, CompilerLifecycleManager, Preprocessor}
 import ammonite.runtime.{Frame, Storage}
-import ammonite.util.{Colors, Name, PredefInfo, Ref, Res}
+import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
@@ -14,17 +14,42 @@ import scala.collection.JavaConverters._
 
 object AmmInterpreter {
 
-  private def predef =
-    """import almond.api.JupyterAPIHolder.value.{
-      |  publish,
-      |  commHandler
-      |}
-      |import almond.api.JupyterAPIHolder.value.publish.display
-      |import almond.interpreter.api.DisplayData.DisplayDataSyntax
-      |import almond.display._
-      |import almond.display.Display.{markdown, html, latex, text, js, svg}
-      |import almond.input._
-    """.stripMargin
+  private def almondImports = Imports(
+    ImportData("""almond.api.JupyterAPIHolder.value.{
+      publish,
+      commHandler
+    }"""),
+    ImportData("almond.api.JupyterAPIHolder.value.publish.display"),
+    ImportData("""almond.display.{
+      Data,
+      Display,
+      FileLink,
+      Html,
+      IFrame,
+      Image,
+      Javascript,
+      Json,
+      Latex,
+      Markdown,
+      Math,
+      PrettyPrint,
+      ProgressBar,
+      Svg,
+      Text,
+      TextDisplay,
+      UpdatableDisplay
+    }"""),
+    ImportData("""almond.display.Display.{
+      html,
+      js,
+      latex,
+      markdown,
+      svg,
+      text
+    }"""),
+    ImportData("almond.interpreter.api.DisplayData.DisplayDataSyntax"),
+    ImportData("almond.input.Input")
+  )
 
   /**
     * Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
@@ -105,9 +130,6 @@ object AmmInterpreter {
             }
         }
 
-      val basePredefs =
-        if (predef.isEmpty) Nil
-        else Seq(PredefInfo(Name("defaultPredef"), predef, true, None))
       val customPredefs = predefFileInfos ++ {
         if (predefCode.isEmpty) Nil
         else Seq(PredefInfo(Name("CodePredef"), predefCode, false, None))
@@ -119,8 +141,10 @@ object AmmInterpreter {
 
       log.debug("Initializing interpreter predef")
 
-      val imports = ammonite.main.Defaults.replImports ++ ammonite.interp.Interpreter.predefImports
-      for ((e, _) <- ammInterp0.initializePredef(basePredefs, customPredefs, extraBridges, imports))
+      val imports = ammonite.main.Defaults.replImports ++
+        ammonite.interp.Interpreter.predefImports ++
+        almondImports
+      for ((e, _) <- ammInterp0.initializePredef(Nil, customPredefs, extraBridges, imports))
         e match {
           case Res.Failure(msg) =>
             throw new PredefException(msg, None)
