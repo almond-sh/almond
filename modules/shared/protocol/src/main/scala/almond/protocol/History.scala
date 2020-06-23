@@ -1,5 +1,8 @@
 package almond.protocol
 
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
 object History {
 
   final case class Request(
@@ -39,5 +42,29 @@ object History {
 
   def requestType = MessageType[Request]("history_request")
   def replyType = MessageType[Reply]("history_reply")
+
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make[Request]
+
+  implicit val replyCodec: JsonValueCodec[Reply] = {
+
+    implicit val simpleReplyCodec: JsonValueCodec[Reply.Simple] =
+      JsonCodecMaker.make[Reply.Simple]
+    implicit val withOutputReplyCodec: JsonValueCodec[Reply.WithOutput] =
+      JsonCodecMaker.make[Reply.WithOutput]
+
+    new JsonValueCodec[Reply] {
+      def decodeValue(in: JsonReader, default: Reply): Reply = ???
+      def encodeValue(reply: Reply, out: JsonWriter): Unit =
+        reply match {
+          case s: Reply.Simple =>
+            simpleReplyCodec.encodeValue(s, out)
+          case w: Reply.WithOutput =>
+            withOutputReplyCodec.encodeValue(w, out)
+        }
+      def nullValue: Reply =
+        simpleReplyCodec.nullValue
+    }
+  }
 
 }

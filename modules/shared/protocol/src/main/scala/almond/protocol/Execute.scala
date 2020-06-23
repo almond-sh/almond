@@ -1,5 +1,8 @@
 package almond.protocol
 
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
 object Execute {
 
   final case class Request(
@@ -144,5 +147,67 @@ object Execute {
   def displayDataType = MessageType[DisplayData]("display_data")
   def streamType = MessageType[Stream]("stream")
   def updateDisplayDataType = MessageType[DisplayData]("update_display_data")
+
+  implicit val requestCodec: JsonValueCodec[Request] =
+    JsonCodecMaker.make[Request]
+
+  implicit val replyCodec: JsonValueCodec[Reply] = {
+
+    final case class Probe(status: String)
+
+    implicit val probeCodec: JsonValueCodec[Probe] =
+      JsonCodecMaker.make[Probe]
+
+    implicit val successCodec: JsonValueCodec[Reply.Success] =
+      JsonCodecMaker.make[Reply.Success]
+    implicit val errorCodec: JsonValueCodec[Reply.Error] =
+      JsonCodecMaker.make[Reply.Error]
+    implicit val abortCodec: JsonValueCodec[Reply.Abort] =
+      JsonCodecMaker.make[Reply.Abort]
+
+    new JsonValueCodec[Reply] {
+      def decodeValue(in: JsonReader, default: Reply): Reply = {
+        in.setMark()
+        val probe = probeCodec.decodeValue(in, probeCodec.nullValue)
+        in.rollbackToMark()
+        probe.status match {
+          case "ok" =>
+            successCodec.decodeValue(in, successCodec.nullValue)
+          case "error" =>
+            errorCodec.decodeValue(in, errorCodec.nullValue)
+          case "abort" =>
+            abortCodec.decodeValue(in, abortCodec.nullValue)
+          case _ =>
+            ???
+        }
+      }
+      def encodeValue(reply: Reply, out: JsonWriter): Unit =
+        reply match {
+          case s: Reply.Success => successCodec.encodeValue(s, out)
+          case e: Reply.Error => errorCodec.encodeValue(e, out)
+          case a: Reply.Abort => abortCodec.encodeValue(a, out)
+        }
+      def nullValue: Reply =
+        Reply.Success(0, Map.empty, "ok", Nil)
+    }
+  }
+
+  implicit val inputCodec: JsonValueCodec[Input] =
+    JsonCodecMaker.make[Input]
+
+  implicit val resultCodec: JsonValueCodec[Result] =
+    JsonCodecMaker.make[Result](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig.withTransientEmpty(false))
+
+  implicit val streamCodec: JsonValueCodec[Stream] =
+    JsonCodecMaker.make[Stream]
+
+  implicit val displayDataCodec: JsonValueCodec[DisplayData] =
+    JsonCodecMaker.make[DisplayData](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig.withTransientEmpty(false))
+
+  implicit val errorCodec: JsonValueCodec[Error] =
+    JsonCodecMaker.make[Error]
+
+  implicit val askExitPayloadCodec: JsonValueCodec[Reply.Success.AskExitPayload] =
+    JsonCodecMaker.make[Reply.Success.AskExitPayload]
 
 }

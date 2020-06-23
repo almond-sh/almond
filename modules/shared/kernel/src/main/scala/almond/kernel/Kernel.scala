@@ -12,7 +12,6 @@ import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{CommMessageHandlers, InterpreterMessageHandlers, MessageHandler}
 import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
-import almond.protocol.Codecs._
 import cats.effect.IO
 import fs2.concurrent.{Queue, SignallingRef}
 import fs2.{Pipe, Stream}
