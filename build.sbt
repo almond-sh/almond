@@ -130,6 +130,8 @@ lazy val `scala-kernel-api` = project
       val previous = mimaPreviousArtifacts.value
       if (sv == "2.12.11" || sv == "2.13.2")
         previous.filter(mod => mod.revision != "0.9.0" && mod.revision != "0.9.1")
+      else if (sv == "2.13.3")
+        previous.filter(mod => !mod.revision.startsWith("0.9.") && mod.revision != "0.10.0")
       else
         previous
     },
