@@ -163,11 +163,11 @@ final class ScalaInterpreter(
       "scala",
       almond.api.Properties.version,
       KernelInfo.LanguageInfo(
-        "scala",
-        scala.util.Properties.versionNumberString,
-        "text/x-scala",
-        ".scala",
-        "script",
+        name = "scala",
+        version = scala.util.Properties.versionNumberString,
+        mimetype = "text/x-scala",
+        file_extension = ".sc",
+        nbconvert_exporter = "script",
         codemirror_mode = Some("text/x-scala")
       ),
       s"""Almond ${almond.api.Properties.version}
