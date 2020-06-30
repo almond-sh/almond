@@ -43,6 +43,21 @@ object History {
   def requestType = MessageType[Request]("history_request")
   def replyType = MessageType[Reply]("history_reply")
 
+  implicit val accessTypeCodec: JsonValueCodec[AccessType] = new JsonValueCodec[AccessType] {
+    val stringCodec = JsonCodecMaker.make[String]
+    def decodeValue(in: JsonReader, default: AccessType): AccessType = {
+      val name = stringCodec.decodeValue(in, default.name)
+      AccessType.map.getOrElse(
+        name,
+        throw new Exception(s"Unrecognized access type '$name'")
+      )
+    }
+    def encodeValue(x: AccessType, out: JsonWriter): Unit =
+      stringCodec.encodeValue(x.name, out)
+    val nullValue: AccessType =
+      AccessType.Range // ???
+  }
+
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make[Request]
 
