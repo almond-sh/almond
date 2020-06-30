@@ -100,14 +100,14 @@ final class ZeromqConnection(
             val heartbeat = threads.context.socket(repReq)
 
             heartbeat.setLinger(1000)
+            heartbeat.bind(params.heartbeatUri)
 
-            if (bind)
-              heartbeat.bind(params.heartbeatUri)
-            else
-              heartbeat.connect(params.heartbeatUri)
-
-            try ZMQ.proxy(heartbeat, heartbeat, null)
-            catch {
+            try {
+              while (true) {
+                val msg = heartbeat.recv()
+                heartbeat.send(msg) // FIXME Ignoring return value, that indicates success or not
+              }
+            } catch {
               case _: ClosedByInterruptException =>
                 // ignore
             }
