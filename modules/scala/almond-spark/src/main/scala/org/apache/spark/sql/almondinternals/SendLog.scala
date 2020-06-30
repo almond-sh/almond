@@ -167,7 +167,7 @@ object SendLog {
     import com.github.plokhotnyuk.jsoniter_scala.core._
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     implicit val codec: JsonValueCodec[Open] =
-      JsonCodecMaker.make[Open](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
+      JsonCodecMaker.make[Open]
   }
 
   private final case class Data(data: Seq[String])
@@ -176,7 +176,7 @@ object SendLog {
     import com.github.plokhotnyuk.jsoniter_scala.core._
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     implicit val codec: JsonValueCodec[Data] =
-      JsonCodecMaker.make[Data](_root_.com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig)
+      JsonCodecMaker.make[Data]
   }
 
   private val emptyObj = "{}".getBytes(StandardCharsets.UTF_8)

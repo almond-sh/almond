@@ -61,21 +61,11 @@ lazy val protocol = project
   .disablePlugins(MimaPlugin)
   .settings(
     shared,
+    testSettings,
     libraryDependencies ++= Seq(
-      Deps.jsoniterScalaCore
-    )
-  )
-
-lazy val `protocol-codecs` = project
-  .underShared
-  .dependsOn(protocol)
-  .disablePlugins(MimaPlugin)
-  .settings(
-    shared,
-    libraryDependencies ++= Seq(
+      Deps.jsoniterScalaCore,
       Deps.jsoniterScalaMacros % Provided
-    ),
-    sources.in(Compile, doc) := Nil
+    )
   )
 
 lazy val `interpreter-api` = project
@@ -87,7 +77,7 @@ lazy val `interpreter-api` = project
 
 lazy val interpreter = project
   .underShared
-  .dependsOn(`interpreter-api`, `protocol-codecs`)
+  .dependsOn(`interpreter-api`, protocol)
   .disablePlugins(MimaPlugin)
   .settings(
     shared,
@@ -140,6 +130,8 @@ lazy val `scala-kernel-api` = project
       val previous = mimaPreviousArtifacts.value
       if (sv == "2.12.11" || sv == "2.13.2")
         previous.filter(mod => mod.revision != "0.9.0" && mod.revision != "0.9.1")
+      else if (sv == "2.13.3")
+        previous.filter(mod => !mod.revision.startsWith("0.9.") && mod.revision != "0.10.0")
       else
         previous
     },
@@ -272,7 +264,6 @@ lazy val almond = project
     kernel,
     logger,
     protocol,
-    `protocol-codecs`,
     `scala-interpreter`,
     `scala-kernel-api`,
     `scala-kernel`,
@@ -303,7 +294,7 @@ jupyterStart := {
     "display_name": "Scala (sources)",
     "argv": [
       "$pack0",
-      "--metabrowse", "--log", "info",
+      "--log", "info",
       "--connection-file", "{connection_file}"
     ]
   }"""

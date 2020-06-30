@@ -1,5 +1,8 @@
 package almond.protocol
 
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
 object Connect {
 
   case object Request
@@ -14,5 +17,10 @@ object Connect {
 
   def requestType = MessageType[Request.type]("connect_request")
   def replyType = MessageType[Reply]("connect_reply")
+
+  implicit val requestCodec: JsonValueCodec[Request.type] =
+    JsonCodecMaker.make[Request.type]
+  implicit val replyCodec: JsonValueCodec[Reply] =
+    JsonCodecMaker.make[Reply]
 
 }

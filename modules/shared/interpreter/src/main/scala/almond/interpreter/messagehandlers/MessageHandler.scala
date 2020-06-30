@@ -6,7 +6,6 @@ import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.logger.{Logger, LoggerContext}
 import almond.protocol.{MessageType, RawJson, Status}
-import almond.protocol.Codecs._
 import cats.effect.IO
 
 import scala.concurrent.ExecutionContext

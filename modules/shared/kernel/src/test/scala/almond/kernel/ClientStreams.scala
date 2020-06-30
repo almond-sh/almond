@@ -3,7 +3,7 @@ package almond.kernel
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.protocol.Codecs._
+import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
 import almond.protocol.{Execute, MessageType, RawJson}
 import almond.kernel.KernelTests.threads

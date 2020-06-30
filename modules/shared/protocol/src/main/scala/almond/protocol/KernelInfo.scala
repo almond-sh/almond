@@ -1,5 +1,8 @@
 package almond.protocol
 
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
 final case class KernelInfo(
   status: String, // "ok"
   protocol_version: String, // X.Y.Z
@@ -61,5 +64,10 @@ object KernelInfo {
 
   def requestType = MessageType[Unit]("kernel_info_request")
   def replyType = MessageType[KernelInfo]("kernel_info_reply")
+
+  implicit val linkCodec: JsonValueCodec[Link] =
+    JsonCodecMaker.make[Link]
+  implicit val codec: JsonValueCodec[KernelInfo] =
+    JsonCodecMaker.make[KernelInfo]
 
 }

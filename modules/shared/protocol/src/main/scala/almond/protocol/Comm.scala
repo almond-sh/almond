@@ -1,5 +1,8 @@
 package almond.protocol
 
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
 sealed abstract class Comm extends Product with Serializable {
   def comm_id: String
   def data: RawJson
@@ -29,5 +32,12 @@ object Comm {
   def openType = MessageType[Open]("comm_open")
   def messageType = MessageType[Message]("comm_msg")
   def closeType = MessageType[Close]("comm_close")
+
+  implicit val openCodec: JsonValueCodec[Open] =
+    JsonCodecMaker.make[Open]
+  implicit val messageCodec: JsonValueCodec[Message] =
+    JsonCodecMaker.make[Message]
+  implicit val closeCodec: JsonValueCodec[Close] =
+    JsonCodecMaker.make[Close]
 
 }
