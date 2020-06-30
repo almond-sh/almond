@@ -61,6 +61,7 @@ lazy val protocol = project
   .disablePlugins(MimaPlugin)
   .settings(
     shared,
+    testSettings,
     libraryDependencies ++= Seq(
       Deps.jsoniterScalaCore,
       Deps.jsoniterScalaMacros % Provided
