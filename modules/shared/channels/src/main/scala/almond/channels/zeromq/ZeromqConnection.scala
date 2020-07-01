@@ -112,7 +112,11 @@ final class ZeromqConnection(
                 // ignore
             }
             finally {
-              heartbeat.close()
+              try heartbeat.close()
+              catch {
+                case _: ClosedByInterruptException =>
+                  // ignore
+              }
             }
           }
         }
