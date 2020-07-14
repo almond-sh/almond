@@ -7,7 +7,7 @@ export FORCE_SIMPLE_VERSION=1
 
 # let's switch back to the default scala version once the libs in the
 # examples are fine with 2.13.0
-sbt ++2.12.11 \
+sbt ++2.12.12 \
   interpreter-api/exportVersions \
   publishLocal
 
