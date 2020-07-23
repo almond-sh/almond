@@ -21,9 +21,9 @@ implicitly[almond.api.JupyterApi]
 ## From a library
 
 To access API instances from libraries, depend on either
-- `com.lihaoyi:ammonite-interp_@SCALA_VERSION@:@AMMONITE_VERSION@` for [`ammonite.interp.api.InterpAPI`](api-ammonite.md#interpapi),
+- `com.lihaoyi:ammonite-interp_@SCALA_VERSION@:@AMMONITE_VERSION@` for [`ammonite.interp.api.InterpApi`](api-ammonite.md#interpapi),
 - `com.lihaoyi:ammonite-repl_@SCALA_VERSION@:@AMMONITE_VERSION@` for [`ammonite.repl.api.ReplAPI`](api-ammonite.md#replapi),
-- `sh.almond:scala-kernel-api_@SCALA_VERSION@:@VERSION@` for [`almond.api.JupyterAPI`](api-jupyter.md#jupyterapi).
+- `sh.almond:scala-kernel-api_@SCALA_VERSION@:@VERSION@` for [`almond.api.JupyterApi`](api-jupyter.md#jupyterapi).
 
 You can depend on those libraries as "provided" dependencies, as these libraries
 are guaranteed to be already loaded by almond itself.
@@ -31,9 +31,9 @@ are guaranteed to be already loaded by almond itself.
 In practice, you can add something along those lines in `build.sbt`,
 ```scala
 libraryDependencies ++= Seq(
-  ("com.lihaoyi" % "ammonite-interp" % "@AMMONITE_VERSION@" % Provided).cross(CrossVersion.full), // for ammonite.interp.api.InterpAPI
+  ("com.lihaoyi" % "ammonite-interp" % "@AMMONITE_VERSION@" % Provided).cross(CrossVersion.full), // for ammonite.interp.api.InterpApi
   ("com.lihaoyi" % "ammonite-repl" % "@AMMONITE_VERSION@" % Provided).cross(CrossVersion.full), // for ammonite.repl.api.ReplAPI
-  ("sh.almond" % "scala-kernel-api" % "@VERSION@" % Provided).cross(CrossVersion.full) // for almond.api.JupyterAPI
+  ("sh.almond" % "scala-kernel-api" % "@VERSION@" % Provided).cross(CrossVersion.full) // for almond.api.JupyterApi
 )
 ```
 

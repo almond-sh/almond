@@ -2,9 +2,9 @@
 title: Almond Jupyter API
 ---
 
-The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterAPI`](#jupyterapi). Such an
+The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterApi`](#jupyterapi). Such an
 instance is created by almond upon start-up. This instance accessible via the `kernel` variable and in the
-implicit scope via e.g. `implicitly[almond.api.JupyterAPI]`.
+implicit scope via e.g. `implicitly[almond.api.JupyterApi]`.
 
 A number of higher level helpers rely on it, and provide [a more convenient API to display objects](#display).
 
@@ -61,7 +61,7 @@ val result = Input().withPassword().request()
 
 ## `JupyterAPI`
 
-`almond.api.JupyterAPI` allows to
+`almond.api.JupyterApi` allows to
 - [request input](#request-input) (password input in particular),
 - [exchange comm messages](#comm-messages) with the front-end.
 - [display data](#display-data) (HTML, text, images, …) in the front-end while a cell is running,
