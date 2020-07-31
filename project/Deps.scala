@@ -6,7 +6,7 @@ import sbt.Keys.scalaVersion
 object Deps {
 
   object Versions {
-    def ammonite = "2.2.0-0-fe5ed67"
+    def ammonite = "2.2.0-4-4bd225e"
     def caseApp = "2.0.3"
     def jsoniterScala = "2.6.0"
   }
