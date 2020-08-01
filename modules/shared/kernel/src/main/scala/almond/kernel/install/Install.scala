@@ -108,7 +108,8 @@ object Install {
               throw new Exception(s"Launcher $launcher0 in kernel spec command not found")
             if (!Files.isRegularFile(source))
               throw new Exception(s"Launcher $launcher0 in kernel spec command is not a regular file")
-            Files.copy(Paths.get(launcher0), dest)
+            val launcherContent = Files.readAllBytes(Paths.get(launcher0))
+            Files.write(dest, launcherContent)
             spec.copy(
               argv = spec.argv.updated(pos, dest.toString)
             )
