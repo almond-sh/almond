@@ -211,7 +211,7 @@ final class Execute(
       for {
         (code, stmts) <- fastparse.parse(code, Parsers.Splitter(_)) match {
           case Parsed.Success(value, _) =>
-            Res.Success((code, value))
+            Res.Success((code, value.map(_._2)))
           case f: Parsed.Failure => Res.Failure(
             Preprocessor.formatFastparseError("(console)", code, f)
           )
