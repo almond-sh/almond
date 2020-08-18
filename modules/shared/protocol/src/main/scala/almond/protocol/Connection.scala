@@ -91,7 +91,7 @@ object Connection {
 
 
     val underlying: JsonValueCodec[RawConnection] =
-      JsonCodecMaker.make[RawConnection]
+      JsonCodecMaker.make
 
     new JsonValueCodec[Connection] {
       def decodeValue(in: JsonReader, default: Connection): Connection =

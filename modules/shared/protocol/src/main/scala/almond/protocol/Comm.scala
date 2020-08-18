@@ -34,10 +34,10 @@ object Comm {
   def closeType = MessageType[Close]("comm_close")
 
   implicit val openCodec: JsonValueCodec[Open] =
-    JsonCodecMaker.make[Open]
+    JsonCodecMaker.make
   implicit val messageCodec: JsonValueCodec[Message] =
-    JsonCodecMaker.make[Message]
+    JsonCodecMaker.make
   implicit val closeCodec: JsonValueCodec[Close] =
-    JsonCodecMaker.make[Close]
+    JsonCodecMaker.make
 
 }

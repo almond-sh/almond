@@ -7,8 +7,9 @@ import almond.channels._
 import almond.logger.LoggerContext
 import cats.effect.IO
 import cats.syntax.apply._
-import org.zeromq.{SocketType, ZMQ}
+import org.zeromq.{SocketType, ZMQ, ZMQException}
 import org.zeromq.ZMQ.{PollItem, Poller}
+import zmq.ZError
 
 import scala.concurrent.duration.Duration
 
@@ -97,6 +98,12 @@ final class ZeromqConnection(
           setDaemon(true)
           override def run(): Unit = {
 
+            val ignoreExceptions: PartialFunction[Throwable, Unit] = {
+              case ex: ZMQException if ex.getErrorCode == 4 =>
+              case ex: ZError.IOException if ex.getCause.isInstanceOf[ClosedByInterruptException] =>
+              case _: ClosedByInterruptException =>
+            }
+
             val heartbeat = threads.context.socket(repReq)
 
             heartbeat.setLinger(1000)
@@ -107,16 +114,11 @@ final class ZeromqConnection(
                 val msg = heartbeat.recv()
                 heartbeat.send(msg) // FIXME Ignoring return value, that indicates success or not
               }
-            } catch {
-              case _: ClosedByInterruptException =>
-                // ignore
             }
+            catch ignoreExceptions
             finally {
               try heartbeat.close()
-              catch {
-                case _: ClosedByInterruptException =>
-                  // ignore
-              }
+              catch ignoreExceptions
             }
           }
         }

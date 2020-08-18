@@ -22,8 +22,8 @@ object CommInfo {
   def replyType = MessageType[Reply]("comm_info_reply")
 
   implicit val requestCodec: JsonValueCodec[Request] =
-    JsonCodecMaker.make[Request]
+    JsonCodecMaker.make
   implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make[Reply]
+    JsonCodecMaker.make
 
 }

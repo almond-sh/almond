@@ -16,5 +16,5 @@ final case class KernelSpec(
 
 object KernelSpec {
   implicit val codec: JsonValueCodec[KernelSpec] =
-    JsonCodecMaker.make[KernelSpec]
+    JsonCodecMaker.make
 }

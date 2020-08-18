@@ -21,6 +21,6 @@ object Connect {
   implicit val requestCodec: JsonValueCodec[Request.type] =
     JsonCodecMaker.make[Request.type]
   implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make[Reply]
+    JsonCodecMaker.make
 
 }
