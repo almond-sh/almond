@@ -282,6 +282,7 @@ lazy val almond = project
   )
 
 lazy val jupyterStart = taskKey[Unit]("")
+lazy val writeDebugKernelJson = taskKey[Unit]("")
 lazy val jupyterStop = taskKey[Unit]("")
 lazy val jupyterDir = taskKey[File]("")
 
@@ -291,7 +292,7 @@ jupyterDir := {
 
 lazy val jupyterCommand = Seq("jupyter", "lab")
 
-jupyterStart := {
+writeDebugKernelJson := {
   val pack0 = (pack.in(`scala-kernel`).value / "bin" / "scala-kernel").getAbsolutePath
   val jupyterDir0 = jupyterDir.value
   val dir = jupyterDir0 / "kernels" / "scala"
@@ -306,6 +307,12 @@ jupyterStart := {
     ]
   }"""
   java.nio.file.Files.write((dir / "kernel.json").toPath, kernelJson.getBytes("UTF-8"))
+  streams.value.log.info(s"JUPYTER_PATH=$jupyterDir0")
+}
+
+jupyterStart := {
+  writeDebugKernelJson.value
+  val jupyterDir0 = jupyterDir.value
 
   val b = new ProcessBuilder(jupyterCommand: _*).inheritIO()
   val env = b.environment()
