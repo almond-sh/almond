@@ -17,6 +17,6 @@ object Status {
   def messageType = MessageType[Status]("status")
 
   implicit val codec: JsonValueCodec[Status] =
-    JsonCodecMaker.make[Status]
+    JsonCodecMaker.make
 
 }

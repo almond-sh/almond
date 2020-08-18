@@ -149,14 +149,14 @@ object Execute {
   def updateDisplayDataType = MessageType[DisplayData]("update_display_data")
 
   implicit val requestCodec: JsonValueCodec[Request] =
-    JsonCodecMaker.make[Request]
+    JsonCodecMaker.make
 
   implicit val replyCodec: JsonValueCodec[Reply] = {
 
     final case class Probe(status: String)
 
     implicit val probeCodec: JsonValueCodec[Probe] =
-      JsonCodecMaker.make[Probe]
+      JsonCodecMaker.make
 
     implicit val successCodec: JsonValueCodec[Reply.Success] =
       JsonCodecMaker.make[Reply.Success]
@@ -193,19 +193,19 @@ object Execute {
   }
 
   implicit val inputCodec: JsonValueCodec[Input] =
-    JsonCodecMaker.make[Input]
+    JsonCodecMaker.make
 
   implicit val resultCodec: JsonValueCodec[Result] =
     JsonCodecMaker.makeWithRequiredCollectionFields[Result]
 
   implicit val streamCodec: JsonValueCodec[Stream] =
-    JsonCodecMaker.make[Stream]
+    JsonCodecMaker.make
 
   implicit val displayDataCodec: JsonValueCodec[DisplayData] =
     JsonCodecMaker.makeWithRequiredCollectionFields[DisplayData]
 
   implicit val errorCodec: JsonValueCodec[Error] =
-    JsonCodecMaker.make[Error]
+    JsonCodecMaker.make
 
   implicit val askExitPayloadCodec: JsonValueCodec[Reply.Success.AskExitPayload] =
     JsonCodecMaker.make[Reply.Success.AskExitPayload]

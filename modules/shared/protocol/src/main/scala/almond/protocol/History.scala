@@ -59,7 +59,7 @@ object History {
   }
 
   implicit val requestCodec: JsonValueCodec[Request] =
-    JsonCodecMaker.make[Request]
+    JsonCodecMaker.make
 
   implicit val replyCodec: JsonValueCodec[Reply] = {
 

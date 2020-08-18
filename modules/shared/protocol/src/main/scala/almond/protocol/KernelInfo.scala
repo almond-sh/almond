@@ -66,8 +66,8 @@ object KernelInfo {
   def replyType = MessageType[KernelInfo]("kernel_info_reply")
 
   implicit val linkCodec: JsonValueCodec[Link] =
-    JsonCodecMaker.make[Link]
+    JsonCodecMaker.make
   implicit val codec: JsonValueCodec[KernelInfo] =
-    JsonCodecMaker.make[KernelInfo]
+    JsonCodecMaker.make
 
 }

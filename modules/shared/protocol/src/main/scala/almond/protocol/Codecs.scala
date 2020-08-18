@@ -18,6 +18,6 @@ object Codecs {
   }
 
   implicit val stringCodec: JsonValueCodec[String] =
-    JsonCodecMaker.make[String]
+    JsonCodecMaker.make
 
 }

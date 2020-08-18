@@ -28,6 +28,6 @@ object Header {
     )
 
   implicit val codec: JsonValueCodec[Header] =
-    JsonCodecMaker.make[Header]
+    JsonCodecMaker.make
 
 }

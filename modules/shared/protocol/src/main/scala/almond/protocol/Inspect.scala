@@ -34,8 +34,8 @@ object Inspect {
   def replyType = MessageType[Reply]("inspect_reply")
 
   implicit val requestCodec: JsonValueCodec[Request] =
-    JsonCodecMaker.make[Request]
+    JsonCodecMaker.make
   implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make[Reply]
+    JsonCodecMaker.make
 
 }

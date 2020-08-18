@@ -6,5 +6,5 @@ object CancelStageReq {
   import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
   import com.github.plokhotnyuk.jsoniter_scala.macros._
   implicit val codec: JsonValueCodec[CancelStageReq] =
-    JsonCodecMaker.make[CancelStageReq]
+    JsonCodecMaker.make
 }
