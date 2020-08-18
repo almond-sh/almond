@@ -295,7 +295,7 @@ lazy val jupyterCommand = Seq("jupyter", "lab")
 writeDebugKernelJson := {
   val pack0 = (pack.in(`scala-kernel`).value / "bin" / "scala-kernel").getAbsolutePath
   val jupyterDir0 = jupyterDir.value
-  val dir = jupyterDir0 / "kernels" / "scala"
+  val dir = jupyterDir0 / "kernels" / "scala-debug"
   dir.mkdirs()
   val kernelJson = s"""{
     "language": "scala",
