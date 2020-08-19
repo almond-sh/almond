@@ -106,7 +106,7 @@ object AmmInterpreter {
           printer = execute0.printer,
           storage = storage,
           wd = ammonite.ops.pwd,
-          colors = Ref(Colors.Default),
+          colors = replApi.colors,
           verboseOutput = true, // ???
           getFrame = () => frames0().head,
           createFrame = () => {
