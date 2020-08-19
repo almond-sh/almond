@@ -11,10 +11,11 @@ object UpdatableFuture {
     replApi: ReplAPI,
     jupyterApi: JupyterApi,
     ec: ExecutionContext
-  ): Unit =
-    replApi.pprinter() = {
-      import jupyterApi.updatableResults._
-      val p = replApi.pprinter()
+  ): Unit = {
+    import jupyterApi.updatableResults._
+    val previous = replApi.pprinter.live()
+    replApi.pprinter.bind {
+      val p = previous()
       p.copy(
         additionalHandlers = p.additionalHandlers.orElse {
           case f: Future[_] =>
@@ -36,5 +37,6 @@ object UpdatableFuture {
         }
       )
     }
+  }
 
 }
