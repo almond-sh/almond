@@ -6,13 +6,13 @@
   <title>Almond Jupyter API · almond</title>
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
-  <meta name="description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterAPI`](#jupyterapi). Such an">
-  <meta name="docsearch:version" content="0.10.3">
+  <meta name="description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterApi`](#jupyterapi). Such an">
+  <meta name="docsearch:version" content="0.10.6">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Almond Jupyter API · almond">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
-  <meta property="og:description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterAPI`](#jupyterapi). Such an">
+  <meta property="og:description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterApi`](#jupyterapi). Such an">
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="../undefined">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.css">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.10.3</h3></a>
+     <a href="../versions"><h3>0.10.6</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -147,7 +147,7 @@
        </header>
        <article>
         <div>
-         <span><p>The Almond Jupyter API can be accessed via an instance of <a href="api-jupyter.html#jupyterapi"><code>almond.api.JupyterAPI</code></a>. Such an instance is created by almond upon start-up. This instance accessible via the <code>kernel</code> variable and in the implicit scope via e.g. <code>implicitly[almond.api.JupyterAPI]</code>.</p> <p>A number of higher level helpers rely on it, and provide <a href="api-jupyter.html#display">a more convenient API to display objects</a>.</p> <h2><a class="anchor" aria-hidden="true" id="high-level-api"></a><a href="api-jupyter.html#high-level-api" aria-hidden="true" class="hash-link">
+         <span><p>The Almond Jupyter API can be accessed via an instance of <a href="api-jupyter.html#jupyterapi"><code>almond.api.JupyterApi</code></a>. Such an instance is created by almond upon start-up. This instance accessible via the <code>kernel</code> variable and in the implicit scope via e.g. <code>implicitly[almond.api.JupyterApi]</code>.</p> <p>A number of higher level helpers rely on it, and provide <a href="api-jupyter.html#display">a more convenient API to display objects</a>.</p> <h2><a class="anchor" aria-hidden="true" id="high-level-api"></a><a href="api-jupyter.html#high-level-api" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a>High level API</h2> <h3><a class="anchor" aria-hidden="true" id="display"></a><a href="api-jupyter.html#display" aria-hidden="true" class="hash-link">
@@ -183,7 +183,7 @@ handle.clear()
 </code></pre> <h2><a class="anchor" aria-hidden="true" id="jupyterapi"></a><a href="api-jupyter.html#jupyterapi" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a><code>JupyterAPI</code></h2> <p><code>almond.api.JupyterAPI</code> allows to</p> 
+            </svg></a><code>JupyterAPI</code></h2> <p><code>almond.api.JupyterApi</code> allows to</p> 
           <ul> 
            <li><a href="api-jupyter.html#request-input">request input</a> (password input in particular),</li> 
            <li><a href="api-jupyter.html#comm-messages">exchange comm messages</a> with the front-end.</li> 
