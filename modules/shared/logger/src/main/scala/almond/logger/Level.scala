@@ -2,7 +2,15 @@ package almond.logger
 
 import java.util.Locale
 
-sealed abstract class Level(val index: Int, val name: String) extends Product with Serializable with Ordered[Level] {
+sealed abstract class Level(
+  val index: Int,
+  val name: String,
+  val coloredName: String
+) extends Product with Serializable with Ordered[Level] {
+
+  def this(index: Int, name: String) =
+    this(index, name, name)
+
   def compare(that: Level): Int =
     index.compare(that.index)
 
@@ -20,10 +28,10 @@ sealed abstract class Level(val index: Int, val name: String) extends Product wi
 object Level {
 
   case object None extends Level(0, "NONE")
-  case object Error extends Level(1, "ERROR")
-  case object Warning extends Level(2, "WARN")
-  case object Info extends Level(3, "INFO")
-  case object Debug extends Level(4, "DEBUG")
+  case object Error extends Level(1, "ERROR", Console.RED + "ERROR" + Console.RESET)
+  case object Warning extends Level(2, "WARN", Console.YELLOW + "WARN" + Console.RESET)
+  case object Info extends Level(3, "INFO", Console.BLUE + "INFO" + Console.RESET)
+  case object Debug extends Level(4, "DEBUG", Console.MAGENTA + "DEBUG" + Console.RESET)
 
   def fromString(s: String): Either[String, Level] =
     s.toLowerCase(Locale.ROOT) match {
