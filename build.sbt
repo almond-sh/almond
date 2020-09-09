@@ -281,7 +281,7 @@ lazy val almond = project
     dontPublish
   )
 
-lazy val jupyterStart = taskKey[Unit]("")
+lazy val jupyterStart = inputKey[Unit]("")
 lazy val writeDebugKernelJson = taskKey[Unit]("")
 lazy val jupyterStop = taskKey[Unit]("")
 lazy val jupyterDir = taskKey[File]("")
@@ -310,31 +310,39 @@ writeDebugKernelJson := {
   streams.value.log.info(s"JUPYTER_PATH=$jupyterDir0")
 }
 
-jupyterStart := {
-  writeDebugKernelJson.value
-  val jupyterDir0 = jupyterDir.value
 
-  val b = new ProcessBuilder(jupyterCommand: _*).inheritIO()
-  val env = b.environment()
-  env.put("JUPYTER_PATH", jupyterDir0.getAbsolutePath)
-  val p = b.start()
-  val pidOpt = try {
-    val fld = p.getClass.getDeclaredField("pid")
-    fld.setAccessible(true)
-    Some(fld.getInt(p))
-  } catch {
-    case _: Throwable => None
+lazy val jupyterStartImpl: Def.Initialize[sbt.InputTask[Unit]] =
+  Def.inputTask {
+    import sbt.complete.DefaultParsers._
+
+    val args = (OptSpace ~> StringBasic).*.parsed
+
+    writeDebugKernelJson.value
+    val jupyterDir0 = jupyterDir.value
+
+    val b = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
+    val env = b.environment()
+    env.put("JUPYTER_PATH", jupyterDir0.getAbsolutePath)
+    val p = b.start()
+    val pidOpt = try {
+      val fld = p.getClass.getDeclaredField("pid")
+      fld.setAccessible(true)
+      Some(fld.getInt(p))
+    } catch {
+      case _: Throwable => None
+    }
+    for (pid <- pidOpt) {
+      java.nio.file.Files.write((jupyterDir0 / "pid").toPath, pid.toString.getBytes("UTF-8"))
+      java.lang.Runtime.getRuntime.addShutdownHook(
+        new Thread("jupyter-stop") {
+          override def run() =
+            Helper.jupyterStop(jupyterDir0)
+        }
+      )
+    }
   }
-  for (pid <- pidOpt) {
-    java.nio.file.Files.write((jupyterDir0 / "pid").toPath, pid.toString.getBytes("UTF-8"))
-    java.lang.Runtime.getRuntime.addShutdownHook(
-      new Thread("jupyter-stop") {
-        override def run() =
-          Helper.jupyterStop(jupyterDir0)
-      }
-    )
-  }
-}
+
+jupyterStart := jupyterStartImpl.evaluated
 
 lazy val Helper = new {
   def jupyterStop(jupyterDir: File): Unit = {
