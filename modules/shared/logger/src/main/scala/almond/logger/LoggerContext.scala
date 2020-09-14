@@ -8,7 +8,7 @@ trait LoggerContext {
   def apply(prefix: String): Logger
 
   final def apply(clazz: Class[_]): Logger =
-    apply(clazz.getSimpleName + " ")
+    apply(Console.BOLD + clazz.getSimpleName.stripSuffix("$") + Console.RESET + " ")
 }
 
 object LoggerContext {
