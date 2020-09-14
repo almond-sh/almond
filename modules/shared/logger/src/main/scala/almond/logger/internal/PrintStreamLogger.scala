@@ -6,12 +6,19 @@ import almond.logger.Level
 
 import scala.annotation.tailrec
 
-final class PrintStreamLogger(val level: Level, out: PrintStream) extends ActualLogger {
+final class PrintStreamLogger(
+  val level: Level,
+  out: PrintStream,
+  colored: Boolean
+) extends ActualLogger {
+
+  def this(level: Level, out: PrintStream) =
+    this(level, out, colored = true)
 
   def log(level: Level, message: String, exception: Throwable = null): Unit = {
     val b = new StringBuilder
 
-    b ++= level.name
+    b ++= (if (colored) level.coloredName else level.name)
     b += ' '
     b ++= message
 

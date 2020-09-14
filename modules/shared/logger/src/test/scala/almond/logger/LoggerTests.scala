@@ -24,7 +24,7 @@ object LoggerTests extends TestSuite {
       "nop" - {
         val b = new ByteArrayOutputStream
         val ps = new PrintStream(b)
-        val log = Logger.printStream(Level.None, ps)
+        val log = Logger.printStream(Level.None, ps, colored = false)
 
         log.debug(sys.error("not called"))
         log.info(sys.error("not called"))
@@ -40,7 +40,7 @@ object LoggerTests extends TestSuite {
       "warn" - {
         val b = new ByteArrayOutputStream
         val ps = new PrintStream(b)
-        val log = Logger.printStream(Level.Warning, ps)
+        val log = Logger.printStream(Level.Warning, ps, colored = false)
 
         log.debug(sys.error("not called"))
         log.info(sys.error("not called"))
@@ -61,7 +61,7 @@ object LoggerTests extends TestSuite {
       "debug" - {
         val b = new ByteArrayOutputStream
         val ps = new PrintStream(b)
-        val log = Logger.printStream(Level.Debug, ps)
+        val log = Logger.printStream(Level.Debug, ps, colored = false)
 
         val n = 2
 
@@ -86,7 +86,7 @@ object LoggerTests extends TestSuite {
       "with exceptions" - {
         val b = new ByteArrayOutputStream
         val ps = new PrintStream(b)
-        val log = Logger.printStream(Level.Error, ps)
+        val log = Logger.printStream(Level.Error, ps, colored = false)
 
         val n = 2
 

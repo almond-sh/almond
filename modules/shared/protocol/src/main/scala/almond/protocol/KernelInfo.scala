@@ -24,12 +24,12 @@ object KernelInfo {
   ): KernelInfo =
     KernelInfo(
       status = "ok",
-      Protocol.versionStr,
-      implementation,
-      implementation_version,
-      language_info,
-      banner,
-      help_links
+      protocol_version = Protocol.versionStr,
+      implementation = implementation,
+      implementation_version = implementation_version,
+      language_info = language_info,
+      banner = banner,
+      help_links = help_links
     )
 
   def apply(
@@ -40,12 +40,12 @@ object KernelInfo {
   ): KernelInfo =
     KernelInfo(
       status = "ok",
-      Protocol.versionStr,
-      implementation,
-      implementation_version,
-      language_info,
-      banner,
-      None
+      protocol_version = Protocol.versionStr,
+      implementation = implementation,
+      implementation_version = implementation_version,
+      language_info = language_info,
+      banner = banner,
+      help_links = None
     )
 
 

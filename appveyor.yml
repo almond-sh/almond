@@ -12,7 +12,7 @@ install:
   - cmd: SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
   - "python --version"
   - "python -m pip install --upgrade pip"
-  - "python -m pip install jupyter" # TODO freeze that for better reproducibility?
+  - "python -m pip install -r project/appveyor-requirements.txt"
 environment:
   PYTHON: C:\Miniconda37-x64
   TEST_SCALA_VERSION: 2.12.12
