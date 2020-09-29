@@ -25,7 +25,8 @@ final case class Kernel(
   backgroundCommHandlerOpt: Option[DefaultCommHandler],
   inputHandler: InputHandler,
   kernelThreads: KernelThreads,
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  extraHandler: MessageHandler
 ) {
 
   private lazy val log = logCtx(getClass)
@@ -63,6 +64,7 @@ final case class Kernel(
         .orElse(commMessageHandler)
         .orElse(interpreterMessageHandler.interruptHandler)
         .orElse(interpreterMessageHandler.shutdownHandler)
+        .orElse(extraHandler)
 
       // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
       // (don't know about lab, nteract seems fine, unless it just marks kernels as starting by itself)
@@ -238,18 +240,35 @@ object Kernel {
     interpreter: Interpreter,
     interpreterEc: ExecutionContext,
     kernelThreads: KernelThreads,
-    logCtx: LoggerContext = LoggerContext.nop
+    logCtx: LoggerContext,
+    extraHandler: MessageHandler
   ): IO[Kernel] =
     create(
       new InterpreterToIOInterpreter(interpreter, interpreterEc, logCtx),
       kernelThreads,
-      logCtx
+      logCtx,
+      extraHandler
+    )
+
+  def create(
+    interpreter: Interpreter,
+    interpreterEc: ExecutionContext,
+    kernelThreads: KernelThreads,
+    logCtx: LoggerContext = LoggerContext.nop
+  ): IO[Kernel] =
+    create(
+      interpreter,
+      interpreterEc,
+      kernelThreads,
+      logCtx,
+      MessageHandler.empty
     )
 
   def create(
     interpreter: IOInterpreter,
     kernelThreads: KernelThreads,
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    extraHandler: MessageHandler
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- {
@@ -281,7 +300,8 @@ object Kernel {
         backgroundCommHandlerOpt,
         inputHandler,
         kernelThreads,
-        logCtx
+        logCtx,
+        extraHandler
       )
     }
 
