@@ -9,6 +9,7 @@ object Deps {
     def ammonite = "2.2.0-4-4bd225e"
     def caseApp = "2.0.4"
     def jsoniterScala = "2.6.0"
+    def scalafmt = "2.6.4"
   }
 
   def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
@@ -26,6 +27,7 @@ object Deps {
   def jsoniterScalaMacros = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % Versions.jsoniterScala
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
   def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.3"
+  def scalafmtDynamic = "org.scalameta" %% "scalafmt-dynamic" % Versions.scalafmt
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.3"
   def scalatags = "com.lihaoyi" %% "scalatags" % "0.9.1"

@@ -108,7 +108,10 @@ object Settings {
     publishArtifact := false
   )
 
-  def generatePropertyFile(path: String) =
+  def generatePropertyFile(
+    path: String,
+    extraProperties: Seq[(String, String)] = Nil
+  ): Seq[Def.Setting[_]] = Def.settings(
     resourceGenerators.in(Compile) += Def.task {
       import sys.process._
 
@@ -126,6 +129,9 @@ object Settings {
       // FIXME Only set if ammonite-spark is available for the current scala version?
       p.setProperty("ammonite-spark-version", ammSparkVer)
 
+      for ((k, v) <- extraProperties)
+        p.setProperty(k, v)
+
       val w = new java.io.FileOutputStream(f)
       p.store(w, "Almond properties")
       w.close()
@@ -134,6 +140,7 @@ object Settings {
 
       Seq(f)
     }
+  )
 
   lazy val generateDependenciesFile =
     resourceGenerators.in(Compile) += Def.task {
@@ -176,10 +183,14 @@ object Settings {
       Seq(f)
     }
 
-  lazy val testSettings = Seq(
+  lazy val testSettings = Def.settings(
     fork.in(Test) := true, // Java serialization goes awry without that
-    testFrameworks += new TestFramework("utest.runner.Framework"),
     javaOptions.in(Test) ++= Seq("-Xmx3g", "-Dfoo=bzz"),
+    utest
+  )
+
+  lazy val utest = Def.settings(
+    testFrameworks += new TestFramework("utest.runner.Framework"),
     libraryDependencies += Deps.utest % "test"
   )
 

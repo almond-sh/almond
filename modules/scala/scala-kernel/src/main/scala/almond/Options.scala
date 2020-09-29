@@ -51,7 +51,9 @@ final case class Options(
   @HelpMessage("Whether to automatically update lazy val-s upon computation")
     autoUpdateLazyVals: Boolean = true,
   @HelpMessage("Whether to automatically update var-s upon change")
-    autoUpdateVars: Boolean = true
+    autoUpdateVars: Boolean = true,
+  @HelpMessage("Whether to process format requests with scalafmt")
+    scalafmt: Boolean = true
 ) {
 
   private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
