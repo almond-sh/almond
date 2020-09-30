@@ -197,6 +197,8 @@ object Install {
         None
     }
 
+  def defaultConnectionFileArgs: Seq[String] =
+    Seq("--connection-file", "{connection_file}")
 
   def install(
     defaultId: String,
@@ -204,8 +206,29 @@ object Install {
     language: String,
     options: Options,
     defaultLogoOpt: Option[URL] = None,
-    connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
+    connectionFileArgs: Seq[String] = defaultConnectionFileArgs,
     interruptMode: Option[String] = None
+  ): Path =
+    install(
+      defaultId,
+      defaultDisplayName,
+      language,
+      options,
+      defaultLogoOpt,
+      connectionFileArgs,
+      interruptMode,
+      Map.empty
+    )
+
+  def install(
+    defaultId: String,
+    defaultDisplayName: String,
+    language: String,
+    options: Options,
+    defaultLogoOpt: Option[URL],
+    connectionFileArgs: Seq[String],
+    interruptMode: Option[String],
+    env: Map[String, String]
   ): Path = {
 
     val path =
@@ -248,10 +271,11 @@ object Install {
     Install.installIn(
       options.id.getOrElse(defaultId),
       KernelSpec(
-        (cmd ++ connectionFileArgs).toList,
-        options.displayName.getOrElse(defaultDisplayName),
-        language,
-        interrupt_mode = interruptMode
+        argv = (cmd ++ connectionFileArgs).toList,
+        display_name = options.displayName.getOrElse(defaultDisplayName),
+        language = language,
+        interrupt_mode = interruptMode,
+        env = env
       ),
       path,
       logo64PngOpt = logoOpt,
@@ -266,8 +290,29 @@ object Install {
     language: String,
     options: Options,
     defaultLogoOpt: Option[URL] = None,
-    connectionFileArgs: Seq[String] = Seq("--connection-file", "{connection_file}"),
+    connectionFileArgs: Seq[String] = defaultConnectionFileArgs,
     interruptMode: Option[String] = None
+  ): Either[InstallException, Path] =
+    installOrError(
+      defaultId,
+      defaultDisplayName,
+      language,
+      options,
+      defaultLogoOpt,
+      connectionFileArgs,
+      interruptMode,
+      Map.empty
+    )
+
+  def installOrError(
+    defaultId: String,
+    defaultDisplayName: String,
+    language: String,
+    options: Options,
+    defaultLogoOpt: Option[URL],
+    connectionFileArgs: Seq[String],
+    interruptMode: Option[String],
+    env: Map[String, String]
   ): Either[InstallException, Path] =
     try {
       val dir = install(
@@ -277,7 +322,8 @@ object Install {
         options,
         defaultLogoOpt,
         connectionFileArgs,
-        interruptMode
+        interruptMode,
+        env
       )
       Right(dir)
     } catch {
