@@ -1,6 +1,6 @@
 package almond.kernel.install
 
-import caseapp.{HelpMessage, Name}
+import caseapp.{HelpMessage, Name, ValueDescription}
 
 final case class Options(
   @HelpMessage("erase any previously existing kernel with the same id")
@@ -25,10 +25,22 @@ final case class Options(
   @HelpMessage("whether to request frontends to interrupt this kernel via a message")
     interruptViaMessage: Boolean = false,
   @HelpMessage("Whether to copy the kernel launcher in the kernelspec directory (default: false if --arg or --command specified, true else)")
-    copyLauncher: Option[Boolean] = None
+    copyLauncher: Option[Boolean] = None,
+  @HelpMessage("Environment variables to pass to the kernel via its connection file")
+  @ValueDescription("name=value")
+    env: List[String] = Nil
 ) {
   def copyLauncher0: Boolean =
     copyLauncher.getOrElse {
       arg.isEmpty && command.isEmpty
     }
+  def envMap(): Map[String, String] =
+    env
+      .map { input =>
+        input.split("=", 2) match {
+          case Array(k, v) => (k, v)
+          case _ => sys.error(s"Malformed --env value '$input' (expected 'name=value')")
+        }
+      }
+      .toMap
 }

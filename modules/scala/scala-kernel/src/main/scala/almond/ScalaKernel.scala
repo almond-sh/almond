@@ -44,12 +44,14 @@ object ScalaKernel extends CaseApp[Options] {
             .getContextClassLoader
             .getResource("almond/scala-logo-64x64.png")
         ),
+        connectionFileArgs = Install.defaultConnectionFileArgs,
         interruptMode = {
           if (options.installOptions.interruptViaMessage)
             Some("message")
           else
             None
-        }
+        },
+        env = options.installOptions.envMap()
       ) match {
         case Left(e) =>
           log.debug("Cannot install kernel", e)
