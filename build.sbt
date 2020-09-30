@@ -143,7 +143,12 @@ lazy val `scala-kernel-api` = project
         previous
     },
     crossVersion := CrossVersion.full,
-    generatePropertyFile("almond/almond.properties"),
+    generatePropertyFile(
+      "almond/almond.properties",
+      extraProperties = Seq(
+        "default-scalafmt-version" -> Deps.Versions.scalafmt
+      )
+    ),
     generateDependenciesFile,
     libraryDependencies ++= Seq(
       Deps.ammoniteReplApi.value,
@@ -195,11 +200,15 @@ lazy val `scala-kernel` = project
   .underScala
   .enablePlugins(PackPlugin)
   .disablePlugins(MimaPlugin)
-  .dependsOn(kernel, `scala-interpreter`)
+  .dependsOn(kernel, `scala-interpreter`, `scala-interpreter` % "test->test")
   .settings(
     shared,
     crossVersion := CrossVersion.full,
-    libraryDependencies += Deps.caseApp,
+    libraryDependencies ++= Seq(
+      Deps.caseApp,
+      Deps.scalafmtDynamic
+    ),
+    utest,
     packExcludeArtifactTypes -= "source",
     packModuleEntries ++= {
       val report = updateClassifiers.value

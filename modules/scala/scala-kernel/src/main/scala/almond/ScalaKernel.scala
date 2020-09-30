@@ -4,6 +4,7 @@ import java.io.{File, FileOutputStream, PrintStream}
 
 import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
+import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
 import almond.logger.{Level, LoggerContext}
@@ -11,6 +12,7 @@ import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
 
 import scala.language.reflectiveCalls
+import scala.concurrent.ExecutionContext
 
 object ScalaKernel extends CaseApp[Options] {
 
@@ -144,10 +146,18 @@ object ScalaKernel extends CaseApp[Options] {
 
     initThread.start()
 
+    val fmtMessageHandler =
+      if (options.scalafmt) {
+        // thread shuts down after 1 minute of inactivity, automatically re-spawned
+        val fmtPool = ExecutionContext.fromExecutorService(coursier.cache.internal.ThreadUtil.fixedThreadPool(1))
+        val scalafmt = new Scalafmt(fmtPool, kernelThreads.queueEc, logCtx)
+        scalafmt.messageHandler
+      } else
+        MessageHandler.empty
 
     log.debug("Running kernel")
     try {
-      Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
+      Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx, fmtMessageHandler)
         .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
         .unsafeRunSync()
     } finally {
