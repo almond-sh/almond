@@ -247,6 +247,7 @@ lazy val `almond-spark` = project
     mimaExceptIn("2.13"),
     libraryDependencies ++= Seq(
       Deps.ammoniteReplApi.value % "provided",
+      Deps.fs2,
       Deps.ammoniteSpark,
       Deps.jsoniterScalaCore,
       Deps.jsoniterScalaMacros % Provided,

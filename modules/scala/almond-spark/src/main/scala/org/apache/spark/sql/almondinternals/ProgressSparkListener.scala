@@ -7,6 +7,11 @@ import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
 import org.apache.spark.scheduler._
 import org.apache.spark.sql.SparkSession
 
+import cats.effect.{ContextShift, IO}
+import cats.implicits._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
 import scala.collection.JavaConverters._
 import scala.util.Try
 
@@ -55,6 +60,23 @@ final class ProgressSparkListener(
   def stageElem(stageId: Int): StageElem =
     elems.get(stageId)
 
+  private val ec = ExecutionContext.global
+  implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  implicit val timer = IO.timer(ec)
+
+  private def asyncPollUpdatesFor(elem: StageElem): Unit =
+    repeatUntil {
+      IO(elem.update())
+    }(() => elem.allDone0).unsafeRunAsyncAndForget()
+
+
+  private def repeatUntil(work: IO[Unit])(condition: () => Boolean): IO[Unit] = {
+    if (condition())
+      work >> IO.pure({})
+    else
+      work >> IO.sleep(1.seconds) >> repeatUntil(work)(condition)
+  }
+
   override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit =
     if (progress)
       Try {
@@ -66,6 +88,8 @@ final class ProgressSparkListener(
         )
         elem.init(commTargetName, !sentInitCode)
         sentInitCode = true
+
+        asyncPollUpdatesFor(elem)
       }
 
   override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit =
@@ -73,7 +97,6 @@ final class ProgressSparkListener(
       Try {
         val elem = stageElem(stageCompleted.stageInfo.stageId)
         elem.allDone()
-        elem.update()
       }
 
   override def onTaskStart(taskStart: SparkListenerTaskStart): Unit =
@@ -81,7 +104,6 @@ final class ProgressSparkListener(
       Try {
         val elem = stageElem(taskStart.stageId)
         elem.taskStart()
-        elem.update()
       }
 
   override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit =
@@ -89,7 +111,6 @@ final class ProgressSparkListener(
       Try {
         val elem = stageElem(taskEnd.stageId)
         elem.taskDone()
-        elem.update()
       }
 
 }
