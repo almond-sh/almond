@@ -1,16 +1,12 @@
 package org.apache.spark.sql.almondinternals
 
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, ScheduledFuture, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
 
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
 import org.apache.spark.scheduler._
 import org.apache.spark.sql.SparkSession
-
-import cats.effect.{ContextShift, IO}
-import cats.implicits._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -60,22 +56,7 @@ final class ProgressSparkListener(
   def stageElem(stageId: Int): StageElem =
     elems.get(stageId)
 
-  private val ec = ExecutionContext.global
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  implicit val timer = IO.timer(ec)
-
-  private def asyncPollUpdatesFor(elem: StageElem): Unit =
-    repeatUntil {
-      IO(elem.update())
-    }(() => elem.allDone0).unsafeRunAsyncAndForget()
-
-
-  private def repeatUntil(work: IO[Unit])(condition: () => Boolean): IO[Unit] = {
-    if (condition())
-      work >> IO.pure({})
-    else
-      work >> IO.sleep(1.seconds) >> repeatUntil(work)(condition)
-  }
+  private val updater = new ProgressBarUpdater()
 
   override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit =
     if (progress)
@@ -89,7 +70,7 @@ final class ProgressSparkListener(
         elem.init(commTargetName, !sentInitCode)
         sentInitCode = true
 
-        asyncPollUpdatesFor(elem)
+        updater.asyncPollUpdatesFor(elem)
       }
 
   override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit =
@@ -113,4 +94,52 @@ final class ProgressSparkListener(
         elem.taskDone()
       }
 
+}
+
+private[almondinternals] class ProgressBarUpdater(
+  implicit publish: OutputHandler
+) {
+  private val threadFactory: ThreadFactory = {
+    val threadNumber = new AtomicInteger(1)
+    (r: Runnable) => {
+      val threadNumber0 = threadNumber.getAndIncrement()
+      val t = new Thread(r, s"almond-spark-listener-update-$threadNumber0")
+      t.setDaemon(true)
+      t.setPriority(Thread.NORM_PRIORITY)
+      t
+    }
+  }
+
+  private val pool = {
+    val executor = new ScheduledThreadPoolExecutor(1, threadFactory)
+    executor.setKeepAliveTime(1L, TimeUnit.MINUTES)
+    executor.allowCoreThreadTimeOut(true)
+    executor
+  }
+
+  private val pollings = new ConcurrentHashMap[StageElem, ScheduledFuture[_]]()
+
+  def asyncPollUpdatesFor(elem: StageElem): Unit = {
+    val polling = pool.scheduleAtFixedRate(
+      () => elem.update(),
+      0,
+      1,
+      TimeUnit.SECONDS
+    )
+    pollings.put(elem, polling)
+  }
+
+  pool.scheduleAtFixedRate(
+    () => {
+      val finished = pollings.asScala.filter(_._1.allDone0)
+      finished.foreach { case (elem, handle) =>
+        elem.update()
+        handle.cancel(true)
+        pollings.remove(elem)
+      }
+    },
+    0,
+    2,
+    TimeUnit.SECONDS
+  )
 }
