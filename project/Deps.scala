@@ -17,7 +17,7 @@ object Deps {
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.10.1"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
-  def coursier = "io.get-coursier" %% "coursier" % "2.0.0"
+  def coursier = "io.get-coursier" %% "coursier" % "2.0.2"
   def coursierApi = "io.get-coursier" % "interface" % "0.0.25"
   def directories = "io.github.soc" % "directories" % "12"
   def fs2 = "co.fs2" %% "fs2-core" % "2.4.4"
