@@ -8,7 +8,7 @@ object Deps {
   object Versions {
     def ammonite = "2.2.0-4-4bd225e"
     def caseApp = "2.0.4"
-    def jsoniterScala = "2.6.1"
+    def jsoniterScala = "2.6.2"
     def scalafmt = "2.7.4"
   }
 
