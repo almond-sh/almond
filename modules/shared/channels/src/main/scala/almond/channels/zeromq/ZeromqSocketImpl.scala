@@ -131,7 +131,7 @@ final class ZeromqSocketImpl(
     IO.shift(ec) *> IO {
 
       val idents =
-        Stream.continually(channel.recv())
+        Iterator.continually(channel.recv())
           .takeWhile(!_.sameElements(delimiterBytes))
           .toVector
           .map(_.toSeq)

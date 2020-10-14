@@ -10,7 +10,7 @@ import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object AmmInterpreter {
 

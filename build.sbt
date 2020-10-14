@@ -82,6 +82,7 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
+      Deps.collectionCompat,
       Deps.scalatags,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
@@ -98,6 +99,7 @@ lazy val kernel = project
     testSettings,
     libraryDependencies ++= Seq(
       Deps.caseAppAnnotations,
+      Deps.collectionCompat,
       Deps.fs2
     )
   )

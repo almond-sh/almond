@@ -9,7 +9,6 @@ import almond.protocol.{MessageType, RawJson, Status}
 import cats.effect.IO
 
 import scala.concurrent.ExecutionContext
-import scala.util.Either.RightProjection
 
 /**
   * Wraps a partial function, able to handle some [[Message]]s arriving via a given [[Channel]].
@@ -101,12 +100,11 @@ object MessageHandler {
         tryDecode(message)(codec).map(msg => handler(channel, msg))
     }
 
-  private def tryDecode[T: JsonValueCodec](message: Message[RawJson]): RightProjection[Exception, Message[T]] =
+  private def tryDecode[T: JsonValueCodec](message: Message[RawJson]): Either[Exception, Message[T]] =
     message
       .decodeAs[T]
       .left
       .map(e => new Exception(s"Error decoding message: $e"))
-      .right
 
   /**
     * Constructs a [[MessageHandler]], that reports the kernel as busy while a [[Message]] is being processed.

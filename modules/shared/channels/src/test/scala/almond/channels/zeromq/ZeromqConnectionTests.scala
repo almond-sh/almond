@@ -13,7 +13,7 @@ object ZeromqConnectionTests extends TestSuite {
 
   val tests = Tests {
 
-    'simple - {
+    test("simple") {
 
       val logCtx = LoggerContext.nop
       val params = ConnectionParameters.randomLocal()

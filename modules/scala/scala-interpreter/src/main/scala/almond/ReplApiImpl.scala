@@ -58,7 +58,7 @@ final class ReplApiImpl(
           d.display()(p)
           Some(Iterator())
         } else if (useJvmReprDisplay) {
-          import scala.collection.JavaConverters._
+          import scala.jdk.CollectionConverters._
           val m = jvmReprDisplayer
             .asInstanceOf[Displayer[T]]
             .display(value)

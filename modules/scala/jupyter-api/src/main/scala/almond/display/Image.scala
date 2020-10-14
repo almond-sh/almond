@@ -19,7 +19,7 @@ final class Image private (
 ) extends UpdatableDisplay {
 
   def byteArrayOpt: Option[Array[Byte]] =
-    byteArrayOrUrl.right.toOption
+    byteArrayOrUrl.toOption
   def urlOpt: Option[URL] =
     byteArrayOrUrl.left.toOption
 

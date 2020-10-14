@@ -11,8 +11,8 @@ import almond.protocol.Input
 import cats.effect.IO
 import fs2.Stream
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.jdk.CollectionConverters._
 import scala.util.Success
 
 final class InputHandler(

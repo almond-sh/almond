@@ -11,7 +11,8 @@ import caseapp.core.help.Help
 import coursierapi.{Dependency, Module}
 import coursier.parse.{DependencyParser, ModuleParser}
 
-import scala.collection.JavaConverters._
+import scala.collection.compat._
+import scala.jdk.CollectionConverters._
 
 @ProgName("almond")
 final case class Options(
@@ -97,8 +98,8 @@ final case class Options(
         }
       }
       .groupBy(_._1)
+      .view
       .mapValues(_.map(_._2))
-      .iterator
       .toMap
 
     default ++ fromArgs
