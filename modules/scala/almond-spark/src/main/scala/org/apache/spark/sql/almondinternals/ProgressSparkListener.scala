@@ -2,7 +2,7 @@ package org.apache.spark.sql.almondinternals
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, ScheduledFuture, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, ScheduledFuture, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
 
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
 import org.apache.spark.scheduler._
@@ -117,29 +117,17 @@ private[almondinternals] class ProgressBarUpdater(
     executor
   }
 
-  private val pollings = new ConcurrentHashMap[StageElem, ScheduledFuture[_]]()
-
   def asyncPollUpdatesFor(elem: StageElem): Unit = {
-    val polling = pool.scheduleAtFixedRate(
-      () => elem.update(),
+    lazy val polling: ScheduledFuture[_] = pool.scheduleAtFixedRate(
+      () => {
+        elem.update()
+        if (elem.allDone0)
+          polling.cancel(false)
+      },
       0,
       1,
       TimeUnit.SECONDS
     )
-    pollings.put(elem, polling)
+    polling
   }
-
-  pool.scheduleAtFixedRate(
-    () => {
-      val finished = pollings.asScala.filter(_._1.allDone0)
-      finished.foreach { case (elem, handle) =>
-        elem.update()
-        handle.cancel(true)
-        pollings.remove(elem)
-      }
-    },
-    0,
-    2,
-    TimeUnit.SECONDS
-  )
 }
