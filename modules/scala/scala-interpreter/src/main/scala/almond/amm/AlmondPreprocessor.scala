@@ -37,6 +37,43 @@ class AlmondPreprocessor(
   autoUpdateVars: Boolean
 ) extends DefaultPreprocessor(parse) {
 
+  // useful when debugging
+  // this prints the code after pre-processing, that is the code that is actually passed to scalac for compilation
+  // import ammonite.util.Util.CodeSource
+  // import ammonite.util.Imports
+  // import ammonite.interp.CodeWrapper
+  // override def transform(
+  //   stmts: Seq[String],
+  //   resultIndex: String,
+  //   leadingSpaces: String,
+  //   codeSource: CodeSource,
+  //   indexedWrapperName: Name,
+  //   imports: Imports,
+  //   printerTemplate: String => String,
+  //   extraCode: String,
+  //   skipEmpty: Boolean,
+  //   markScript: Boolean,
+  //   codeWrapper: CodeWrapper
+  // ) = {
+  //   val r = super.transform(
+  //     stmts,
+  //     resultIndex,
+  //     leadingSpaces,
+  //     codeSource,
+  //     indexedWrapperName,
+  //     imports,
+  //     printerTemplate,
+  //     extraCode,
+  //     skipEmpty,
+  //     markScript,
+  //     codeWrapper
+  //   )
+  //   r.map { o =>
+  //     log.info(s"Compiling '${o.code}'")
+  //   }
+  //   r
+  // }
+
   import AlmondPreprocessor._
 
   val CustomLazyDef = Processor {
