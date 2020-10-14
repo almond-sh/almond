@@ -162,6 +162,22 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res == expectedRes)
       }
 
+      test("respect store history") {
+        val interpreter = newInterpreter()
+        val noHistoryTextOpt = interpreter.execute("2", storeHistory = false)
+          .asSuccess
+          .flatMap(_.data.data.get("text/plain"))
+          .map(_.dropWhile(_ != ':'))
+        val expectedNoHistoryTextOpt = Option(": Int = 2")
+        assert(noHistoryTextOpt == expectedNoHistoryTextOpt)
+
+        val textOpt = interpreter.execute("3")
+          .asSuccess
+          .flatMap(_.data.data.get("text/plain"))
+        val expectedTextOpt = Option("res0: Int = 3")
+        assert(textOpt == expectedTextOpt)
+      }
+
       "exception" - {
         val code = """sys.error("foo")"""
         val res = interpreter.execute(code)

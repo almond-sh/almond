@@ -117,7 +117,7 @@ final class ScalaInterpreter(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult =
-    execute0(ammInterp, code, inputManager, outputHandler, colors0)
+    execute0(ammInterp, code, inputManager, outputHandler, colors0, storeHistory)
 
   def currentLine(): Int =
     execute0.currentLine
