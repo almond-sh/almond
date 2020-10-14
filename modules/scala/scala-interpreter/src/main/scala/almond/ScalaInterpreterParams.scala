@@ -30,5 +30,6 @@ final case class ScalaInterpreterParams(
   trapOutput: Boolean = false,
   disableCache: Boolean = false,
   autoUpdateLazyVals: Boolean = true,
-  autoUpdateVars: Boolean = true
+  autoUpdateVars: Boolean = true,
+  allowVariableInspector: Option[Boolean] = None
 )

@@ -34,7 +34,8 @@ object AlmondPreprocessor {
 class AlmondPreprocessor(
   parse: => String => Either[String, Seq[G#Tree]],
   autoUpdateLazyVals: Boolean,
-  autoUpdateVars: Boolean
+  autoUpdateVars: Boolean,
+  variableInspectorEnabled: () => Boolean
 ) extends DefaultPreprocessor(parse) {
 
   // useful when debugging
@@ -124,9 +125,72 @@ class AlmondPreprocessor(
       )
 
   }
-  override val decls = Seq[(String, String, G#Tree) => Option[DefaultPreprocessor.Expanded]](
+
+  val extraCode: (String, String, G#Tree) => Option[String] = {
+    case (_, code, t: G#ValDef) if !t.mods.hasFlag(Flags.LAZY) =>
+      val ident = Name.backtickWrap(t.name.decoded)
+      val extraCode0 =
+        s"""_root_.almond
+           |  .api
+           |  .JupyterAPIHolder
+           |  .value
+           |  .Internal
+           |  .declareVariable(${fastparse.internal.Util.literalize(ident)}, $ident)""".stripMargin
+      Some(extraCode0)
+    case (_, code, t: G#ValDef) if t.mods.hasFlag(Flags.LAZY) =>
+      val ident = Name.backtickWrap(t.name.decoded)
+      val extraCode0 =
+        s"""_root_.almond
+           |  .api
+           |  .JupyterAPIHolder
+           |  .value
+           |  .Internal
+           |  .declareVariable(${fastparse.internal.Util.literalize(ident)}, $ident, "[lazy]")""".stripMargin
+      Some(extraCode0)
+    case (_, code, t: G#DefDef) =>
+      if (t.tparams.isEmpty && t.vparamss.isEmpty) {
+        val ident = Name.backtickWrap(t.name.decoded)
+        val extraCode0 =
+          s"""_root_.almond
+             |  .api
+             |  .JupyterAPIHolder
+             |  .value
+             |  .Internal
+             |  .declareVariable(${fastparse.internal.Util.literalize(ident)}, $ident, "[def]")""".stripMargin
+        Some(extraCode0)
+      } else
+        None
+    case (_, code, t) =>
+      val ident = code
+      val extraCode0 =
+        s"""_root_.almond
+           |  .api
+           |  .JupyterAPIHolder
+           |  .value
+           |  .Internal
+           |  .declareVariable(${fastparse.internal.Util.literalize(code)}, $code)""".stripMargin
+      Some(extraCode0)
+  }
+
+  private val baseDecls = Seq[(String, String, G#Tree) => Option[DefaultPreprocessor.Expanded]](
     CustomLazyDef, CustomVarDef,
     // same as super.decls
     ObjectDef, ClassDef, TraitDef, DefDef, TypeDef, PatVarDef, Import, Expr
   )
+
+  override val decls = baseDecls.map { f =>
+    (a: String, code: String, t: G#Tree) =>
+      val resOpt = f(a, code, t)
+      def withExtra = {
+        val extraOpt = extraCode(a, code, t)
+        (resOpt, extraOpt) match {
+          case (None, _) => None
+          case (Some(res), None) => Some(res)
+          case (Some(res), Some(extra)) => Some(res)
+            Some(res.copy(printer = s"{ $extra; Iterator() }" +: res.printer))
+        }
+      }
+      if (variableInspectorEnabled()) withExtra
+      else resOpt
+  }
 }

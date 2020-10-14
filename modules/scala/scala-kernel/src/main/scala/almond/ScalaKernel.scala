@@ -123,7 +123,8 @@ object ScalaKernel extends CaseApp[Options] {
         trapOutput = options.trapOutput,
         disableCache = options.disableCache,
         autoUpdateLazyVals = options.autoUpdateLazyVals,
-        autoUpdateVars = options.autoUpdateVars
+        autoUpdateVars = options.autoUpdateVars,
+        allowVariableInspector = options.variableInspector
       ),
       logCtx = logCtx
     )

@@ -378,6 +378,58 @@ object ScalaInterpreterTests extends TestSuite {
       }
     }
 
+    test("variable inspector") {
+
+      implicit class ExecuteResultOps(private val res: ExecuteResult) {
+        def assertSuccess(): ExecuteResult = {
+          assert(res.success)
+          res
+        }
+      }
+
+      implicit class DisplayDataOps(private val data: DisplayData) {
+        def text: String =
+          data.data.getOrElse("text/plain", "")
+      }
+
+      def initCode = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
+      def dictListCode = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.dictList()"
+
+      val interpreter = newInterpreter()
+
+      // defined before the variable inspector is enabled -> no variable inspector code gen,
+      // so not in the variable listing
+      interpreter.execute("val p = 1")
+        .assertSuccess()
+
+      interpreter.execute(initCode)
+        .assertSuccess()
+
+      val outputHandler = new MockOutputHandler
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(before) = outputHandler.displayed()
+      assert(before.text == "[]")
+
+      interpreter.execute("val n = 2")
+        .assertSuccess()
+
+      // that inline JSON is kind of meh
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after) = outputHandler.displayed()
+      assert(after.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false}]""")
+
+      interpreter.execute("val m = true")
+        .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after1) = outputHandler.displayed()
+      assert(after1.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"true","varType":"Boolean","isMatrix":false}]""")
+    }
   }
 
 }

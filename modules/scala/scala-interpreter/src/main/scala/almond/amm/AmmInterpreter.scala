@@ -71,7 +71,8 @@ object AmmInterpreter {
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
     initialClassLoader: ClassLoader,
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    variableInspectorEnabled: () => Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -124,7 +125,8 @@ object AmmInterpreter {
                   new AlmondPreprocessor(
                     compiler.parse(fileName, _),
                     autoUpdateLazyVals,
-                    autoUpdateVars
+                    autoUpdateVars,
+                    variableInspectorEnabled
                   )
                 }
             }

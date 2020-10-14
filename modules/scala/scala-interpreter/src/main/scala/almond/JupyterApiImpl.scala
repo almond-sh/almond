@@ -18,8 +18,11 @@ final class JupyterApiImpl(
   execute: Execute,
   commHandlerOpt: => Option[CommHandler],
   replApi: ReplApiImpl,
-  silent0: Ref[Boolean]
-) extends FullJupyterApi {
+  silent0: Ref[Boolean],
+  protected val allowVariableInspector: Option[Boolean]
+) extends FullJupyterApi with VariableInspectorApiImpl {
+
+  protected def variableInspectorImplPPrinter() = replApi.pprinter()
 
   protected def printOnChange[T](
     value: => T,
@@ -59,4 +62,3 @@ final class JupyterApiImpl(
   protected def updatableResults0: JupyterApi.UpdatableResults =
     execute.updatableResults
 }
-

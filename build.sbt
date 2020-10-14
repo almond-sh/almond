@@ -127,6 +127,7 @@ lazy val `scala-kernel-api` = project
   .settings(
     shared,
     mima,
+    mimaBinaryIssueFilters ++= Mima.scalaKernelApiRules,
     mimaPreviousArtifacts := {
       val sv = scalaVersion.value
       val previous = mimaPreviousArtifacts.value
@@ -314,7 +315,8 @@ writeDebugKernelJson := {
     "argv": [
       "$pack0",
       "--log", "info",
-      "--connection-file", "{connection_file}"
+      "--connection-file", "{connection_file}",
+      "--variable-inspector"
     ]
   }"""
   java.nio.file.Files.write((dir / "kernel.json").toPath, kernelJson.getBytes("UTF-8"))
