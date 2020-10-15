@@ -15,7 +15,7 @@ object ScalaInterpreterTests extends TestSuite {
 
   private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
-  private def newInterpreter: Interpreter =
+  private def newInterpreter(): Interpreter =
     new ScalaInterpreter(
       params = ScalaInterpreterParams(
         initialColors = Colors.BlackWhite,
@@ -31,7 +31,7 @@ object ScalaInterpreterTests extends TestSuite {
       logCtx = logCtx
     )
 
-  private val interpreter: Interpreter = newInterpreter
+  private val interpreter: Interpreter = newInterpreter()
 
   private object Predef {
     private def predefPath(name: String): Path =
@@ -242,7 +242,7 @@ object ScalaInterpreterTests extends TestSuite {
     "silent" - {
       "defaults false" - {
         val code = "val silent = kernel.silent"
-        val res = newInterpreter.execute(code)
+        val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("silent: Boolean = false"))
         assert(res == expectedRes)
       }
@@ -253,7 +253,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(true)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter.execute(code)
+        val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
             |silentAfter: Boolean = true""".stripMargin))
@@ -267,7 +267,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(false)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter.execute(code)
+        val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = true
             |silentAfter: Boolean = false""".stripMargin))
@@ -287,7 +287,7 @@ object ScalaInterpreterTests extends TestSuite {
           """
             | val effectInNextExecuteAgain = 0
             |""".stripMargin
-        val i = newInterpreter
+        val i = newInterpreter()
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
@@ -316,7 +316,7 @@ object ScalaInterpreterTests extends TestSuite {
             | val effectInNextExecuteAgain = kernel.silent
             |""".stripMargin
 
-        val i = newInterpreter
+        val i = newInterpreter()
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
