@@ -1,7 +1,8 @@
 package org.apache.spark.sql.almondinternals
 
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{ConcurrentHashMap, ScheduledFuture, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
 
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
 import org.apache.spark.scheduler._
@@ -55,6 +56,8 @@ final class ProgressSparkListener(
   def stageElem(stageId: Int): StageElem =
     elems.get(stageId)
 
+  private val updater = new ProgressBarUpdater()
+
   override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit =
     if (progress)
       Try {
@@ -66,6 +69,8 @@ final class ProgressSparkListener(
         )
         elem.init(commTargetName, !sentInitCode)
         sentInitCode = true
+
+        updater.asyncPollUpdatesFor(elem)
       }
 
   override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit =
@@ -73,7 +78,6 @@ final class ProgressSparkListener(
       Try {
         val elem = stageElem(stageCompleted.stageInfo.stageId)
         elem.allDone()
-        elem.update()
       }
 
   override def onTaskStart(taskStart: SparkListenerTaskStart): Unit =
@@ -81,7 +85,6 @@ final class ProgressSparkListener(
       Try {
         val elem = stageElem(taskStart.stageId)
         elem.taskStart()
-        elem.update()
       }
 
   override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit =
@@ -89,7 +92,42 @@ final class ProgressSparkListener(
       Try {
         val elem = stageElem(taskEnd.stageId)
         elem.taskDone()
-        elem.update()
       }
 
+}
+
+private[almondinternals] class ProgressBarUpdater(
+  implicit publish: OutputHandler
+) {
+  private val threadFactory: ThreadFactory = {
+    val threadNumber = new AtomicInteger(1)
+    (r: Runnable) => {
+      val threadNumber0 = threadNumber.getAndIncrement()
+      val t = new Thread(r, s"almond-spark-listener-update-$threadNumber0")
+      t.setDaemon(true)
+      t.setPriority(Thread.NORM_PRIORITY)
+      t
+    }
+  }
+
+  private val pool = {
+    val executor = new ScheduledThreadPoolExecutor(1, threadFactory)
+    executor.setKeepAliveTime(1L, TimeUnit.MINUTES)
+    executor.allowCoreThreadTimeOut(true)
+    executor
+  }
+
+  def asyncPollUpdatesFor(elem: StageElem): Unit = {
+    lazy val polling: ScheduledFuture[_] = pool.scheduleAtFixedRate(
+      () => {
+        elem.update()
+        if (elem.allDone0)
+          polling.cancel(false)
+      },
+      0,
+      1,
+      TimeUnit.SECONDS
+    )
+    polling
+  }
 }
