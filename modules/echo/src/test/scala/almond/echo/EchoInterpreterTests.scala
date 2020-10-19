@@ -8,7 +8,7 @@ object EchoInterpreterTests extends TestSuite {
 
   val tests = Tests {
 
-    'simple - {
+    test("simple") {
 
       val interpreter: Interpreter = new EchoInterpreter
 
@@ -23,7 +23,7 @@ object EchoInterpreterTests extends TestSuite {
       }
     }
 
-    'print - {
+    test("print") {
 
       val interpreter: Interpreter = new EchoInterpreter
       val outputHandler = new TestOutputHandler
@@ -39,11 +39,11 @@ object EchoInterpreterTests extends TestSuite {
       assert(output == expectedOutput)
     }
 
-    'complete - {
+    test("complete") {
 
       val interpreter: Interpreter = new EchoInterpreter
 
-      'none - {
+      test("none") {
         val res = interpreter.complete("zpri")
         val expectedRes = Completion(4, 4, Nil)
         assert(res == expectedRes)
@@ -74,11 +74,11 @@ object EchoInterpreterTests extends TestSuite {
       }
     }
 
-    'inspect - {
+    test("inspect") {
 
       val interpreter: Interpreter = new EchoInterpreter
 
-      'none - {
+      test("none") {
         * - {
           val res = interpreter.inspect("foo", 2)
           assert(res.isEmpty)
@@ -90,7 +90,7 @@ object EchoInterpreterTests extends TestSuite {
         }
       }
 
-      'print - {
+      test("print") {
         * - {
           val res = interpreter.inspect("print foo", 0)
           assert(res.nonEmpty)

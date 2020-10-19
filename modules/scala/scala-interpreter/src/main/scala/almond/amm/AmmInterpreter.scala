@@ -10,7 +10,7 @@ import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object AmmInterpreter {
 
@@ -71,7 +71,8 @@ object AmmInterpreter {
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
     initialClassLoader: ClassLoader,
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    variableInspectorEnabled: () => Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -124,7 +125,8 @@ object AmmInterpreter {
                   new AlmondPreprocessor(
                     compiler.parse(fileName, _),
                     autoUpdateLazyVals,
-                    autoUpdateVars
+                    autoUpdateVars,
+                    variableInspectorEnabled
                   )
                 }
             }

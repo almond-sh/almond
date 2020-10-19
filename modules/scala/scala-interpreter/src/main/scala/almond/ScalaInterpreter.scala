@@ -72,7 +72,13 @@ final class ScalaInterpreter(
       )
 
     val jupyterApi =
-      new JupyterApiImpl(execute0, commHandlerOpt, replApi, silent0)
+      new JupyterApiImpl(
+        execute0,
+        commHandlerOpt,
+        replApi,
+        silent0,
+        params.allowVariableInspector
+      )
 
     for (ec <- params.updateBackgroundVariablesEcOpt)
       UpdatableFuture.setup(replApi, jupyterApi, ec)
@@ -94,7 +100,8 @@ final class ScalaInterpreter(
       params.autoUpdateLazyVals,
       params.autoUpdateVars,
       params.initialClassLoader,
-      logCtx
+      logCtx,
+      jupyterApi.VariableInspector.enabled
     )
   }
 
@@ -117,7 +124,7 @@ final class ScalaInterpreter(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult =
-    execute0(ammInterp, code, inputManager, outputHandler, colors0)
+    execute0(ammInterp, code, inputManager, outputHandler, colors0, storeHistory)
 
   def currentLine(): Int =
     execute0.currentLine

@@ -10,7 +10,7 @@ abstract class TextDisplay extends UpdatableDisplay {
 
   def contentOrUrl: Either[URL, String]
 
-  def content: Option[String] = contentOrUrl.right.toOption
+  def content: Option[String] = contentOrUrl.toOption
   def url: Option[URL] = contentOrUrl.left.toOption
 
   def finalContent: String =

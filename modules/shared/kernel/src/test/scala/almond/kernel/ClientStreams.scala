@@ -11,6 +11,7 @@ import cats.effect.IO
 import fs2.concurrent.Queue
 import fs2.{Pipe, Stream}
 
+import scala.collection.compat.immutable.LazyList
 import scala.collection.mutable
 import scala.util.Try
 
@@ -73,12 +74,12 @@ final case class ClientStreams(
     collapse: Set[String] = Set("stream")
   ): Seq[String] = {
 
-    val s = generatedMessages.toStream.collect {
+    val s = generatedMessages.to(LazyList).collect {
       case Left((c, m)) if channels(c) && !filterOut(m.header.msg_type) =>
         m.header.msg_type
     }
 
-    def collapsing(s: scala.Stream[String]): scala.Stream[String] =
+    def collapsing(s: LazyList[String]): LazyList[String] =
       if (s.isEmpty)
         s
       else {
@@ -91,7 +92,7 @@ final case class ClientStreams(
         s.head #:: collapsing(tail)
       }
 
-    collapsing(s)
+    collapsing(s).toVector
   }
 
   def executeReplies: Map[Int, String] =

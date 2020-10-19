@@ -21,7 +21,7 @@ object ZeromqSocketTests extends TestSuite {
 
   val tests = Tests {
 
-    'simple - {
+    test("simple") {
 
       val repEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
@@ -84,7 +84,7 @@ object ZeromqSocketTests extends TestSuite {
       t.unsafeRunSync()
     }
 
-    'simpleWithNoKey - {
+    test("simpleWithNoKey") {
 
       val repEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()

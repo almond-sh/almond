@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import almond.protocol.CommInfo
 import cats.effect.IO
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 final class CommTargetManagerImpl extends CommTargetManager {
 

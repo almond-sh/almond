@@ -89,6 +89,7 @@ final class Execute(
   private val resultStream = new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
   private var currentLine0 = 0
+  private var currentNoHistoryLine0 = Int.MaxValue / 2
 
   private val printer0 = Printer(
     capture0.out,
@@ -205,7 +206,8 @@ final class Execute(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    storeHistory: Boolean
   ) =
     withOutputHandler(outputHandler) {
       for {
@@ -224,7 +226,17 @@ final class Execute(
                 resultOutput.clear()
                 resultVariables.clear()
                 log.debug(s"Compiling / evaluating $code ($stmts)")
-                val r = ammInterp.processLine(code, stmts, currentLine0, silent = silent(), incrementLine = () => currentLine0 += 1)
+                val r = ammInterp.processLine(
+                  code,
+                  stmts,
+                  if (storeHistory) currentLine0 else currentNoHistoryLine0,
+                  silent = silent(),
+                  incrementLine =
+                    if (storeHistory)
+                      () => currentLine0 += 1
+                    else
+                      () => currentNoHistoryLine0 += 1
+                )
 
                 log.debug(s"Handling output of $code")
                 Repl.handleOutput(ammInterp, r)
@@ -287,13 +299,16 @@ final class Execute(
     code: String,
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler],
-    colors0: Ref[Colors]
+    colors0: Ref[Colors],
+    storeHistory: Boolean
   ): ExecuteResult = {
 
-    storage.fullHistory() = storage.fullHistory() :+ code
-    history0 = history0 :+ code
+    if (storeHistory) {
+      storage.fullHistory() = storage.fullHistory() :+ code
+      history0 = history0 :+ code
+    }
 
-    ammResult(ammInterp, code, inputManager, outputHandler) match {
+    ammResult(ammInterp, code, inputManager, outputHandler, storeHistory) match {
       case Res.Success((_, data)) =>
         ExecuteResult.Success(data)
       case Res.Failure(msg) =>

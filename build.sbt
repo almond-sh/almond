@@ -82,6 +82,7 @@ lazy val interpreter = project
   .settings(
     shared,
     libraryDependencies ++= Seq(
+      Deps.collectionCompat,
       Deps.scalatags,
       // picked by jboss-logging, that metabrowse transitively depends on
       Deps.slf4jNop
@@ -98,6 +99,7 @@ lazy val kernel = project
     testSettings,
     libraryDependencies ++= Seq(
       Deps.caseAppAnnotations,
+      Deps.collectionCompat,
       Deps.fs2
     )
   )
@@ -125,6 +127,7 @@ lazy val `scala-kernel-api` = project
   .settings(
     shared,
     mima,
+    mimaBinaryIssueFilters ++= Mima.scalaKernelApiRules,
     mimaPreviousArtifacts := {
       val sv = scalaVersion.value
       val previous = mimaPreviousArtifacts.value
@@ -312,7 +315,8 @@ writeDebugKernelJson := {
     "argv": [
       "$pack0",
       "--log", "info",
-      "--connection-file", "{connection_file}"
+      "--connection-file", "{connection_file}",
+      "--variable-inspector"
     ]
   }"""
   java.nio.file.Files.write((dir / "kernel.json").toPath, kernelJson.getBytes("UTF-8"))

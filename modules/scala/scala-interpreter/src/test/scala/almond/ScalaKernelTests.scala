@@ -18,6 +18,8 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
+import scala.collection.compat._
+
 object ScalaKernelTests extends TestSuite {
 
   import almond.interpreter.TestInterpreter.StringBOps
@@ -472,7 +474,7 @@ object ScalaKernelTests extends TestSuite {
         val displayData = streams.displayData.map {
           case (d, b) =>
             val d0 = d.copy(
-              data = d.data.filterKeys(_ == "text/plain").toMap
+              data = d.data.view.filterKeys(_ == "text/plain").toMap
             )
             (d0, b)
         }
@@ -924,7 +926,7 @@ object ScalaKernelTests extends TestSuite {
         val displayData = streams.displayData.map {
           case (d, b) =>
             val d0 = d.copy(
-              data = d.data.filterKeys(_ == "text/plain").toMap
+              data = d.data.view.filterKeys(_ == "text/plain").toMap
             )
             (d0, b)
         }
@@ -1015,7 +1017,7 @@ object ScalaKernelTests extends TestSuite {
       val displayData = streams.displayData.map {
         case (d, b) =>
           val d0 = d.copy(
-            data = d.data.filterKeys(_ == "text/plain").toMap
+            data = d.data.view.filterKeys(_ == "text/plain").toMap
           )
           (d0, b)
       }

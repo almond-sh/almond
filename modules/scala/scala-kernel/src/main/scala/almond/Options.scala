@@ -11,7 +11,8 @@ import caseapp.core.help.Help
 import coursierapi.{Dependency, Module}
 import coursier.parse.{DependencyParser, ModuleParser}
 
-import scala.collection.JavaConverters._
+import scala.collection.compat._
+import scala.jdk.CollectionConverters._
 
 @ProgName("almond")
 final case class Options(
@@ -52,6 +53,8 @@ final case class Options(
     autoUpdateLazyVals: Boolean = true,
   @HelpMessage("Whether to automatically update var-s upon change")
     autoUpdateVars: Boolean = true,
+  @HelpMessage("Whether to enable variable inspector")
+    variableInspector: Option[Boolean] = None,
   @HelpMessage("Whether to process format requests with scalafmt")
     scalafmt: Boolean = true
 ) {
@@ -97,8 +100,8 @@ final case class Options(
         }
       }
       .groupBy(_._1)
+      .view
       .mapValues(_.map(_._2))
-      .iterator
       .toMap
 
     default ++ fromArgs

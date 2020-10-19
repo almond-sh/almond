@@ -57,6 +57,8 @@ final class ZeromqSocketImpl(
   for (b <- identityOpt)
     channel.setIdentity(b)
   channel.setLinger(1000)
+  if (socketType == SocketType.ROUTER)
+    channel.setRouterHandover(true)
 
   @volatile private var opened = false
   @volatile private var closed = false
@@ -129,7 +131,7 @@ final class ZeromqSocketImpl(
     IO.shift(ec) *> IO {
 
       val idents =
-        Stream.continually(channel.recv())
+        Iterator.continually(channel.recv())
           .takeWhile(!_.sameElements(delimiterBytes))
           .toVector
           .map(_.toSeq)

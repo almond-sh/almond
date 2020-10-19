@@ -8,7 +8,7 @@ import almond.kernel.util.JupyterPath
 import almond.protocol.KernelSpec
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object Install {
 

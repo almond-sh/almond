@@ -15,7 +15,7 @@ object ScalaInterpreterTests extends TestSuite {
 
   private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
-  private def newInterpreter: Interpreter =
+  private def newInterpreter(): Interpreter =
     new ScalaInterpreter(
       params = ScalaInterpreterParams(
         initialColors = Colors.BlackWhite,
@@ -31,7 +31,7 @@ object ScalaInterpreterTests extends TestSuite {
       logCtx = logCtx
     )
 
-  private val interpreter: Interpreter = newInterpreter
+  private val interpreter: Interpreter = newInterpreter()
 
   private object Predef {
     private def predefPath(name: String): Path =
@@ -162,6 +162,22 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res == expectedRes)
       }
 
+      test("respect store history") {
+        val interpreter = newInterpreter()
+        val noHistoryTextOpt = interpreter.execute("2", storeHistory = false)
+          .asSuccess
+          .flatMap(_.data.data.get("text/plain"))
+          .map(_.dropWhile(_ != ':'))
+        val expectedNoHistoryTextOpt = Option(": Int = 2")
+        assert(noHistoryTextOpt == expectedNoHistoryTextOpt)
+
+        val textOpt = interpreter.execute("3")
+          .asSuccess
+          .flatMap(_.data.data.get("text/plain"))
+        val expectedTextOpt = Option("res0: Int = 3")
+        assert(textOpt == expectedTextOpt)
+      }
+
       "exception" - {
         val code = """sys.error("foo")"""
         val res = interpreter.execute(code)
@@ -242,7 +258,7 @@ object ScalaInterpreterTests extends TestSuite {
     "silent" - {
       "defaults false" - {
         val code = "val silent = kernel.silent"
-        val res = newInterpreter.execute(code)
+        val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("silent: Boolean = false"))
         assert(res == expectedRes)
       }
@@ -253,7 +269,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(true)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter.execute(code)
+        val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
             |silentAfter: Boolean = true""".stripMargin))
@@ -267,7 +283,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(false)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter.execute(code)
+        val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = true
             |silentAfter: Boolean = false""".stripMargin))
@@ -287,7 +303,7 @@ object ScalaInterpreterTests extends TestSuite {
           """
             | val effectInNextExecuteAgain = 0
             |""".stripMargin
-        val i = newInterpreter
+        val i = newInterpreter()
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
@@ -316,7 +332,7 @@ object ScalaInterpreterTests extends TestSuite {
             | val effectInNextExecuteAgain = kernel.silent
             |""".stripMargin
 
-        val i = newInterpreter
+        val i = newInterpreter()
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
@@ -362,6 +378,58 @@ object ScalaInterpreterTests extends TestSuite {
       }
     }
 
+    test("variable inspector") {
+
+      implicit class ExecuteResultOps(private val res: ExecuteResult) {
+        def assertSuccess(): ExecuteResult = {
+          assert(res.success)
+          res
+        }
+      }
+
+      implicit class DisplayDataOps(private val data: DisplayData) {
+        def text: String =
+          data.data.getOrElse("text/plain", "")
+      }
+
+      def initCode = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
+      def dictListCode = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.dictList()"
+
+      val interpreter = newInterpreter()
+
+      // defined before the variable inspector is enabled -> no variable inspector code gen,
+      // so not in the variable listing
+      interpreter.execute("val p = 1")
+        .assertSuccess()
+
+      interpreter.execute(initCode)
+        .assertSuccess()
+
+      val outputHandler = new MockOutputHandler
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(before) = outputHandler.displayed()
+      assert(before.text == "[]")
+
+      interpreter.execute("val n = 2")
+        .assertSuccess()
+
+      // that inline JSON is kind of meh
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after) = outputHandler.displayed()
+      assert(after.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false}]""")
+
+      interpreter.execute("val m = true")
+        .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after1) = outputHandler.displayed()
+      assert(after1.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"true","varType":"Boolean","isMatrix":false}]""")
+    }
   }
 
 }
