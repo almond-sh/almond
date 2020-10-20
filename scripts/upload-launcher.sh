@@ -16,8 +16,6 @@ CMD="./scripts/generate-launcher.sh -f --bat=true" # will work once sync-ed to M
 # initial check with Sonatype staging (releases now redirects to Central)
 mkdir -p target/launcher
 export OUTPUT="target/launcher/$NAME"
-$CMD -r sonatype:staging
-
 
 # actual script
 RELEASE_ID="$(curl "https://api.github.com/repos/$REPO/releases?access_token=$GH_TOKEN" | jq -r '.[] | select(.tag_name == "v'"$VERSION"'") | .id')"
