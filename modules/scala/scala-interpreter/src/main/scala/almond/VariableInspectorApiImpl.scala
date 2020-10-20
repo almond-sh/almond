@@ -9,6 +9,7 @@ import almond.protocol.VariableInspector.{IVariable, iVariableListCodec}
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToString
 import pprint.{PPrinter, TPrint, TPrintColors}
 
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.reflect.{ClassTag, classTag}
 
@@ -59,13 +60,29 @@ trait VariableInspectorApiImpl extends JupyterApi {
       defaultHeight = 1,
       additionalHandlers = variableInspectorImplPPrinter().additionalHandlers
     )
-    val list = variables.iterator().asScala.map(_.iVariable(pprinter)).toList
+    val retainedVariables = VariableInspectorApiImpl.removeDuplicatesBy(variables.iterator().asScala.toVector)(_.name)
+    val list = retainedVariables.map(_.iVariable(pprinter))
     val str = writeToString(list)(iVariableListCodec)
     publish.display(DisplayData.text(str))
   }
 }
 
 private object VariableInspectorApiImpl {
+
+  // keeps the last element for each key
+  private def removeDuplicatesBy[T, U](l: Seq[T])(key: T => U): List[T] = {
+    val b = List.newBuilder[T]
+    val alreadySeen = new mutable.HashSet[U]
+    l.reverseIterator.foreach { t =>
+      val u = key(t)
+      if (!alreadySeen(u)) {
+        alreadySeen += u
+        b += t
+      }
+    }
+    b.result().reverse
+  }
+
   private final case class Variable[T](
     name: String,
     value: () => Either[String, T],
