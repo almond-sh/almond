@@ -429,6 +429,14 @@ object ScalaInterpreterTests extends TestSuite {
         .assertSuccess()
       val Seq(after1) = outputHandler.displayed()
       assert(after1.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"true","varType":"Boolean","isMatrix":false}]""")
+
+      interpreter.execute("val m = 4")
+        .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after2) = outputHandler.displayed()
+      assert(after2.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"4","varType":"Int","isMatrix":false}]""")
     }
   }
 
