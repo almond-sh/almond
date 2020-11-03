@@ -1,7 +1,7 @@
 {
   "docs": {
     "Intro": ["intro"],
-    "Try it": ["try-mybinder", "try-docker"],
+    "Try it": ["try-mybinder", "try-docker", "try-deepnote"],
     "Installation": ["quick-start-install", "install-options", "install-multiple", "install-versions", "install-other"],
     "Usage": ["usage-plotting", "usage-spark"],
     "User API": ["api", "api-ammonite", "api-jupyter", "api-access-instances"],
