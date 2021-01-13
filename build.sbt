@@ -135,6 +135,8 @@ lazy val `scala-kernel-api` = project
         previous.filter(mod => mod.revision != "0.9.0" && mod.revision != "0.9.1")
       else if (sv == "2.13.3")
         previous.filter(mod => !mod.revision.startsWith("0.9.") && mod.revision != "0.10.0")
+      else if (sv == "2.13.4")
+        previous.filter(mod => !mod.revision.startsWith("0.9.") && (!mod.revision.startsWith("0.10.") || mod.revision.drop("0.10.".length).length > 1))
       else if (sv == "2.12.12")
         previous.filter { mod =>
           !mod.revision.startsWith("0.9.") &&
