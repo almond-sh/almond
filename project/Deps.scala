@@ -17,8 +17,8 @@ object Deps {
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.10.2"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
-  def collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.1"
-  def coursier = "io.get-coursier" %% "coursier" % "2.0.8"
+  def collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.2"
+  def coursier = "io.get-coursier" %% "coursier" % "2.0.11"
   def coursierApi = "io.get-coursier" % "interface" % "1.0.2"
   def directories = "io.github.soc" % "directories" % "12"
   def fs2 = "co.fs2" %% "fs2-core" % "2.5.0"
@@ -31,10 +31,10 @@ object Deps {
   def scalafmtDynamic = "org.scalameta" %% "scalafmt-dynamic" % Versions.scalafmt
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.3"
-  def scalatags = "com.lihaoyi" %% "scalatags" % "0.9.2"
+  def scalatags = "com.lihaoyi" %% "scalatags" % "0.9.3"
   def slf4jNop = "org.slf4j" % "slf4j-nop" % "1.8.0-beta4"
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
 
-  def utest = "com.lihaoyi" %% "utest" % "0.7.5"
+  def utest = "com.lihaoyi" %% "utest" % "0.7.7"
 }
