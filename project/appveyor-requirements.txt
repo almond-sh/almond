@@ -2,7 +2,7 @@ argon2-cffi==20.1.0
 asn1crypto==1.2.0
 attrs==20.2.0
 backcall==0.2.0
-bleach==3.1.5
+bleach==3.3.0
 certifi==2019.9.11
 cffi==1.13.0
 chardet==3.0.4
