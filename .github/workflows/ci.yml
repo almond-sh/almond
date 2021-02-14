@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+    branches:
+    - master
+    tags:
+    - "v*"
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.OS }}
+    strategy:
+      fail-fast: false
+      matrix:
+        OS: ["ubuntu-latest", "windows-latest"]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r examples/requirements.txt
+    - uses: coursier/cache-action@v5
+      with:
+        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
+        extraKey: "validate-examples"
+    - uses: laughedelic/coursier-setup@v1
+      with:
+        jvm: 8
+        apps: sbt ammonite
+    - run: .github/scripts/ci.sh
+      shell: bash
