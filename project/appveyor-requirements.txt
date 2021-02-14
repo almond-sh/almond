@@ -9,7 +9,7 @@ chardet==3.0.4
 colorama==0.4.3
 conda==4.7.12
 conda-package-handling==1.6.0
-cryptography==3.2
+cryptography==3.3.2
 decorator==4.4.2
 defusedxml==0.6.0
 entrypoints==0.3
