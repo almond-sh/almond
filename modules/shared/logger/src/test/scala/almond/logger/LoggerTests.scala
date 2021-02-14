@@ -7,6 +7,9 @@ import utest._
 
 object LoggerTests extends TestSuite {
 
+  private def noCrLf(input: String): String =
+    input.replace("\r\n", "\n")
+
   val tests = Tests {
 
     "nop" - {
@@ -55,7 +58,7 @@ object LoggerTests extends TestSuite {
             |""".stripMargin
 
         val res = b.toString
-        assert(res == expectedRes)
+        assert(noCrLf(res) == noCrLf(expectedRes))
       }
 
       "debug" - {
@@ -80,7 +83,7 @@ object LoggerTests extends TestSuite {
             |""".stripMargin
 
         val res = b.toString
-        assert(res == expectedRes)
+        assert(noCrLf(res) == noCrLf(expectedRes))
       }
 
       "with exceptions" - {
@@ -110,9 +113,9 @@ object LoggerTests extends TestSuite {
           else
             """ERROR /o\ Errr
               |java.lang.Exception: nope
-              |  almond.logger.LoggerTests(LoggerTests.scala:94)
+              |  almond.logger.LoggerTests(LoggerTests.scala:97)
               |java.lang.Exception: first
-              |  almond.logger.LoggerTests(LoggerTests.scala:93)
+              |  almond.logger.LoggerTests(LoggerTests.scala:96)
               |""".stripMargin
 
         val res = b
@@ -128,7 +131,7 @@ object LoggerTests extends TestSuite {
           }
           .mkString("", "\n", "\n")
 
-        assert(res == expectedRes)
+        assert(noCrLf(res) == noCrLf(expectedRes))
       }
 
     }
