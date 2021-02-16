@@ -3,7 +3,7 @@ package almond
 import java.util.UUID
 
 import almond.channels.Channel
-import almond.interpreter.Message
+import almond.interpreter.{ExecuteResult, Message}
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
 import almond.TestLogging.logCtx
@@ -16,6 +16,21 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 object TestUtil {
+
+  private def noCrLf(input: String): String =
+    input.replace("\r\n", "\n")
+
+  def noCrLf(res: ExecuteResult): ExecuteResult =
+    res match {
+      case s: ExecuteResult.Success =>
+        ExecuteResult.Success(
+          s.data.copy(data = s.data.data.map {
+            case ("text/plain", v) => ("text/plain", noCrLf(v))
+            case (k, v) => (k, v)
+          })
+        )
+      case other => other
+    }
 
   def isScala211 =
     scala.util.Properties.versionNumberString.startsWith("2.11.")
@@ -107,8 +122,8 @@ object TestUtil {
       for (k <- expectedReplies.keySet.--(replies0.keySet))
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
 
-      assert(replies0 == expectedReplies)
-      assert(publish0 == publish)
+      assert(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
+      assert(publish0.map(noCrLf) == publish.map(noCrLf))
     }
   }
 
