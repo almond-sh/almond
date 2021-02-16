@@ -19,7 +19,7 @@ object Deps {
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
   def collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.2"
   def coursier = "io.get-coursier" %% "coursier" % "2.0.11"
-  def coursierApi = "io.get-coursier" % "interface" % "1.0.2"
+  def coursierApi = "io.get-coursier" % "interface" % "1.0.3"
   def directories = "io.github.soc" % "directories" % "12"
   def fs2 = "co.fs2" %% "fs2-core" % "2.5.0"
   def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
