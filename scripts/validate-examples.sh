@@ -56,6 +56,8 @@ while read f; do
     "$f" \
     --output="$OUTPUT"
 
+  sed -i "s@\\\\r\\\\n@\\\\n@g" "$OUTPUT"
+
   if cmp -s "$f" "$OUTPUT"; then
     echo "$f OK"
   else
