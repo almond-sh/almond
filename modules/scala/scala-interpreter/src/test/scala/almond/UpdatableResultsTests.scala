@@ -3,17 +3,14 @@ package almond
 import almond.internals.UpdatableResults
 import almond.interpreter.api.DisplayData
 import almond.logger.LoggerContext
+import almond.util.SequentialExecutionContext
 import utest._
 
 import scala.concurrent.ExecutionContext
 
 object UpdatableResultsTests extends TestSuite {
 
-  private val ec: ExecutionContext =
-    new ExecutionContext {
-      def execute(runnable: Runnable) = runnable.run()
-      def reportFailure(cause: Throwable) = ()
-    }
+  private val ec: ExecutionContext = new SequentialExecutionContext
 
   val tests = Tests {
 
