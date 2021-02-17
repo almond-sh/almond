@@ -273,7 +273,7 @@ object ScalaInterpreterTests extends TestSuite {
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
             |silentAfter: Boolean = true""".stripMargin))
-        assert(res == expectedRes)
+        assert(TestUtil.noCrLf(res) == TestUtil.noCrLf(expectedRes))
       }
       "can be set to false" - {
         val code =
@@ -287,7 +287,7 @@ object ScalaInterpreterTests extends TestSuite {
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = true
             |silentAfter: Boolean = false""".stripMargin))
-        assert(res == expectedRes)
+        assert(TestUtil.noCrLf(res) == TestUtil.noCrLf(expectedRes))
       }
       "affects subsequent calls to execute when enabled" - {
         val code0 =
