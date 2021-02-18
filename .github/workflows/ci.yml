@@ -99,8 +99,17 @@ jobs:
     - run: amm scripts/site.sc --publishLocal true
       shell: bash
 
-  release:
+  # job whose name doesn't change when we bump Scala versions, add OSes, …
+  # We require this job for auto-merge.
+  all-tests:
     needs: [examples, test, website]
+    runs-on: ubuntu-latest
+    steps:
+    - run: true
+      shell: bash
+
+  release:
+    needs: all-tests
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
