@@ -21,7 +21,7 @@ object Deps {
   def coursier = "io.get-coursier" %% "coursier" % "2.0.12"
   def coursierApi = "io.get-coursier" % "interface" % "1.0.3"
   def directories = "io.github.soc" % "directories" % "12"
-  def fs2 = "co.fs2" %% "fs2-core" % "2.5.0"
+  def fs2 = "co.fs2" %% "fs2-core" % "2.5.1"
   def jansi = "org.fusesource.jansi" % "jansi" % "1.18"
   def jeromq = "org.zeromq" % "jeromq" % "0.5.2"
   def jsoniterScalaCore = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % Versions.jsoniterScala
