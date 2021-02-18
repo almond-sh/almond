@@ -48,16 +48,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        JDK: [8]
         OS: [ubuntu-latest]
-        SCALA: [2.12.11, 2.12.12, 2.13.2, 2.13.3]
+        JDK: [8]
+        SCALA: [2.12.11, 2.12.12, 2.13.3, 2.13.4]
         include:
-          - JDK: 8
-            SCALA: 2.13.3
-            OS: windows-latest
-          - JDK: 11
+          - OS: windows-latest
+            JDK: 8
+            SCALA: 2.13.4
+          - OS: ubuntu-latest
+            JDK: 11
             SCALA: 2.12.12
-            OS: ubuntu-latest
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'
@@ -99,8 +99,17 @@ jobs:
     - run: amm scripts/site.sc --publishLocal true
       shell: bash
 
-  release:
+  # job whose name doesn't change when we bump Scala versions, add OSes, …
+  # We require this job for auto-merge.
+  all-tests:
     needs: [examples, test, website]
+    runs-on: ubuntu-latest
+    steps:
+    - run: true
+      shell: bash
+
+  release:
+    needs: all-tests
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
