@@ -156,6 +156,7 @@ lazy val `scala-kernel-api` = project
     ),
     generateDependenciesFile,
     libraryDependencies ++= Seq(
+      Deps.ammoniteCompiler,
       Deps.ammoniteReplApi,
       Deps.jvmRepr
     )
@@ -195,6 +196,7 @@ lazy val `scala-interpreter` = project
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
+      Deps.ammoniteCompiler,
       Deps.ammoniteRepl
     ),
     crossVersion := CrossVersion.full,

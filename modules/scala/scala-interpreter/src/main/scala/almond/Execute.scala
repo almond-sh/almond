@@ -10,7 +10,7 @@ import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.logger.LoggerContext
-import ammonite.interp.{Parsers, Preprocessor}
+import ammonite.compiler.Parsers
 import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
@@ -215,7 +215,7 @@ final class Execute(
           case Parsed.Success(value, _) =>
             Res.Success((code, value.map(_._2)))
           case f: Parsed.Failure => Res.Failure(
-            Preprocessor.formatFastparseError("(console)", code, f)
+            Parsers.formatFastparseError("(console)", code, f)
           )
         }
         _ = log.debug(s"splitted $code")

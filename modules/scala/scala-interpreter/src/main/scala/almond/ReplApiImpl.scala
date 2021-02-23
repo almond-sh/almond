@@ -161,8 +161,7 @@ final class ReplApiImpl(
   def history = execute0.history
   val colors = colors0
   def newCompiler() = ammInterp.compilerManager.init(force = true)
-  def compiler = ammInterp.compilerManager.compiler.compiler
-  def interactiveCompiler = ammInterp.compilerManager.pressy.compiler
+  def _compilerManager = ammInterp.compilerManager
   def fullImports = ammInterp.predefImports ++ imports
   def imports = ammInterp.frameImports
   def usedEarlierDefinitions = ammInterp.frameUsedEarlierDefinitions

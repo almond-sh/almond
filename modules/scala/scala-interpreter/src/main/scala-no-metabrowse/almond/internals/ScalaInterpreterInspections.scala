@@ -2,8 +2,7 @@ package almond.internals
 
 import almond.interpreter._
 import almond.logger.LoggerContext
-import ammonite.repl.api.Frame
-import ammonite.util.Ref
+import ammonite.util.{Frame, Ref}
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,

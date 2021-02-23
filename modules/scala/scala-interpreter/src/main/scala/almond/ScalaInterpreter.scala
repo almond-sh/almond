@@ -8,10 +8,10 @@ import almond.interpreter.input.InputManager
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
-import ammonite.interp.Parsers
+import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
-import ammonite.util._
+import ammonite.util.{Frame => _, _}
 import fastparse.Parsed
 import io.github.soc.directories.ProjectDirectories
 
@@ -32,7 +32,11 @@ final class ScalaInterpreter(
     params.metabrowse,
     params.metabrowseHost,
     params.metabrowsePort,
-    ammInterp.compilerManager.pressy.compiler,
+    ammInterp
+      .compilerManager
+      .asInstanceOf[ammonite.compiler.CompilerLifecycleManager]
+      .pressy
+      .compiler,
     frames0()
   )
 
