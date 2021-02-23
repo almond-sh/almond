@@ -12,8 +12,8 @@ object Deps {
     def scalafmt = "2.7.5"
   }
 
-  def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
-  def ammoniteReplApi = setting(("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full))
+  def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
+  def ammoniteReplApi = ("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full)
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.11.0"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp

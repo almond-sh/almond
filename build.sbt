@@ -156,7 +156,7 @@ lazy val `scala-kernel-api` = project
     ),
     generateDependenciesFile,
     libraryDependencies ++= Seq(
-      Deps.ammoniteReplApi.value,
+      Deps.ammoniteReplApi,
       Deps.jvmRepr
     )
   )
@@ -195,7 +195,7 @@ lazy val `scala-interpreter` = project
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
-      Deps.ammoniteRepl.value
+      Deps.ammoniteRepl
     ),
     crossVersion := CrossVersion.full,
     testSettings
@@ -251,7 +251,7 @@ lazy val `almond-spark` = project
     shared,
     mimaExceptIn("2.13"),
     libraryDependencies ++= Seq(
-      Deps.ammoniteReplApi.value % "provided",
+      Deps.ammoniteReplApi % "provided",
       Deps.ammoniteSpark,
       Deps.jsoniterScalaCore,
       Deps.jsoniterScalaMacros % Provided,
