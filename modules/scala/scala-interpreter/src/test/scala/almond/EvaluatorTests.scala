@@ -39,6 +39,8 @@ object EvaluatorTests extends TestSuite {
       // Running them here to test our custom preprocessor.
 
       "multistatement" - {
+        val sv = scala.util.Properties.versionNumberString
+        val isScala212 = sv.startsWith("2.12.")
         runner.run(
           Seq(
             ";1; 2L; '3';" ->
@@ -55,7 +57,7 @@ object EvaluatorTests extends TestSuite {
               """y: Int = 1
                 |defined class C
                 |res3_2: Int = 3""".stripMargin,
-            "C()" -> "res4: C = C(0)"
+            "C()" -> (if (isScala212) "res4: C = C(0)" else "res4: C = C(i = 0)")
           )
         )
       }

@@ -1,6 +1,6 @@
 package almond.amm
 
-import ammonite.interp.DefaultPreprocessor
+import ammonite.compiler.DefaultPreprocessor
 import ammonite.util.Name
 import fastparse.Parsed
 

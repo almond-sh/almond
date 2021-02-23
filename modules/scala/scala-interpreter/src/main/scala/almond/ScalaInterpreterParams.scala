@@ -3,7 +3,8 @@ package almond
 import java.nio.file.Path
 
 import almond.protocol.KernelInfo
-import ammonite.interp.{CodeClassWrapper, CodeWrapper}
+import ammonite.compiler.iface.CodeWrapper
+import ammonite.compiler.CodeClassWrapper
 import ammonite.util.Colors
 import coursierapi.{Dependency, Module}
 

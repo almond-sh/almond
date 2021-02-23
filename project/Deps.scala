@@ -6,14 +6,15 @@ import sbt.Keys.scalaVersion
 object Deps {
 
   object Versions {
-    def ammonite = "2.3.8-4-88785969"
+    def ammonite = "2.3.8-36-1cce53f3"
     def caseApp = "2.0.4"
     def jsoniterScala = "2.6.4"
     def scalafmt = "2.7.5"
   }
 
-  def ammoniteRepl = setting(("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full))
-  def ammoniteReplApi = setting(("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full))
+  def ammoniteCompiler = ("com.lihaoyi" % "ammonite-compiler" % Versions.ammonite).cross(CrossVersion.full)
+  def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
+  def ammoniteReplApi = ("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full)
   def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.11.0"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp

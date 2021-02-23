@@ -4,13 +4,15 @@ import java.nio.file.{Files, Path}
 
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.logger.LoggerContext
-import ammonite.interp.{CodeWrapper, CompilerLifecycleManager, Preprocessor}
+import ammonite.compiler.iface.{CodeWrapper, Preprocessor}
+import ammonite.compiler.CompilerLifecycleManager
 import ammonite.runtime.{Frame, Storage}
 import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
 import scala.jdk.CollectionConverters._
+import scala.language.reflectiveCalls
 
 object AmmInterpreter {
 
@@ -104,6 +106,8 @@ object AmmInterpreter {
 
       val ammInterp0: ammonite.interp.Interpreter =
         new ammonite.interp.Interpreter(
+          ammonite.compiler.CompilerBuilder,
+          ammonite.compiler.Parsers,
           printer = execute0.printer,
           storage = storage,
           wd = ammonite.ops.pwd,
@@ -118,12 +122,26 @@ object AmmInterpreter {
           alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
         ) {
           override val compilerManager: CompilerLifecycleManager =
-            new CompilerLifecycleManager(storage, headFrame, Some(dependencyComplete), Set.empty, headFrame.classloader) {
+            new CompilerLifecycleManager(
+              storage.dirOpt.map(_.toNIO),
+              headFrame,
+              Some(dependencyComplete),
+              Set.empty,
+              headFrame.classloader
+            ) {
               override def preprocess(fileName: String): Preprocessor =
                 synchronized {
                   if (compiler == null) init(force = true)
+                  // parse method that needs to be put back in Ammonite's public API
+                  val m = compiler.getClass.getMethod(
+                    "$anonfun$preprocessor$2",
+                    compiler.getClass,
+                    classOf[String],
+                    classOf[String]
+                  )
                   new AlmondPreprocessor(
-                    compiler.parse(fileName, _),
+                    m.invoke(null, compiler, fileName, _)
+                      .asInstanceOf[Either[String, Seq[scala.tools.nsc.Global#Tree]]],
                     autoUpdateLazyVals,
                     autoUpdateVars,
                     variableInspectorEnabled
@@ -208,7 +226,10 @@ object AmmInterpreter {
 
       log.debug("Processing scalac args")
 
-      ammInterp0.compilerManager.preConfigureCompiler(_.processArguments(Nil, processAll = true))
+      ammInterp0
+        .compilerManager
+        .asInstanceOf[ammonite.compiler.CompilerLifecycleManager]
+        .preConfigureCompiler(_.processArguments(Nil, processAll = true))
 
       log.debug("Processing dependency-related params")
 
