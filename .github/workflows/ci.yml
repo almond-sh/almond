@@ -99,10 +99,33 @@ jobs:
     - run: amm scripts/site.sc --publishLocal true
       shell: bash
 
+  publishLocal:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Don't convert LF to CRLF during checkout
+      if: runner.os == 'Windows'
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v5
+      with:
+        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
+        extraKey: publish-local
+    - uses: laughedelic/coursier-setup@v1
+      with:
+        jvm: 8
+        apps: sbt-launcher
+    - run: sbt +publishLocal
+      shell: bash
+
   # job whose name doesn't change when we bump Scala versions, add OSes, …
   # We require this job for auto-merge.
   all-tests:
-    needs: [examples, test, website]
+    needs: [examples, test, website, publishLocal]
     runs-on: ubuntu-latest
     steps:
     - run: true
