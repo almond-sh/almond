@@ -118,7 +118,7 @@ final class ScalaInterpreterInspections(
         val index = prefix.length + pos
 
         val currentFile = new scala.reflect.internal.util.BatchSourceFile(
-          ammonite.interp.Compiler.makeFile(allCode.getBytes, name = "Current.sc"),
+          ammonite.compiler.Compiler.makeFile(allCode.getBytes, name = "Current.sc"),
           allCode
         )
 
