@@ -32,10 +32,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: "validate-examples"
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
@@ -68,10 +65,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: test-${{ matrix.SCALA }}
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: ${{ matrix.JDK }}
@@ -88,10 +82,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: "validate-website"
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
@@ -111,10 +102,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: publish-local
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
@@ -140,10 +128,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: "release"
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
@@ -164,10 +149,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: "upload-launcher"
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
@@ -184,10 +166,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: "update-docker-images"
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
@@ -206,10 +185,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\", \"scripts/*.sh\", \"scripts/*.sc\", \"examples/*.ipynb\"]"
-        extraKey: "update-docker-images"
+    - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
         jvm: 8
