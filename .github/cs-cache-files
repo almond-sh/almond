@@ -1,0 +1,5 @@
+.github/scripts/*.sh
+.github/workflows/ci.yml
+scripts/*.sh
+scripts/*.sc
+examples/*.ipynb
