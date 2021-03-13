@@ -160,6 +160,7 @@ class AlmondPreprocessor(
         Some(extraCode0)
       } else
         None
+    case(_, _, t: G#Import) => None
     case (_, code, t) =>
       val ident = code
       val extraCode0 =
@@ -186,7 +187,7 @@ class AlmondPreprocessor(
         (resOpt, extraOpt) match {
           case (None, _) => None
           case (Some(res), None) => Some(res)
-          case (Some(res), Some(extra)) => Some(res)
+          case (Some(res), Some(extra)) =>
             Some(res.copy(printer = s"{ $extra; Iterator() }" +: res.printer))
         }
       }
