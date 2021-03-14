@@ -437,6 +437,9 @@ object ScalaInterpreterTests extends TestSuite {
         .assertSuccess()
       val Seq(after2) = outputHandler.displayed()
       assert(after2.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"4","varType":"Int","isMatrix":false}]""")
+
+      interpreter.execute("import scala.collection.mutable")
+        .assertSuccess()
     }
   }
 
