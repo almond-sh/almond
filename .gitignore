@@ -3,6 +3,7 @@ target/
 .DS_Store
 .idea/
 .bloop
+.vscode/
 
 # website stuff
 processed-pages/
