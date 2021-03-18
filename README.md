@@ -1,4 +1,4 @@
-Almond is participating to Google Summer of Code 2021! More details [here](https://github.com/almond-sh/almond/issues/770).
+**Almond is participating to Google Summer of Code 2021! More details [here](https://github.com/almond-sh/almond/issues/770).**
 
 ***
 
