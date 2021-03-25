@@ -28,7 +28,7 @@ object Deps {
   def jsoniterScalaCore = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % Versions.jsoniterScala
   def jsoniterScalaMacros = "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % Versions.jsoniterScala
   def jvmRepr = "com.github.jupyter" % "jvm-repr" % "0.4.0"
-  def metabrowseServer = "org.scalameta" %% "metabrowse-server" % "0.2.3"
+  def mtags = ("org.scalameta" %% "mtags" % "0.10.0").cross(CrossVersion.full)
   def scalafmtDynamic = "org.scalameta" %% "scalafmt-dynamic" % Versions.scalafmt
   def scalaReflect = setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   def scalaRx = "com.lihaoyi" %% "scalarx" % "0.4.3"
