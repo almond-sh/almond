@@ -43,8 +43,6 @@ final case class Options(
   // only sees the api module and its dependencies, rather than the full classpath of almond.
   @HelpMessage("Use class loader that loaded the api module rather than the context class loader")
     specificLoader: Boolean = true,
-  @HelpMessage("Start a metabrowse server for go to source navigation (linked from Jupyter inspections, server is started upon first inspection)")
-    metabrowse: Boolean = true,
   @HelpMessage("Trap what user code sends to stdout and stderr")
     trapOutput: Boolean = false,
   @HelpMessage("Disable ammonite compilation cache")

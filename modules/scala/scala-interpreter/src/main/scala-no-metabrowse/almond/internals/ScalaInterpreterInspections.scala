@@ -6,9 +6,6 @@ import ammonite.util.{Frame, Ref}
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,
-  metabrowse: Boolean,
-  metabrowseHost: String,
-  metabrowsePort: Int,
   pressy: => scala.tools.nsc.interactive.Global,
   frames: => List[Frame]
 ) {

@@ -118,7 +118,6 @@ object ScalaKernel extends CaseApp[Options] {
         forceMavenProperties = forceProperties,
         mavenProfiles = mavenProfiles,
         initialClassLoader = initialClassLoader,
-        metabrowse = options.metabrowse,
         lazyInit = true,
         trapOutput = options.trapOutput,
         disableCache = options.disableCache,
