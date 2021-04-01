@@ -11,10 +11,11 @@ import almond.logger.{Logger, LoggerContext}
 import ammonite.runtime.Frame
 import ammonite.util.Ref
 import ammonite.util.Util.newLine
-import scala.meta.io.AbsolutePath
+import scala.meta.internal.metals.Docstrings
 import scala.meta.internal.mtags.MtagsEnrichments._
 import scala.meta.internal.mtags.OnDemandSymbolIndex
 import scala.meta.internal.semanticdb.scalac.SemanticdbOps
+import scala.meta.io.AbsolutePath
 
 import scala.tools.nsc.Global
 import scala.tools.nsc.interactive.{Global => Interactive}
