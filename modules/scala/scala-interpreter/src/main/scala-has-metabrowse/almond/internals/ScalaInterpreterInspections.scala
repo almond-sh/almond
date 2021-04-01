@@ -22,6 +22,9 @@ import scala.util.Random
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,
+  metabrowse: Boolean,
+  metabrowseHost: String,
+  metabrowsePort: Int,
   pressy: => Interactive,
   frames: => List[Frame]
 ) {
