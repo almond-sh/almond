@@ -43,6 +43,6 @@ object Complete {
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make
   implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make
+    JsonCodecMaker.makeWithRequiredCollectionFields
 
 }
