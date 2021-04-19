@@ -440,6 +440,27 @@ object ScalaInterpreterTests extends TestSuite {
 
       interpreter.execute("import scala.collection.mutable")
         .assertSuccess()
+
+      interpreter.execute("trait ATrait")
+        .assertSuccess()
+
+      interpreter.execute("class AClass")
+        .assertSuccess()
+
+      interpreter.execute("abstract class AbstractClass")
+        .assertSuccess()
+
+      interpreter.execute("object AnObject")
+        .assertSuccess()
+
+      interpreter.execute("case class CaseClass()")
+        .assertSuccess()
+
+      interpreter.execute("case object CaseObject")
+        .assertSuccess()
+
+      interpreter.execute("type Str = String")
+        .assertSuccess()
     }
   }
 
