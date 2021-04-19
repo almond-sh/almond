@@ -65,19 +65,6 @@ object Settings {
     // Seems required when cross-publishing for several scala versions
     // with same major and minor numbers (e.g. 2.12.6 and 2.12.7)
     publishConfiguration := publishConfiguration.value.withOverwrite(true),
-    exportVersionsSetting,
-    unmanagedSourceDirectories.in(Compile) ++= {
-      val sbv = scalaBinaryVersion.value
-      CrossVersion.partialVersion(sbv) match {
-        case Some((2, 11)) =>
-          Nil
-        case Some((2, 12)) =>
-          Seq(baseDirectory.value / "src" / "main" / "scala-2.12_2.13")
-        case Some((2, 13)) =>
-          Seq(baseDirectory.value / "src" / "main" / "scala-2.12_2.13")
-        case _ => Nil
-      }
-    },
     unmanagedSourceDirectories.in(Compile) ++= {
       val sv = scalaVersion.value
       if (sv.startsWith("2.12.")) {
@@ -91,16 +78,7 @@ object Settings {
       } else
         Nil
     }
-  ) ++ {
-    val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(java.util.Locale.ROOT)
-    if (prop == "0" || prop == "false")
-      Seq(
-        sources in (Compile, doc) := Seq.empty,
-        publishArtifact in (Compile, packageDoc) := false
-      )
-    else
-      Nil
-  }
+  )
 
   lazy val dontPublish = Seq(
     publish := {},
@@ -206,33 +184,6 @@ object Settings {
     def underShared: Project = {
       val base = project.base.getParentFile / "modules" / "shared" / project.base.getName
       project.in(base)
-    }
-  }
-
-  lazy val exportVersions = taskKey[String]("Prints the current version to a dedicated file under target/")
-
-  lazy val exportVersionsSetting: Setting[_] = {
-    exportVersions := {
-      val ver = version.value
-      val ammoniteVer = Deps.Versions.ammonite
-      val scalaVer = scalaVersion.value
-      val outputDir = target.value
-
-      outputDir.mkdirs()
-
-      val output = outputDir / "version"
-      Files.write(output.toPath, ver.getBytes(UTF_8))
-      state.value.log.info(s"Wrote $output")
-
-      val ammoniteOutput = outputDir / "ammonite-version"
-      Files.write(ammoniteOutput.toPath, ammoniteVer.getBytes(UTF_8))
-      state.value.log.info(s"Wrote $ammoniteOutput")
-
-      val scalaOutput = outputDir / "scala-version"
-      Files.write(scalaOutput.toPath, scalaVer.getBytes(UTF_8))
-      state.value.log.info(s"Wrote $scalaOutput")
-
-      ver
     }
   }
 

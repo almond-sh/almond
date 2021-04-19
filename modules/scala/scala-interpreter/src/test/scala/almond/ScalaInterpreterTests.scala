@@ -218,7 +218,7 @@ object ScalaInterpreterTests extends TestSuite {
         val code = "HashM"
 
         val extraCompletions =
-          if (isScala211 || isScala212)
+          if (isScala212)
             Seq("scala.collection.parallel.immutable.HashMapCombiner")
           else
             Nil
