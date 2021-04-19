@@ -1,7 +1,3 @@
-**Almond is participating to Google Summer of Code 2021! More details [here](https://github.com/almond-sh/almond/issues/770).**
-
-***
-
 <div align="center">
 <img src="docs/website/static/logos/impure-logos-almond-0.svg" alt="logo" width="40%">
 </div>
