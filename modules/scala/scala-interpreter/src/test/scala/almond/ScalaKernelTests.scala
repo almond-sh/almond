@@ -411,7 +411,7 @@ object ScalaKernelTests extends TestSuite {
 
     "auto-update Rx stuff upon change" - {
 
-      if (isScala211 || isScala212) {
+      if (isScala212) {
         // How the pseudo-client behaves
 
         val sessionId = UUID.randomUUID().toString

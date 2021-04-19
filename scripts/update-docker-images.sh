@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-SCALA212_VERSION="$(grep -oP '(?<=def scala212 = ")[^"]*(?<!")' project/Settings.scala)"
-SCALA213_VERSION="$(grep -oP '(?<=def scala213 = ")[^"]*(?<!")' project/Settings.scala)"
+# TODO Convert to a mill task
+
+SCALA212_VERSION="$(./mill scala212)"
+SCALA213_VERSION="$(./mill scala213)"
 
 ALMOND_VERSION="$(git describe --tags --abbrev=0 --match 'v*' | sed 's/^v//')"
 
@@ -10,13 +12,14 @@ DOCKER_REPO=almondsh/almond
 
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-if [[ ${TRAVIS_TAG} != v* ]]; then
+TAG="$(git describe --exact-match --tags --always "$(git rev-parse HEAD)")"
+
+if [[ ${TAG} != v* ]]; then
   echo "Not on a git tag, creating snapshot image"
-  ALMOND_VERSION=${ALMOND_VERSION%.*}.$((${ALMOND_VERSION##*.} + 1))-SNAPSHOT
+  ALMOND_VERSION="$(./mill show 'scala0.scala-kernel['"$SCALA213_VERSION"'].publishVersion')"
   IMAGE_NAME=${DOCKER_REPO}:snapshot
-  sbt 'set version in ThisBuild := "'${ALMOND_VERSION}'"' \
-    "++$SCALA213_VERSION publishLocal" \
-    "++$SCALA212_VERSION publishLocal"
+  ./mill '__['"$SCALA213_VERSION"'].publishLocal'
+  ./mill '__['"$SCALA212_VERSION"'].publishLocal'
   cp -r $HOME/.ivy2/local/ ivy-local/
   docker build --build-arg ALMOND_VERSION=${ALMOND_VERSION} --build-arg=LOCAL_IVY=yes \
     --build-arg SCALA_VERSIONS="$SCALA213_VERSION $SCALA212_VERSION" -t ${IMAGE_NAME} .

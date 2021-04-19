@@ -7,3 +7,9 @@ target/
 
 # website stuff
 processed-pages/
+
+# mill stuff
+out/
+.ammonite/
+
+notebooks/
