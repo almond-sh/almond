@@ -144,7 +144,8 @@ object AmmInterpreter {
                       .asInstanceOf[Either[String, Seq[scala.tools.nsc.Global#Tree]]],
                     autoUpdateLazyVals,
                     autoUpdateVars,
-                    variableInspectorEnabled
+                    variableInspectorEnabled,
+                    logCtx
                   )
                 }
             }

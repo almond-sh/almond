@@ -218,7 +218,7 @@ object ScalaInterpreterTests extends TestSuite {
         val code = "HashM"
 
         val extraCompletions =
-          if (isScala211 || isScala212)
+          if (isScala212)
             Seq("scala.collection.parallel.immutable.HashMapCombiner")
           else
             Nil
@@ -439,6 +439,27 @@ object ScalaInterpreterTests extends TestSuite {
       assert(after2.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"4","varType":"Int","isMatrix":false}]""")
 
       interpreter.execute("import scala.collection.mutable")
+        .assertSuccess()
+
+      interpreter.execute("trait ATrait")
+        .assertSuccess()
+
+      interpreter.execute("class AClass")
+        .assertSuccess()
+
+      interpreter.execute("abstract class AbstractClass")
+        .assertSuccess()
+
+      interpreter.execute("object AnObject")
+        .assertSuccess()
+
+      interpreter.execute("case class CaseClass()")
+        .assertSuccess()
+
+      interpreter.execute("case object CaseObject")
+        .assertSuccess()
+
+      interpreter.execute("type Str = String")
         .assertSuccess()
     }
   }

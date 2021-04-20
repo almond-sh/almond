@@ -4,11 +4,12 @@ set -eu
 cd "$(dirname "${BASH_SOURCE[0]}")/../examples"
 
 OUTPUT="$(pwd)/output.ipynb"
-export JUPYTER_PATH="$(pwd)/../project/target/jupyter"
+export JUPYTER_PATH="$(pwd)/../out/jupyter-dir"
 
-# Assumes 'sbt interpreter-api/exportVersions' has been run
-SCALA_VERSION="$(cat ../modules/shared/interpreter-api/target/scala-version)"
-ALMOND_VERSION="$(cat ../modules/shared/interpreter-api/target/version)"
+# let's switch back to the default scala version once the libs in the
+# examples are fine with 2.13
+SCALA_VERSION="2.12.12"
+ALMOND_VERSION="$(cd .. && ./mill -i show 'scala0.scala-kernel['"$SCALA_VERSION"'].publishVersion')"
 
 echo "Current Scala version is $SCALA_VERSION"
 echo "Current version is $ALMOND_VERSION"
@@ -24,22 +25,13 @@ mkdir -p "$(pwd)/project/target"
 
 echo "Generating bootstrap"
 
-../scripts/coursier.sh bootstrap \
-  -r sonatype:releases \
-  -r jitpack \
-  --shared sh.almond:scala-kernel-api_$SCALA_VERSION \
-  --sources --default=true \
-  --embed-files=false \
-  --scala-version "$SCALA_VERSION" \
-  sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION \
-  -o "$(pwd)/../project/target/launcher" \
-  -f
+LAUNCHER="$(cd .. && ./mill -i launcher "$SCALA_VERSION")"
 
 echo "Installing kernel"
 
 KERNEL_ID="almond-sources-tmp"
 
-"$(pwd)/../project/target/launcher" \
+"$LAUNCHER" \
   --jupyter-path "$JUPYTER_PATH/kernels" \
   --id "$KERNEL_ID" \
   --install --force \

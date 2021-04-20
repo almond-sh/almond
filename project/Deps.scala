@@ -7,8 +7,8 @@ object Deps {
 
   object Versions {
     def ammonite = "2.3.8-36-1cce53f3"
-    def caseApp = "2.0.4"
-    def jsoniterScala = "2.7.2"
+    def caseApp = "2.0.6"
+    def jsoniterScala = "2.7.0"
     def scalafmt = "2.7.5"
   }
 
@@ -37,5 +37,5 @@ object Deps {
 
   def sparkSql = "org.apache.spark" %% "spark-sql" % "2.4.0"
 
-  def utest = "com.lihaoyi" %% "utest" % "0.7.7"
+  def utest = "com.lihaoyi" %% "utest" % "0.7.9"
 }
