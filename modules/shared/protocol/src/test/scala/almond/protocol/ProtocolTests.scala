@@ -19,6 +19,19 @@ object ProtocolTests extends TestSuite {
         assert(result == expected)
       }
     }
+
+    test("complete_reply") {
+      test("preserve matches field in json reply even if no match found") {
+        val reply = Complete.Reply(
+          matches = Nil,
+          cursor_start = 0,
+          cursor_end = 7,
+          metadata = RawJson.emptyObj
+        )
+        val json = writeToString(reply)
+        assert(json.contains(""""matches":[]"""))
+      }
+    }
   }
 
 }
