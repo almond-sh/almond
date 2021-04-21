@@ -1,3 +1,5 @@
+import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
+
 import $file.deps, deps.{Deps, ScalaVersions}
 import $file.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
