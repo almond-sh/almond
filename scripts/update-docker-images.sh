@@ -12,7 +12,7 @@ DOCKER_REPO=almondsh/almond
 
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-TAG="$(git describe --exact-match --tags --always "$(git rev-parse HEAD)")"
+TAG="$(git describe --exact-match --tags --always "$(git rev-parse HEAD)" || true)"
 
 if [[ ${TAG} != v* ]]; then
   echo "Not on a git tag, creating snapshot image"
@@ -40,5 +40,3 @@ else
   docker tag ${IMAGE_NAME} ${DOCKER_REPO}:latest
   docker push ${DOCKER_REPO}:latest
 fi
-
-
