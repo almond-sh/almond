@@ -155,7 +155,7 @@ jobs:
     - run: ./mill publishSonatype __.publishArtifacts
       shell: bash
       env:
-        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        PGP_PASSWORD: ${{ secrets.PGP_PASSPHRASE }}
         SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
         SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
