@@ -123,22 +123,18 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       (sv.startsWith("2.13.") && patch.exists(_ <= 1))
   }
   def ivyDeps = T{
-    val metabrowse =
-      if (addMetabrowse()) Agg(Deps.metabrowseServer)
-      else Agg.empty
-    metabrowse ++ Agg(
+    Agg(
       Deps.coursier,
       Deps.coursierApi,
       Deps.directories,
+      Deps.mtags,
       Deps.jansi,
       Deps.ammoniteCompiler,
       Deps.ammoniteRepl
     )
   }
   def sources = T.sources {
-    val dirName =
-      if (addMetabrowse()) "scala-has-metabrowse"
-      else "scala-no-metabrowse"
+    val dirName = "scala-has-metabrowse"
     val extra = PathRef(millSourcePath / "src" / "main" / dirName)
     super.sources() ++ Seq(extra)
   }

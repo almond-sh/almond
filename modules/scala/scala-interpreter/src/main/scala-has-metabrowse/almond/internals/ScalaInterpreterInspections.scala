@@ -115,7 +115,7 @@ final class ScalaInterpreterInspections(
                 )
                 .getOrElse(tree.toString)
 
-              val documentation = docs.documentation(sym).asScala.asJava
+              val documentation = docs.documentation(sym)
 
               val text = if (documentation.isPresent) Some(documentation.get()) else None
               val docstrings = text.fold("")(_.docstring())
