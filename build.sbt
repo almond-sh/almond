@@ -161,16 +161,8 @@ lazy val `scala-interpreter` = project
   .disablePlugins(MimaPlugin)
   .settings(
     shared,
-    libraryDependencies ++= {
-      if (addMetabrowse.value)
-        Seq(Deps.metabrowseServer)
-      else
-        Nil
-    },
     unmanagedSourceDirectories.in(Compile) += {
-      val dirName =
-        if (addMetabrowse.value) "scala-has-metabrowse"
-        else "scala-no-metabrowse"
+      val dirName = "scala-has-metabrowse"
       baseDirectory.value / "src" / "main" / dirName
     },
     libraryDependencies ++= Seq(
@@ -179,7 +171,8 @@ lazy val `scala-interpreter` = project
       Deps.directories,
       Deps.jansi,
       Deps.ammoniteCompiler,
-      Deps.ammoniteRepl
+      Deps.ammoniteRepl,
+      Deps.mtags
     ),
     crossVersion := CrossVersion.full,
     testSettings
