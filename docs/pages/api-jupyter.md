@@ -76,6 +76,13 @@ Call `stdin` on `JupyterAPI` to request user input, e.g.
 kernel.stdin() // clear text input
 kernel.stdin(prompt = ">> ", password = true) // password input, with custom prompt
 ```
+Example
+```scala
+final class Password(val value: String) {
+    override def toString= "****"    
+}
+val pass = new Password(kernel.stdin("password: " , password= true).mkString(""))
+```
 
 ![](/demo/stdin.gif)
 
