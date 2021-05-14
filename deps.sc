@@ -14,7 +14,7 @@ object Deps {
   def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.11.0"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
-  def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.4.3"
+  def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.4.4"
   def coursier                 = ivy"io.get-coursier::coursier:2.0.14"
   def coursierApi              = ivy"io.get-coursier:interface:1.0.3"
   def directories              = ivy"io.github.soc:directories:12"
