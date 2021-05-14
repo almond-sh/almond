@@ -24,7 +24,7 @@ object Deps {
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.2.20"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.2.21"
   def metabrowseServer         = ivy"org.scalameta::metabrowse-server:0.2.3"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
