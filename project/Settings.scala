@@ -9,7 +9,7 @@ import sbt.Keys._
 object Settings {
 
   def scala212 = "2.12.12"
-  def scala213 = "2.13.4"
+  def scala213 = "2.13.6"
 
   lazy val isAtLeast212 = Def.setting {
     CrossVersion.partialVersion(scalaVersion.value) match {
