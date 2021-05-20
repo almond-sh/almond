@@ -35,26 +35,25 @@ class AlmondPreprocessor(
   parse: => String => Either[String, Seq[G#Tree]],
   autoUpdateLazyVals: Boolean,
   autoUpdateVars: Boolean,
-  variableInspectorEnabled: () => Boolean
+  variableInspectorEnabled: () => Boolean,
+  logCtx: almond.logger.LoggerContext
 ) extends DefaultPreprocessor(parse) {
 
   // useful when debugging
   // this prints the code after pre-processing, that is the code that is actually passed to scalac for compilation
-  // import ammonite.util.Util.CodeSource
-  // import ammonite.util.Imports
-  // import ammonite.interp.CodeWrapper
+  // private val log = logCtx(getClass)
   // override def transform(
   //   stmts: Seq[String],
   //   resultIndex: String,
   //   leadingSpaces: String,
-  //   codeSource: CodeSource,
+  //   codeSource: ammonite.util.Util.CodeSource,
   //   indexedWrapperName: Name,
-  //   imports: Imports,
+  //   imports: ammonite.util.Imports,
   //   printerTemplate: String => String,
   //   extraCode: String,
   //   skipEmpty: Boolean,
   //   markScript: Boolean,
-  //   codeWrapper: CodeWrapper
+  //   codeWrapper: ammonite.compiler.iface.CodeWrapper
   // ) = {
   //   val r = super.transform(
   //     stmts,
@@ -160,7 +159,10 @@ class AlmondPreprocessor(
         Some(extraCode0)
       } else
         None
-    case (_, _, t: G#Import) => None
+    case (_, _, _: G#ModuleDef) => None
+    case (_, _, _: G#ClassDef) => None
+    case (_, _, _: G#TypeDef) => None
+    case (_, _, _: G#Import) => None
     case (_, code, t) =>
       val ident = code
       val extraCode0 =

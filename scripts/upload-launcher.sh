@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -eu
 
-if [[ ${TRAVIS_TAG} != v* ]]; then
+# TODO Convert to a mill task
+
+TAG="$(git describe --exact-match --tags --always "$(git rev-parse HEAD)")"
+
+if [[ ${TAG} != v* ]]; then
   echo "Not on a git tag"
   exit 1
 fi
 
-export VERSION="$(echo "$TRAVIS_TAG" | sed 's@^v@@')"
+export VERSION="$(echo "$TAG" | sed 's@^v@@')"
 
 # config
 REPO="almond-sh/almond"
