@@ -15,7 +15,7 @@ object Deps {
   def ammoniteCompiler = ("com.lihaoyi" % "ammonite-compiler" % Versions.ammonite).cross(CrossVersion.full)
   def ammoniteRepl = ("com.lihaoyi" % "ammonite-repl" % Versions.ammonite).cross(CrossVersion.full)
   def ammoniteReplApi = ("com.lihaoyi" % "ammonite-repl-api" % Versions.ammonite).cross(CrossVersion.full)
-  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.11.0"
+  def ammoniteSpark = "sh.almond" %% "ammonite-spark" % "0.12.0"
   def caseAppAnnotations = "com.github.alexarchambault" %% "case-app-annotations" % Versions.caseApp
   def caseApp = "com.github.alexarchambault" %% "case-app" % Versions.caseApp
   def collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.4"

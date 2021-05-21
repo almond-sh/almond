@@ -11,7 +11,7 @@ object Deps {
   def ammoniteCompiler         = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl             = ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
   def ammoniteReplApi          = ivy"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
-  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.11.0"
+  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.12.0"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.4.4"
