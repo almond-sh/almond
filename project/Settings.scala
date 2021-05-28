@@ -8,7 +8,7 @@ import sbt.Keys._
 
 object Settings {
 
-  def scala212 = "2.12.12"
+  def scala212 = "2.12.14"
   def scala213 = "2.13.4"
 
   lazy val isAtLeast212 = Def.setting {
