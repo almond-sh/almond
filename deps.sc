@@ -1,7 +1,7 @@
 import mill._, scalalib._
 
 object Versions {
-  def ammonite      = "2.3.8-122-9be39deb"
+  def ammonite      = "2.3.8-124-2da846d2"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.7.3"
   def scalafmt      = "2.7.5"
@@ -36,7 +36,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala213 = "2.13.4"
+  def scala213 = "2.13.6"
   def scala212 = "2.12.13"
   val binaries = Seq(scala213, scala212)
   val all = Seq(
