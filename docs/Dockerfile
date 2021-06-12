@@ -6,7 +6,7 @@ RUN apk add libtool automake autoconf gcc g++ make gawk nasm --no-cache
 
 WORKDIR /app/website
 
-COPY ./docs /app/docs
+COPY ./pages /app/pages
 COPY ./website /app/website
 RUN yarn install
 

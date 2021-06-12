@@ -8,12 +8,13 @@ services:
       - 35729:35729
     command: sh -c "yarn start --port 3000"
     volumes:
-      - ./docs:/app/docs
+      - ./pages:/app/pages
+      - ./processed-pages:/app/processed-pages
       - ./website/blog:/app/website/blog
       - ./website/core:/app/website/core
       - ./website/i18n:/app/website/i18n
       - ./website/pages:/app/website/pages
-      - ./website/siteConfig.js:/app/website/siteConfig.js
       - ./website/static:/app/website/static
+      - ./website/siteConfig.js:/app/website/siteConfig.js
       - ./website/sidebars.json:/app/website/sidebars.json
     working_dir: /app/website
