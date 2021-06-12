@@ -13,7 +13,7 @@ const Container = CompLibrary.Container;
 
 const CWD = process.cwd();
 
-const siteConfig = require(process.cwd() + '/siteConfig.js');
+const siteConfig = require(`${CWD}/siteConfig.js`);
 try {
   var versions = require(`${CWD}/versions.json`);
 } catch (e) {

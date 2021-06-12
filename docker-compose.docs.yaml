@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  docusaurus:
+    build:
+      context: ./
+      dockerfile: "docs.Dockerfile"
+    ports:
+      - 3000:3000
+    command: mill docs.generate --npm-install  --yarn-run-build
+    volumes:
+      - ./:/app/
+    working_dir: /app/
