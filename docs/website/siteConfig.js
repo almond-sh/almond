@@ -16,16 +16,18 @@ const siteConfig = {
 
   projectName: 'almond',
   organizationName: 'almond-sh',
+  blogSidebarCount: 'ALL', // 'ALL' | int
 
-  customDocsPath: 'processed-pages',
+
+  customDocsPath: 'docs',
 
   headerLinks: [
     {doc: 'intro', label: 'Docs'},
-    {blog: true, label: 'Blog'},
-    {href: 'https://github.com/almond-sh/almond', label: 'GitHub'},
+    { page: 'help', label: 'Help' },
+    { blog: true, label: 'Blog' },
+    { href: 'https://github.com/almond-sh/almond', label: 'GitHub' },
+    { search: true }
   ],
-
-  users: [],
 
   headerIcon: 'logos/impure-logos-almond-0.svg',
 
