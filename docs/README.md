@@ -2,6 +2,12 @@
 
 ## getting started
 
+Make sure that you this clone repository with --recursive option.
+
+If not, run `git submodule update --init --recursive`
+
+Then, run docker-compose -f docker-compose.docs.yaml in the project root directory to generate processed pages.
+
 ### run dev server
 
 #### run in docker
