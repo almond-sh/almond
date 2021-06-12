@@ -4,7 +4,7 @@ target/
 .idea/
 .bloop
 .vscode/
-
+.coursier/
 # website stuff
 processed-pages/
 
