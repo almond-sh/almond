@@ -19,7 +19,7 @@ const siteConfig = {
   blogSidebarCount: 'ALL', // 'ALL' | int
 
 
-  customDocsPath: 'docs',
+  customDocsPath: 'processed-pages',
 
   headerLinks: [
     {doc: 'intro', label: 'Docs'},
