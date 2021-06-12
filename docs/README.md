@@ -2,7 +2,7 @@
 
 ## getting started
 
-Make sure that you this clone repository with --recursive option.
+Make sure that you clone this repository with --recursive option.
 
 If not, run `git submodule update --init --recursive`
 
