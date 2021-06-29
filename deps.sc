@@ -27,6 +27,7 @@ object Deps {
   def mdoc                     = ivy"org.scalameta::mdoc:2.2.21"
   def metabrowseServer         = ivy"org.scalameta::metabrowse-server:0.2.3"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
+  def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.0"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.9.4"
