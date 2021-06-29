@@ -246,6 +246,15 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima 
   // sources.in(Compile, doc) := Nil
 }
 
+class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule with Mima {
+  def ivyDeps = Agg(
+    Deps.jvmRepr
+  )
+  def compileIvyDeps = Agg(
+    Deps.scalapy
+  )
+}
+
 class AlmondRx(val crossScalaVersion: String) extends AlmondModule with Mima {
   def compileModuleDeps = Seq(
     scala.`scala-kernel-api`()
@@ -290,6 +299,7 @@ object scala extends Module {
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel]     (ScalaVersions.all: _*)
   object `scala-kernel-helper` extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
+  object `almond-scalapy`    extends Cross[AlmondScalaPy]   (ScalaVersions.binaries: _*)
   object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
   object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
 }
@@ -480,11 +490,20 @@ def validateExamples(matcher: String = "") = {
       Some(m)
     }
 
+  val sv0 = {
+    val prefix = sv.split('.').take(2).map(_ + ".").mkString
+    ScalaVersions.binaries.find(_.startsWith(prefix)).getOrElse {
+      sys.error(s"Can't find a Scala version in ${ScalaVersions.binaries} with the same binary version as $sv (prefix: $prefix)")
+    }
+  }
+
   T.command {
     val launcher = scala.`scala-kernel`(sv).launcher().path
     val jupyterPath = T.dest / "jupyter"
     val outputDir = T.dest / "output"
     os.makeDir.all(outputDir)
+
+    scala.`almond-scalapy`(sv0).publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
 
     val version = scala.`scala-kernel`(sv).publishVersion()
     val repoRoot = baseRepoRoot / version

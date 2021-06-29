@@ -66,7 +66,8 @@ final case class Options(
     val default =
       if (defaultAutoDependencies)
         Map(
-          Module.of("org.apache.spark", "*") -> Seq(Dependency.of(Module.of("sh.almond", s"almond-spark_$sbv"), Properties.version))
+          Module.of("org.apache.spark", "*") -> Seq(Dependency.of(Module.of("sh.almond", s"almond-spark_$sbv"), Properties.version)),
+          Module.of("me.shadaj", "scalapy*") -> Seq(Dependency.of(Module.of("sh.almond", s"almond-scalapy_$sbv"), Properties.version))
         )
       else
         Map.empty[Module, Seq[Dependency]]
