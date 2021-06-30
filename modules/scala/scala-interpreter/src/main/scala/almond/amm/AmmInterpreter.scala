@@ -178,7 +178,8 @@ object AmmInterpreter {
 
       log.debug("Loading base dependencies")
 
-      ammInterp0.repositories() = ammInterp0.repositories() ++ extraRepos.map(coursierapi.MavenRepository.of(_))
+      // TODO: remove jitpack once jvm-repr is published to central
+      ammInterp0.repositories() = ammInterp0.repositories() ++ (extraRepos ++ Seq(coursier.Repositories.jitpack.root)).map(coursierapi.MavenRepository.of(_))
 
       ammInterp0.resolutionHooks += { f =>
         val extraDependencies = f.getDependencies
