@@ -206,9 +206,6 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule {
 }
 
 class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule {
-  def compileModuleDeps = Seq(
-    scala0.`jupyter-api`()
-  )
   def ivyDeps = Agg(
     Deps.jvmRepr
   )
