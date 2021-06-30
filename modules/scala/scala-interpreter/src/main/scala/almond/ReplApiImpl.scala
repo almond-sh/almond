@@ -63,9 +63,11 @@ final class ReplApiImpl(
             .asInstanceOf[Displayer[T]]
             .display(value)
             .asScala
-            .toMap
-          p.display(DisplayData(m))
-          Some(Iterator())
+          if (m == null) None
+          else {
+            p.display(DisplayData(m.toMap))
+            Some(Iterator())
+          }
         } else
           for (updatableResults <- updatableResultsOpt if (onChange.nonEmpty && custom.isEmpty) || (onChangeOrError.nonEmpty && custom.nonEmpty)) yield {
 
@@ -205,4 +207,3 @@ final class ReplApiImpl(
 object ReplApiImpl {
   private class Foo
 }
-

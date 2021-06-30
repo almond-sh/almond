@@ -205,6 +205,15 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule {
   // sources.in(Compile, doc) := Nil
 }
 
+class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule {
+  def ivyDeps = Agg(
+    Deps.jvmRepr
+  )
+  def compileIvyDeps = Agg(
+    Deps.scalapy
+  )
+}
+
 class AlmondRx(val crossScalaVersion: String) extends AlmondModule {
   def compileModuleDeps = Seq(
     scala0.`scala-kernel-api`()
@@ -247,6 +256,7 @@ object scala0 extends Module {
   object `scala-kernel-api`  extends Cross[ScalaKernelApi]  (ScalaVersions.all: _*)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel]     (ScalaVersions.all: _*)
+  object `almond-scalapy`    extends Cross[AlmondScalaPy]   (ScalaVersions.all: _*)
   object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
   object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
 }
