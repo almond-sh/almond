@@ -38,6 +38,10 @@ KERNEL_ID="almond-sources-tmp"
   --trap-output \
   --predef-code 'sys.props("almond.ids.random") = "0"'
 
+echo "publishLocal almond-scalapy"
+
+cd .. && ./mill -i 'scala0.almond-scalapy['"$SCALA_VERSION"'].publishLocal' && cd -
+
 ERRORS=0
 
 while read f; do
