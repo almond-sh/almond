@@ -5,8 +5,12 @@ import $file.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
 import $file.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, PropertyFile, Util}
 
+import java.nio.charset.Charset
+import java.nio.file.FileSystems
+
 import mill._, scalalib._
 import scala.concurrent.duration._
+import scala.util.Properties
 
 // Tell mill modules are under modules/
 implicit def millModuleBasePath: define.BasePath =
@@ -392,4 +396,91 @@ def scalaVersions() = T.command {
 def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala0.`scala-kernel`(scalaVersion).launcher().path.toNIO
   println(launcher)
+}
+
+private val examplesDir = os.pwd / "examples"
+def exampleNotebooks = T.sources {
+  os.list(examplesDir)
+    .filter(_.last.endsWith(".ipynb"))
+    .filter(os.isFile(_))
+    .map(PathRef(_))
+}
+
+def validateExamples(matcher: String = "") = {
+  val sv = "2.12.12"
+  val kernelId = "almond-sources-tmp"
+  val baseRepoRoot = os.rel / "out" / "repo"
+
+  def maybeEscapeArg(arg: String): String =
+    if (Properties.isWin && arg.exists(c => c == ' ' || c == '\"'))
+      "\"" + arg.replace("\"", "\\\"") + "\""
+    else arg
+
+  val pathMatcherOpt =
+    if (matcher.trim.isEmpty) None
+    else {
+      val m = FileSystems.getDefault.getPathMatcher("glob:" + matcher.trim)
+      Some(m)
+    }
+
+  T.command {
+    val launcher = scala0.`scala-kernel`(sv).launcher().path.toNIO
+    val jupyterPath = T.dest / "jupyter"
+    val outputDir = T.dest / "output"
+    os.makeDir.all(outputDir)
+
+    val version = scala0.`scala-kernel`(sv).publishVersion()
+    val repoRoot = baseRepoRoot / version
+
+    os.proc(
+      launcher.toString,
+      "--jupyter-path", jupyterPath / "kernels",
+      "--id", kernelId,
+      "--install", "--force",
+      "--trap-output",
+      "--predef-code", maybeEscapeArg("sys.props(\"almond.ids.random\") = \"0\""),
+      "--extra-repository", s"ivy:${repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
+    ).call(cwd = examplesDir)
+
+    val nbFiles = exampleNotebooks()
+      .map(_.path)
+      .filter { p =>
+        pathMatcherOpt.fold(true) { m =>
+          m.matches(p.toNIO.getFileName)
+        }
+      }
+
+    var errorCount = 0
+    for (f <- nbFiles) {
+      val output = outputDir / f.last
+      os.proc(
+        "jupyter", "nbconvert",
+        "--to", "notebook",
+        "--execute",
+        s"--ExecutePreprocessor.kernel_name=$kernelId",
+        f,
+        s"--output=$output"
+      ).call(cwd = examplesDir, env = Map("JUPYTER_PATH" -> jupyterPath.toString))
+
+      if (Properties.isWin) {
+        val rawOutput = os.read(output, Charset.defaultCharset())
+        val updatedOutput = rawOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
+        // writing the updated notebook on disk for the diff below
+        os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
+      }
+
+      val result = os.read(output, Charset.defaultCharset())
+      val expected = os.read(f)
+
+      if (result != expected) {
+        System.err.println(s"${f.last} differs:")
+        System.err.println()
+        os.proc("diff", "-u", f, output).call(cwd = examplesDir)
+        errorCount += 1
+      }
+    }
+
+    if (errorCount != 0)
+      sys.error(s"Found $errorCount error(s)")
+  }
 }

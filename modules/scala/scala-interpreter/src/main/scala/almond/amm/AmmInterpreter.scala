@@ -178,7 +178,13 @@ object AmmInterpreter {
 
       log.debug("Loading base dependencies")
 
-      ammInterp0.repositories() = ammInterp0.repositories() ++ extraRepos.map(coursierapi.MavenRepository.of(_))
+      ammInterp0.repositories() = ammInterp0.repositories() ++
+        extraRepos.map { r =>
+          if (r.startsWith("ivy:"))
+            coursierapi.IvyRepository.of(r.stripPrefix("ivy:"))
+          else
+            coursierapi.MavenRepository.of(r)
+        }
 
       ammInterp0.resolutionHooks += { f =>
         val extraDependencies = f.getDependencies
