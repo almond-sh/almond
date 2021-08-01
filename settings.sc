@@ -47,7 +47,7 @@ trait AlmondPublishModule extends PublishModule {
     organization = "sh.almond",
     url = "https://github.com/almond-sh/almond",
     licenses = Seq(License.`BSD-3-Clause`),
-    versionControl = VersionControl.github("lihaoyi", "ammonite"),
+    versionControl = VersionControl.github("almond-sh", "almond"),
     developers = Seq(
       Developer("alexarchambault", "Alex Archambault","https://github.com/alexarchambault")
     )

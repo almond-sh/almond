@@ -3,7 +3,7 @@ import mill._, scalalib._
 object Versions {
   def ammonite      = "2.3.8-122-9be39deb"
   def caseApp       = "2.0.6"
-  def jsoniterScala = "2.7.3"
+  def jsoniterScala = "2.9.1"
   def scalafmt      = "2.7.5"
 }
 
@@ -14,12 +14,12 @@ object Deps {
   def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.12.0"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
-  def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.4.4"
+  def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.5.0"
   def coursier                 = ivy"io.get-coursier::coursier:2.0.14"
   def coursierApi              = ivy"io.get-coursier:interface:1.0.4"
   def directories              = ivy"io.github.soc:directories:12"
-  def fs2                      = ivy"co.fs2::fs2-core:2.5.6"
-  def jansi                    = ivy"org.fusesource.jansi:jansi:2.3.4"
+  def fs2                      = ivy"co.fs2::fs2-core:2.5.9"
+  def jansi                    = ivy"org.fusesource.jansi:jansi:1.18"
   def jeromq                   = ivy"org.zeromq:jeromq:0.5.2"
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
