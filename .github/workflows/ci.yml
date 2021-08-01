@@ -146,7 +146,6 @@ jobs:
     - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
     - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
       shell: bash
       env:
