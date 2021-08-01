@@ -165,3 +165,20 @@ IntelliJ should also automatically pick those files when they are overwritten.
 
 Just like for Metals above, you may benefit from disabling all but one Scala
 version (see above for more details).
+
+## Validate the example notebooks
+
+Example notebooks live under `examples/`. These are run
+on the CI using nbconvert, and the resulting outputs are
+compared to the committed ones. Any difference results
+in the examples job on the CI to fail.
+
+To validate the examples locally, run
+```text
+$ ./mill -i validateExamples
+```
+
+Optionally, you can pass a glob to filter notebook names:
+```text
+$ ./mill -i validateExamples 'scalapy*'
+```

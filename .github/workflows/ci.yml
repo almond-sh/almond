@@ -36,8 +36,7 @@ jobs:
     - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
-    - run: scripts/validate-examples.sh
+    - run: ./mill -i validateExamples
       shell: bash
 
   test:
