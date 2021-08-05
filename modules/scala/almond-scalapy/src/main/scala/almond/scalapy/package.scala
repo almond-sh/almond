@@ -23,8 +23,10 @@ package object scalapy {
     )
   }
 
+  private val pyFormatDisplayData = py.Dynamic.global.__almond_scalapy_format_display_data
+
   private def formatDisplayData(obj: py.Any): (Map[String, String], Map[String, String]) = {
-    val displayData = py.Dynamic.global.format_display_data(obj, allReprMethods.toPythonCopy)
+    val displayData = pyFormatDisplayData(obj, allReprMethods.toPythonCopy)
     val data = displayData.bracketAccess(0).as[List[(String, String)]].toMap
     val metadata = displayData.bracketAccess(1).as[List[(String, String)]].toMap
 
