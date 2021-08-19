@@ -148,7 +148,7 @@ trait AlmondModule
   def artifactName =
     millModuleSegments
       .parts
-      .dropWhile(_ == "scala0")
+      .dropWhile(_ == "scala")
       .dropWhile(_ == "shared")
       .take(1)
       .mkString("-")
