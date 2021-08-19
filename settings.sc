@@ -1,4 +1,5 @@
 import $file.deps, deps.Deps
+import $file.mima, mima.binaryCompatibilityVersions
 
 import $ivy.`io.get-coursier::coursier-launcher:2.0.12`
 
@@ -435,4 +436,21 @@ def publishSonatype(
   )
 
   publisher.publishAll(isRelease, artifacts: _*)
+}
+
+trait Mima extends com.github.lolgab.mill.mima.Mima {
+  def mimaPreviousVersions = binaryCompatibilityVersions
+
+  // same as https://github.com/lolgab/mill-mima/blob/de28f3e9fbe92867f98e35f8dfd3c3a777cc033d/mill-mima/src/com/github/lolgab/mill/mima/Mima.scala#L29-L44
+  // except we're ok if mimaPreviousVersions is empty
+  def mimaPreviousArtifacts = T{
+    val versions = mimaPreviousVersions().distinct
+    mill.api.Result.Success(
+      Agg.from(
+        versions.map(version =>
+          ivy"${pomSettings().organization}:${artifactId()}:${version}"
+        )
+      )
+    )
+  }
 }

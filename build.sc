@@ -1,9 +1,10 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
+import $ivy.`com.github.lolgab::mill-mima_mill0.9:0.0.4`
 
 import $file.deps, deps.{Deps, ScalaVersions}
 import $file.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
-import $file.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, PropertyFile, Util}
+import $file.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, Mima, PropertyFile, Util}
 
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
@@ -23,7 +24,7 @@ class Logger(val crossScalaVersion: String) extends AlmondModule with HasTests {
   object test extends Tests
 }
 
-class Channels(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class Channels(val crossScalaVersion: String) extends AlmondModule with HasTests with Mima {
   def moduleDeps = Seq(
     shared.logger()
   )
@@ -47,7 +48,7 @@ class Protocol(val crossScalaVersion: String) extends AlmondModule with HasTests
   object test extends Tests
 }
 
-class InterpreterApi(val crossScalaVersion: String) extends AlmondModule
+class InterpreterApi(val crossScalaVersion: String) extends AlmondModule with Mima
 
 class Interpreter(val crossScalaVersion: String) extends AlmondModule with HasTests {
   def moduleDeps = Seq(
@@ -84,7 +85,7 @@ class Test(val crossScalaVersion: String) extends AlmondModule {
   )
 }
 
-class JupyterApi(val crossScalaVersion: String) extends AlmondModule {
+class JupyterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
   def moduleDeps = Seq(
     shared.`interpreter-api`()
   )
@@ -93,7 +94,7 @@ class JupyterApi(val crossScalaVersion: String) extends AlmondModule {
   )
 }
 
-class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with DependencyListResource with ExternalSources with PropertyFile {
+class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with DependencyListResource with ExternalSources with PropertyFile with Mima {
   def crossFullScalaVersion = true
   def moduleDeps = Seq(
     shared.`interpreter-api`(),
@@ -192,7 +193,7 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with HasTe
       scala0.`scala-kernel-api`().externalSources()
 }
 
-class AlmondSpark(val crossScalaVersion: String) extends AlmondModule {
+class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima {
   def compileModuleDeps = Seq(
     scala0.`scala-kernel-api`()
   )
@@ -209,7 +210,7 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule {
   // sources.in(Compile, doc) := Nil
 }
 
-class AlmondRx(val crossScalaVersion: String) extends AlmondModule {
+class AlmondRx(val crossScalaVersion: String) extends AlmondModule with Mima {
   def compileModuleDeps = Seq(
     scala0.`scala-kernel-api`()
   )
