@@ -59,7 +59,7 @@ trait AlmondPublishModule extends PublishModule {
 trait HasTests extends CrossSbtModule {
   trait Tests extends super.Tests {
     def ivyDeps = Agg(Deps.utest)
-    def testFrameworks = Seq("utest.runner.Framework")
+    def testFramework = "utest.runner.Framework"
   }
 }
 
