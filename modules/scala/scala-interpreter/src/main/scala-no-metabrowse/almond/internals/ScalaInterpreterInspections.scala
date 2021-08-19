@@ -9,7 +9,7 @@ final class ScalaInterpreterInspections(
   metabrowse: Boolean,
   metabrowseHost: String,
   metabrowsePort: Int,
-  pressy: => scala.tools.nsc.interactive.Global,
+  compilerManager: => ammonite.compiler.CompilerLifecycleManager,
   frames: => List[Frame]
 ) {
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =

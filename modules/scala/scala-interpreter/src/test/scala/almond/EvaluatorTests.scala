@@ -1,7 +1,7 @@
 package almond
 
 import almond.TestUtil.SessionRunner
-import almond.amm.AlmondPreprocessor
+import almond.amm.AlmondCompilerLifecycleManager
 import almond.kernel.KernelThreads
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
@@ -23,11 +23,11 @@ object EvaluatorTests extends TestSuite {
   val runner = new SessionRunner(interpreterEc, bgVarEc, threads)
 
   def ifVarUpdates(s: String): String =
-    if (AlmondPreprocessor.isAtLeast_2_12_7) s
+    if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7) s
     else ""
 
   def ifNotVarUpdates(s: String): String =
-    if (AlmondPreprocessor.isAtLeast_2_12_7) ""
+    if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7) ""
     else s
 
 
@@ -105,7 +105,7 @@ object EvaluatorTests extends TestSuite {
     }
 
     "type annotation" - {
-      if (AlmondPreprocessor.isAtLeast_2_12_7)
+      if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7)
         runner.run(
           Seq(
             "var x: Any = 2" -> "",

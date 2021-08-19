@@ -1,7 +1,7 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`com.github.lolgab::mill-mima_mill0.9:0.0.4`
 
-import $file.deps, deps.{Deps, ScalaVersions}
+import $file.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
 import $file.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, Mima, PropertyFile, Util}
@@ -17,10 +17,25 @@ import _root_.scala.util.Properties
 implicit def millModuleBasePath: define.BasePath =
   define.BasePath(super.millModuleBasePath.value / "modules")
 
+class LoggerScala2Macros(val crossScalaVersion: String) extends AlmondModule with HasTests {
+  def ivyDeps = T{
+    val sv = scalaVersion()
+    Agg(Deps.scalaReflect(sv))
+  }
+}
+
 class Logger(val crossScalaVersion: String) extends AlmondModule with HasTests {
-  def ivyDeps = Agg(
-    Deps.scalaReflect(scalaVersion())
+  def supports3 = true
+  def moduleDeps = Seq(
+    shared.`logger-scala2-macros`()
   )
+  def ivyDeps = T{
+    val sv = scalaVersion()
+    val scalaReflect =
+      if (sv.startsWith("2.")) Agg(Deps.scalaReflect(sv))
+      else Agg(ivy"org.scala-lang:scala3-library_3:${scalaVersion()}")
+    scalaReflect
+  }
   object test extends Tests
 }
 
@@ -40,9 +55,10 @@ class Protocol(val crossScalaVersion: String) extends AlmondModule with HasTests
     shared.channels()
   )
   def ivyDeps = Agg(
-    Deps.jsoniterScalaCore
+    Deps.jsoniterScalaCore.applyBinaryVersion213_3(scalaVersion())
   )
   def compileIvyDeps = Agg(
+    Deps.scalaReflect(scalaVersion()),
     Deps.jsoniterScalaMacros.withConfiguration("provided")
   )
   object test extends Tests
@@ -57,7 +73,7 @@ class Interpreter(val crossScalaVersion: String) extends AlmondModule with HasTe
   )
   def ivyDeps = Agg(
     Deps.collectionCompat,
-    Deps.scalatags,
+    Deps.scalatags.applyBinaryVersion213_3(scalaVersion()),
     Deps.slf4jNop
   )
   object test extends Tests
@@ -68,7 +84,7 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule with HasTests {
     shared.interpreter()
   )
   def ivyDeps = Agg(
-    Deps.caseAppAnnotations,
+    Deps.caseAppAnnotations.withDottyCompat(scalaVersion(), ScalaVersions.cross2_3Version),
     Deps.collectionCompat,
     Deps.fs2
   )
@@ -101,8 +117,8 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
     scala.`jupyter-api`()
   )
   def ivyDeps = Agg(
-    Deps.ammoniteCompiler,
-    Deps.ammoniteReplApi,
+    Deps.ammoniteCompiler(crossScalaVersion),
+    Deps.ammoniteReplApi(crossScalaVersion),
     Deps.jvmRepr
   )
   def propertyFilePath = "almond/almond.properties"
@@ -113,6 +129,7 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
 
 class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with HasTests {
   def crossFullScalaVersion = true
+  def supports3 = true
   def moduleDeps = Seq(
     shared.interpreter(),
     scala.`scala-kernel-api`()
@@ -132,12 +149,12 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       if (addMetabrowse()) Agg(Deps.metabrowseServer)
       else Agg.empty
     metabrowse ++ Agg(
-      Deps.coursier,
+      Deps.coursier.withDottyCompat(scalaVersion(), ScalaVersions.cross2_3Version),
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
-      Deps.ammoniteCompiler,
-      Deps.ammoniteRepl
+      Deps.ammoniteCompiler(crossScalaVersion),
+      Deps.ammoniteRepl(crossScalaVersion)
     )
   }
   def sources = T.sources {
@@ -216,7 +233,7 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima 
     Deps.jsoniterScalaCore
   )
   def compileIvyDeps = Agg(
-    Deps.ammoniteReplApi,
+    Deps.ammoniteReplApi(crossScalaVersion),
     Deps.jsoniterScalaMacros,
     Deps.sparkSql
   )
@@ -249,6 +266,7 @@ class Echo(val crossScalaVersion: String) extends AlmondModule with HasTests {
 }
 
 object shared extends Module {
+  object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.binaries: _*)
   object logger            extends Cross[Logger]        (ScalaVersions.binaries: _*)
   object channels          extends Cross[Channels]      (ScalaVersions.binaries: _*)
   object protocol          extends Cross[Protocol]      (ScalaVersions.binaries: _*)
@@ -302,7 +320,7 @@ object docs extends ScalaModule with AlmondRepositories {
 
     val ver = scala.`scala-kernel-api`(scalaVersion0).publishVersion()
     val latestRelease = settings.latestTaggedVersion
-    val ammVer = Deps.ammoniteReplApi.dep.version
+    val ammVer = Deps.ammoniteReplApi(scalaVersion0).dep.version
     val scalaVer = scalaVersion0
 
     val isSnapshot = ver.endsWith("SNAPSHOT")

@@ -369,7 +369,7 @@ object ScalaInterpreterTests extends TestSuite {
       "auto version" - {
         "simple" - {
           val code =
-            """import $ivy.`org.scalacheck::scalacheck:_`
+            """import $ivy.`org.scalacheck::scalacheck:_ compat`
               |import org.scalacheck.Arbitrary
               |""".stripMargin
           val res = interpreter.execute(code)

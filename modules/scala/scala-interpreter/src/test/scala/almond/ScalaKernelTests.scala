@@ -3,7 +3,7 @@ package almond
 import java.net.{URL, URLClassLoader}
 import java.util.UUID
 
-import almond.amm.AlmondPreprocessor
+import almond.amm.AlmondCompilerLifecycleManager
 import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
@@ -867,7 +867,7 @@ object ScalaKernelTests extends TestSuite {
     }
 
     "update vars" - {
-      if (AlmondPreprocessor.isAtLeast_2_12_7) {
+      if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7) {
 
         // How the pseudo-client behaves
 
