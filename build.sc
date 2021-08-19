@@ -351,21 +351,27 @@ object docs extends ScalaModule with AlmondRepositories {
   }
 }
 
-def jupyter(args: String*) = {
+def jupyter0(args: Seq[String], fast: Boolean) = {
   val (sv, args0) = args match {
     case Seq(sv, rem @ _*) if sv.startsWith("2.") || sv.startsWith("3.") =>
       (sv, rem)
     case _ => (ScalaVersions.scala213, args)
   }
+  val launcher =
+    if (fast) scala.`scala-kernel`(sv).fastLauncher
+    else scala.`scala-kernel`(sv).launcher
   T.command {
     val jupyterDir = T.ctx().dest / "jupyter"
-    val launcher = scala0.`scala-kernel`(sv)
-      .launcher()
-      .path
-      .toNIO
-    jupyterServer(launcher, jupyterDir.toNIO, args0)
+    val launcher0 = launcher().path.toNIO
+    jupyterServer(launcher0, jupyterDir.toNIO, args0)
   }
 }
+
+def jupyter(args: String*) =
+  jupyter0(args, fast = false)
+
+def jupyterFast(args: String*) =
+  jupyter0(args, fast = true)
 
 def publishSonatype(tasks: mill.main.Tasks[PublishModule.PublishData]) =
   T.command {
@@ -484,4 +490,9 @@ def validateExamples(matcher: String = "") = {
     if (errorCount != 0)
       sys.error(s"Found $errorCount error(s)")
   }
+}
+
+def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
+  val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
+  println(launcher)
 }
