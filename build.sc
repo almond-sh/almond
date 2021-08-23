@@ -1,10 +1,10 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`com.github.lolgab::mill-mima_mill0.9:0.0.4`
 
-import $file.deps, deps.{Deps, DepOps, ScalaVersions}
-import $file.jupyterserver, jupyterserver.jupyterServer
+import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
+import $file.project.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
-import $file.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, Mima, PropertyFile, Util}
+import $file.project.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, Mima, PropertyFile, Util}
 
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
