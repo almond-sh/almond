@@ -191,6 +191,20 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with HasTe
       scala.`scala-kernel-api`().resolvedRunIvyDeps() ++
       scala.`scala-kernel-api`().transitiveSourceJars() ++
       scala.`scala-kernel-api`().externalSources()
+
+  def manifest = T{
+    import java.util.jar.Attributes.Name
+    val ver = publishVersion()
+    super.manifest().add(
+      Name.IMPLEMENTATION_TITLE.toString -> "scala-kernel",
+      Name.IMPLEMENTATION_VERSION.toString -> ver,
+      Name.SPECIFICATION_VENDOR.toString -> "sh.almond",
+      Name.SPECIFICATION_TITLE.toString -> "scala-kernel",
+      Name.IMPLEMENTATION_VENDOR_ID.toString -> "sh.almond",
+      Name.SPECIFICATION_VERSION.toString -> ver,
+      Name.IMPLEMENTATION_VENDOR.toString -> "sh.almond"
+    )
+  }
 }
 
 class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima {
