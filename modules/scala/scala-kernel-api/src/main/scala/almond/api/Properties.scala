@@ -27,4 +27,6 @@ object Properties {
   lazy val ammoniteSparkVersion = Option(props.getProperty("ammonite-spark-version")).getOrElse("[unknown]")
   lazy val defaultScalafmtVersionOpt = Option(props.getProperty("default-scalafmt-version"))
 
+  lazy val actualScalaVersion = Option(props.getProperty("scala-version")).getOrElse("[unknown]")
+
 }

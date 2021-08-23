@@ -123,7 +123,8 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
   )
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Seq(
-    "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version
+    "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version,
+    "scala-version" -> crossScalaVersion
   )
 }
 

@@ -867,7 +867,7 @@ object ScalaKernelTests extends TestSuite {
     }
 
     "update vars" - {
-      if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7) {
+      if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) {
 
         // How the pseudo-client behaves
 
@@ -959,7 +959,7 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
-    "update lazy vals" - {
+    def updateLazyValsTest(): Unit = {
 
       // How the pseudo-client behaves
 
@@ -1042,6 +1042,11 @@ object ScalaKernelTests extends TestSuite {
       )
 
       assert(displayData == expectedDisplayData)
+    }
+
+    "update lazy vals" - {
+      if (TestUtil.isScala2) updateLazyValsTest()
+      else "disabled"
     }
   }
 

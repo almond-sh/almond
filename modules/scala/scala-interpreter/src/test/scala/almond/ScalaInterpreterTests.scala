@@ -200,7 +200,7 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res == expectedRes)
       }
 
-      * - {
+      def listTest(): Unit = {
         val code = "Lis"
         val expectedRes = Completion(0, 3, Seq("List"))
         val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
@@ -215,6 +215,11 @@ object ScalaInterpreterTests extends TestSuite {
       }
 
       * - {
+        if (TestUtil.isScala2) listTest()
+        else "disabled"
+      }
+
+      def hashMapTest(): Unit = {
         val code = "HashM"
 
         val extraCompletions =
@@ -237,6 +242,11 @@ object ScalaInterpreterTests extends TestSuite {
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
         assert(res == expectedRes)
+      }
+
+      * - {
+        if (TestUtil.isScala2) hashMapTest()
+        else "disabled"
       }
 
     }
@@ -378,7 +388,7 @@ object ScalaInterpreterTests extends TestSuite {
       }
     }
 
-    test("variable inspector") {
+    def variableInspectorTest(): Unit = {
 
       implicit class ExecuteResultOps(private val res: ExecuteResult) {
         def assertSuccess(): ExecuteResult = {
@@ -461,6 +471,10 @@ object ScalaInterpreterTests extends TestSuite {
 
       interpreter.execute("type Str = String")
         .assertSuccess()
+    }
+    test("variable inspector") {
+      if (TestUtil.isScala2) variableInspectorTest()
+      else "disabled"
     }
   }
 
