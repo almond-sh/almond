@@ -34,9 +34,7 @@ final class ScalaInterpreter(
     params.metabrowsePort,
     ammInterp
       .compilerManager
-      .asInstanceOf[ammonite.compiler.CompilerLifecycleManager]
-      .pressy
-      .compiler,
+      .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
     frames0()
   )
 
@@ -135,13 +133,10 @@ final class ScalaInterpreter(
 
   override def isComplete(code: String): Option[IsCompleteResult] = {
 
-    val res = fastparse.parse(code, Parsers.Splitter(_)) match {
-      case Parsed.Success(_, _) =>
-        IsCompleteResult.Complete
-      case Parsed.Failure(_, index, _) if code.drop(index).trim() == "" =>
-        IsCompleteResult.Incomplete
-      case Parsed.Failure(_, _, _) =>
-        IsCompleteResult.Invalid
+    val res = ammonite.compiler.Parsers.split(code, ignoreIncomplete = true, "(notebook)") match {
+      case None           => IsCompleteResult.Incomplete
+      case Some(Right(_)) => IsCompleteResult.Complete
+      case Some(Left(_))  => IsCompleteResult.Invalid
     }
 
     Some(res)

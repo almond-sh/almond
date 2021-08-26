@@ -58,7 +58,7 @@ object AmmInterpreter {
     */
   def apply(
     execute0: Execute,
-    storage: Storage,
+    storage0: Storage,
     replApi: ReplApiImpl,
     jupyterApi: JupyterApiImpl,
     predefCode: String,
@@ -109,7 +109,7 @@ object AmmInterpreter {
           ammonite.compiler.CompilerBuilder,
           ammonite.compiler.Parsers,
           printer = execute0.printer,
-          storage = storage,
+          storage = storage0,
           wd = ammonite.ops.pwd,
           colors = replApi.colors,
           verboseOutput = true, // ???
@@ -121,34 +121,17 @@ object AmmInterpreter {
           scriptCodeWrapper = codeWrapper,
           alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
         ) {
-          override val compilerManager: CompilerLifecycleManager =
-            new CompilerLifecycleManager(
-              storage.dirOpt.map(_.toNIO),
-              headFrame,
-              Some(dependencyComplete),
-              Set.empty,
-              headFrame.classloader
-            ) {
-              override def preprocess(fileName: String): Preprocessor =
-                synchronized {
-                  if (compiler == null) init(force = true)
-                  // parse method that needs to be put back in Ammonite's public API
-                  val m = compiler.getClass.getMethod(
-                    "$anonfun$preprocessor$2",
-                    compiler.getClass,
-                    classOf[String],
-                    classOf[String]
-                  )
-                  new AlmondPreprocessor(
-                    m.invoke(null, compiler, fileName, _)
-                      .asInstanceOf[Either[String, Seq[scala.tools.nsc.Global#Tree]]],
-                    autoUpdateLazyVals,
-                    autoUpdateVars,
-                    variableInspectorEnabled,
-                    logCtx
-                  )
-                }
-            }
+          override val compilerManager = new AlmondCompilerLifecycleManager(
+            storage0.dirOpt.map(_.toNIO),
+            headFrame,
+            Some(dependencyComplete),
+            Set.empty,
+            headFrame.classloader,
+            autoUpdateLazyVals,
+            autoUpdateVars,
+            variableInspectorEnabled,
+            logCtx
+          )
         }
 
       val customPredefs = predefFileInfos ++ {
@@ -235,8 +218,8 @@ object AmmInterpreter {
 
       ammInterp0
         .compilerManager
-        .asInstanceOf[ammonite.compiler.CompilerLifecycleManager]
-        .preConfigureCompiler(_.processArguments(Nil, processAll = true))
+        .asInstanceOf[AlmondCompilerLifecycleManager]
+        .preConfigure()
 
       log.debug("Processing dependency-related params")
 

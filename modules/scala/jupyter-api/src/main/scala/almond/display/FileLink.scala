@@ -39,7 +39,7 @@ final class FileLink private(
 
 }
 
-object FileLink extends {
+object FileLink {
   def apply(link: String): FileLink =
     new FileLink(link, "", "<br>", "", UpdatableDisplay.generateId())
 

@@ -22,7 +22,7 @@ final class ScalaInterpreterInspections(
   metabrowse: Boolean,
   metabrowseHost: String,
   metabrowsePort: Int,
-  pressy: => Interactive,
+  compilerManager: => ammonite.compiler.CompilerLifecycleManager,
   frames: => List[Frame]
 ) {
 
@@ -110,7 +110,7 @@ final class ScalaInterpreterInspections(
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
     metabrowseServerOpt().flatMap {
       case (metabrowseServer, metabrowsePort0, metabrowseWindowId) =>
-        val pressy0 = pressy
+        val pressy0 = compilerManager.pressy.compiler
 
         val prefix = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
         val suffix = newLine + "}"

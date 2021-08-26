@@ -1,7 +1,7 @@
 package almond
 
 import almond.TestUtil.SessionRunner
-import almond.amm.AlmondPreprocessor
+import almond.amm.AlmondCompilerLifecycleManager
 import almond.kernel.KernelThreads
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
@@ -23,11 +23,11 @@ object EvaluatorTests extends TestSuite {
   val runner = new SessionRunner(interpreterEc, bgVarEc, threads)
 
   def ifVarUpdates(s: String): String =
-    if (AlmondPreprocessor.isAtLeast_2_12_7) s
+    if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) s
     else ""
 
   def ifNotVarUpdates(s: String): String =
-    if (AlmondPreprocessor.isAtLeast_2_12_7) ""
+    if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) ""
     else s
 
 
@@ -65,25 +65,25 @@ object EvaluatorTests extends TestSuite {
       "lazy vals" - {
         runner.run(
           Seq(
-            "lazy val x = 'h'" -> "",
+            "lazy val x = 'h'" -> (if (TestUtil.isScala2) "" else "x: Char = <lazy>"),
             "x" -> "res1: Char = 'h'",
             "var w = 'l'" -> ifNotVarUpdates("w: Char = 'l'"),
-            "lazy val y = {w = 'a'; 'A'}" -> "",
-            "lazy val z = {w = 'b'; 'B'}" -> "",
+            "lazy val y = {w = 'a'; 'A'}" -> (if (TestUtil.isScala2) "" else "y: Char = <lazy>"),
+            "lazy val z = {w = 'b'; 'B'}" -> (if (TestUtil.isScala2) "" else "z: Char = <lazy>"),
             "z" -> "res5: Char = 'B'",
             "y" -> "res6: Char = 'A'",
             "w" -> "res7: Char = 'a'"
           ),
           Seq(
-            "x: Char = [lazy]",
-            "x: Char = 'h'",
+            (if (TestUtil.isScala2) "x: Char = [lazy]" else ""),
+            (if (TestUtil.isScala2) "x: Char = 'h'" else ""),
             ifVarUpdates("w: Char = 'l'"),
-            "y: Char = [lazy]",
-            "z: Char = [lazy]",
+            (if (TestUtil.isScala2) "y: Char = [lazy]" else ""),
+            (if (TestUtil.isScala2) "z: Char = [lazy]" else ""),
             ifVarUpdates("w: Char = 'b'"),
-            "z: Char = 'B'",
+            (if (TestUtil.isScala2) "z: Char = 'B'" else ""),
             ifVarUpdates("w: Char = 'a'"),
-            "y: Char = 'A'"
+            (if (TestUtil.isScala2) "y: Char = 'A'" else "")
           ).filter(_.nonEmpty)
         )
       }
@@ -105,7 +105,7 @@ object EvaluatorTests extends TestSuite {
     }
 
     "type annotation" - {
-      if (AlmondPreprocessor.isAtLeast_2_12_7)
+      if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2)
         runner.run(
           Seq(
             "var x: Any = 2" -> "",
