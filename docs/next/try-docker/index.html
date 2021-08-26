@@ -102,7 +102,7 @@
           <ul>
            <li class="navListItem"><a class="navItem" href="../dev-from-sources">Installing from sources</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-custom-kernel">Writing custom kernels</a></li>
-           <li class="navListItem"><a class="navItem" href="../dev-libraries">Writing libraries interacting with Jupyter</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-libraries">dev-libraries</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-website">Generate the website</a></li>
           </ul>
          </div>
@@ -149,8 +149,8 @@
        <article>
         <div>
          <span><p>Docker images of almond are automatically published on <a href="https://hub.docker.com/r/almondsh/almond">dockerhub</a> upon each release.</p> <p>Run the latest version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:latest</span>
-</code></pre> <p>Run a specific version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:0.11.1</span>
-</code></pre> <p>Run a specific version with a specific Scala version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:0.11.1-scala-2.12.8</span>
+</code></pre> <p>Run a specific version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:v0.11.2</span>
+</code></pre> <p>Run a specific version with a specific Scala version with</p> <pre><code class="hljs">$ docker <span class="hljs-built_in">run</span> -<span class="hljs-keyword">it</span> <span class="hljs-comment">--rm -p 8888:8888 almondsh/almond:v0.11.2-scala-2.13.6</span>
 </code></pre> <p>See <a href="../install-versions">here</a> for the compatible Almond versions / Scala versions.</p> </span>
         </div>
        </article>

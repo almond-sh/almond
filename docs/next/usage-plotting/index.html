@@ -6,13 +6,13 @@
   <title>Plotting · almond</title>
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
-  <meta name="description" content="A Scala kernel for Jupyter">
+  <meta name="description" content="Whilst there are scala plotting libraries, here is a pragmatic, flexible workflow without them. Play each part of the stack to it's strengths - use the vega editor to get your &quot;spec&quot; right, then scala to obatin and pipe the data into the spec. Any JSON library would do... ">
   <meta name="docsearch:version" content="next">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Plotting · almond">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
-  <meta property="og:description" content="A Scala kernel for Jupyter">
+  <meta property="og:description" content="Whilst there are scala plotting libraries, here is a pragmatic, flexible workflow without them. Play each part of the stack to it's strengths - use the vega editor to get your &quot;spec&quot; right, then scala to obatin and pipe the data into the spec. Any JSON library would do... ">
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="../../../undefined">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.css">
@@ -102,7 +102,7 @@
           <ul>
            <li class="navListItem"><a class="navItem" href="../dev-from-sources">Installing from sources</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-custom-kernel">Writing custom kernels</a></li>
-           <li class="navListItem"><a class="navItem" href="../dev-libraries">Writing libraries interacting with Jupyter</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-libraries">dev-libraries</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-website">Generate the website</a></li>
           </ul>
          </div>
@@ -148,7 +148,30 @@
        </header>
        <article>
         <div>
-         <span></span>
+         <span><p>Whilst there are scala plotting libraries, here is a pragmatic, flexible workflow without them. Play each part of the stack to it's strengths - use the vega editor to get your "spec" right, then scala to obatin and pipe the data into the spec. Any JSON library would do...</p> <h1><a class="anchor" aria-hidden="true" id="sketch"></a><a href="index.html#sketch" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Sketch</h1> 
+          <ol> 
+           <li>Wheel in javascript to obtain vega(-lite) embed</li> 
+           <li>Customise spec on vega webiste using "fake" dataset</li> 
+           <li>Inject data into spec</li> 
+           <li>Display</li> 
+          </ol> <h1><a class="anchor" aria-hidden="true" id="code"></a><a href="index.html#code" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Code</h1> <p>Cell 1 - embed libraries</p> <pre><code class="hljs">Javascript(
+<span class="hljs-string">"""var script = document.createElement('script'); script.type = 'text/javascript'; script.src = '//cdn.jsdelivr.net/npm/vega@5'; document.head.appendChild(script); var script = document.createElement('script'); script.type = 'text/javascript'; script.src = '//cdn.jsdelivr.net/npm/vega-embed@6'; document.head.appendChild(script); """</span>)
+</code></pre> <p>Cell 2 - get spec, overwrite with custom data</p> <pre><code class="hljs"><span class="hljs-keyword">import</span> $ivy.`com.lihaoyi::ujson:<span class="hljs-number">1.3</span><span class="hljs-number">.12</span>`
+<span class="hljs-keyword">import</span> $ivy.`com.lihaoyi::requests:<span class="hljs-number">0.6</span><span class="hljs-number">.5</span>`
+val spec = ujson.read(requests.get(<span class="hljs-string">"https://vega.github.io/vega/examples/bar-chart.vg.json"</span>).text)
+
+spec(<span class="hljs-string">"data"</span>)(<span class="hljs-number">0</span>)(<span class="hljs-string">"values"</span>) = ujson.Arr(
+  ujson.Obj(<span class="hljs-string">"category"</span> -&gt; <span class="hljs-string">"Epic"</span>, <span class="hljs-string">"amount"</span> -&gt; <span class="hljs-number">50</span>),
+  ujson.Obj(<span class="hljs-string">"category"</span> -&gt; <span class="hljs-string">"amounts"</span>, <span class="hljs-string">"amount"</span> -&gt; <span class="hljs-number">100</span>)
+)
+</code></pre> <p>Cell 3 - Display</p> <pre><code class="hljs">Javascript(<span class="hljs-string">s""" vegaEmbed(element, <span class="hljs-variable">$spec</span>).then(function(result) { }).catch(console.error) """</span>)
+</code></pre> </span>
         </div>
        </article>
       </div>
