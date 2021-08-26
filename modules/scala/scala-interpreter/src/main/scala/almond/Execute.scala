@@ -210,24 +210,35 @@ final class Execute(
     storeHistory: Boolean
   ) =
     withOutputHandler(outputHandler) {
+      val code0 = {
+        val ls = System.lineSeparator()
+        if (ammInterp.scalaVersion.startsWith("2.") || code.endsWith(ls))
+          code
+        else
+          code + ls
+      }
       for {
-        (code, stmts) <- fastparse.parse(code, Parsers.Splitter(_)) match {
-          case Parsed.Success(value, _) =>
-            Res.Success((code, value.map(_._2)))
-          case f: Parsed.Failure => Res.Failure(
-            Parsers.formatFastparseError("(console)", code, f)
-          )
+        stmts <- ammonite.compiler.Parsers.split(code0, ignoreIncomplete = false) match {
+          case None =>
+            // In Scala 2? cannot happen with ignoreIncomplete = false.
+            // In Scala 3, this might unexpectedly happen. The lineSeparator stuff above
+            // tries to avoid some cases where this happens.
+            Res.Skip
+          case Some(Right(stmts)) =>
+            Res.Success(stmts)
+          case Some(Left(err)) =>
+            Res.Failure(err)
         }
-        _ = log.debug(s"splitted $code")
+        _ = log.debug(s"splitted '$code0'")
         ev <- interruptible {
           withInputManager(inputManager) {
             withClientStdin {
               capturingOutput {
                 resultOutput.clear()
                 resultVariables.clear()
-                log.debug(s"Compiling / evaluating $code ($stmts)")
+                log.debug(s"Compiling / evaluating $code0 ($stmts)")
                 val r = ammInterp.processLine(
-                  code,
+                  code0,
                   stmts,
                   if (storeHistory) currentLine0 else currentNoHistoryLine0,
                   silent = silent(),
@@ -238,7 +249,7 @@ final class Execute(
                       () => currentNoHistoryLine0 += 1
                 )
 
-                log.debug(s"Handling output of $code")
+                log.debug(s"Handling output of '$code0'")
                 Repl.handleOutput(ammInterp, r)
                 r match {
                   case Res.Exception(ex, _) =>
@@ -248,7 +259,7 @@ final class Execute(
 
                 val variables = resultVariables.toMap
                 val res0 = resultOutput.result()
-                log.debug(s"Result of $code: $res0")
+                log.debug(s"Result of '$code0': $res0")
                 resultOutput.clear()
                 resultVariables.clear()
                 val data =

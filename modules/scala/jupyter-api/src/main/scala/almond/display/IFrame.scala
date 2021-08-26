@@ -62,7 +62,7 @@ final class IFrame private(
 
 }
 
-object IFrame extends {
+object IFrame {
   def apply(src: String): IFrame =
     new IFrame(src, None, None, Nil, UpdatableDisplay.generateId())
 }
