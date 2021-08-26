@@ -82,7 +82,7 @@ final class ProgressBar private(
 
 }
 
-object ProgressBar extends {
+object ProgressBar {
   def apply(total: Int): ProgressBar =
     new ProgressBar(None, total, None, "60ex", 60, UpdatableDisplay.generateId())
   def apply(progress: Int, total: Int): ProgressBar =

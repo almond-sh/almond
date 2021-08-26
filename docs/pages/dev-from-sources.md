@@ -59,7 +59,7 @@ $ ./mill launcher
 ```
 
 Once done building, this should print the path to the kernel launcher, like
-`out/scala0/scala-kernel/2.13.4/unixLauncher/dest/launcher`.
+`out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher`.
 
 Optionally, pass a Scala version, like
 ```text
@@ -68,7 +68,7 @@ $ ./mill launcher 2.12.13
 
 You can then run that launcher to install it on your system:
 ```text
-$ out/scala0/scala-kernel/2.13.4/unixLauncher/dest/launcher --install
+$ out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher --install
 ```
 Pass `--help` or see [this page](install-options.md) for the available options.
 
@@ -132,7 +132,7 @@ $ ./mill -w '__[2.13.4].test'
 
 ### Compile specific modules
 ```text
-$ ./mill 'scala0.scala-kernel[2.13.4].compile'
+$ ./mill 'scala.scala-kernel[2.13.4].compile'
 ```
 
 ### Generate Metals configuration files
