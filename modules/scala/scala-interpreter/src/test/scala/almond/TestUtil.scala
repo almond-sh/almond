@@ -34,6 +34,7 @@ object TestUtil {
 
   def isScala212 =
     scala.util.Properties.versionNumberString.startsWith("2.12.")
+  def isScala2 = almond.api.Properties.actualScalaVersion.startsWith("2.")
 
   implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)

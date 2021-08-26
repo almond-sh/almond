@@ -16,7 +16,7 @@ TAG="$(git describe --exact-match --tags --always "$(git rev-parse HEAD)" || tru
 
 if [[ ${TAG} != v* ]]; then
   echo "Not on a git tag, creating snapshot image"
-  ALMOND_VERSION="$(./mill show 'scala0.scala-kernel['"$SCALA213_VERSION"'].publishVersion')"
+  ALMOND_VERSION="$(./mill show 'scala.scala-kernel['"$SCALA213_VERSION"'].publishVersion')"
   IMAGE_NAME=${DOCKER_REPO}:snapshot
   ./mill '__['"$SCALA213_VERSION"'].publishLocal'
   ./mill '__['"$SCALA212_VERSION"'].publishLocal'

@@ -1,4 +1,5 @@
-import $file.deps, deps.Deps
+import $file.deps, deps.{Deps, ScalaVersions}
+import $file.mima, mima.binaryCompatibilityVersions
 
 import $ivy.`io.get-coursier::coursier-launcher:2.0.12`
 
@@ -6,7 +7,7 @@ import java.io.File
 import java.nio.file.{Files, Path}
 import java.util.Properties
 
-import mill._, scalalib._
+import mill._, scalalib.{CrossSbtModule => _, _}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -32,6 +33,33 @@ lazy val buildVersion = {
   }
 }
 
+// Adapted from https://github.com/lihaoyi/mill/blob/0.9.3/scalalib/src/MiscModule.scala/#L80-L100
+// Compared to the original code, we ensure `scalaVersion()` rather than `crossScalaVersion` is
+// used when computing paths, as the former is always a valid Scala version,
+// while the latter can be a 3.x version while we compile using Scala 2.x
+// (and later rely on dotty compatibility to mix Scala 2 / Scala 3 modules).
+trait CrossSbtModule extends mill.scalalib.SbtModule with mill.scalalib.CrossModuleBase { outer =>
+
+  override def sources = T.sources {
+    super.sources() ++
+      mill.scalalib.CrossModuleBase.scalaVersionPaths(
+        scalaVersion(),
+        s => millSourcePath / 'src / 'main / s"scala-$s"
+      )
+
+  }
+  trait Tests extends super.Tests {
+    override def millSourcePath = outer.millSourcePath
+    override def sources = T.sources {
+      super.sources() ++
+        mill.scalalib.CrossModuleBase.scalaVersionPaths(
+          scalaVersion(),
+          s => millSourcePath / 'src / 'test / s"scala-$s"
+        )
+    }
+  }
+}
+
 trait AlmondRepositories extends CoursierModule {
   def repositoriesTask = T.task {
     super.repositoriesTask() ++ Seq(
@@ -47,7 +75,7 @@ trait AlmondPublishModule extends PublishModule {
     organization = "sh.almond",
     url = "https://github.com/almond-sh/almond",
     licenses = Seq(License.`BSD-3-Clause`),
-    versionControl = VersionControl.github("lihaoyi", "ammonite"),
+    versionControl = VersionControl.github("almond-sh", "almond"),
     developers = Seq(
       Developer("alexarchambault", "Alex Archambault","https://github.com/alexarchambault")
     )
@@ -58,7 +86,7 @@ trait AlmondPublishModule extends PublishModule {
 trait HasTests extends CrossSbtModule {
   trait Tests extends super.Tests {
     def ivyDeps = Agg(Deps.utest)
-    def testFrameworks = Seq("utest.runner.Framework")
+    def testFramework = "utest.runner.Framework"
   }
 }
 
@@ -90,26 +118,103 @@ trait TransitiveSources extends CrossSbtModule {
   }
 }
 
+trait PublishLocalNoFluff extends PublishModule {
+
+  def emptyZip = T{
+    import java.io._
+    import java.util.zip._
+    val dest = T.dest / "empty.zip"
+    val baos = new ByteArrayOutputStream
+    val zos = new ZipOutputStream(baos)
+    zos.finish()
+    zos.close()
+    os.write(dest, baos.toByteArray)
+    PathRef(dest)
+  }
+  // adapted from https://github.com/com-lihaoyi/mill/blob/fea79f0515dda1def83500f0f49993e93338c3de/scalalib/src/PublishModule.scala#L70-L85
+  // writes empty zips as source and doc JARs
+  def publishLocalNoFluff(localIvyRepo: String = null): define.Command[PathRef] = T.command {
+
+    import mill.scalalib.publish.LocalIvyPublisher
+    val publisher = localIvyRepo match {
+      case null => LocalIvyPublisher
+      case repo => new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), os.pwd))
+    }
+
+    publisher.publish(
+      jar = jar().path,
+      sourcesJar = emptyZip().path,
+      docJar = emptyZip().path,
+      pom = pom().path,
+      ivy = ivy().path,
+      artifact = artifactMetadata(),
+      extras = extraPublish()
+    )
+
+    jar()
+  }
+}
+
+trait AlmondArtifactName extends CrossSbtModule {
+  def artifactName =
+    millModuleSegments
+      .parts
+      .dropWhile(_ == "scala")
+      .dropWhile(_ == "shared")
+      .take(1)
+      .mkString("-")
+}
+
+trait AlmondScala2Or3Module extends CrossSbtModule {
+  def crossScalaVersion: String
+  def supports3: Boolean = false
+  def scalaVersion = T{
+    if (crossScalaVersion.startsWith("3.") && !supports3) ScalaVersions.cross2_3Version
+    else crossScalaVersion
+  }
+  def useCrossSuffix = T{
+    crossScalaVersion.startsWith("3.") && !scalaVersion().startsWith("3.")
+  }
+  def artifactName = T{
+    val suffix = if (useCrossSuffix()) "-cross-23" else ""
+    super.artifactName() + suffix
+  }
+  def scalacOptions = T {
+    val tastyReaderOptions =
+      if (scalaVersion() == ScalaVersions.cross2_3Version) Seq("-Ytasty-reader")
+      else Nil
+    tastyReaderOptions
+  }
+}
+
 trait AlmondModule
   extends CrossSbtModule
   with AlmondRepositories
   with AlmondPublishModule
-  with TransitiveSources {
+  with TransitiveSources
+  with AlmondArtifactName
+  with AlmondScala2Or3Module
+  with PublishLocalNoFluff {
 
-  def scalacOptions = Seq(
+  def scalacOptions = T{
     // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
-    "-deprecation",
-    "-feature",
-    "-explaintypes",
-    "-encoding", "utf-8",
-    "-language:higherKinds",
-    "-unchecked"
-  )
+    val sv = scalaVersion()
+    val scala2Options =
+      if (sv.startsWith("2.")) Seq("-explaintypes")
+      else Nil
+    super.scalacOptions() ++ scala2Options ++ Seq(
+      "-deprecation",
+      "-feature",
+      "-encoding", "utf-8",
+      "-language:higherKinds",
+      "-unchecked"
+    )
+  }
 
   def artifactName =
     millModuleSegments
       .parts
-      .dropWhile(_ == "scala0")
+      .dropWhile(_ == "scala")
       .dropWhile(_ == "shared")
       .take(1)
       .mkString("-")
@@ -397,4 +502,21 @@ def publishSonatype(
   )
 
   publisher.publishAll(isRelease, artifacts: _*)
+}
+
+trait Mima extends com.github.lolgab.mill.mima.Mima {
+  def mimaPreviousVersions = binaryCompatibilityVersions
+
+  // same as https://github.com/lolgab/mill-mima/blob/de28f3e9fbe92867f98e35f8dfd3c3a777cc033d/mill-mima/src/com/github/lolgab/mill/mima/Mima.scala#L29-L44
+  // except we're ok if mimaPreviousVersions is empty
+  def mimaPreviousArtifacts = T{
+    val versions = mimaPreviousVersions().distinct
+    mill.api.Result.Success(
+      Agg.from(
+        versions.map(version =>
+          ivy"${pomSettings().organization}:${artifactId()}:${version}"
+        )
+      )
+    )
+  }
 }

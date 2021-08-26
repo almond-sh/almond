@@ -1,3 +1,4 @@
+
 package almond.display
 
 final class Data private(
@@ -23,7 +24,7 @@ final class Data private(
     data0
 }
 
-object Data extends {
+object Data {
   def apply(data: Map[String, String]): Data =
     new Data(data, Map(), UpdatableDisplay.generateId())
   def apply(data: (String, String)*): Data =
