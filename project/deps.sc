@@ -65,7 +65,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3   = "3.0.1"
+  def scala3   = "3.0.2"
   def cross2_3Version = "2.13.6"
   def scala213 = "2.13.6"
   def scala212 = "2.12.14"
