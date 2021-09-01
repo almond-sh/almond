@@ -428,6 +428,9 @@ def scala212() = T.command {
 def scala213() = T.command {
   println(ScalaVersions.scala213)
 }
+def scala3() = T.command {
+  println(ScalaVersions.scala3)
+}
 def scalaVersions() = T.command {
   for (sv <- ScalaVersions.all)
     println(sv)

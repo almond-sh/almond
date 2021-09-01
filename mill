@@ -24,9 +24,9 @@ if [ "x$1" = "x--mill-version" ] ; then
     MILL_VERSION="$1"
     shift
   else
-    echo "You specified --mill-version without a version."
-    echo "Please provide a version that matches one provided on"
-    echo "${MILL_REPO_URL}/releases"
+    echo "You specified --mill-version without a version." 1>&2
+    echo "Please provide a version that matches one provided on" 1>&2
+    echo "${MILL_REPO_URL}/releases" 1>&2
     false
   fi
 fi
@@ -50,8 +50,8 @@ fi
 # If not already set, try to fetch newest from Github
 if [ "x${MILL_VERSION}" = "x" ] ; then
   # TODO: try to load latest version from release page
-  echo "No mill version specified."
-  echo "You should provide a version via '.mill-version' file or --mill-version option."
+  echo "No mill version specified." 1>&2
+  echo "You should provide a version via '.mill-version' file or --mill-version option." 1>&2
 
   mkdir -p "${MILL_DOWNLOAD_PATH}"
   LANG=C touch -d '1 hour ago' "${MILL_DOWNLOAD_PATH}/.expire_latest"
@@ -62,17 +62,17 @@ if [ "x${MILL_VERSION}" = "x" ] ; then
 
   if [ "x${MILL_VERSION}" = "x" ] ; then
     # we don't know a current latest version
-    echo "Retrieving latest mill version ..."
-    LANG=C curl -s -i -f -I ${MILL_REPO_URL}/releases/latest 2> /dev/null  | grep --ignore-case Location: | sed s'/^.*tag\///' | tr -d '\r\n' > "${MILL_DOWNLOAD_PATH}/.latest" 
+    echo "Retrieving latest mill version ..." 1>&2
+    LANG=C curl -s -i -f -I ${MILL_REPO_URL}/releases/latest 2> /dev/null  | grep --ignore-case Location: | sed s'/^.*tag\///' | tr -d '\r\n' > "${MILL_DOWNLOAD_PATH}/.latest"
     MILL_VERSION="$(head -n 1 ${MILL_DOWNLOAD_PATH}/.latest 2> /dev/null)"
   fi
 
   if [ "x${MILL_VERSION}" = "x" ] ; then
     # Last resort
     MILL_VERSION="${DEFAULT_MILL_VERSION}"
-    echo "Falling back to hardcoded mill version ${MILL_VERSION}"
+    echo "Falling back to hardcoded mill version ${MILL_VERSION}" 1>&2
   else
-    echo "Using mill version ${MILL_VERSION}"
+    echo "Using mill version ${MILL_VERSION}" 1>&2
   fi
 fi
 
@@ -100,7 +100,7 @@ if [ ! -s "${MILL}" ] ; then
 
     DOWNLOAD_FILE=$(mktemp mill.XXXX)
     # TODO: handle command not found
-    echo "Downloading mill ${MILL_VERSION} from ${MILL_REPO_URL}/releases ..."
+    echo "Downloading mill ${MILL_VERSION} from ${MILL_REPO_URL}/releases ..." 1>&2
     curl -L -o "${DOWNLOAD_FILE}" "${MILL_REPO_URL}/releases/download/${MILL_VERSION%%-*}/${MILL_VERSION}${DOWNLOAD_SUFFIX}"
     chmod +x "${DOWNLOAD_FILE}"
     mkdir -p "${MILL_DOWNLOAD_PATH}"
