@@ -142,8 +142,8 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       .drop(2)
       .headOption
       .flatMap(s => _root_.scala.util.Try(s.takeWhile(_.isDigit).toInt).toOption)
-    (sv.startsWith("2.12.") && patch.exists(_ <= 10)) ||
-      (sv.startsWith("2.13.") && patch.exists(_ <= 1))
+    (sv.startsWith("2.12.") && patch.exists(_ <= 15)) ||
+      (sv.startsWith("2.13.") && patch.exists(_ <= 6))
   }
   def ivyDeps = T{
     val metabrowse =
