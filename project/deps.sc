@@ -58,7 +58,7 @@ object Deps {
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = ivy"com.lihaoyi::scalatags:0.9.4"
+  def scalatags                = ivy"com.lihaoyi::scalatags:0.10.0"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.8.0-beta4"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
   def utest                    = ivy"com.lihaoyi::utest:0.7.10"
