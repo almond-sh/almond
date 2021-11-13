@@ -4,7 +4,9 @@ import almond.logger.internal._
 
 import scala.language.experimental.macros
 import scala.quoted._
+import annotation.experimental
 
+@experimental
 final case class Logger(underlying: ActualLogger) {
 
   def prefix(prefix: String): Logger =

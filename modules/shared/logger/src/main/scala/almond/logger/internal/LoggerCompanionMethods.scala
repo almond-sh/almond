@@ -1,9 +1,11 @@
 package almond.logger.internal
 
 import java.io.PrintStream
+import annotation.experimental
 
 import almond.logger._
 
+@experimental
 trait LoggerCompanionMethods {
 
   def nop: Logger =

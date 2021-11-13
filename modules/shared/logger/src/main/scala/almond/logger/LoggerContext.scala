@@ -1,9 +1,11 @@
 package almond.logger
 
 import java.io.PrintStream
+import annotation.experimental
 
 import almond.logger.internal.LoggerContextImpl
 
+@experimental
 trait LoggerContext {
   def apply(prefix: String): Logger
 
