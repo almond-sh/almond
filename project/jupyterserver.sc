@@ -2,7 +2,7 @@
 import java.nio.file._
 
 def writeKernelJson(launcher: Path, jupyterDir: Path): Unit = {
-  val launcherPath = launcher.toAbsolutePath.toString
+  val launcherPath = launcher.toAbsolutePath.toString.replace("\\","\\\\")
   val dir = jupyterDir.resolve("kernels/scala-debug")
   Files.createDirectories(dir)
   val kernelJson = s"""{
@@ -24,7 +24,9 @@ def jupyterServer(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
   writeKernelJson(launcher, jupyterDir)
 
   os.makeDir.all(os.pwd / "notebooks")
-  val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
+  val jupyterCommand = Seq(
+    if (mill.main.client.Util.isWindows) "jupyter.bat" else "jupyter",
+    "lab", "--notebook-dir", "notebooks")
   val b = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
   val env = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)

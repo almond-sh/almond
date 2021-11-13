@@ -167,12 +167,8 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
   }
   object test extends Tests {
     def moduleDeps = {
-      val rx =
-        if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
-        else Nil
-      super.moduleDeps ++
-        Seq(shared.kernel().test) ++
-        rx
+     super.moduleDeps ++
+        Seq(shared.kernel().test)
     }
   }
 }
@@ -285,8 +281,8 @@ object scala extends Module {
   object `scala-kernel-api`  extends Cross[ScalaKernelApi]  (ScalaVersions.all: _*)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel]     (ScalaVersions.all: _*)
-  object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
-  object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
+//  object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
+//  object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
 }
 
 object echo extends Cross[Echo](ScalaVersions.binaries: _*)
