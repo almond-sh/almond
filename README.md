@@ -29,7 +29,7 @@ Feel free to open an issue if you notice a bug, have an idea for a feature, or h
 
 # Building with Scala 3
 
-## Building with scala 3.0.1
+## Building with scala 3.0.2
 
 checkout branch scala30
 
