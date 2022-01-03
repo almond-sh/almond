@@ -110,7 +110,7 @@ private object VariableInspectorApiImpl {
                 .replaceAll("\n", " ")
           }
         },
-        varType = tprint.render(TPrintColors.BlackWhite),
+        varType = tprint.render(TPrintColors.BlackWhite).toString,
         isMatrix = false,
         isWidget = None
       )

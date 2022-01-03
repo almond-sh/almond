@@ -1,7 +1,7 @@
 import mill._, scalalib._
 
 object Versions {
-  def ammonite      = "2.4.0-14-4824b429"
+  def ammonite      = "2.5.0"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.10.0"
   def scalafmt      = "2.7.5"
@@ -62,12 +62,13 @@ object Deps {
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.8.0-beta4"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
   def utest                    = ivy"com.lihaoyi::utest:0.7.10"
+  def os_lib                   = ivy"com.lihaoyi::os-lib:0.8.0"
 }
 
 object ScalaVersions {
-  def scala3   = "3.0.1"
-  def cross2_3Version = "2.13.6"
-  def scala213 = "2.13.6"
+  def scala3   = "3.0.2"
+  def cross2_3Version = "2.13.7"
+  def scala213 = "2.13.7"
   def scala212 = "2.12.14"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
