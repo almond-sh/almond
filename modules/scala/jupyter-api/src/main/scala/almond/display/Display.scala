@@ -44,12 +44,15 @@ object Display {
     Latex(content).display()
   def text(content: String)(implicit output: OutputHandler): Unit =
     Text(content).display()
-
   def js(content: String)(implicit output: OutputHandler): Unit =
     Javascript(content).display()
-
   def svg(content: String)(implicit output: OutputHandler): Unit =
     Svg(content).display()
+  def vega(content: String)(implicit output: OutputHandler): Unit =
+    Vega(content).display()
+
+  def vegaLite(content: String)(implicit output: OutputHandler): Unit =
+    VegaLite(content).display()
 
 
   trait Builder[C, T] {

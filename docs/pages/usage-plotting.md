@@ -2,6 +2,7 @@
 title: Plotting
 ---
 Whilst there are scala plotting libraries, here is a pragmatic, flexible workflow without them. Play each part of the stack to it's strengths - use the vega editor to get your "spec" right, then scala to obatin and pipe the data into the spec. Any JSON library would do... 
+Whilst there are scala plotting libraries, here is a pragmatic, flexible workflow without them. Play each part of the stack to it's strengths - use the vega editor to get your "spec" right, then scala to obatin and pipe the data into the spec. Any JSON library would do... 
 
 # Sketch
 1. Wheel in javascript to obtain vega(-lite) embed

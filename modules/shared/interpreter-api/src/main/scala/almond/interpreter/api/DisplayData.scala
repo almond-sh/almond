@@ -31,6 +31,8 @@ object DisplayData {
     def png = "image/png"
     def gif = "image/gif"
     def svg = "image/svg+xml"
+    def vega = "application/vnd.vega.v5+json"    
+    def vegaLite = "application/vnd.vegalite.v3+json"
   }
 
   def text(text: String): DisplayData =
@@ -50,6 +52,13 @@ object DisplayData {
   def svg(content: String): DisplayData =
     DisplayData(Map(ContentType.svg -> content))
 
+    // Implementing this would require refctoring the final DisplayData class above to not have "data" -> Map, but rather have the mimetype instead of data... that's a bit more change that I am comfortable with!
+/*   def vega(content: String) = 
+    DisplayData(Map(ContentType.vega -> content))
+  def vegaLite(content: String) = 
+    DisplayData(Map(ContentType.vegaLite -> content))
+ */  
+
   val empty: DisplayData =
     DisplayData(Map.empty)
 
@@ -66,6 +75,10 @@ object DisplayData {
       DisplayData(Map(ContentType.latex -> s))
     def asJs: DisplayData =
       DisplayData(Map(ContentType.js -> s))
+/*     def asVegaPlot: DisplayData =
+      DisplayData(Map(ContentType.vega -> s))  
+    def asVegaLitePlot: DisplayData =
+      DisplayData(Map(ContentType.vegaLite -> s))   */
   }
 
 }
