@@ -31,7 +31,10 @@ implicit class DepOps(private val dep: Dep) {
 }
 
 object Deps {
-  def ammoniteCompiler(sv: String) = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"    
+  
+  def ammoniteCompiler(sv: String) = {
+      if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+      else ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"}
   def ammoniteRepl(sv: String)     =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
     else ivy"com.lihaoyi:ammonite-cross-23-repl_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
