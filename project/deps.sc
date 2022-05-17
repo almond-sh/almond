@@ -1,9 +1,9 @@
 import mill._, scalalib._
 
 object Versions {
-  def ammonite      = "2.4.0-14-4824b429"
+  def ammonite      = "2.4.0-31-ba6214b1"
   def caseApp       = "2.0.6"
-  def jsoniterScala = "2.10.0"
+  def jsoniterScala = "2.10.4"
   def scalafmt      = "2.7.5"
 }
 
@@ -53,15 +53,15 @@ object Deps {
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.2.21"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.2.24"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.6"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = ivy"com.lihaoyi::scalatags:0.9.4"
+  def scalatags                = ivy"com.lihaoyi::scalatags:0.11.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.8.0-beta4"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
-  def utest                    = ivy"com.lihaoyi::utest:0.7.10"
+  def utest                    = ivy"com.lihaoyi::utest:0.7.11"
 }
 
 object ScalaVersions {
