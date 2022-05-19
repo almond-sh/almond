@@ -1,4 +1,5 @@
-import mill._, scalalib._
+import mill._
+import mill.scalalib._
 
 object Versions {
   def ammonite      = "2.5.1"
@@ -53,7 +54,7 @@ object Deps {
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.2.24"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.3.2"
   def metabrowseServer         = ivy"org.scalameta::metabrowse-server:0.2.3"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
@@ -68,7 +69,7 @@ object Deps {
 object ScalaVersions {
   def scala3   = "3.0.2"
   def cross2_3Version = "2.13.6"
-  def scala213 = "2.13.7"
+  def scala213 = "2.13.8"
   def scala212 = "2.12.15"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
