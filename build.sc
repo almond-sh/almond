@@ -450,7 +450,7 @@ def exampleNotebooks = T.sources {
 }
 
 def validateExamples(matcher: String = "") = {
-  val sv = "2.12.12"
+  val sv = "2.12.14"
   val kernelId = "almond-sources-tmp"
   val baseRepoRoot = os.rel / "out" / "repo"
 

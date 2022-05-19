@@ -1,7 +1,8 @@
-import mill._, scalalib._
+import mill._
+import mill.scalalib._
 
 object Versions {
-  def ammonite      = "2.4.1"
+  def ammonite      = "2.5.1"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.10.4"
   def scalafmt      = "2.7.5"
@@ -31,10 +32,9 @@ implicit class DepOps(private val dep: Dep) {
 }
 
 object Deps {
-  
-  def ammoniteCompiler(sv: String) = {
-      if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
-      else ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"}
+   def ammoniteCompiler(sv: String)             =
+     if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+     else ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
   def ammoniteRepl(sv: String)     =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
     else ivy"com.lihaoyi:ammonite-cross-23-repl_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
@@ -54,7 +54,7 @@ object Deps {
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.2.24"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.3.2"
   def metabrowseServer         = ivy"org.scalameta::metabrowse-server:0.2.3"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
