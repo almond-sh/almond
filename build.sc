@@ -1,5 +1,5 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
-import $ivy.`com.github.lolgab::mill-mima_mill0.9:0.0.4`
+import $ivy.`com.github.lolgab::mill-mima::0.0.10`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.jupyterServer
@@ -411,7 +411,7 @@ def publishSonatype(tasks: mill.main.Tasks[PublishModule.PublishData]) =
     val timeout = 10.minutes
     val credentials = sys.env("SONATYPE_USERNAME") + ":" + sys.env("SONATYPE_PASSWORD")
     val pgpPassword = sys.env("PGP_PASSWORD")
-    val data = define.Task.sequence(tasks.value)()
+    val data = T.sequence(tasks.value)()
 
     settings.publishSonatype(
       credentials = credentials,
