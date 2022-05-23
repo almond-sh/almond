@@ -5,7 +5,7 @@ import $ivy.`io.get-coursier::coursier-launcher:2.0.12`
 
 import java.io.File
 import java.nio.file.{Files, Path}
-import java.util.Properties
+import java.util.{Arrays, Properties}
 
 import mill._, scalalib.{CrossSbtModule => _, _}
 
@@ -356,38 +356,47 @@ trait PropertyFile extends AlmondPublishModule {
   def propertyFilePath: String
   def propertyExtra: Seq[(String, String)] = Nil
 
-  def resources = T.sources{
+  def propResourcesDir = T.persistent {
     import sys.process._
 
-    val dir = T.ctx().dest / "property-resources"
+    val dir = T.dest / "property-resources"
     val ver = publishVersion()
+
+    // FIXME Only set if ammonite-spark is available for the current scala version?
     val ammSparkVer = Deps.ammoniteSpark.dep.version
 
-    val f = propertyFilePath.split('/').foldLeft(dir)(_ / _)
-    os.write(f, Array.emptyByteArray, createFolders = true)
+    val f = dir / propertyFilePath.split('/').toSeq
 
-    val p = new Properties
+    val contentStr =
+      s"""commit-hash=${Seq("git", "rev-parse", "HEAD").!!.trim}
+         |version=$ver
+         |ammonite-spark-version=$ammSparkVer
+         |""".stripMargin +
+      propertyExtra
+        .map {
+          case (k, v) =>
+            s"""$k=$v
+               |""".stripMargin
+        }
+        .mkString
 
-    p.setProperty("version", ver)
-    p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
-    // FIXME Only set if ammonite-spark is available for the current scala version?
-    p.setProperty("ammonite-spark-version", ammSparkVer)
+    val content = contentStr.getBytes("UTF-8")
+    val currentContentOpt = if (os.exists(f)) Some(os.read.bytes(f)) else None
 
-    for ((k, v) <- propertyExtra)
-      p.setProperty(k, v)
+    if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
+      os.write.over(f, content, createFolders = true)
+      System.err.println(s"Wrote $f")
+    }
 
-    val w = new java.io.FileOutputStream(f.toIO)
-    p.store(w, "Almond properties")
-    w.close()
-
-    System.err.println(s"Wrote $f")
-
-    super.resources() ++ Seq(PathRef(dir))
+    PathRef(dir)
+  }
+  def resources = T.sources {
+    super.resources() ++ Seq(propResourcesDir())
   }
 }
 
 trait DependencyListResource extends CrossSbtModule {
-  def resources = T.sources {
+  def depResourcesDir = T.persistent {
     val (_, res) = Lib.resolveDependenciesMetadata(
       repositoriesTask(),
       resolveCoursierDependency().apply(_),
@@ -406,14 +415,20 @@ trait DependencyListResource extends CrossSbtModule {
         s"$org:$name:$ver"
       }
       .mkString("\n")
+      .getBytes("UTF-8")
 
-    val dir = T.ctx().dest / "dependency-resources"
+    val dir = T.dest / "dependency-resources"
     val f = dir / "almond" / "almond-user-dependencies.txt"
-    os.write(f, content.getBytes("UTF-8"), createFolders = true)
 
-    System.err.println(s"Wrote $f")
+    if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
+      os.write.over(f, content, createFolders = true)
+      System.err.println(s"Wrote $f")
+    }
 
-    super.resources() ++ Seq(PathRef(dir))
+    PathRef(dir)
+  }
+  def resources = T.sources {
+    super.resources() ++ Seq(depResourcesDir())
   }
 }
 
