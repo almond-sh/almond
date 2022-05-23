@@ -42,7 +42,7 @@ See the possible combinations [here](install-versions.md)).
 ```bat
 > bitsadmin /transfer downloadCoursierCli https://git.io/coursier-cli "%cd%\coursier"
 > bitsadmin /transfer downloadCoursierBat https://git.io/coursier-bat "%cd%\coursier.bat"
-> .\coursier launch --fork almond -- --install
+> .\coursier launch --fork almond -M almond.ScalaKernel -- --install
 ```
 </details>
 

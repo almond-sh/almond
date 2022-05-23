@@ -26,7 +26,7 @@ final class ScalaInterpreterInspections(
   metabrowse: Boolean,
   metabrowseHost: String,
   metabrowsePort: Int,
-  pressy: => Interactive,
+  compilerManager: => ammonite.compiler.CompilerLifecycleManager,
   frames: => List[Frame]
 ) {
 
@@ -121,7 +121,14 @@ final class ScalaInterpreterInspections(
               val docstrings = text.fold("")(_.docstring())
               log.debug(s"Docstring for '${code.take(pos)}|${code.drop(pos)}' is ${docstrings}")
 
+// <<<<<<< HEAD
               import scalatags.Text.all._
+// =======
+//   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
+//     metabrowseServerOpt().flatMap {
+//       case (metabrowseServer, metabrowsePort0, metabrowseWindowId) =>
+//         val pressy0 = compilerManager.pressy.compiler
+// >>>>>>> master
 
               val typeHtml = div(
                 pre(typeStr),

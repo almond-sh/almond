@@ -1,12 +1,14 @@
 package almond.logger
 
-import java.io.PrintStream
-
-import almond.logger.internal.{ActualLogger, PrintStreamLogger, LoggerMacros, NopLogger}
+import almond.logger.internal._
 
 import scala.language.experimental.macros
 
-final case class Logger private (underlying: ActualLogger) {
+final case class Logger(underlying: ActualLogger) {
+
+  def prefix(prefix: String): Logger =
+    Logger(underlying.prefix(prefix))
+
   def error(message: String): Unit = macro LoggerMacros.error
   def error(message: String, throwable: Throwable): Unit = macro LoggerMacros.errorEx
   def warn(message: String): Unit = macro LoggerMacros.warn
@@ -15,23 +17,6 @@ final case class Logger private (underlying: ActualLogger) {
   def info(message: String, throwable: Throwable): Unit = macro LoggerMacros.infoEx
   def debug(message: String): Unit = macro LoggerMacros.debug
   def debug(message: String, throwable: Throwable): Unit = macro LoggerMacros.debugEx
-
-  def prefix(prefix: String): Logger =
-    Logger(underlying.prefix(prefix))
 }
 
-object Logger {
-
-  def nop: Logger =
-    Logger(NopLogger)
-
-  def printStream(level: Level, out: PrintStream, colored: Boolean): Logger =
-    Logger(new PrintStreamLogger(level, out, colored))
-
-  def printStream(level: Level, out: PrintStream): Logger =
-    printStream(level, out, colored = true)
-
-  def stderr(level: Level): Logger =
-    printStream(level, System.err)
-
-}
+object Logger extends LoggerCompanionMethods

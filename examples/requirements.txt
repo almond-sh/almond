@@ -9,7 +9,7 @@ ipython==7.2.0
 ipython-genutils==0.2.0
 ipywidgets==7.4.2
 jedi==0.13.2
-Jinja2==2.10
+Jinja2==2.11.3
 jsonschema==2.6.0
 jupyter==1.0.0
 jupyter-client==5.2.4
@@ -27,7 +27,7 @@ pickleshare==0.7.5
 prometheus-client==0.5.0
 prompt-toolkit==2.0.7
 ptyprocess==0.6.0
-Pygments==2.3.1
+Pygments==2.7.4
 python-dateutil==2.7.5
 pyzmq==17.1.2
 qtconsole==4.4.3

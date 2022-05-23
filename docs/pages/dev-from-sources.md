@@ -59,7 +59,7 @@ $ ./mill launcher
 ```
 
 Once done building, this should print the path to the kernel launcher, like
-`out/scala0/scala-kernel/2.13.4/unixLauncher/dest/launcher`.
+`out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher`.
 
 Optionally, pass a Scala version, like
 ```text
@@ -68,7 +68,7 @@ $ ./mill launcher 2.12.13
 
 You can then run that launcher to install it on your system:
 ```text
-$ out/scala0/scala-kernel/2.13.4/unixLauncher/dest/launcher --install
+$ out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher --install
 ```
 Pass `--help` or see [this page](install-options.md) for the available options.
 
@@ -132,7 +132,55 @@ $ ./mill -w '__[2.13.4].test'
 
 ### Compile specific modules
 ```text
-$ ./mill 'scala0.scala-kernel[2.13.4].compile'
+$ ./mill 'scala.scala-kernel[2.13.4].compile'
+```
+
+### Generate Metals configuration files
+
+It is recommended to generate Metals configuration files manually, rather
+than letting Metals load the project itself. In order to do that, run
+```text
+$ ./mill mill.contrib.Bloop/install
+```
+
+If you're using Metals from VSCode, you can then run the
+"Metals: Connect to build server" command to take into account the newly
+generated files.
+
+If the command above takes too long to run, comment out Scala versions in
+`deps.sc`. If no 2.12 versions are left, also comment out the few 2.12-specific
+projects in `build.sc` (look for `212` to find them). Same if no 2.13 versions
+are left (look for `213` to spot 2.13-specific projects).
+
+### Generate IntelliJ IDEA configuration files
+
+It is recommended to [manually generate IntelliJ configuration files](https://com-lihaoyi.github.io/mill/mill/Intro_to_Mill.html#_intellij_support_legacy),
+rather than letting IntelliJ load the project itself. In order to do that, run
+```text
+$ ./mill.scalalib.GenIdea/idea
+```
+
+You can then open the project in IntelliJ.
+IntelliJ should also automatically pick those files when they are overwritten.
+
+Just like for Metals above, you may benefit from disabling all but one Scala
+version (see above for more details).
+
+## Validate the example notebooks
+
+Example notebooks live under `examples/`. These are run
+on the CI using nbconvert, and the resulting outputs are
+compared to the committed ones. Any difference results
+in the examples job on the CI to fail.
+
+To validate the examples locally, run
+```text
+$ ./mill -i validateExamples
+```
+
+Optionally, you can pass a glob to filter notebook names:
+```text
+$ ./mill -i validateExamples 'scalapy*'
 ```
 
 ### Generate Metals configuration files

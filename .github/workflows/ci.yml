@@ -32,12 +32,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
-    - run: scripts/validate-examples.sh
+    - run: ./mill -i validateExamples
       shell: bash
 
   test:
@@ -47,14 +46,14 @@ jobs:
       matrix:
         OS: [ubuntu-latest]
         JDK: [8]
-        SCALA: [2.12.11, 2.12.12, 2.13.3, 2.13.4]
+        SCALA: [2.12.13, 2.12.14, 2.13.5, 2.13.6, 3.0.0, 3.0.1]
         include:
           - OS: windows-latest
             JDK: 8
-            SCALA: 2.13.4
+            SCALA: 2.13.6
           - OS: ubuntu-latest
             JDK: 11
-            SCALA: 2.12.12
+            SCALA: 2.12.14
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'
@@ -65,8 +64,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: ${{ matrix.JDK }}
         apps:
@@ -87,12 +86,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
-    - run: sbt +mimaReportBinaryIssues
+    - run: ./mill __.mimaReportBinaryIssues
       shell: bash
 
   website:
@@ -102,8 +100,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
         apps: cs
@@ -117,8 +115,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
         apps:
@@ -143,11 +141,10 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
     - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
       shell: bash
       env:
@@ -167,11 +164,10 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
     - run: scripts/upload-launcher.sh
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
@@ -184,11 +180,10 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
     - run: scripts/update-docker-images.sh
       shell: bash
       env:
@@ -203,8 +198,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1
       with:
         jvm: 8
         apps: cs
