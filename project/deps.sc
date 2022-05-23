@@ -32,9 +32,9 @@ implicit class DepOps(private val dep: Dep) {
 }
 
 object Deps {
-   def ammoniteCompiler(sv: String)             =
-     if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
-     else ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
+  def ammoniteCompiler(sv: String)             =
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+    else ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
   def ammoniteRepl(sv: String)     =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
     else ivy"com.lihaoyi:ammonite-cross-23-repl_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
@@ -63,7 +63,6 @@ object Deps {
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.8.0-beta4"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
   def utest                    = ivy"com.lihaoyi::utest:0.7.11"
-  def os_lib                   = ivy"com.lihaoyi::os-lib:0.8.0"
 }
 
 object ScalaVersions {
