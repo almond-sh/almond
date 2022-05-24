@@ -2,6 +2,7 @@ import $file.deps, deps.{Deps, ScalaVersions}
 import $file.mima, mima.binaryCompatibilityVersions
 
 import $ivy.`io.get-coursier::coursier-launcher:2.0.12`
+import $ivy.`io.github.alexarchambault.mill::mill-scala-cli::0.1.0`
 
 import java.io.File
 import java.nio.file.{Files, Path}
@@ -10,6 +11,7 @@ import java.util.{Arrays, Properties}
 import mill._, scalalib.{CrossSbtModule => _, _}
 
 import scala.annotation.tailrec
+import scala.cli.mill.ScalaCliCompile
 import scala.concurrent.duration._
 
 lazy val latestTaggedVersion = os.proc("git", "describe", "--abbrev=0", "--tags", "--match", "v*")
@@ -84,7 +86,7 @@ trait AlmondPublishModule extends PublishModule {
 }
 
 trait HasTests extends CrossSbtModule {
-  trait Tests extends super.Tests {
+  trait Tests extends super.Tests with ScalaCliCompile {
     def ivyDeps = Agg(Deps.utest)
     def testFramework = "utest.runner.Framework"
   }
@@ -187,6 +189,22 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
   }
 }
 
+trait AlmondScalaCliCompile extends ScalaCliCompile {
+  override def extraScalaCliOptions = T {
+    import coursier.core.Version
+    val sv = scalaVersion()
+    val needs17 =
+      sv.startsWith("2.12.") && Version(sv) <= Version("2.12.13") ||
+        sv.startsWith("2.13.") && Version(sv) <= Version("2.13.6")
+    // Seems we can't compile with Java 8 or 11 the pre-Java 17 Scala versions,
+    // as support for Java 8 or 11 in Scala CLI relies on the --release flag of Java 17,
+    // and it seems --release puts in the class path stuff not supported by those
+    // Scala versions.
+    val tmp17Opts = if (needs17) Seq("--jvm", "temurin:17") else Nil
+    super.extraScalaCliOptions() ++ tmp17Opts
+  }
+}
+
 trait AlmondModule
   extends CrossSbtModule
   with AlmondRepositories
@@ -194,7 +212,8 @@ trait AlmondModule
   with TransitiveSources
   with AlmondArtifactName
   with AlmondScala2Or3Module
-  with PublishLocalNoFluff {
+  with PublishLocalNoFluff
+  with AlmondScalaCliCompile {
 
   // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
   // pin scala3-library suffix, so that 2.13 modules can have us as moduleDep fine
