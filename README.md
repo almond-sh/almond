@@ -14,7 +14,13 @@
 
 ## Documentation
 
-See the project [website](https://almond.sh) for more details.
+See the project [website](https://almond.sh) for more details
+
+## Developer documentation
+
+Find it in [`docs/pages/dev-from-sources.md`](https://github.com/almond-sh/almond/blob/master/docs/pages/dev-from-sources.md) in the sources for more details, and soon
+[on the website](https://almond.sh/docs/dev-from-sources) when it will be
+updated (it's currently out-of-date there).
 
 ## Code of Conduct
 
