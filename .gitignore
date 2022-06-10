@@ -4,7 +4,7 @@ target/
 .idea/
 .bloop
 .vscode/
-.metals
+.metals/
 
 # website stuff
 processed-pages/
