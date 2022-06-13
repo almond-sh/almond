@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "2.5.1"
+  def ammonite      = "2.5.4"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.10.4"
   def scalafmt      = "2.7.5"
@@ -19,29 +19,24 @@ implicit class DepOps(private val dep: Dep) {
 = dep.cross.platformed))
       case _ => dep
     }
-  def withDottyCompat(scalaVersion: String, compatScalaVersion: String): Dep =
+  def withDottyCompat(scalaVersion: String): Dep =
     dep.cross match {
-      case cross: CrossVersion.Binary if scalaVersion.startsWith("3.") || scalaVersion.startsWith("2.13.") =>
-        val compatSuffix =
-          if (compatScalaVersion.startsWith("3.")) "_3"
-          else "_" + compatScalaVersion.split('.').take(2).mkString(".")
-        dep.copy(cross = CrossVersion.Constant(value = compatSuffix, platformed
-= dep.cross.platformed))
+      case cross: CrossVersion.Binary if scalaVersion.startsWith("3.") =>
+        dep.copy(cross = CrossVersion.Constant(value = "_2.13", platformed = dep.cross.platformed))
       case _ => dep
     }
 }
 
 object Deps {
-  def ammoniteCompiler(sv: String)             =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
-    else ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
-  def ammoniteRepl(sv: String)     =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
-    else ivy"com.lihaoyi:ammonite-cross-23-repl_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
-  def ammoniteReplApi(sv: String)  =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
-    else ivy"com.lihaoyi:ammonite-cross-23-repl-api_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
-  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.12.0"
+  def ammoniteCompiler(sv: String) =
+    ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
+  def ammoniteRepl(sv: String) =
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl_$sv:${Versions.ammonite}"
+    else ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
+  def ammoniteReplApi(sv: String) =
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
+    else ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
+  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.0"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.5.0"
@@ -67,13 +62,13 @@ object Deps {
 
 object ScalaVersions {
   def scala3   = "3.0.2"
-  def cross2_3Version = "2.13.6"
+  def cross2_3Version = "2.13.7"
   def scala213 = "2.13.7"
   def scala212 = "2.12.15"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
-    scala3, "3.0.1","3.0.0",
-    scala213, "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1", "2.13.0",
-    scala212, "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9", "2.12.8"
+    scala3, "3.0.1", "3.0.0",
+    scala213, "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
+    scala212, "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9"
   )
 }

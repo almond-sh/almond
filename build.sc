@@ -1,10 +1,10 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
-import $ivy.`com.github.lolgab::mill-mima_mill0.9:0.0.4`
+import $ivy.`com.github.lolgab::mill-mima::0.0.10`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
-import $file.project.settings, settings.{AlmondModule, AlmondRepositories, BootstrapLauncher, DependencyListResource, ExternalSources, HasTests, Mima, PropertyFile, Util}
+import $file.project.settings, settings.{AlmondModule, AlmondRepositories, AlmondTestModule, BootstrapLauncher, DependencyListResource, ExternalSources, Mima, PropertyFile, Util}
 
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
@@ -17,14 +17,14 @@ import _root_.scala.util.Properties
 implicit def millModuleBasePath: define.BasePath =
   define.BasePath(super.millModuleBasePath.value / "modules")
 
-class LoggerScala2Macros(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class LoggerScala2Macros(val crossScalaVersion: String) extends AlmondModule {
   def ivyDeps = T{
     val sv = scalaVersion()
     Agg(Deps.scalaReflect(sv))
   }
 }
 
-class Logger(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class Logger(val crossScalaVersion: String) extends AlmondModule {
   def supports3 = true
   def moduleDeps = Seq(
     shared.`logger-scala2-macros`()
@@ -36,10 +36,10 @@ class Logger(val crossScalaVersion: String) extends AlmondModule with HasTests {
       else Agg(ivy"org.scala-lang:scala3-library_3:${scalaVersion()}")
     scalaReflect
   }
-  object test extends Tests
+  object test extends Tests with AlmondTestModule
 }
 
-class Channels(val crossScalaVersion: String) extends AlmondModule with HasTests with Mima {
+class Channels(val crossScalaVersion: String) extends AlmondModule with Mima {
   def moduleDeps = Seq(
     shared.logger()
   )
@@ -47,10 +47,10 @@ class Channels(val crossScalaVersion: String) extends AlmondModule with HasTests
     Deps.fs2,
     Deps.jeromq
   )
-  object test extends Tests
+  object test extends Tests with AlmondTestModule
 }
 
-class Protocol(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class Protocol(val crossScalaVersion: String) extends AlmondModule {
   def moduleDeps = Seq(
     shared.channels()
   )
@@ -61,12 +61,12 @@ class Protocol(val crossScalaVersion: String) extends AlmondModule with HasTests
     Deps.scalaReflect(scalaVersion()),
     Deps.jsoniterScalaMacros.withConfiguration("provided")
   )
-  object test extends Tests
+  object test extends Tests with AlmondTestModule
 }
 
 class InterpreterApi(val crossScalaVersion: String) extends AlmondModule with Mima
 
-class Interpreter(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class Interpreter(val crossScalaVersion: String) extends AlmondModule {
   def moduleDeps = Seq(
     shared.`interpreter-api`(),
     shared.protocol()
@@ -76,19 +76,19 @@ class Interpreter(val crossScalaVersion: String) extends AlmondModule with HasTe
     Deps.scalatags.applyBinaryVersion213_3(scalaVersion()),
     Deps.slf4jNop
   )
-  object test extends Tests
+  object test extends Tests with AlmondTestModule
 }
 
-class Kernel(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class Kernel(val crossScalaVersion: String) extends AlmondModule {
   def moduleDeps = Seq(
     shared.interpreter()
   )
   def ivyDeps = Agg(
-    Deps.caseAppAnnotations.withDottyCompat(scalaVersion(), ScalaVersions.cross2_3Version),
+    Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,
     Deps.fs2
   )
-  object test extends Tests {
+  object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       shared.interpreter().test
     )
@@ -128,7 +128,7 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
   )
 }
 
-class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule {
   def crossFullScalaVersion = true
   def supports3 = true
   def moduleDeps = Seq(
@@ -150,7 +150,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       if (addMetabrowse()) Agg(Deps.metabrowseServer)
       else Agg.empty
     metabrowse ++ Agg(
-      Deps.coursier.withDottyCompat(scalaVersion(), ScalaVersions.cross2_3Version),
+      Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
@@ -165,7 +165,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     val extra = PathRef(millSourcePath / "src" / "main" / dirName)
     super.sources() ++ Seq(extra)
   }
-  object test extends Tests {
+  object test extends Tests with AlmondTestModule {
     def moduleDeps = {
       val rx =
         if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
@@ -177,17 +177,17 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
   }
 }
 
-class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with HasTests with ExternalSources with BootstrapLauncher {
+class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with ExternalSources with BootstrapLauncher {
   def crossFullScalaVersion = true
   def moduleDeps = Seq(
     shared.kernel(),
     scala.`scala-interpreter`()
   )
   def ivyDeps = Agg(
-    Deps.caseApp,
-    Deps.scalafmtDynamic
+    Deps.caseApp.withDottyCompat(crossScalaVersion),
+    Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
-  object test extends Tests {
+  object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       scala.`scala-interpreter`().test
     )
@@ -225,6 +225,19 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with HasTe
   }
 }
 
+// For Scala 3 only. This publishes modules like scala-kernel_3.0.2 that
+// depend on the more complex 2.13-targeting-scala-3 module like
+// scala-kernel-cross-3.0.2_2.13.7. The former follows the same name pattern
+// as their Scala 2 counterparts, and are more convenient to write down for end users.
+class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule {
+  def crossFullScalaVersion = true
+  def supports3 = true
+  def artifactName = super.artifactName().stripSuffix("-helper")
+  def moduleDeps = Seq(
+    scala.`scala-kernel`()
+  )
+}
+
 class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima {
   def compileModuleDeps = Seq(
     scala.`scala-kernel-api`()
@@ -251,15 +264,15 @@ class AlmondRx(val crossScalaVersion: String) extends AlmondModule with Mima {
   )
 }
 
-class Echo(val crossScalaVersion: String) extends AlmondModule with HasTests {
+class Echo(val crossScalaVersion: String) extends AlmondModule {
   def moduleDeps = Seq(
     shared.kernel()
   )
   def ivyDeps = Agg(
-    Deps.caseApp
+    Deps.caseApp.withDottyCompat(crossScalaVersion)
   )
   def propertyFilePath = "almond/echo.properties"
-  object test extends Tests {
+  object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       shared.test()
     )
@@ -285,6 +298,7 @@ object scala extends Module {
   object `scala-kernel-api`  extends Cross[ScalaKernelApi]  (ScalaVersions.all: _*)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel]     (ScalaVersions.all: _*)
+  object `scala-kernel-helper` extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
   object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
 }
@@ -411,7 +425,7 @@ def publishSonatype(tasks: mill.main.Tasks[PublishModule.PublishData]) =
     val timeout = 10.minutes
     val credentials = sys.env("SONATYPE_USERNAME") + ":" + sys.env("SONATYPE_PASSWORD")
     val pgpPassword = sys.env("PGP_PASSWORD")
-    val data = define.Task.sequence(tasks.value)()
+    val data = T.sequence(tasks.value)()
 
     settings.publishSonatype(
       credentials = credentials,
