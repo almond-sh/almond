@@ -84,7 +84,7 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
     shared.interpreter()
   )
   def ivyDeps = Agg(
-    Deps.caseAppAnnotations.withDottyCompat(scalaVersion(), ScalaVersions.cross2_3Version),
+    Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,
     Deps.fs2
   )
@@ -150,7 +150,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule {
       if (addMetabrowse()) Agg(Deps.metabrowseServer)
       else Agg.empty
     metabrowse ++ Agg(
-      Deps.coursier.withDottyCompat(scalaVersion(), ScalaVersions.cross2_3Version),
+      Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
       Deps.directories,
       Deps.jansi,
@@ -184,8 +184,8 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
     scala.`scala-interpreter`()
   )
   def ivyDeps = Agg(
-    Deps.caseApp,
-    Deps.scalafmtDynamic
+    Deps.caseApp.withDottyCompat(crossScalaVersion),
+    Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
@@ -225,6 +225,19 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
   }
 }
 
+// For Scala 3 only. This publishes modules like scala-kernel_3.0.2 that
+// depend on the more complex 2.13-targeting-scala-3 module like
+// scala-kernel-cross-3.0.2_2.13.7. The former follows the same name pattern
+// as their Scala 2 counterparts, and are more convenient to write down for end users.
+class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule {
+  def crossFullScalaVersion = true
+  def supports3 = true
+  def artifactName = super.artifactName().stripSuffix("-helper")
+  def moduleDeps = Seq(
+    scala.`scala-kernel`()
+  )
+}
+
 class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima {
   def compileModuleDeps = Seq(
     scala.`scala-kernel-api`()
@@ -256,7 +269,7 @@ class Echo(val crossScalaVersion: String) extends AlmondModule {
     shared.kernel()
   )
   def ivyDeps = Agg(
-    Deps.caseApp
+    Deps.caseApp.withDottyCompat(crossScalaVersion)
   )
   def propertyFilePath = "almond/echo.properties"
   object test extends Tests with AlmondTestModule {
@@ -285,6 +298,7 @@ object scala extends Module {
   object `scala-kernel-api`  extends Cross[ScalaKernelApi]  (ScalaVersions.all: _*)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel]     (ScalaVersions.all: _*)
+  object `scala-kernel-helper` extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
   object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
 }
