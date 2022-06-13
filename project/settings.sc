@@ -50,16 +50,6 @@ trait CrossSbtModule extends mill.scalalib.SbtModule with mill.scalalib.CrossMod
       )
 
   }
-  trait Tests extends super.Tests {
-    override def millSourcePath = outer.millSourcePath
-    override def sources = T.sources {
-      super.sources() ++
-        mill.scalalib.CrossModuleBase.scalaVersionPaths(
-          scalaVersion(),
-          s => millSourcePath / 'src / 'test / s"scala-$s"
-        )
-    }
-  }
 }
 
 trait AlmondRepositories extends CoursierModule {
@@ -83,13 +73,6 @@ trait AlmondPublishModule extends PublishModule {
     )
   )
   def publishVersion = T{ buildVersion }
-}
-
-trait HasTests extends CrossSbtModule {
-  trait Tests extends super.Tests with ScalaCliCompile {
-    def ivyDeps = Agg(Deps.utest)
-    def testFramework = "utest.runner.Framework"
-  }
 }
 
 trait ExternalSources extends CrossSbtModule {
@@ -261,6 +244,40 @@ trait AlmondModule
       .dropWhile(_ == "shared")
       .take(1)
       .mkString("-")
+}
+
+trait AlmondTestModule
+  extends ScalaModule
+  with TestModule
+  with AlmondRepositories
+  // with AlmondScala2Or3Module
+  with AlmondScalaCliCompile {
+
+  def ivyDeps = Agg(Deps.utest)
+  def testFramework = "utest.runner.Framework"
+
+  def scalacOptions = T{
+    // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
+    val sv = scalaVersion()
+    val scala2Options =
+      if (sv.startsWith("2.")) Seq("-explaintypes")
+      else Nil
+    super.scalacOptions() ++ scala2Options ++ Seq(
+      "-deprecation",
+      "-feature",
+      "-encoding", "utf-8",
+      "-language:higherKinds",
+      "-unchecked"
+    )
+  }
+
+  def sources = T.sources {
+    super.sources() ++
+      mill.scalalib.CrossModuleBase.scalaVersionPaths(
+        scalaVersion(),
+        s => millSourcePath / "src" / "test" / s"scala-$s"
+      )
+  }
 }
 
 trait BootstrapLauncher extends CrossSbtModule {
