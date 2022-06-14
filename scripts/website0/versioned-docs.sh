@@ -42,8 +42,8 @@ if [ -f target/versioned-docs/versions.json ]; then
 fi
 
 if [ "$UPDATE" = 1 ]; then
-  git config user.name "GitHub Actions"
-  git config user.email "actions@github.com"
+  git config --global user.name "GitHub Actions"
+  git config --global user.email "actions@github.com"
 
   VERSION="$(echo "$TAG" | sed 's@^v@@')"
 
@@ -57,4 +57,7 @@ if [ "$UPDATE" = 1 ]; then
   git commit -m "Add doc for $VERSION"
 
   git push origin master
+
+  cd -
+  rm -rf target/versioned-docs
 fi
