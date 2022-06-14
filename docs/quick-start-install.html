@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="## Install the almond kernel">
-  <meta name="docsearch:version" content="0.10.9">
+  <meta name="docsearch:version" content="0.13.0">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Installation · almond">
   <meta property="og:type" content="website">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.10.9</h3></a>
+     <a href="../versions"><h3>0.13.0</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -68,6 +68,7 @@
           <ul>
            <li class="navListItem"><a class="navItem" href="try-mybinder">mybinder</a></li>
            <li class="navListItem"><a class="navItem" href="try-docker">docker</a></li>
+           <li class="navListItem"><a class="navItem" href="try-deepnote">deepnote</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -165,7 +166,7 @@ $ rm -f coursier
            <p></p> 
            <pre><code class="hljs css language-bat">&gt; bitsadmin /transfer downloadCoursierCli https://git.io/coursier-cli "<span class="hljs-variable">%cd%</span>\coursier"
 &gt; bitsadmin /transfer downloadCoursierBat https://git.io/coursier-bat "<span class="hljs-variable">%cd%</span>\coursier.bat"
-&gt; .\coursier launch --fork almond -- --install
+&gt; .\coursier launch --fork almond -M almond.ScalaKernel -- --install
 </code></pre> 
            <p></p>
           </details><p></p> <p>Once the kernel is installed, you can use it within Jupyter or nteract.</p> <h2><a class="anchor" aria-hidden="true" id="getting-help-about-the-launcher"></a><a href="quick-start-install.html#getting-help-about-the-launcher" aria-hidden="true" class="hash-link">
@@ -183,7 +184,7 @@ $ rm -f coursier
        </article>
       </div>
       <div class="docs-prevnext">
-       <a class="docs-prev button" href="try-docker"><span class="arrow-prev">← </span><span>Previous</span></a>
+       <a class="docs-prev button" href="try-deepnote"><span class="arrow-prev">← </span><span>Previous</span></a>
        <a class="docs-next button" href="install-options"><span>Next</span><span class="arrow-next"> →</span></a>
       </div>
      </div>

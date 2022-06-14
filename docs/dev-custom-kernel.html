@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="The sources of the scala kernel have such an example demo kernel under [this directory](https://github.com/jupyter-scala/jupyter-scala/tree/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo).">
-  <meta name="docsearch:version" content="0.10.9">
+  <meta name="docsearch:version" content="0.13.0">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Writing custom kernels · almond">
   <meta property="og:type" content="website">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.10.9</h3></a>
+     <a href="../versions"><h3>0.13.0</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -68,6 +68,7 @@
           <ul>
            <li class="navListItem"><a class="navItem" href="try-mybinder">mybinder</a></li>
            <li class="navListItem"><a class="navItem" href="try-docker">docker</a></li>
+           <li class="navListItem"><a class="navItem" href="try-deepnote">deepnote</a></li>
           </ul>
          </div>
          <div class="navGroup">
@@ -149,7 +150,7 @@
         <div>
          <span><p>The sources of the scala kernel have such an example demo kernel under <a href="https://github.com/jupyter-scala/jupyter-scala/tree/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo">this directory</a>.</p> <p>See <a href="https://github.com/almond-sh/almond/blob/8de9abd3597dbb6756d552a3f9de9b1b124e6f0f/build.sbt#L117-L125">the sources</a> for its dependencies. Currently, these are only</p> 
           <ul> 
-           <li>the <code>kernel</code> module, <code>"sh.almond" %% "kernel" % "0.10.9"</code></li> 
+           <li>the <code>kernel</code> module, <code>"sh.almond" %% "kernel" % "0.13.0"</code></li> 
            <li><a href="https://github.com/alexarchambault/case-app">case-app</a>, <code>"com.github.alexarchambault" %% "case-app" % "2.0.0-M2"</code></li> 
           </ul> <p>Note that case-app can be replaced by the command-line parsing library of your choice.</p> <p>The demo kernel mainly consists in <a href="https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo/src/main/scala/almond/echo/EchoInterpreter.scala"><code>EchoInterpreter</code></a>, an implementation of <a href="https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/shared/interpreter/src/main/scala/almond/interpreter/Interpreter.scala"><code>almond.interpreter.Interpreter</code></a>, and in <a href="https://github.com/jupyter-scala/jupyter-scala/blob/c6bc94a397196be52232cc833e1095ef5e6264d2/modules/echo/src/main/scala/almond/echo/EchoKernel.scala"><code>EchoKernel</code></a>, a small application that either installs the kernel, or actually runs it when it is launched by Jupyter.</p> <p>When implementing a custom kernel, you may want to re-use almost as is <code>EchoKernel</code>, instantiating your own <code>Interpreter</code> instead of <code>EchoInterpreter</code>. You may optionally handle command-line arguments differently, or add extra command-line options to pass to your <code>Interpreter</code> implementation.</p> <p>For the kernel installation to work out-of-the-box, the kernel should to be launched via <a href="http://get-coursier.io">coursier</a> in one way or another. (It is possible nonetheless to rely on e.g. uber JARs, by tweaking the <code>arg</code> or <code>command</code> fields of <code>InstallOptions</code>). To test your kernel locally, publish it locally via a <code>publishLocal</code> from sbt. Note its organization, module name, and version. Then create a launcher for your kernel with</p> <pre><code class="hljs css language-bash">$ coursier bootstrap --embed-files=<span class="hljs-literal">false</span> \
     organization:module-name_2.1?:version \
