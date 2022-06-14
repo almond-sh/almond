@@ -4,7 +4,7 @@ import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.jupyterServer
-import $file.scripts.website.Website, Website.Relativize
+import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{AlmondModule, AlmondRepositories, AlmondTestModule, BootstrapLauncher, DependencyListResource, ExternalSources, Mima, PropertyFile, Util, buildVersion}
 
 import java.nio.charset.Charset

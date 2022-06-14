@@ -40,7 +40,7 @@ jobs:
         apps: cs
     - run: |
         ./mill docs.generate --npm-install --yarn-run-build
-        scripts/website/versioned-docs.sh --update
+        scripts/website0/versioned-docs.sh --update
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
@@ -48,9 +48,9 @@ jobs:
         WEBSITE_DIR: docs/website
         VERSIONED_DOCS_REPO: almond-sh/versioned-docs
     - run: |
-        scripts/website/versioned-docs.sh
+        scripts/website0/versioned-docs.sh
         ./mill docs.generate --npm-install --yarn-run-build --relativize
-        scripts/website/push-website.sh
+        scripts/website0/push-website.sh
       shell: bash
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
