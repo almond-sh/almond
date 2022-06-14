@@ -1,14 +1,16 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`com.github.lolgab::mill-mima::0.0.10`
+import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.jupyterServer
 import $file.scripts.website.Website, Website.Relativize
-import $file.project.settings, settings.{AlmondModule, AlmondRepositories, AlmondTestModule, BootstrapLauncher, DependencyListResource, ExternalSources, Mima, PropertyFile, Util}
+import $file.project.settings, settings.{AlmondModule, AlmondRepositories, AlmondTestModule, BootstrapLauncher, DependencyListResource, ExternalSources, Mima, PropertyFile, Util, buildVersion}
 
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
+import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
 import _root_.scala.concurrent.duration._
 import _root_.scala.util.Properties
@@ -545,4 +547,40 @@ def validateExamples(matcher: String = "") = {
 def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
   println(launcher)
+}
+
+def ghOrg = "almond-sh"
+def ghName = "almond"
+object ci extends Module {
+  def uploadLaunchers(almondVersion: String = buildVersion) = T.command {
+    def ghToken() = Option(System.getenv("UPLOAD_GH_TOKEN")).getOrElse {
+      sys.error("UPLOAD_GH_TOKEN not set")
+    }
+    val scalaVersions = Seq(
+      ScalaVersions.scala212,
+      ScalaVersions.scala213,
+      ScalaVersions.scala3
+    )
+    val launchers = scalaVersions.map { sv =>
+      val sbv = sv.split('.').take(2).mkString(".")
+      val output = T.dest / s"launcher-$sv"
+      os.proc(
+        "cs", "bootstrap",
+        "--no-default",
+        "-r", "central",
+        "-r", "jitpack",
+        s"sh.almond:scala-kernel_$sv:$almondVersion",
+        "--shared", s"sh.almond:scala-kernel-api_$sv",
+        "-o", output
+      ).call(stdin = os.Inherit, stdout = os.Inherit)
+
+      (output, s"almond-scala-$sbv")
+    }
+    val (tag, overwriteAssets) =
+      if (almondVersion.endsWith("-SNAPSHOT")) ("nightly", true)
+      else ("v" + almondVersion, false)
+    Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
+      launchers: _*
+    )
+  }
 }
