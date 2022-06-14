@@ -8,7 +8,25 @@ on:
   pull_request:
 
 jobs:
+  upload-launcher:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v6.3
+    - uses: coursier/setup-action@v1.2.0-M3
+      with:
+        jvm: 8
+    - run: ./mill -i ci.uploadLaunchers
+      if: startsWith(github.ref, 'refs/tags/v')
+      shell: bash
+      env:
+        UPLOAD_GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
   update-website:
+    needs: [upload-launcher]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
