@@ -25,7 +25,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.6
     - name: Install python dependencies
@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
     - run: ./mill -i validateExamples
@@ -46,7 +46,7 @@ jobs:
       matrix:
         OS: [ubuntu-latest]
         JDK: [8]
-        SCALA: [2.12.13, 2.12.14, 2.13.5, 2.13.8, 3.0.0, 3.0.1]
+        SCALA: [2.12.14, 2.12.15, 2.13.6, 2.13.7, 3.0.1, 3.0.2]
         include:
           - OS: windows-latest
             JDK: 8
@@ -65,7 +65,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: ${{ matrix.JDK }}
         apps:
@@ -87,7 +87,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
     - run: ./mill __.mimaReportBinaryIssues
@@ -101,7 +101,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
         apps: cs
@@ -116,7 +116,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
         apps:
@@ -142,7 +142,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
     - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
@@ -165,12 +165,14 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
-    - run: scripts/upload-launcher.sh
+    - run: ./mill -i ci.uploadLaunchers
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
+      env:
+        UPLOAD_GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   update-docker-images:
     needs: release
@@ -181,7 +183,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
     - run: scripts/update-docker-images.sh
@@ -199,13 +201,13 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1
+    - uses: coursier/setup-action@v1.2.0-M3
       with:
         jvm: 8
         apps: cs
     - run: |
         ./mill docs.generate --npm-install --yarn-run-build
-        scripts/website/versioned-docs.sh --update
+        scripts/website0/versioned-docs.sh --update
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
@@ -213,9 +215,9 @@ jobs:
         WEBSITE_DIR: docs/website
         VERSIONED_DOCS_REPO: almond-sh/versioned-docs
     - run: |
-        scripts/website/versioned-docs.sh
+        scripts/website0/versioned-docs.sh
         ./mill docs.generate --npm-install --yarn-run-build --relativize
-        scripts/website/push-website.sh
+        scripts/website0/push-website.sh
       shell: bash
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}

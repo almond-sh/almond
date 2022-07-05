@@ -2,7 +2,6 @@ package almond
 
 import almond.api.JupyterApi
 import almond.interpreter.api.DisplayData
-import ammonite.ops.read
 import ammonite.repl.api.{FrontEnd, ReplLoad}
 import ammonite.repl.{FullReplAPI, SessionApiImpl}
 import ammonite.runtime.Storage
@@ -177,9 +176,9 @@ final class ReplApiImpl(
           case _ =>
         }
 
-      def exec(file: ammonite.ops.Path): Unit = {
+      def exec(file: os.Path): Unit = {
         ammInterp.watch(file)
-        apply(normalizeNewlines(read(file)))
+        apply(normalizeNewlines(os.read(file)))
       }
     }
 

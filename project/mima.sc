@@ -1,6 +1,6 @@
-import $ivy.`com.github.lolgab::mill-mima_mill0.9:0.0.4`
+import $ivy.`com.github.lolgab::mill-mima::0.0.10`
 
-import com.typesafe.tools.mima.core._
+import com.github.lolgab.mill.mima._
 import sys.process._
 
 private def stable(ver: String): Boolean =
