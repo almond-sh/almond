@@ -57,7 +57,7 @@ object Deps {
   def scalatags                = ivy"com.lihaoyi::scalatags:0.11.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.8.0-beta4"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
-  def utest                    = ivy"com.lihaoyi::utest:0.7.11"
+  def utest                    = ivy"com.lihaoyi::utest:0.8.0"
 }
 
 object ScalaVersions {
