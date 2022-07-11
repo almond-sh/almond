@@ -41,7 +41,7 @@ object Deps {
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.5.0"
   def coursier                 = ivy"io.get-coursier::coursier:2.0.14"
-  def coursierApi              = ivy"io.get-coursier:interface:1.0.4"
+  def coursierApi              = ivy"io.get-coursier:interface:1.0.8"
   def directories              = ivy"io.github.soc:directories:12"
   def fs2                      = ivy"co.fs2::fs2-core:2.5.9"
   def jansi                    = ivy"org.fusesource.jansi:jansi:1.18"
