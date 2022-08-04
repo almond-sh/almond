@@ -176,8 +176,8 @@ final class Execute(
             log.warn("Received SIGINT, but no execution is running")
           case Some(t) =>
             interruptedStackTraceOpt0 = Some(t.getStackTrace)
-            log.debug(s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}")
-            t.stop()
+            log.debug(s"Received SIGINT, interrupting thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}")
+            t.interrupt()
         }
       }.apply {
         t
@@ -192,8 +192,8 @@ final class Execute(
       case None =>
         log.warn("Interrupt asked, but no execution is running")
       case Some(t) =>
-        log.debug(s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
-        t.stop()
+        log.debug(s"Interrupt asked, interrupting thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
+        t.interrupt()
     }
 
 
