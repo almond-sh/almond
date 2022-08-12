@@ -63,12 +63,12 @@ object Deps {
 object ScalaVersions {
   def scala3   = "3.0.2"
   def cross2_3Version = "2.13.7"
-  def scala213 = "2.13.7"
+  def scala213 = "2.13.8"
   def scala212 = "2.12.15"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
     scala3, "3.0.1", "3.0.0",
-    scala213, "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
+    scala213, "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
     scala212, "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9"
   )
 }
