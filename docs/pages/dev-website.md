@@ -9,7 +9,7 @@ Then run
 $ ./mill -i docs.generate --npm-install --yarn-run-build
 ```
 
-If you're getting an error message like `Cannot resolve $file import: almond/scripts/website/Website.sc`
+If you're getting an error message like `Cannot resolve $file import: almond/scripts/website0/Website.sc`
 make sure you have checked out the git submodule for the website script:
 
 ```text
