@@ -20,7 +20,7 @@ jobs:
       run: |
         git config --global core.autocrlf false
         git config --global core.eol lf
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
     - run: ./mill -i validateExamples
@@ -46,11 +46,11 @@ jobs:
       matrix:
         OS: [ubuntu-latest]
         JDK: [8]
-        SCALA: [2.12.14, 2.12.15, 2.13.6, 2.13.7, 3.0.1, 3.0.2]
+        SCALA: [2.12.14, 2.12.15, 2.13.7, 2.13.8, 3.1.2, 3.1.3]
         include:
           - OS: windows-latest
             JDK: 8
-            SCALA: 2.13.6
+            SCALA: 2.13.8
           - OS: ubuntu-latest
             JDK: 11
             SCALA: 2.12.14
@@ -60,12 +60,12 @@ jobs:
       run: |
         git config --global core.autocrlf false
         git config --global core.eol lf
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: ${{ matrix.JDK }}
         apps:
@@ -82,12 +82,12 @@ jobs:
       run: |
         git config --global core.autocrlf false
         git config --global core.eol lf
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
     - run: ./mill __.mimaReportBinaryIssues
@@ -96,12 +96,12 @@ jobs:
   website:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
         apps: cs
@@ -111,12 +111,12 @@ jobs:
   publishLocal:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
         apps:
@@ -137,12 +137,12 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
     - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
@@ -160,12 +160,12 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
     - run: ./mill -i ci.uploadLaunchers
@@ -178,12 +178,12 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
     - run: scripts/update-docker-images.sh
@@ -196,12 +196,12 @@ jobs:
     needs: [upload-launcher, update-docker-images]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0-M3
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
         apps: cs
