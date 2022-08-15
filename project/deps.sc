@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "2.5.4"
+  def ammonite      = "2.5.4-13-1ebd00a6"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.10.4"
   def scalafmt      = "2.7.5"
@@ -36,14 +36,14 @@ object Deps {
   def ammoniteReplApi(sv: String) =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
-  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.0"
+  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.1"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.5.0"
   def coursier                 = ivy"io.get-coursier::coursier:2.0.14"
   def coursierApi              = ivy"io.get-coursier:interface:1.0.8"
   def directories              = ivy"io.github.soc:directories:12"
-  def fs2                      = ivy"co.fs2::fs2-core:2.5.9"
+  def fs2                      = ivy"co.fs2::fs2-core:2.5.11"
   def jansi                    = ivy"org.fusesource.jansi:jansi:1.18"
   def jeromq                   = ivy"org.zeromq:jeromq:0.5.2"
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
@@ -63,12 +63,12 @@ object Deps {
 object ScalaVersions {
   def scala3   = "3.0.2"
   def cross2_3Version = "2.13.7"
-  def scala213 = "2.13.7"
+  def scala213 = "2.13.8"
   def scala212 = "2.12.16"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
     scala3, "3.0.1", "3.0.0",
-    scala213, "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
+    scala213, "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
     scala212, "2.12.15", "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9"
   )
 }
