@@ -39,7 +39,7 @@ object Deps {
   def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.1"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
-  def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.5.0"
+  def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.8.1"
   def coursier                 = ivy"io.get-coursier::coursier:2.0.14"
   def coursierApi              = ivy"io.get-coursier:interface:1.0.8"
   def directories              = ivy"io.github.soc:directories:12"
@@ -57,17 +57,17 @@ object Deps {
   def scalatags                = ivy"com.lihaoyi::scalatags:0.11.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.8.0-beta4"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
-  def utest                    = ivy"com.lihaoyi::utest:0.7.11"
+  def utest                    = ivy"com.lihaoyi::utest:0.8.0"
 }
 
 object ScalaVersions {
-  def scala3   = "3.0.2"
+  def scala3   = "3.1.3"
   def cross2_3Version = "2.13.7"
   def scala213 = "2.13.8"
   def scala212 = "2.12.16"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
-    scala3, "3.0.1", "3.0.0",
+    scala3, "3.1.2", "3.1.1", "3.1.0",
     scala213, "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
     scala212, "2.12.15", "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9"
   )
