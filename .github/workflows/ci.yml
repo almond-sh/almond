@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
     - run: ./mill -i validateExamples
@@ -65,7 +65,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: ${{ matrix.JDK }}
         apps:
@@ -87,7 +87,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
     - run: ./mill __.mimaReportBinaryIssues
@@ -101,7 +101,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
         apps: cs
@@ -116,7 +116,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
         apps:
@@ -142,7 +142,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
     - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
@@ -165,7 +165,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
     - run: ./mill -i ci.uploadLaunchers
@@ -183,7 +183,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
     - run: scripts/update-docker-images.sh
@@ -201,7 +201,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.0
+    - uses: coursier/setup-action@v1.2.1
       with:
         jvm: 8
         apps: cs
