@@ -48,7 +48,7 @@ object Deps {
   def coursierApi              = ivy"io.get-coursier:interface:1.0.4"
   def directories              = ivy"io.github.soc:directories:12"
   def fs2                      = ivy"co.fs2::fs2-core:2.5.9"
-  def jansi                    = ivy"org.fusesource.jansi:jansi:2.4.0"
+  def jansi                    = ivy"org.fusesource.jansi:jansi:1.18"
   def jeromq                   = ivy"org.zeromq:jeromq:0.5.2"
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
