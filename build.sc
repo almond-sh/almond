@@ -483,7 +483,7 @@ def validateExamples(matcher: String = "") = {
     }
 
   T.command {
-    val launcher = scala.`scala-kernel`(sv).launcher().path.toNIO
+    val launcher = scala.`scala-kernel`(sv).launcher().path
     val jupyterPath = T.dest / "jupyter"
     val outputDir = T.dest / "output"
     os.makeDir.all(outputDir)
@@ -492,7 +492,7 @@ def validateExamples(matcher: String = "") = {
     val repoRoot = baseRepoRoot / version
 
     os.proc(
-      launcher.toString,
+      launcher,
       "--jupyter-path", jupyterPath / "kernels",
       "--id", kernelId,
       "--install", "--force",
@@ -504,7 +504,7 @@ def validateExamples(matcher: String = "") = {
     val nbFiles = exampleNotebooks()
       .map(_.path)
       .filter { p =>
-        pathMatcherOpt.fold(true) { m =>
+        pathMatcherOpt.forall { m =>
           m.matches(p.toNIO.getFileName)
         }
       }
