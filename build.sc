@@ -521,12 +521,29 @@ def validateExamples(matcher: String = "") = {
         s"--output=$output"
       ).call(cwd = examplesDir, env = Map("JUPYTER_PATH" -> jupyterPath.toString))
 
-      if (Properties.isWin) {
-        val rawOutput = os.read(output, Charset.defaultCharset())
-        val updatedOutput = rawOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
-        // writing the updated notebook on disk for the diff below
-        os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
+      val rawOutput = os.read(output, Charset.defaultCharset())
+
+      var updatedOutput = rawOutput
+      if (Properties.isWin)
+        updatedOutput = updatedOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
+
+      // Clear metadata, that usually looks like
+      // "metadata": {
+      //  "execution": {
+      //   "iopub.execute_input": "2022-08-17T10:35:13.619221Z",
+      //   "iopub.status.busy": "2022-08-17T10:35:13.614065Z",
+      //   "iopub.status.idle": "2022-08-17T10:35:16.310834Z",
+      //   "shell.execute_reply": "2022-08-17T10:35:16.311111Z"
+      //  }
+      // }
+      val json = ujson.read(updatedOutput)
+      for (cell <- json("cells").arr if cell("cell_type").str == "code") {
+        cell("metadata") = ujson.Obj()
       }
+      updatedOutput = json.render(1)
+
+      // writing the updated notebook on disk for the diff below
+      os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
 
       val result = os.read(output, Charset.defaultCharset())
       val expected = os.read(f)
