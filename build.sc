@@ -12,6 +12,7 @@ import java.nio.file.FileSystems
 
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
+import mill.contrib.bloop.Bloop
 import _root_.scala.concurrent.duration._
 import _root_.scala.util.Properties
 
@@ -112,7 +113,8 @@ class JupyterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
   )
 }
 
-class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with DependencyListResource with ExternalSources with PropertyFile with Mima {
+class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with DependencyListResource with ExternalSources with PropertyFile with Mima with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def moduleDeps = Seq(
     shared.`interpreter-api`(),
@@ -130,7 +132,8 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
   )
 }
 
-class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule {
+class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def supports3 = true
   def moduleDeps = Seq(
@@ -179,7 +182,8 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule {
   }
 }
 
-class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with ExternalSources with BootstrapLauncher {
+class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with ExternalSources with BootstrapLauncher with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def moduleDeps = Seq(
     shared.kernel(),
@@ -231,7 +235,8 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
 // depend on the more complex 2.13-targeting-scala-3 module like
 // scala-kernel-cross-3.0.2_2.13.7. The former follows the same name pattern
 // as their Scala 2 counterparts, and are more convenient to write down for end users.
-class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule {
+class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def supports3 = true
   def artifactName = super.artifactName().stripSuffix("-helper")
