@@ -3,7 +3,7 @@
 
 package almond.internals;
 
-import org.fusesource.jansi.AnsiOutputStream;
+import org.fusesource.jansi.io.AnsiOutputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
