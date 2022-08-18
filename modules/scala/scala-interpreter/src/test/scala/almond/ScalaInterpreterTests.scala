@@ -254,14 +254,20 @@ object ScalaInterpreterTests extends TestSuite {
     "predef code" - {
       "simple" - Predef.simple()
       "no variable name" - Predef.noVariableName()
-      "compilation error" - Predef.compilationError()
+      test("compilation error") {
+        if (TestUtil.isScala2) Predef.compilationError()
+        else "Temporarily disabled in Scala 3"
+      }
       "exception" - Predef.exception()
     }
 
     "predef files" - {
       "simple" - Predef.simple(fileBased = true)
       "no variable name" - Predef.noVariableName(fileBased = true)
-      "compilation error" - Predef.compilationError(fileBased = true)
+      test("compilation error") {
+        if (TestUtil.isScala2) Predef.compilationError(fileBased = true)
+        else "Temporarily disabled in Scala 3"
+      }
       "exception" - Predef.exception(fileBased = true)
     }
 
