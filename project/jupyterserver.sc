@@ -1,9 +1,11 @@
 
 import java.nio.file._
 
+def kernelId = "scala-debug"
+
 def writeKernelJson(launcher: Path, jupyterDir: Path): Unit = {
   val launcherPath = launcher.toAbsolutePath.toString.replace("\\","\\\\")
-  val dir = jupyterDir.resolve("kernels/scala-debug")
+  val dir = jupyterDir.resolve(s"kernels/$kernelId")
   Files.createDirectories(dir)
   val kernelJson = s"""{
     "language": "scala",
@@ -27,6 +29,27 @@ def jupyterServer(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
   val jupyterCommand = Seq(
     if (mill.main.client.Util.isWindows) "jupyter.bat" else "jupyter",
     "lab", "--notebook-dir", "notebooks")
+  val b = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
+  val env = b.environment()
+  env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
+  val p = b.start()
+  val hook: Thread = new Thread("jupyter-stop") {
+    override def run() =
+      if (p.isAlive)
+        p.destroy()
+  }
+  Runtime.getRuntime.addShutdownHook(hook)
+  val retCode = p.waitFor()
+  Runtime.getRuntime.removeShutdownHook(hook)
+  if (retCode != 0)
+    System.err.println(s"Jupyter command exited with code $retCode")
+}
+
+def jupyterConsole(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
+
+  writeKernelJson(launcher, jupyterDir)
+
+  val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
   val b = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
   val env = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
