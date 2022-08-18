@@ -229,6 +229,7 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
       Name.IMPLEMENTATION_VENDOR.toString -> "sh.almond"
     )
   }
+  def mainClass = Some("almond.ScalaKernel")
 }
 
 // For Scala 3 only. This publishes modules like scala-kernel_3.0.2 that
