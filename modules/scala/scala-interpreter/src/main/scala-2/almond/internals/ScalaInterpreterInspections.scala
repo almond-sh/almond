@@ -12,6 +12,7 @@ import ammonite.runtime.Frame
 import ammonite.util.Ref
 import ammonite.util.Util.newLine
 import metabrowse.server.{MetabrowseServer, Sourcepath}
+import scala.meta.dialects
 
 import scala.tools.nsc.Global
 import scala.tools.nsc.interactive.{Global => Interactive}
@@ -58,7 +59,16 @@ final class ScalaInterpreterInspections(
       else
         ConnectionParameters.randomPort()
 
+    val dialect =
+      if (compilerManager.scalaVersion.startsWith("3."))
+        dialects.Scala3
+      else if (compilerManager.scalaVersion.startsWith("2.13."))
+        dialects.Scala213
+      else
+        dialects.Scala212
+
     val server = new MetabrowseServer(
+      dialect,
       host = metabrowseHost,
       port = port
       // FIXME Pass custom logger?

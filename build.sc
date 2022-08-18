@@ -140,19 +140,9 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     shared.interpreter(),
     scala.`scala-kernel-api`()
   )
-  def addMetabrowse = T{
-    val sv = scalaVersion()
-    val patch = sv
-      .split('.')
-      .drop(2)
-      .headOption
-      .flatMap(s => _root_.scala.util.Try(s.takeWhile(_.isDigit).toInt).toOption)
-    (sv.startsWith("2.12.") && patch.exists(_ <= 10)) ||
-      (sv.startsWith("2.13.") && patch.exists(_ <= 1))
-  }
   def ivyDeps = T{
     val metabrowse =
-      if (addMetabrowse()) Agg(Deps.metabrowseServer)
+      if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
       else Agg.empty
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
@@ -162,13 +152,6 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       Deps.ammoniteCompiler(crossScalaVersion),
       Deps.ammoniteRepl(crossScalaVersion)
     )
-  }
-  def sources = T.sources {
-    val dirName =
-      if (addMetabrowse()) "scala-has-metabrowse"
-      else "scala-no-metabrowse"
-    val extra = PathRef(millSourcePath / "src" / "main" / dirName)
-    super.sources() ++ Seq(extra)
   }
   object test extends Tests with AlmondTestModule {
     def moduleDeps = {
