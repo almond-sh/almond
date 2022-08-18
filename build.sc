@@ -3,7 +3,7 @@ import $ivy.`com.github.lolgab::mill-mima::0.0.10`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
-import $file.project.jupyterserver, jupyterserver.jupyterServer
+import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
 import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{AlmondModule, AlmondRepositories, AlmondTestModule, BootstrapLauncher, DependencyListResource, ExternalSources, Mima, PropertyFile, Util, buildVersion}
 
@@ -406,7 +406,7 @@ object docs extends ScalaModule with AlmondRepositories {
   }
 }
 
-def jupyter0(args: Seq[String], fast: Boolean) = {
+def jupyter0(args: Seq[String], fast: Boolean, console: Boolean = false) = {
   val (sv, args0) = args match {
     case Seq(sv, rem @ _*) if sv.startsWith("2.") || sv.startsWith("3.") =>
       (sv, rem)
@@ -418,7 +418,10 @@ def jupyter0(args: Seq[String], fast: Boolean) = {
   T.command {
     val jupyterDir = T.ctx().dest / "jupyter"
     val launcher0 = launcher().path.toNIO
-    jupyterServer(launcher0, jupyterDir.toNIO, args0)
+    if (console)
+      jupyterConsole0(launcher0, jupyterDir.toNIO, args0)
+    else
+      jupyterServer(launcher0, jupyterDir.toNIO, args0)
   }
 }
 
@@ -427,6 +430,12 @@ def jupyter(args: String*) =
 
 def jupyterFast(args: String*) =
   jupyter0(args, fast = true)
+
+def jupyterConsole(args: String*) =
+  jupyter0(args, fast = false, console = true)
+
+def jupyterConsoleFast(args: String*) =
+  jupyter0(args, fast = true, console = true)
 
 def publishSonatype(tasks: mill.main.Tasks[PublishModule.PublishData]) =
   T.command {
