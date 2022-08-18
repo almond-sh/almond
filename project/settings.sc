@@ -183,8 +183,7 @@ trait AlmondScalaCliCompile extends ScalaCliCompile {
     // as support for Java 8 or 11 in Scala CLI relies on the --release flag of Java 17,
     // and it seems --release puts in the class path stuff not supported by those
     // Scala versions.
-    val tmp17Opts = if (needs17) Seq("--jvm", "temurin:17") else Nil
-    super.extraScalaCliOptions() ++ tmp17Opts
+    super.extraScalaCliOptions() ++ Seq("--jvm", "8", "--bloop-version", "1.5.3-sc-1")
   }
 }
 
