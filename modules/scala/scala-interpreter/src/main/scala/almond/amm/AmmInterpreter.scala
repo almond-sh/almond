@@ -110,7 +110,7 @@ object AmmInterpreter {
           ammonite.compiler.Parsers,
           printer = execute0.printer,
           storage = storage0,
-          wd = ammonite.ops.pwd,
+          wd = os.pwd,
           colors = replApi.colors,
           verboseOutput = true, // ???
           getFrame = () => frames0().head,
