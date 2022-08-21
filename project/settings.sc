@@ -2,14 +2,16 @@ import $file.deps, deps.{Deps, ScalaVersions}
 import $file.mima, mima.binaryCompatibilityVersions
 
 import $ivy.`io.get-coursier::coursier-launcher:2.0.12`
+import $ivy.`io.github.alexarchambault.mill::mill-scala-cli::0.1.0`
 
 import java.io.File
 import java.nio.file.{Files, Path}
-import java.util.Properties
+import java.util.{Arrays, Properties}
 
 import mill._, scalalib.{CrossSbtModule => _, _}
 
 import scala.annotation.tailrec
+import scala.cli.mill.ScalaCliCompile
 import scala.concurrent.duration._
 
 lazy val latestTaggedVersion = os.proc("git", "describe", "--abbrev=0", "--tags", "--match", "v*")
@@ -48,16 +50,6 @@ trait CrossSbtModule extends mill.scalalib.SbtModule with mill.scalalib.CrossMod
       )
 
   }
-  trait Tests extends super.Tests {
-    override def millSourcePath = outer.millSourcePath
-    override def sources = T.sources {
-      super.sources() ++
-        mill.scalalib.CrossModuleBase.scalaVersionPaths(
-          scalaVersion(),
-          s => millSourcePath / 'src / 'test / s"scala-$s"
-        )
-    }
-  }
 }
 
 trait AlmondRepositories extends CoursierModule {
@@ -81,13 +73,6 @@ trait AlmondPublishModule extends PublishModule {
     )
   )
   def publishVersion = T{ buildVersion }
-}
-
-trait HasTests extends CrossSbtModule {
-  trait Tests extends super.Tests {
-    def ivyDeps = Agg(Deps.utest)
-    def testFramework = "utest.runner.Framework"
-  }
 }
 
 trait ExternalSources extends CrossSbtModule {
@@ -176,14 +161,29 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
     crossScalaVersion.startsWith("3.") && !scalaVersion().startsWith("3.")
   }
   def artifactName = T{
-    val suffix = if (useCrossSuffix()) "-cross-23" else ""
+    val suffix = if (useCrossSuffix()) s"-cross-$crossScalaVersion" else ""
     super.artifactName() + suffix
   }
   def scalacOptions = T {
     val tastyReaderOptions =
-      if (scalaVersion() == ScalaVersions.cross2_3Version) Seq("-Ytasty-reader")
+      if (crossScalaVersion.startsWith("3.") && !supports3) Seq("-Ytasty-reader")
       else Nil
     tastyReaderOptions
+  }
+}
+
+trait AlmondScalaCliCompile extends ScalaCliCompile {
+  override def extraScalaCliOptions = T {
+    import coursier.core.Version
+    val sv = scalaVersion()
+    val needs17 =
+      sv.startsWith("2.12.") && Version(sv) <= Version("2.12.13") ||
+        sv.startsWith("2.13.") && Version(sv) <= Version("2.13.6")
+    // Seems we can't compile with Java 8 or 11 the pre-Java 17 Scala versions,
+    // as support for Java 8 or 11 in Scala CLI relies on the --release flag of Java 17,
+    // and it seems --release puts in the class path stuff not supported by those
+    // Scala versions.
+    super.extraScalaCliOptions() ++ Seq("--jvm", "8", "--bloop-version", "1.5.3-sc-1")
   }
 }
 
@@ -194,7 +194,124 @@ trait AlmondModule
   with TransitiveSources
   with AlmondArtifactName
   with AlmondScala2Or3Module
-  with PublishLocalNoFluff {
+  with PublishLocalNoFluff
+  with AlmondScalaCliCompile {
+
+  // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
+  // pin scala3-library suffix, so that 2.13 modules can have us as moduleDep fine
+  def mandatoryIvyDeps = T {
+    super.mandatoryIvyDeps().map { dep =>
+      val isScala3Lib =
+        dep.dep.module.organization.value == "org.scala-lang" &&
+        dep.dep.module.name.value == "scala3-library" &&
+        (dep.cross match {
+          case _: CrossVersion.Binary => true
+          case _                      => false
+        })
+      if (isScala3Lib)
+        dep.copy(
+          dep = dep.dep.withModule(
+            dep.dep.module.withName(
+              coursier.ModuleName(dep.dep.module.name.value + "_3")
+            )
+          ),
+          cross = CrossVersion.empty(dep.cross.platformed)
+        )
+      else dep
+    }
+  }
+  def transitiveIvyDeps = T {
+    super.transitiveIvyDeps().map { dep =>
+      val isScala3Lib =
+        dep.dep.module.organization.value == "org.scala-lang" &&
+        dep.dep.module.name.value == "scala3-library" &&
+        (dep.cross match {
+          case _: CrossVersion.Binary => true
+          case _                      => false
+        })
+      if (isScala3Lib)
+        dep.copy(
+          dep = dep.dep.withModule(
+            dep.dep.module.withName(
+              coursier.ModuleName(dep.dep.module.name.value + "_3")
+            )
+          ),
+          cross = CrossVersion.empty(dep.cross.platformed)
+        )
+      else dep
+    }
+  }
+
+  def scalacOptions = T{
+    // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
+    val sv = scalaVersion()
+    val scala2Options =
+      if (sv.startsWith("2.")) Seq("-explaintypes")
+      else Nil
+    super.scalacOptions() ++ scala2Options ++ Seq(
+      "-deprecation",
+      "-feature",
+      "-encoding", "utf-8",
+      "-language:higherKinds",
+      "-unchecked"
+    )
+  }
+}
+
+trait AlmondTestModule
+  extends ScalaModule
+  with TestModule
+  with AlmondRepositories
+  // with AlmondScala2Or3Module
+  with AlmondScalaCliCompile {
+
+  def ivyDeps = Agg(Deps.utest)
+  def testFramework = "utest.runner.Framework"
+
+  // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
+  // pin scala3-library suffix, so that 2.13 modules can have us as moduleDep fine
+  def mandatoryIvyDeps = T {
+    super.mandatoryIvyDeps().map { dep =>
+      val isScala3Lib =
+        dep.dep.module.organization.value == "org.scala-lang" &&
+        dep.dep.module.name.value == "scala3-library" &&
+        (dep.cross match {
+          case _: CrossVersion.Binary => true
+          case _                      => false
+        })
+      if (isScala3Lib)
+        dep.copy(
+          dep = dep.dep.withModule(
+            dep.dep.module.withName(
+              coursier.ModuleName(dep.dep.module.name.value + "_3")
+            )
+          ),
+          cross = CrossVersion.empty(dep.cross.platformed)
+        )
+      else dep
+    }
+  }
+  def transitiveIvyDeps = T {
+    super.transitiveIvyDeps().map { dep =>
+      val isScala3Lib =
+        dep.dep.module.organization.value == "org.scala-lang" &&
+        dep.dep.module.name.value == "scala3-library" &&
+        (dep.cross match {
+          case _: CrossVersion.Binary => true
+          case _                      => false
+        })
+      if (isScala3Lib)
+        dep.copy(
+          dep = dep.dep.withModule(
+            dep.dep.module.withName(
+              coursier.ModuleName(dep.dep.module.name.value + "_3")
+            )
+          ),
+          cross = CrossVersion.empty(dep.cross.platformed)
+        )
+      else dep
+    }
+  }
 
   def scalacOptions = T{
     // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
@@ -211,13 +328,13 @@ trait AlmondModule
     )
   }
 
-  def artifactName =
-    millModuleSegments
-      .parts
-      .dropWhile(_ == "scala")
-      .dropWhile(_ == "shared")
-      .take(1)
-      .mkString("-")
+  def sources = T.sources {
+    super.sources() ++
+      mill.scalalib.CrossModuleBase.scalaVersionPaths(
+        scalaVersion(),
+        s => millSourcePath / "src" / "test" / s"scala-$s"
+      )
+  }
 }
 
 trait BootstrapLauncher extends CrossSbtModule {
@@ -332,38 +449,47 @@ trait PropertyFile extends AlmondPublishModule {
   def propertyFilePath: String
   def propertyExtra: Seq[(String, String)] = Nil
 
-  def resources = T.sources{
+  def propResourcesDir = T.persistent {
     import sys.process._
 
-    val dir = T.ctx().dest / "property-resources"
+    val dir = T.dest / "property-resources"
     val ver = publishVersion()
+
+    // FIXME Only set if ammonite-spark is available for the current scala version?
     val ammSparkVer = Deps.ammoniteSpark.dep.version
 
-    val f = propertyFilePath.split('/').foldLeft(dir)(_ / _)
-    os.write(f, Array.emptyByteArray, createFolders = true)
+    val f = dir / propertyFilePath.split('/').toSeq
 
-    val p = new Properties
+    val contentStr =
+      s"""commit-hash=${Seq("git", "rev-parse", "HEAD").!!.trim}
+         |version=$ver
+         |ammonite-spark-version=$ammSparkVer
+         |""".stripMargin +
+      propertyExtra
+        .map {
+          case (k, v) =>
+            s"""$k=$v
+               |""".stripMargin
+        }
+        .mkString
 
-    p.setProperty("version", ver)
-    p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
-    // FIXME Only set if ammonite-spark is available for the current scala version?
-    p.setProperty("ammonite-spark-version", ammSparkVer)
+    val content = contentStr.getBytes("UTF-8")
+    val currentContentOpt = if (os.exists(f)) Some(os.read.bytes(f)) else None
 
-    for ((k, v) <- propertyExtra)
-      p.setProperty(k, v)
+    if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
+      os.write.over(f, content, createFolders = true)
+      System.err.println(s"Wrote $f")
+    }
 
-    val w = new java.io.FileOutputStream(f.toIO)
-    p.store(w, "Almond properties")
-    w.close()
-
-    System.err.println(s"Wrote $f")
-
-    super.resources() ++ Seq(PathRef(dir))
+    PathRef(dir)
+  }
+  def resources = T.sources {
+    super.resources() ++ Seq(propResourcesDir())
   }
 }
 
 trait DependencyListResource extends CrossSbtModule {
-  def resources = T.sources {
+  def depResourcesDir = T.persistent {
     val (_, res) = Lib.resolveDependenciesMetadata(
       repositoriesTask(),
       resolveCoursierDependency().apply(_),
@@ -382,14 +508,20 @@ trait DependencyListResource extends CrossSbtModule {
         s"$org:$name:$ver"
       }
       .mkString("\n")
+      .getBytes("UTF-8")
 
-    val dir = T.ctx().dest / "dependency-resources"
+    val dir = T.dest / "dependency-resources"
     val f = dir / "almond" / "almond-user-dependencies.txt"
-    os.write(f, content.getBytes("UTF-8"), createFolders = true)
 
-    System.err.println(s"Wrote $f")
+    if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
+      os.write.over(f, content, createFolders = true)
+      System.err.println(s"Wrote $f")
+    }
 
-    super.resources() ++ Seq(PathRef(dir))
+    PathRef(dir)
+  }
+  def resources = T.sources {
+    super.resources() ++ Seq(depResourcesDir())
   }
 }
 
