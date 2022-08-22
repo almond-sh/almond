@@ -161,8 +161,10 @@ object AmmInterpreter {
 
       log.debug("Loading base dependencies")
 
+      // TODO: remove jitpack once jvm-repr is published to central
+      val allExtraRepos = extraRepos ++ Seq(coursier.Repositories.jitpack.root)
       ammInterp0.repositories() = ammInterp0.repositories() ++
-        extraRepos.map { r =>
+        allExtraRepos.map { r =>
           if (r.startsWith("ivy:"))
             coursierapi.IvyRepository.of(r.stripPrefix("ivy:"))
           else
