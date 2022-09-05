@@ -1,5 +1,5 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
-import $ivy.`com.github.lolgab::mill-mima::0.0.10`
+import $ivy.`com.github.lolgab::mill-mima::0.0.12`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
