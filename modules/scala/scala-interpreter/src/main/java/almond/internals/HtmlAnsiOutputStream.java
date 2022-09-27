@@ -63,6 +63,8 @@ public class HtmlAnsiOutputStream extends AnsiOutputStream {
 
     public static final String[] ANSI_COLOR_MAP = {"black", "red",
             "green", "yellow", "blue", "magenta", "cyan", "white",};
+    public static final String[] RGB_COLOR_MAP = {"black", "red",
+            "rgb(0, 187, 0)", "yellow", "blue", "magenta", "rgb(0, 187, 187)", "white",};
 
     private static final byte[] BYTES_QUOT = "&quot;".getBytes();
     private static final byte[] BYTES_AMP = "&amp;".getBytes();

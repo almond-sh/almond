@@ -68,11 +68,18 @@ public class AnsiToHtmlProcessor extends AnsiProcessor {
 
     @Override
     protected void processSetForegroundColor(int color, boolean bright) throws IOException {
-        haos.writeAttribute("span style=\"color: " + HtmlAnsiOutputStream.ANSI_COLOR_MAP[color] + ";\"");
+        // hard-coded color are for nteract (where the ansi-* classes are defined), and it might be useful from nbviewer too
+        // ansi-* classes are for jupyterlab (and classic too I think)
+        haos.writeAttribute("span style=\"color: " + HtmlAnsiOutputStream.RGB_COLOR_MAP[color] + "\"");
+        haos.writeAttribute("span class=\"ansi-" + HtmlAnsiOutputStream.ANSI_COLOR_MAP[color] + "-fg\"");
     }
 
     @Override
     protected void processSetBackgroundColor(int color, boolean bright) throws IOException {
-        haos.writeAttribute("span style=\"background-color: " + HtmlAnsiOutputStream.ANSI_COLOR_MAP[color] + ";\"");
+        String extra = "";
+        if (color == 7)
+            extra = "; color: rgb(255, 255, 255);";
+        haos.writeAttribute("span style=\"background-color: " + HtmlAnsiOutputStream.RGB_COLOR_MAP[color] + extra + "\"");
+        haos.writeAttribute("span class=\"ansi-" + HtmlAnsiOutputStream.ANSI_COLOR_MAP[color] + "-bg\"");
     }
 }
