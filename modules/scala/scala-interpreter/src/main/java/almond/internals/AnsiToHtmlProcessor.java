@@ -53,6 +53,11 @@ public class AnsiToHtmlProcessor extends AnsiProcessor {
     }
 
     @Override
+    protected void processDefaultTextColor() throws IOException {
+        processAttributeReset();
+    }
+
+    @Override
     protected void processAttributeReset() throws IOException {
         if (concealOn) {
             haos.write("\u001B[0m");
