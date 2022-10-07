@@ -1,18 +1,59 @@
-
-// adapted from https://github.com/fusesource/jansi/blob/70ff98d5cbd5fb005d8a44ed31050388b256f9c6/jansi/src/main/java/org/fusesource/jansi/HtmlAnsiOutputStream.java
+// adapted from https://github.com/Osiris-Team/jansi/blob/3a832dfc0c4bd9d00de356dbac0f0fbaebf75786/src/main/java/org/fusesource/jansi/io/HtmlAnsiOutputStream.java
+// see: https://github.com/fusesource/jansi/pull/212
 
 package almond.internals;
 
-import org.fusesource.jansi.AnsiOutputStream;
+import org.fusesource.jansi.io.AnsiOutputStream;
+
+/*
+ * Copyright (C) 2009-2017 the original author(s).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import org.fusesource.jansi.AnsiColors;
+import org.fusesource.jansi.AnsiMode;
+import org.fusesource.jansi.AnsiType;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * A optimized/edited {@link HtmlAnsiOutputStream} for ansi 2.x and above. <br>
+ * @author <a href="https://github.com/Osiris-Team">Osiris Team</a>
+ * @author <a href="http://code.dblock.org">Daniel Doubrovkine</a>
+ */
 public class HtmlAnsiOutputStream extends AnsiOutputStream {
 
-    private boolean concealOn = false;
+    private static final Map<OutputStream, AnsiToHtmlProcessor> streamsAndProcessors = new ConcurrentHashMap<>();
+
+    /**
+     * Creates a new {@link AnsiToHtmlProcessor} for the provided {@link OutputStream}, <br>
+     * and adds both to the {@link #streamsAndProcessors} map. <br>
+     * This is done to have working multithreading and diminish the need of a getProcessor() method <br>
+     * in the {@link AnsiOutputStream}.
+     */
+    private static synchronized AnsiToHtmlProcessor createAnsiToHtmlProcessorForOutput(OutputStream out){
+        AnsiToHtmlProcessor processor = new AnsiToHtmlProcessor(out);
+        streamsAndProcessors.put(out, processor);
+        return processor;
+    }
 
     @Override
     public void close() throws IOException {
@@ -20,9 +61,9 @@ public class HtmlAnsiOutputStream extends AnsiOutputStream {
         super.close();
     }
 
-    private static final String[] ANSI_COLOR_MAP = {"black", "red",
+    public static final String[] ANSI_COLOR_MAP = {"black", "red",
             "green", "yellow", "blue", "magenta", "cyan", "white",};
-    private static final String[] RGB_COLOR_MAP = {"black", "red",
+    public static final String[] RGB_COLOR_MAP = {"black", "red",
             "rgb(0, 187, 0)", "yellow", "blue", "magenta", "rgb(0, 187, 187)", "white",};
 
     private static final byte[] BYTES_QUOT = "&quot;".getBytes();
@@ -31,21 +72,36 @@ public class HtmlAnsiOutputStream extends AnsiOutputStream {
     private static final byte[] BYTES_GT = "&gt;".getBytes();
 
     public HtmlAnsiOutputStream(OutputStream os) {
-        super(os);
+        super(os,
+                new WidthSupplier() {
+                    @Override
+                    public int getTerminalWidth() {
+                        return Integer.MAX_VALUE;
+                    }
+                },
+                AnsiMode.Default,
+                createAnsiToHtmlProcessorForOutput(os),
+                AnsiType.Native,
+                AnsiColors.Colors16,
+                Charset.defaultCharset(),
+                null,
+                null,
+                true);
+        streamsAndProcessors.get(os).setHtmlAnsiOutputStream(this);
     }
 
-    private final List<String> closingAttributes = new ArrayList<String>();
+    private final List<String> closingAttributes = new ArrayList<>();
 
-    private void write(String s) throws IOException {
+    public void write(String s) throws IOException {
         super.out.write(s.getBytes());
     }
 
-    private void writeAttribute(String s) throws IOException {
+    public void writeAttribute(String s) throws IOException {
         write("<" + s + ">");
         closingAttributes.add(0, s.split(" ", 2)[0]);
     }
 
-    private void closeAttributes() throws IOException {
+    public void closeAttributes() throws IOException {
         for (String attr : closingAttributes) {
             write("</" + attr + ">");
         }
@@ -74,64 +130,5 @@ public class HtmlAnsiOutputStream extends AnsiOutputStream {
     public void writeLine(byte[] buf, int offset, int len) throws IOException {
         write(buf, offset, len);
         closeAttributes();
-    }
-
-    @Override
-    protected void processSetAttribute(int attribute) throws IOException {
-        switch (attribute) {
-            case ATTRIBUTE_CONCEAL_ON:
-                write("\u001B[8m");
-                concealOn = true;
-                break;
-            case ATTRIBUTE_INTENSITY_BOLD:
-                writeAttribute("b");
-                break;
-            case ATTRIBUTE_INTENSITY_NORMAL:
-                closeAttributes();
-                break;
-            case ATTRIBUTE_UNDERLINE:
-                writeAttribute("u");
-                break;
-            case ATTRIBUTE_UNDERLINE_OFF:
-                closeAttributes();
-                break;
-            case ATTRIBUTE_NEGATIVE_ON:
-                break;
-            case ATTRIBUTE_NEGATIVE_OFF:
-                break;
-            default:
-                break;
-        }
-    }
-
-    @Override
-    protected void processAttributeRest() throws IOException {
-        if (concealOn) {
-            write("\u001B[0m");
-            concealOn = false;
-        }
-        closeAttributes();
-    }
-
-    @Override
-    protected void processDefaultTextColor() throws IOException {
-        processAttributeRest();
-    }
-
-    @Override
-    protected void processSetForegroundColor(int color, boolean bright) throws IOException {
-        // hard-coded color are for nteract (where the ansi-* classes are defined), and it might be useful from nbviewer too
-        // ansi-* classes are for jupyterlab (and classic too I think)
-        writeAttribute("span style=\"color: " + RGB_COLOR_MAP[color] + "\"");
-        writeAttribute("span class=\"ansi-" + ANSI_COLOR_MAP[color] + "-fg\"");
-    }
-
-    @Override
-    protected void processSetBackgroundColor(int color, boolean bright) throws IOException {
-        String extra = "";
-        if (color == 7)
-            extra = "; color: rgb(255, 255, 255);";
-        writeAttribute("span style=\"background-color: " + RGB_COLOR_MAP[color] + extra + "\"");
-        writeAttribute("span class=\"ansi-" + ANSI_COLOR_MAP[color] + "-bg\"");
     }
 }
