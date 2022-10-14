@@ -1,4 +1,4 @@
-import $ivy.`com.github.lolgab::mill-mima::0.0.12`
+import $ivy.`com.github.lolgab::mill-mima::0.0.13`
 
 import com.github.lolgab.mill.mima._
 import sys.process._
