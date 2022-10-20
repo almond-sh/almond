@@ -55,7 +55,7 @@ object Deps {
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = ivy"com.lihaoyi::scalatags:0.11.1"
+  def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.3"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
   def utest                    = ivy"com.lihaoyi::utest:0.8.1"
