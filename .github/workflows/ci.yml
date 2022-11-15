@@ -32,7 +32,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -64,7 +64,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: ${{ matrix.JDK }}
@@ -86,7 +86,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -100,7 +100,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -115,7 +115,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -141,7 +141,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -164,7 +164,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -182,7 +182,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
@@ -200,7 +200,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
+    - uses: coursier/cache-action@v6.4
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
