@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "2.5.5"
+  def ammonite      = "2.5.5-17-df243e14"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
@@ -36,7 +36,7 @@ object Deps {
   def ammoniteReplApi(sv: String) =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
-  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.4"
+  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.5"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.8.1"
