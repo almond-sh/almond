@@ -56,7 +56,8 @@ final class ScalaInterpreter(
     logCtx,
     params.updateBackgroundVariablesEcOpt,
     commHandlerOpt,
-    silent0
+    silent0,
+    params.useThreadInterrupt
   )
 
 

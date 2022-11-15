@@ -56,7 +56,9 @@ final case class Options(
   @HelpMessage("Whether to enable variable inspector")
     variableInspector: Option[Boolean] = None,
   @HelpMessage("Whether to process format requests with scalafmt")
-    scalafmt: Boolean = true
+    scalafmt: Boolean = true,
+  @HelpMessage("Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel.")
+  useThreadInterrupt: Boolean = false
 ) {
 
   private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")

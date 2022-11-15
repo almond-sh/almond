@@ -125,6 +125,9 @@ Sets the kernel log level. Can be any of
 
 #### `--special-loader`
 
+#### `--use-thread-interrupt`
+
+Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel.
 
 ## Jupyter-related
 
