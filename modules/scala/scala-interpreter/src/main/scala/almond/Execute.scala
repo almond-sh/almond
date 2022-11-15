@@ -31,7 +31,8 @@ final class Execute(
   logCtx: LoggerContext,
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
   commHandlerOpt: => Option[CommHandler],
-  silent: Ref[Boolean]
+  silent: Ref[Boolean],
+  useThreadInterrupt: Boolean
 ) {
 
   private val log = logCtx(getClass)
@@ -177,7 +178,13 @@ final class Execute(
           case Some(t) =>
             interruptedStackTraceOpt0 = Some(t.getStackTrace)
             log.debug(s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}")
-            t.stop()
+            if (useThreadInterrupt) {
+              log.debug(s"Calling 'Thread.interrupt'")
+              t.interrupt()
+            } else {
+              log.debug(s"Calling 'Thread.stop'")
+              t.stop()
+            }
         }
       }.apply {
         t
@@ -193,7 +200,13 @@ final class Execute(
         log.warn("Interrupt asked, but no execution is running")
       case Some(t) =>
         log.debug(s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
-        t.stop()
+        if (useThreadInterrupt) {
+          log.debug(s"Calling 'Thread.interrupt'")
+          t.interrupt()
+        } else {
+          log.debug(s"Calling 'Thread.stop'")
+          t.stop()
+        }
     }
 
 
