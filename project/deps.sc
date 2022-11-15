@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "2.5.4-26-9cd15abe"
+  def ammonite      = "2.5.5"
   def caseApp       = "2.0.6"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
@@ -36,12 +36,12 @@ object Deps {
   def ammoniteReplApi(sv: String) =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
-  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.2"
+  def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.4"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat         = ivy"org.scala-lang.modules::scala-collection-compat:2.8.1"
   def coursier                 = ivy"io.get-coursier::coursier:2.0.14"
-  def coursierApi              = ivy"io.get-coursier:interface:1.0.9"
+  def coursierApi              = ivy"io.get-coursier:interface:1.0.11"
   def directories              = ivy"io.github.soc:directories:12"
   def fs2                      = ivy"co.fs2::fs2-core:2.5.11"
   def jansi                    = ivy"org.fusesource.jansi:jansi:2.4.0"
@@ -49,14 +49,14 @@ object Deps {
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.3.3"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.3.6"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.8"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = ivy"com.lihaoyi::scalatags:0.11.1"
-  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.1"
+  def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
+  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.3"
   def sparkSql                 = ivy"org.apache.spark::spark-sql:2.4.0"
   def utest                    = ivy"com.lihaoyi::utest:0.8.1"
 }
