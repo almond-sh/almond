@@ -66,12 +66,12 @@ object ScalaVersions {
   def cross2_3Version(scala3Ver: String) =
     if (scala3Ver.startsWith("3.0.") || scala3Ver.startsWith("3.1.")) "2.13.7"
     else "2.13.10"
-  def scala213 = "2.13.8"
+  def scala213 = "2.13.10"
   def scala212 = "2.12.17"
   val binaries = Seq(scala3, scala213, scala212)
   val all = Seq(
     "3.2.1", "3.2.0", scala3, "3.1.2", "3.1.1", "3.1.0",
-    scala213, "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
+    scala213, "2.13.9", "2.13.8", "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
     scala212, "2.12.16", "2.12.15", "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9"
   )
 }
