@@ -170,6 +170,13 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
       else Nil
     tastyReaderOptions
   }
+  def transitiveIvyDeps = T {
+    super.transitiveIvyDeps().filter { dep =>
+      !dep.force ||
+        (dep.dep.module.name.value != "scala3-library" && dep.dep.module.name.value != "scala3-library_3") ||
+        dep.dep.module.organization.value != "org.scala-lang"
+    }
+  }
 }
 
 trait AlmondScalaCliCompile extends ScalaCliCompile {

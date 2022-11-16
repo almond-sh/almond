@@ -154,11 +154,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         shared.interpreter(),
         scala.`scala-kernel-api`()
       )
+    val scala3Lib =
+      if (crossScalaVersion.startsWith("2.")) Agg.empty
+      else Agg(ivy"org.scala-lang::scala3-library:$crossScalaVersion")
   def ivyDeps = T{
     val metabrowse =
       if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
       else Agg.empty
-    metabrowse ++ Agg(
+    metabrowse ++ scala3Lib ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
       Deps.directories,
@@ -172,10 +175,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       val rx =
         if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
         else Nil
+      val kernelTests =
+        if (crossScalaVersion.startsWith("3.")) Seq(shared.kernel(ScalaVersions.scala3).test)
+        else Seq(shared.kernel().test)
       super.moduleDeps ++
-        Seq(shared.kernel().test) ++
+        kernelTests ++
         rx
     }
+    def ivyDeps = super.ivyDeps() ++ scala3Lib
   }
 }
 
