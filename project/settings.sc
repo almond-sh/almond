@@ -154,7 +154,7 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
   def crossScalaVersion: String
   def supports3: Boolean = false
   def scalaVersion = T{
-    if (crossScalaVersion.startsWith("3.") && !supports3) ScalaVersions.cross2_3Version
+    if (crossScalaVersion.startsWith("3.") && !supports3) ScalaVersions.cross2_3Version(crossScalaVersion)
     else crossScalaVersion
   }
   def useCrossSuffix = T{
