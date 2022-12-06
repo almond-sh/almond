@@ -45,7 +45,7 @@ object Deps {
   def directories              = ivy"io.github.soc:directories:12"
   def fs2                      = ivy"co.fs2::fs2-core:2.5.11"
   def jansi                    = ivy"org.fusesource.jansi:jansi:2.4.0"
-  def jeromq                   = ivy"org.zeromq:jeromq:0.5.2"
+  def jeromq                   = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore        = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros      = ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
