@@ -155,12 +155,8 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
   }
   object test extends Tests with AlmondTestModule {
     def moduleDeps = {
-      val rx =
-        if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
-        else Nil
-      super.moduleDeps ++
-        Seq(shared.kernel().test) ++
-        rx
+     super.moduleDeps ++
+        Seq(shared.kernel().test)
     }
   }
 }

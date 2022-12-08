@@ -1,5 +1,6 @@
 target/
 .bsp/
+.coursier/
 .DS_Store
 .idea/
 .bloop
