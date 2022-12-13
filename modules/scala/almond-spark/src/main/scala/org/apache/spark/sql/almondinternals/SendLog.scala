@@ -54,7 +54,7 @@ final class SendLog(
       res match {
         case Some(t) => t
         case None =>
-          assert(delay.isFinite())
+          assert(delay.isFinite)
           Thread.sleep(delay.toMillis)
           helper((backOffFactor * delay).min(maxBackOffDelay))
       }
