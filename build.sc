@@ -237,11 +237,18 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima 
     Deps.ammoniteSpark,
     Deps.jsoniterScalaCore
   )
-  def compileIvyDeps = Agg(
-    Deps.ammoniteReplApi(crossScalaVersion),
-    Deps.jsoniterScalaMacros,
-    Deps.sparkSql
-  )
+  def compileIvyDeps = T {
+    val sparkSql =
+      if (crossScalaVersion.startsWith("2.12."))
+        Deps.sparkSql24
+      else
+        Deps.sparkSql
+    Agg(
+      Deps.ammoniteReplApi(crossScalaVersion),
+      Deps.jsoniterScalaMacros,
+      sparkSql
+    )
+  }
   // TODO?
   // sources.in(Compile, doc) := Nil
 }
