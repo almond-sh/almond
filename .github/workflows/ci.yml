@@ -46,7 +46,7 @@ jobs:
       matrix:
         OS: [ubuntu-latest]
         JDK: [8]
-        SCALA: [2.12.16, 2.12.17, 2.13.9, 2.13.10, 3.1.2, 3.1.3]
+        SCALA: [2.12.16, 2.12.17, 2.13.9, 2.13.10, 3.2.1, 3.2.2]
         include:
           - OS: windows-latest
             JDK: 8
