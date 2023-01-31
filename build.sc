@@ -237,11 +237,18 @@ class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima 
     Deps.ammoniteSpark,
     Deps.jsoniterScalaCore
   )
-  def compileIvyDeps = Agg(
-    Deps.ammoniteReplApi(crossScalaVersion),
-    Deps.jsoniterScalaMacros,
-    Deps.sparkSql
-  )
+  def compileIvyDeps = T {
+    val sparkSql =
+      if (crossScalaVersion.startsWith("2.12."))
+        Deps.sparkSql24
+      else
+        Deps.sparkSql
+    Agg(
+      Deps.ammoniteReplApi(crossScalaVersion),
+      Deps.jsoniterScalaMacros,
+      sparkSql
+    )
+  }
   // TODO?
   // sources.in(Compile, doc) := Nil
 }
@@ -300,8 +307,8 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel]     (ScalaVersions.all: _*)
   object `scala-kernel-helper` extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `almond-scalapy`    extends Cross[AlmondScalaPy]   (ScalaVersions.binaries: _*)
-  object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212)
-  object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212)
+  object `almond-spark`      extends Cross[AlmondSpark]     (ScalaVersions.scala212, ScalaVersions.scala213)
+  object `almond-rx`         extends Cross[AlmondRx]        (ScalaVersions.scala212, ScalaVersions.scala213)
 }
 
 object echo extends Cross[Echo](ScalaVersions.binaries: _*)
