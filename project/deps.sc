@@ -32,10 +32,10 @@ object Deps {
     ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
   def ammoniteRepl(sv: String) =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl_$sv:${Versions.ammonite}"
-    else ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
+    else ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteReplApi(sv: String) =
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
-    else ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version}:${Versions.ammonite}"
+    else ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteSpark            = ivy"sh.almond::ammonite-spark:0.13.5"
   def caseAppAnnotations       = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp                  = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
@@ -63,14 +63,17 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3   = "3.1.3"
-  def cross2_3Version = "2.13.7"
+  def scala3Latest = "3.1.3"
+  def scala3Compat = "3.1.3"
+  def cross2_3Version(sv: String) =
+    if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
+    else "2.13.10"
   def scala213 = "2.13.10"
   def scala212 = "2.12.17"
-  val binaries = Seq(scala3, scala213, scala212)
+  val binaries = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
-    scala3, "3.1.2", "3.1.1", "3.1.0",
+    scala3Latest, scala3Compat, "3.1.2", "3.1.1", "3.1.0",
     scala213, "2.13.9", "2.13.8", "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1",
     scala212, "2.12.16", "2.12.15", "2.12.14", "2.12.13", "2.12.12", "2.12.11", "2.12.10", "2.12.9"
-  )
+  ).distinct
 }

@@ -154,7 +154,7 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
   def crossScalaVersion: String
   def supports3: Boolean = false
   def scalaVersion = T{
-    if (crossScalaVersion.startsWith("3.") && !supports3) ScalaVersions.cross2_3Version
+    if (crossScalaVersion.startsWith("3.") && !supports3) ScalaVersions.cross2_3Version(crossScalaVersion)
     else crossScalaVersion
   }
   def useCrossSuffix = T{
@@ -222,13 +222,16 @@ trait AlmondModule
   }
   def transitiveIvyDeps = T {
     super.transitiveIvyDeps().map { dep =>
-      val isScala3Lib =
+      def isScala3Lib =
         dep.dep.module.organization.value == "org.scala-lang" &&
         dep.dep.module.name.value == "scala3-library" &&
         (dep.cross match {
           case _: CrossVersion.Binary => true
           case _                      => false
         })
+      def isScala3JarWithSuffix =
+        dep.dep.module.organization.value == "org.scala-lang" &&
+        dep.dep.module.name.value.startsWith("scala3-")
       if (isScala3Lib)
         dep.copy(
           dep = dep.dep.withModule(
@@ -236,8 +239,11 @@ trait AlmondModule
               coursier.ModuleName(dep.dep.module.name.value + "_3")
             )
           ),
-          cross = CrossVersion.empty(dep.cross.platformed)
+          cross = CrossVersion.empty(dep.cross.platformed),
+          force = false
         )
+      else if (isScala3JarWithSuffix)
+        dep.copy(force = false)
       else dep
     }
   }
@@ -293,13 +299,16 @@ trait AlmondTestModule
   }
   def transitiveIvyDeps = T {
     super.transitiveIvyDeps().map { dep =>
-      val isScala3Lib =
+      def isScala3Lib =
         dep.dep.module.organization.value == "org.scala-lang" &&
         dep.dep.module.name.value == "scala3-library" &&
         (dep.cross match {
           case _: CrossVersion.Binary => true
           case _                      => false
         })
+      def isScala3JarWithSuffix =
+        dep.dep.module.organization.value == "org.scala-lang" &&
+        dep.dep.module.name.value.startsWith("scala3-")
       if (isScala3Lib)
         dep.copy(
           dep = dep.dep.withModule(
@@ -307,8 +316,11 @@ trait AlmondTestModule
               coursier.ModuleName(dep.dep.module.name.value + "_3")
             )
           ),
-          cross = CrossVersion.empty(dep.cross.platformed)
+          cross = CrossVersion.empty(dep.cross.platformed),
+          force = false
         )
+      else if (isScala3JarWithSuffix)
+        dep.copy(force = false)
       else dep
     }
   }
