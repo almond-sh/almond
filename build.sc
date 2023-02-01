@@ -116,10 +116,17 @@ class JupyterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
 class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with DependencyListResource with ExternalSources with PropertyFile with Mima with Bloop.Module {
   def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps = Seq(
-    shared.`interpreter-api`(),
-    scala.`jupyter-api`()
-  )
+  def moduleDeps =
+    if (crossScalaVersion.startsWith("3."))
+      Seq(
+        shared.`interpreter-api`(ScalaVersions.scala3Compat),
+        scala.`jupyter-api`(ScalaVersions.scala3Compat)
+      )
+    else
+      Seq(
+        shared.`interpreter-api`(),
+        scala.`jupyter-api`()
+      )
   def ivyDeps = Agg(
     Deps.ammoniteCompiler(crossScalaVersion),
     Deps.ammoniteReplApi(crossScalaVersion),
@@ -136,10 +143,17 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
   def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def supports3 = true
-  def moduleDeps = Seq(
-    shared.interpreter(),
-    scala.`scala-kernel-api`()
-  )
+  def moduleDeps =
+    if (crossScalaVersion.startsWith("3."))
+      Seq(
+        shared.interpreter(ScalaVersions.scala3Compat),
+        scala.`scala-kernel-api`()
+      )
+    else
+      Seq(
+        shared.interpreter(),
+        scala.`scala-kernel-api`()
+      )
   def ivyDeps = T{
     val metabrowse =
       if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
@@ -158,8 +172,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       val rx =
         if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
         else Nil
+      val kernel = Seq(
+        if (crossScalaVersion.startsWith("3."))
+          shared.kernel(ScalaVersions.scala3Compat).test
+        else
+          shared.kernel().test
+      )
       super.moduleDeps ++
-        Seq(shared.kernel().test) ++
+        kernel ++
         rx
     }
   }
@@ -168,10 +188,17 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
 class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with ExternalSources with BootstrapLauncher with Bloop.Module {
   def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps = Seq(
-    shared.kernel(),
-    scala.`scala-interpreter`()
-  )
+  def moduleDeps =
+    if (crossScalaVersion.startsWith("3."))
+      Seq(
+        shared.kernel(ScalaVersions.scala3Compat),
+        scala.`scala-interpreter`()
+      )
+    else
+      Seq(
+        shared.kernel(),
+        scala.`scala-interpreter`()
+      )
   def ivyDeps = Agg(
     Deps.caseApp.withDottyCompat(crossScalaVersion),
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
@@ -460,7 +487,7 @@ def scala213() = T.command {
   println(ScalaVersions.scala213)
 }
 def scala3() = T.command {
-  println(ScalaVersions.scala3)
+  println(ScalaVersions.scala3Latest)
 }
 def scalaVersions() = T.command {
   for (sv <- ScalaVersions.all)
@@ -600,7 +627,7 @@ object ci extends Module {
     val scalaVersions = Seq(
       ScalaVersions.scala212,
       ScalaVersions.scala213,
-      ScalaVersions.scala3
+      ScalaVersions.scala3Latest
     )
     val launchers = scalaVersions.map { sv =>
       val sbv = sv.split('.').take(2).mkString(".")
