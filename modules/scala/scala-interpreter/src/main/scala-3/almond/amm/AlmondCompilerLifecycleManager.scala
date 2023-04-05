@@ -18,14 +18,14 @@ class AlmondCompilerLifecycleManager(
   variableInspectorEnabled: () => Boolean,
   logCtx: LoggerContext
 ) extends CompilerLifecycleManager(
-  rtCacheDir,
-  headFrame,
-  dependencyCompleteOpt,
-  classPathWhitelist,
-  initialClassLoader
-) {
+      rtCacheDir,
+      headFrame,
+      dependencyCompleteOpt,
+      classPathWhitelist,
+      initialClassLoader
+    ) {
 
-  override def preprocess(fileName: String): Preprocessor = synchronized{
+  override def preprocess(fileName: String): Preprocessor = synchronized {
     init()
     new AlmondPreprocessor(
       compiler.initialCtx.fresh.withSource(SourceFile.virtual(fileName, "")),

@@ -15,9 +15,8 @@ object ZeromqSocketTests extends TestSuite {
 
   private val ctx = ZMQ.context(4)
 
-  override def utestAfterAll() = {
+  override def utestAfterAll() =
     ctx.term()
-  }
 
   val tests = Tests {
 
@@ -71,9 +70,9 @@ object ZeromqSocketTests extends TestSuite {
 
       val t =
         for {
-          _ <- rep.open
-          _ <- req.open
-          _ <- req.send(msg)
+          _       <- rep.open
+          _       <- req.open
+          _       <- req.send(msg)
           readOpt <- rep.read
           _ = assert(readOpt.contains(msg))
           // FIXME Closing should be enforced via bracketing
@@ -134,9 +133,9 @@ object ZeromqSocketTests extends TestSuite {
 
       val t =
         for {
-          _ <- rep.open
-          _ <- req.open
-          _ <- req.send(msg)
+          _       <- rep.open
+          _       <- req.open
+          _       <- req.send(msg)
           readOpt <- rep.read
           _ = assert(readOpt.contains(msg))
           // FIXME Closing should be enforced via bracketing

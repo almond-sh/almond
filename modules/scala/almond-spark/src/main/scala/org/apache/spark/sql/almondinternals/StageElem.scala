@@ -7,14 +7,13 @@ import almond.interpreter.api.OutputHandler
 
 final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, details: String) {
 
-  val displayId = s"stage-info-${UUID.randomUUID()}"
+  val displayId      = s"stage-info-${UUID.randomUUID()}"
   val titleDisplayId = s"$displayId-title"
 
   val startedTasks = new AtomicInteger
-  val doneTasks = new AtomicInteger
+  val doneTasks    = new AtomicInteger
 
   @volatile var allDone0 = false
-
 
   def taskStart(): Unit = {
     startedTasks.incrementAndGet()
@@ -34,7 +33,9 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
     "text-align: center"
   )
 
-  def init(cancelStageCommTargetName: String, sendInitCode: Boolean)(implicit publish: OutputHandler): Unit = {
+  def init(cancelStageCommTargetName: String, sendInitCode: Boolean)(implicit
+    publish: OutputHandler
+  ): Unit = {
 
     if (sendInitCode)
       publish.html(
@@ -52,7 +53,9 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
     publish.html(
       s"""<div>
          |  <span style="float: left; ${extraStyle.mkString("; ")}">$name</span>
-         |  <span style="float: right; ${extraStyle.mkString("; ")}"><a href="#" onclick="cancelStage($stageId);">(kill)</a></span>
+         |  <span style="float: right; ${
+          extraStyle.mkString("; ")
+        }"><a href="#" onclick="cancelStage($stageId);">(kill)</a></span>
          |</div>
          |<br>
          |""".stripMargin,
@@ -61,7 +64,9 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
     // <br> above seems required put both divs on different lines in nteract
     publish.html(
       s"""<div class="progress">
-         |  <div class="progress-bar bg-success" role="progressbar" style="width: 0%; ${extraStyle.mkString("; ")}; color: white" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+         |  <div class="progress-bar bg-success" role="progressbar" style="width: 0%; ${
+          extraStyle.mkString("; ")
+        }; color: white" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
          |    0 / $numTasks
          |  </div>
          |</div>
@@ -84,17 +89,19 @@ final class StageElem(stageId: Int, numTasks: Int, keep: Boolean, name: String, 
     if (allDone0 && !keep)
       publish.updateHtml("", id = displayId)
     else {
-      val doneTasks0 = doneTasks.get()
+      val doneTasks0    = doneTasks.get()
       val startedTasks0 = startedTasks.get()
 
       val diff = startedTasks0 - doneTasks0
 
-      val donePct = math.round(100.0 * doneTasks0.toDouble / numTasks).toInt
+      val donePct    = math.round(100.0 * doneTasks0.toDouble / numTasks).toInt
       val startedPct = math.round(100.0 * (startedTasks0 - doneTasks0).toDouble / numTasks).toInt
 
       publish.updateHtml(
         s"""<div class="progress">
-           |  <div class="progress-bar" role="progressbar" style="background-color: blue; width: $donePct%; ${extraStyle.mkString("; ")}; color: white" aria-valuenow="$donePct" aria-valuemin="0" aria-valuemax="100">
+           |  <div class="progress-bar" role="progressbar" style="background-color: blue; width: $donePct%; ${
+            extraStyle.mkString("; ")
+          }; color: white" aria-valuenow="$donePct" aria-valuemin="0" aria-valuemax="100">
            |    $doneTasks0${if (diff == 0) "" else s" + $diff"} / $numTasks
            |  </div>
            |  <div class="progress-bar" role="progressbar" style="background-color: red; width: $startedPct%" aria-valuenow="$startedPct" aria-valuemin="0" aria-valuemax="100"></div>

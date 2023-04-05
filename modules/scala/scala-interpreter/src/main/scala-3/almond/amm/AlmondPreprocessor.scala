@@ -9,6 +9,4 @@ class AlmondPreprocessor(
   autoUpdateVars: Boolean,
   variableInspectorEnabled: () => Boolean,
   logCtx: almond.logger.LoggerContext
-) extends Preprocessor(ctx, markGeneratedSections = false) {
-
-}
+) extends Preprocessor(ctx, markGeneratedSections = false) {}

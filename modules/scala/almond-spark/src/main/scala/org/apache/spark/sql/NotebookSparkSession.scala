@@ -7,13 +7,12 @@ import org.apache.spark.sql.almondinternals.NotebookSparkSessionBuilder
 
 object NotebookSparkSession {
 
-  def builder()
-   (implicit
-     interpApi: InterpAPI,
-     replApi: ReplAPI,
-     publish: OutputHandler,
-     commHandler: CommHandler
-   ): NotebookSparkSessionBuilder =
+  def builder()(implicit
+    interpApi: InterpAPI,
+    replApi: ReplAPI,
+    publish: OutputHandler,
+    commHandler: CommHandler
+  ): NotebookSparkSessionBuilder =
     new NotebookSparkSessionBuilder
 
   def sync(session: SparkSession = null)(implicit replApi: ReplAPI): SparkSession =

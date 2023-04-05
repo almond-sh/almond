@@ -15,7 +15,8 @@ object Comm {
     comm_id: String,
     target_name: String,
     data: RawJson,
-    target_module: Option[String] = None // spec says: used to select a module that is responsible for handling the target_name.
+    target_module: Option[String] =
+      None // spec says: used to select a module that is responsible for handling the target_name.
   ) extends Comm
 
   final case class Message(
@@ -28,10 +29,9 @@ object Comm {
     data: RawJson
   ) extends Comm
 
-
-  def openType = MessageType[Open]("comm_open")
+  def openType    = MessageType[Open]("comm_open")
   def messageType = MessageType[Message]("comm_msg")
-  def closeType = MessageType[Close]("comm_close")
+  def closeType   = MessageType[Close]("comm_close")
 
   implicit val openCodec: JsonValueCodec[Open] =
     JsonCodecMaker.make

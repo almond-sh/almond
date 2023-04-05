@@ -48,7 +48,9 @@ final class ScalaInterpreter(
     if (params.disableCache)
       Storage.InMemory()
     else
-      new Storage.Folder(os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite")
+      new Storage.Folder(
+        os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite"
+      )
 
   private val execute0 = new Execute(
     params.trapOutput,
@@ -59,7 +61,6 @@ final class ScalaInterpreter(
     silent0,
     params.useThreadInterrupt
   )
-
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
 

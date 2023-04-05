@@ -2,7 +2,7 @@ package almond.display
 
 import java.net.URI
 
-final class FileLink private(
+final class FileLink private (
   val link: String,
   val beforeHtml: String,
   val afterHtml: String,
@@ -52,7 +52,8 @@ object FileLink {
         out.append("&#")
         out.append(c.toInt)
         out.append(';')
-      } else
+      }
+      else
         out.append(c)
     }
     out.toString

@@ -2,7 +2,11 @@ package almond.kernel
 
 import java.util.concurrent.Executors
 
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, daemonThreadFactory, sequentialExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  daemonThreadFactory,
+  sequentialExecutionContext
+}
 
 import scala.concurrent.ExecutionContext
 

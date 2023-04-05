@@ -1,7 +1,6 @@
-
 package almond.display
 
-final class Data private(
+final class Data private (
   data0: Map[String, String],
   metadata0: Map[String, String],
   val displayId: String

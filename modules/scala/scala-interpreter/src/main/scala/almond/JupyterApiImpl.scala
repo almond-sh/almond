@@ -35,12 +35,20 @@ final class JupyterApiImpl(
     tcolors: TPrintColors,
     classTagT: ClassTag[T]
   ): Iterator[String] =
-    replApi.printSpecial(value, ident, custom, onChange, onChangeOrError, replApi.pprinter, Some(updatableResults))(tprint, tcolors, classTagT).getOrElse {
+    replApi.printSpecial(
+      value,
+      ident,
+      custom,
+      onChange,
+      onChangeOrError,
+      replApi.pprinter,
+      Some(updatableResults)
+    )(tprint, tcolors, classTagT).getOrElse {
       replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
     }
 
   override def silent(s: Boolean): Unit = silent0.update(s)
-  override def silent: Boolean = silent0.apply()
+  override def silent: Boolean          = silent0.apply()
 
   protected def ansiTextToHtml(text: String): String = {
     val baos = new ByteArrayOutputStream

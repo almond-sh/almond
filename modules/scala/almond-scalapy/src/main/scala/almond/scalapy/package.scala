@@ -27,20 +27,20 @@ package object scalapy {
 
   private def formatDisplayData(obj: py.Any): (Map[String, String], Map[String, String]) = {
     val displayData = pyFormatDisplayData(obj, allReprMethods.toPythonCopy)
-    val data = displayData.bracketAccess(0).as[List[(String, String)]].toMap
-    val metadata = displayData.bracketAccess(1).as[List[(String, String)]].toMap
+    val data        = displayData.bracketAccess(0).as[List[(String, String)]].toMap
+    val metadata    = displayData.bracketAccess(1).as[List[(String, String)]].toMap
 
     (data, metadata)
   }
 
   private val mimetypes = Map(
-    "svg" -> "image/svg+xml",
-    "png" -> "image/png",
-    "jpeg" -> "image/jpeg",
-    "html" -> "text/html",
+    "svg"        -> "image/svg+xml",
+    "png"        -> "image/png",
+    "jpeg"       -> "image/jpeg",
+    "html"       -> "text/html",
     "javascript" -> "application/javascript",
-    "markdown" -> "text/markdown",
-    "latex" -> "text/latex"
+    "markdown"   -> "text/markdown",
+    "latex"      -> "text/latex"
   )
 
   private lazy val allReprMethods: Seq[(String, String)] =

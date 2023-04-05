@@ -2,7 +2,7 @@ package almond.display
 
 import java.net.URLEncoder
 
-final class IFrame private(
+final class IFrame private (
   val src: String,
   val width: Option[String],
   val height: Option[String],
@@ -34,7 +34,7 @@ final class IFrame private(
     copy(height = heightOpt)
 
   private def html: String = {
-    val widthPart = width.fold("")(w => s"""width="$w"""")
+    val widthPart  = width.fold("")(w => s"""width="$w"""")
     val heightPart = height.fold("")(h => s"""height="$h"""")
     val url = src + {
       if (params.isEmpty) ""

@@ -70,7 +70,6 @@ final class Image private (
   def data(): Map[String, String] =
     byteArrayOrUrl match {
       case Left(url) =>
-
         if (embed) {
           val (contentTypeOpt, b) = Image.urlContent(url)
           val contentType = format
@@ -78,7 +77,9 @@ final class Image private (
             .orElse(contentTypeOpt)
             .orElse(Option(URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(b))))
             .getOrElse {
-              throw new Exception(s"Cannot detect format or unrecognizable format for image at $url")
+              throw new Exception(
+                s"Cannot detect format or unrecognizable format for image at $url"
+              )
             }
 
           if (!Image.imageTypes.contains(contentType))
@@ -86,13 +87,13 @@ final class Image private (
 
           val b0 = Base64.getEncoder.encodeToString(b)
           Map(contentType -> b0)
-        } else {
+        }
+        else {
           val attrs = metadata().map { case (k, v) => s"$k=$v" }.mkString(" ")
           Map(Html.mimeType -> s"<img src='${url.toExternalForm}' $attrs />")
         }
 
       case Right(b) =>
-
         val contentType = format
           .map(_.contentType)
           .orElse(Option(URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(b))))
@@ -138,38 +139,38 @@ object Image extends Display.Builder[Array[Byte], Image] {
     )
 
   sealed abstract class Format(val contentType: String) extends Product with Serializable
-  case object JPG extends Format("image/jpeg")
-  case object PNG extends Format("image/png")
-  case object GIF extends Format("image/gif")
+  case object JPG                                       extends Format("image/jpeg")
+  case object PNG                                       extends Format("image/png")
+  case object GIF                                       extends Format("image/gif")
 
   private val imageTypes = Set(JPG, PNG, GIF).map(_.contentType)
-
 
   private def urlContent(url: URL): (Option[String], Array[Byte]) = {
 
     var conn: URLConnection = null
-    val (rawContent, contentTypeOpt) = try {
-      conn = url.openConnection()
-      conn.setConnectTimeout(5000) // allow users to tweak that?
-      val b = TextDisplay.readFully(conn.getInputStream)
-      val contentTypeOpt0 = conn match {
-        case conn0: HttpURLConnection =>
-          Option(conn0.getContentType)
-        case _ =>
-          None
-      }
-      (b, contentTypeOpt0)
-    } finally {
-      if (conn != null) {
-        Try(conn.getInputStream.close())
-        conn match {
+    val (rawContent, contentTypeOpt) =
+      try {
+        conn = url.openConnection()
+        conn.setConnectTimeout(5000) // allow users to tweak that?
+        val b = TextDisplay.readFully(conn.getInputStream)
+        val contentTypeOpt0 = conn match {
           case conn0: HttpURLConnection =>
-            Try(conn0.getErrorStream.close())
-            Try(conn0.disconnect())
+            Option(conn0.getContentType)
           case _ =>
+            None
         }
+        (b, contentTypeOpt0)
       }
-    }
+      finally
+        if (conn != null) {
+          Try(conn.getInputStream.close())
+          conn match {
+            case conn0: HttpURLConnection =>
+              Try(conn0.getErrorStream.close())
+              Try(conn0.disconnect())
+            case _ =>
+          }
+        }
 
     (contentTypeOpt, rawContent)
   }

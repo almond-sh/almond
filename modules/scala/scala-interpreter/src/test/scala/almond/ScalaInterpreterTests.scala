@@ -54,7 +54,7 @@ object ScalaInterpreterTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val res = interp.execute("val m = 2 * n")
+      val res         = interp.execute("val m = 2 * n")
       val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
       assert(res == expectedRes)
     }
@@ -80,7 +80,7 @@ object ScalaInterpreterTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val res = interp.execute("val m = 2 * n")
+      val res         = interp.execute("val m = 2 * n")
       val expectedRes = ExecuteResult.Success(DisplayData.text("m: Int = 4"))
       assert(res == expectedRes)
     }
@@ -107,7 +107,8 @@ object ScalaInterpreterTests extends TestSuite {
         try {
           interp.execute("val m = 2 * n")
           false
-        } catch {
+        }
+        catch {
           case e: AmmInterpreter.PredefException =>
             assert(e.getCause == null)
             true
@@ -137,7 +138,8 @@ object ScalaInterpreterTests extends TestSuite {
         try {
           interp.execute("val m = 2 * n")
           false
-        } catch {
+        }
+        catch {
           case e: AmmInterpreter.PredefException =>
             val msgOpt = Option(e.getCause).flatMap(e0 => Option(e0.getMessage))
             assert(msgOpt.contains("foo"))
@@ -156,8 +158,8 @@ object ScalaInterpreterTests extends TestSuite {
       // We just test that things are wired up correctly here.
 
       "value" - {
-        val code = "val n = 2"
-        val res = interpreter.execute(code)
+        val code        = "val n = 2"
+        val res         = interpreter.execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("n: Int = 2"))
         assert(res == expectedRes)
       }
@@ -180,7 +182,7 @@ object ScalaInterpreterTests extends TestSuite {
 
       "exception" - {
         val code = """sys.error("foo")"""
-        val res = interpreter.execute(code)
+        val res  = interpreter.execute(code)
         assert(res.asError.exists(_.message.contains("java.lang.RuntimeException: foo")))
       }
     }
@@ -194,17 +196,17 @@ object ScalaInterpreterTests extends TestSuite {
       // using that parameter).
 
       * - {
-        val code = "repl.la"
+        val code        = "repl.la"
         val expectedRes = Completion(5, 7, Seq("lastException"))
-        val res = interpreter.complete(code, code.length)
+        val res         = interpreter.complete(code, code.length)
         assert(res == expectedRes)
       }
 
       def listTest(): Unit = {
-        val code = "Lis"
-        val expectedRes = Completion(0, 3, Seq("List"))
+        val code                   = "Lis"
+        val expectedRes            = Completion(0, 3, Seq("List"))
         val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
-        val res0 = interpreter.complete(code, code.length)
+        val res0                   = interpreter.complete(code, code.length)
         val res = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
@@ -273,8 +275,8 @@ object ScalaInterpreterTests extends TestSuite {
 
     "silent" - {
       "defaults false" - {
-        val code = "val silent = kernel.silent"
-        val res = newInterpreter().execute(code)
+        val code        = "val silent = kernel.silent"
+        val res         = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("silent: Boolean = false"))
         assert(res == expectedRes)
       }
@@ -288,7 +290,8 @@ object ScalaInterpreterTests extends TestSuite {
         val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
-            |silentAfter: Boolean = true""".stripMargin))
+            |silentAfter: Boolean = true""".stripMargin
+        ))
         assert(TestUtil.noCrLf(res) == TestUtil.noCrLf(expectedRes))
       }
       "can be set to false" - {
@@ -302,7 +305,8 @@ object ScalaInterpreterTests extends TestSuite {
         val res = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = true
-            |silentAfter: Boolean = false""".stripMargin))
+            |silentAfter: Boolean = false""".stripMargin
+        ))
         assert(TestUtil.noCrLf(res) == TestUtil.noCrLf(expectedRes))
       }
       "affects subsequent calls to execute when enabled" - {
@@ -319,12 +323,13 @@ object ScalaInterpreterTests extends TestSuite {
           """
             | val effectInNextExecuteAgain = 0
             |""".stripMargin
-        val i = newInterpreter()
+        val i    = newInterpreter()
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
         val expectedRes0 = ExecuteResult.Success(DisplayData.text(
-          "noEffectInSameExecute: Boolean = true"))
+          "noEffectInSameExecute: Boolean = true"
+        ))
         val expectedRes1 = ExecuteResult.Success(DisplayData.empty)
         val expectedRes2 = ExecuteResult.Success(DisplayData.empty)
         assert(res0 == expectedRes0)
@@ -348,7 +353,7 @@ object ScalaInterpreterTests extends TestSuite {
             | val effectInNextExecuteAgain = kernel.silent
             |""".stripMargin
 
-        val i = newInterpreter()
+        val i    = newInterpreter()
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
@@ -357,9 +362,11 @@ object ScalaInterpreterTests extends TestSuite {
         val expectedRes0 = ExecuteResult.Success(DisplayData.empty)
         val expectedRes1 = ExecuteResult.Success(DisplayData.empty)
         val expectedRes2 = ExecuteResult.Success(DisplayData.text(
-          "effectInNextExecute: Boolean = false"))
+          "effectInNextExecute: Boolean = false"
+        ))
         val expectedRes3 = ExecuteResult.Success(DisplayData.text(
-          "effectInNextExecuteAgain: Boolean = false"))
+          "effectInNextExecuteAgain: Boolean = false"
+        ))
 
         assert(res0 == expectedRes0)
         assert(res1 == expectedRes1)
@@ -408,7 +415,7 @@ object ScalaInterpreterTests extends TestSuite {
           data.data.getOrElse("text/plain", "")
       }
 
-      def initCode = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
+      def initCode     = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
       def dictListCode = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.dictList()"
 
       val interpreter = newInterpreter()
@@ -436,7 +443,9 @@ object ScalaInterpreterTests extends TestSuite {
       interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
         .assertSuccess()
       val Seq(after) = outputHandler.displayed()
-      assert(after.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false}]""")
+      assert(
+        after.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false}]"""
+      )
 
       interpreter.execute("val m = true")
         .assertSuccess()
@@ -444,7 +453,9 @@ object ScalaInterpreterTests extends TestSuite {
       interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
         .assertSuccess()
       val Seq(after1) = outputHandler.displayed()
-      assert(after1.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"true","varType":"Boolean","isMatrix":false}]""")
+      assert(
+        after1.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"true","varType":"Boolean","isMatrix":false}]"""
+      )
 
       interpreter.execute("val m = 4")
         .assertSuccess()
@@ -452,7 +463,9 @@ object ScalaInterpreterTests extends TestSuite {
       interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
         .assertSuccess()
       val Seq(after2) = outputHandler.displayed()
-      assert(after2.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"4","varType":"Int","isMatrix":false}]""")
+      assert(
+        after2.text == """[{"varName":"n","varSize":"","varShape":"","varContent":"2","varType":"Int","isMatrix":false},{"varName":"m","varSize":"","varShape":"","varContent":"4","varType":"Int","isMatrix":false}]"""
+      )
 
       interpreter.execute("import scala.collection.mutable")
         .assertSuccess()

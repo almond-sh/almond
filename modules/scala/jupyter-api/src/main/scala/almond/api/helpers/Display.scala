@@ -35,7 +35,6 @@ object Display {
   def newDiv(prefix: String = "data-"): String =
     UpdatableDisplay.generateDiv(prefix)
 
-
   @deprecated("Use almond.display.Markdown instead", "0.4.1")
   def markdown(content: String)(implicit outputHandler: OutputHandler): Display = {
     val id = UpdatableDisplay.generateId()
@@ -96,13 +95,16 @@ object Display {
   object Image {
 
     sealed abstract class Format(val contentType: String) extends Product with Serializable
-    case object JPG extends Format(ContentType.jpg)
-    case object PNG extends Format(ContentType.png)
-    case object GIF extends Format(ContentType.gif)
+    case object JPG                                       extends Format(ContentType.jpg)
+    case object PNG                                       extends Format(ContentType.png)
+    case object GIF                                       extends Format(ContentType.gif)
 
     private val imageTypes = Set(JPG, PNG, GIF).map(_.contentType)
 
-    private def dimensionMetadata(width: Option[String], height: Option[String]): Map[String, String] =
+    private def dimensionMetadata(
+      width: Option[String],
+      height: Option[String]
+    ): Map[String, String] =
       Map() ++
         width.map("width" -> _) ++
         height.map("height" -> _)
@@ -135,13 +137,16 @@ object Display {
       connection.connect()
       val contentType = format.map(_.contentType).getOrElse(connection.getContentType)
       val data = if (embed) {
-        if(!imageTypes.contains(contentType))
+        if (!imageTypes.contains(contentType))
           throw new IOException("Unknown or unsupported content type: " + contentType)
-        val input = new BufferedInputStream(connection.getInputStream)
+        val input    = new BufferedInputStream(connection.getInputStream)
         val rawImage = Iterator.continually(input.read).takeWhile(_ != -1).map(_.toByte).toArray
         contentType -> Base64.getEncoder.encodeToString(rawImage)
-      } else {
-        val dimensionAttrs = dimensionMetadata(width, height).map{case (k,v) => s"$k=$v"}.mkString(" ")
+      }
+      else {
+        val dimensionAttrs = dimensionMetadata(width, height)
+          .map { case (k, v) => s"$k=$v" }
+          .mkString(" ")
         ContentType.html -> s"<img src='$url' $dimensionAttrs/>"
       }
       DisplayData(
@@ -159,8 +164,9 @@ object Display {
       height: Option[String] = None,
       id: String = UpdatableDisplay.generateId()
     )(implicit outputHandler: OutputHandler): Display = {
-      val contentType = format.map(_.contentType).getOrElse(URLConnection.guessContentTypeFromName(path))
-      if(!imageTypes.contains(contentType))
+      val contentType =
+        format.map(_.contentType).getOrElse(URLConnection.guessContentTypeFromName(path))
+      if (!imageTypes.contains(contentType))
         throw new IOException("Unknown or unsupported content type: " + contentType)
       val imgPath = Paths.get(path)
       val content = Files.readAllBytes(imgPath)

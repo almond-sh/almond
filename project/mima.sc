@@ -10,12 +10,12 @@ private def stable(ver: String): Boolean =
     .forall(c => c == '.' || c == '-' || c.isDigit)
 
 lazy val binaryCompatibilityVersions: Seq[String] = Nil
-  Seq("git", "tag", "--merged", "HEAD^", "--contains", "v0.8.3")
-    .!!
-    .linesIterator
-    .map(_.trim)
-    .filter(_.startsWith("v"))
-    .map(_.stripPrefix("v"))
-    .filter(_ != "0.8.3") // Preserving compatibility right after it
-    .filter(stable)
-    .toVector
+Seq("git", "tag", "--merged", "HEAD^", "--contains", "v0.8.3")
+  .!!
+  .linesIterator
+  .map(_.trim)
+  .filter(_.startsWith("v"))
+  .map(_.stripPrefix("v"))
+  .filter(_ != "0.8.3") // Preserving compatibility right after it
+  .filter(stable)
+  .toVector

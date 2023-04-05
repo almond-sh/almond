@@ -62,7 +62,9 @@ object MessageTests extends TestSuite {
         )
 
         val metadata = res.map(_.metadata)
-        val expectedMetadata = Right(RawJson("""{"deletedCells":[],"cellId":"7ff41107-c89a-4272-8ea2-d6433f918a6d"}""".bytes))
+        val expectedMetadata = Right(
+          RawJson("""{"deletedCells":[],"cellId":"7ff41107-c89a-4272-8ea2-d6433f918a6d"}""".bytes)
+        )
 
         assert(res.map(_.clearMetadata) == expectedRes.map(_.clearMetadata))
         assert(metadata == expectedMetadata)

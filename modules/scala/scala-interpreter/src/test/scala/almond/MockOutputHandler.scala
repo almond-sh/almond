@@ -16,7 +16,7 @@ class MockOutputHandler extends OutputHandler {
     displayed0.add(displayData)
 
   def displayed(): Seq[DisplayData] = {
-    val b = Vector.newBuilder[DisplayData]
+    val b                 = Vector.newBuilder[DisplayData]
     var elem: DisplayData = null
     while ({ elem = displayed0.poll(); elem != null })
       b += elem

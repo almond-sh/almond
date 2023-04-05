@@ -15,11 +15,11 @@ class FunctionOutputStream(
 
   private val decoder = internalCharset.newDecoder()
 
-  private val inArray = Array.ofDim[Byte](inputBufferSize)
+  private val inArray  = Array.ofDim[Byte](inputBufferSize)
   private val outArray = Array.ofDim[Char](outputBufferSize)
 
   private val writeBuf = ByteBuffer.wrap(inArray)
-  private val out = CharBuffer.wrap(outArray)
+  private val out      = CharBuffer.wrap(outArray)
 
   private def flushIfNeeded(): Unit =
     if (!writeBuf.hasRemaining)
@@ -70,8 +70,8 @@ class FunctionOutputStream(
           out.clear()
           f(s)
         }
-        val read = readBuf.position()
-        val avail = writeBuf.position()
+        val read      = readBuf.position()
+        val avail     = writeBuf.position()
         val remaining = avail - read
         writeBuf.position(remaining)
         if (remaining > 0)

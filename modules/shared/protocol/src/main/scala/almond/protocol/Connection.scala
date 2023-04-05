@@ -6,7 +6,12 @@ import almond.channels.ConnectionParameters
 import almond.util.Secret
 
 import cats.effect.IO
-import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter, readFromArray}
+import com.github.plokhotnyuk.jsoniter_scala.core.{
+  JsonReader,
+  JsonValueCodec,
+  JsonWriter,
+  readFromArray
+}
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 
 import scala.util.Try
@@ -88,7 +93,6 @@ object Connection {
           conn.signature_scheme,
           conn.kernel_name
         )
-
 
     val underlying: JsonValueCodec[RawConnection] =
       JsonCodecMaker.make

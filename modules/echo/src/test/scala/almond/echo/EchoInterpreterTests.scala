@@ -14,7 +14,7 @@ object EchoInterpreterTests extends TestSuite {
 
       val res = interpreter.execute("foo")
 
-      val textOutputOpt = res.asSuccess.flatMap(_.data.data.get(DisplayData.ContentType.text))
+      val textOutputOpt      = res.asSuccess.flatMap(_.data.data.get(DisplayData.ContentType.text))
       val expectedTextOutput = Option("> foo")
 
       assert {
@@ -26,9 +26,9 @@ object EchoInterpreterTests extends TestSuite {
     test("print") {
 
       val interpreter: Interpreter = new EchoInterpreter
-      val outputHandler = new TestOutputHandler
+      val outputHandler            = new TestOutputHandler
 
-      val res = interpreter.execute("print foo", outputHandler = Some(outputHandler))
+      val res         = interpreter.execute("print foo", outputHandler = Some(outputHandler))
       val expectedRes = ExecuteResult.Success()
       assert(res == expectedRes)
 
@@ -44,31 +44,31 @@ object EchoInterpreterTests extends TestSuite {
       val interpreter: Interpreter = new EchoInterpreter
 
       test("none") {
-        val res = interpreter.complete("zpri")
+        val res         = interpreter.complete("zpri")
         val expectedRes = Completion(4, 4, Nil)
         assert(res == expectedRes)
       }
 
       * - {
-        val res = interpreter.complete("pri")
+        val res         = interpreter.complete("pri")
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }
 
       * - {
-        val res = interpreter.complete("pri", 0)
+        val res         = interpreter.complete("pri", 0)
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }
 
       * - {
-        val res = interpreter.complete("pri", 1)
+        val res         = interpreter.complete("pri", 1)
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }
 
       * - {
-        val res = interpreter.complete("pri foo", 1)
+        val res         = interpreter.complete("pri foo", 1)
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }

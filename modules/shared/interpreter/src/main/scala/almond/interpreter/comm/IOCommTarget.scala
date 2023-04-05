@@ -17,7 +17,8 @@ object IOCommTarget {
   def fromCommTarget(commTarget: CommTarget, commEc: ExecutionContext): IOCommTarget =
     new FromCommTarget(commTarget, commEc)
 
-  final class FromCommTarget(commTarget: CommTarget, commEc: ExecutionContext) extends IOCommTarget {
+  final class FromCommTarget(commTarget: CommTarget, commEc: ExecutionContext)
+      extends IOCommTarget {
 
     def open(id: String, data: Array[Byte]): IO[Unit] =
       IO.shift(commEc) *> IO(commTarget.open(id, data))

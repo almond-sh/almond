@@ -15,8 +15,8 @@ object ZeromqConnectionTests extends TestSuite {
 
     test("simple") {
 
-      val logCtx = LoggerContext.nop
-      val params = ConnectionParameters.randomLocal()
+      val logCtx        = LoggerContext.nop
+      val params        = ConnectionParameters.randomLocal()
       val kernelThreads = ZeromqThreads.create("test-kernel")
       val serverThreads = ZeromqThreads.create("test-server")
 
@@ -32,12 +32,12 @@ object ZeromqConnectionTests extends TestSuite {
         for {
           kernel <- params.channels(bind = true, kernelThreads, logCtx)
           server <- params.channels(bind = false, serverThreads, logCtx)
-          _ <- kernel.open
-          _ <- server.open
-          _ <- server.send(Channel.Requests, msg0)
+          _      <- kernel.open
+          _      <- server.open
+          _      <- server.send(Channel.Requests, msg0)
           resp <- kernel.tryRead(Seq(Channel.Requests), 1.second).flatMap {
             case Some(r) => IO.pure(r)
-            case None => IO.raiseError(new Exception("no message"))
+            case None    => IO.raiseError(new Exception("no message"))
           }
           _ = assert(resp._1 == Channel.Requests)
           _ = assert(resp._2.copy(idents = Nil) == msg0)

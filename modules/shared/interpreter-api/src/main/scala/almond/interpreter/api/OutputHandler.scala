@@ -1,29 +1,30 @@
 package almond.interpreter.api
 
-/**
-  * Sends output to the Jupyter UI.
+/** Sends output to the Jupyter UI.
   *
-  * Can send stdout and stderr messages straightaway to the UI, short-circuiting the [[java.io.PrintStream]]s of
-  * [[println]] and the like.
+  * Can send stdout and stderr messages straightaway to the UI, short-circuiting the
+  * [[java.io.PrintStream]]s of [[println]] and the like.
   *
   * Can also send more evolved messages, made of HTML, JS, etc.
   *
-  * Instances of [[OutputHandler]] are typically available to users in the implicit scope of code run via the kernel,
-  * and can publish stuff in the current cell *while it is running*.
+  * Instances of [[OutputHandler]] are typically available to users in the implicit scope of code
+  * run via the kernel, and can publish stuff in the current cell *while it is running*.
   *
-  * If no cell is currently running, no new elements can be pushed to the UI, but previous ones can still be updated.
+  * If no cell is currently running, no new elements can be pushed to the UI, but previous ones can
+  * still be updated.
   */
 abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.UpdateHelpers {
 
   /** Sends stdout output to the Jupyter UI */
   def stdout(s: String): Unit
+
   /** Sends stderr output to the Jupyter UI */
   def stderr(s: String): Unit
 
-  /**
-    * Sends [[DisplayData]] element to the Jupyter UI.
+  /** Sends [[DisplayData]] element to the Jupyter UI.
     *
-    * If `idOpt` in the data is non-empty, the corresponding output can be updated (see [[OutputHandler.UpdateDisplay]]).
+    * If `idOpt` in the data is non-empty, the corresponding output can be updated (see
+    * [[OutputHandler.UpdateDisplay]]).
     */
   def display(displayData: DisplayData): Unit
 }
@@ -31,10 +32,11 @@ abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.Up
 object OutputHandler {
 
   trait UpdateDisplay {
-    /**
-      * Updates a previously published element.
+
+    /** Updates a previously published element.
       *
-      * @param displayData: new content, with non empty idOpt field
+      * @param displayData:
+      *   new content, with non empty idOpt field
       */
     def updateDisplay(displayData: DisplayData): Unit
   }
