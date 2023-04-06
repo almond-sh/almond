@@ -67,48 +67,48 @@ trait AlmondPublishModule extends PublishModule {
     licenses = Seq(License.`BSD-3-Clause`),
     versionControl = VersionControl.github("almond-sh", "almond"),
     developers = Seq(
-      Developer("alexarchambault", "Alex Archambault","https://github.com/alexarchambault")
+      Developer("alexarchambault", "Alex Archambault", "https://github.com/alexarchambault")
     )
   )
-  def publishVersion = T{ buildVersion }
+  def publishVersion = T(buildVersion)
 }
 
 trait ExternalSources extends CrossSbtModule {
-  def allIvyDeps = T{ transitiveIvyDeps() ++ scalaLibraryIvyDeps() }
-  def externalSources = T{
+  def allIvyDeps = T(transitiveIvyDeps() ++ scalaLibraryIvyDeps())
+  def externalSources = T {
     resolveDeps(allIvyDeps, sources = true)()
   }
 }
 
 trait TransitiveSources extends CrossSbtModule {
-  def transitiveJars: T[Seq[PathRef]] = T{
+  def transitiveJars: T[Seq[PathRef]] = T {
     Seq(jar()) ++ T.traverse(moduleDeps) {
       case mod: TransitiveSources => mod.transitiveJars
-      case mod => mod.jar.map(Seq(_))
+      case mod                    => mod.jar.map(Seq(_))
     }().flatten
   }
-  def transitiveSourceJars: T[Seq[PathRef]] = T{
+  def transitiveSourceJars: T[Seq[PathRef]] = T {
     Seq(sourceJar()) ++ T.traverse(moduleDeps) {
       case mod: TransitiveSources => mod.transitiveSourceJars
-      case mod => mod.sourceJar.map(Seq(_))
+      case mod                    => mod.sourceJar.map(Seq(_))
     }().flatten
   }
-  def transitiveSources: define.Sources = T.sources{
+  def transitiveSources: define.Sources = T.sources {
     sources() ++ T.traverse(moduleDeps) {
       case mod: TransitiveSources => mod.transitiveSources
-      case mod => mod.sources
+      case mod                    => mod.sources
     }().flatten
   }
 }
 
 trait PublishLocalNoFluff extends PublishModule {
 
-  def emptyZip = T{
+  def emptyZip = T {
     import java.io._
     import java.util.zip._
     val dest = T.dest / "empty.zip"
     val baos = new ByteArrayOutputStream
-    val zos = new ZipOutputStream(baos)
+    val zos  = new ZipOutputStream(baos)
     zos.finish()
     zos.close()
     os.write(dest, baos.toByteArray)
@@ -121,7 +121,8 @@ trait PublishLocalNoFluff extends PublishModule {
     import mill.scalalib.publish.LocalIvyPublisher
     val publisher = localIvyRepo match {
       case null => LocalIvyPublisher
-      case repo => new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), os.pwd))
+      case repo =>
+        new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), os.pwd))
     }
 
     publisher.publish(
@@ -151,14 +152,15 @@ trait AlmondArtifactName extends CrossSbtModule {
 trait AlmondScala2Or3Module extends CrossSbtModule {
   def crossScalaVersion: String
   def supports3: Boolean = false
-  def scalaVersion = T{
-    if (crossScalaVersion.startsWith("3.") && !supports3) ScalaVersions.cross2_3Version(crossScalaVersion)
+  def scalaVersion = T {
+    if (crossScalaVersion.startsWith("3.") && !supports3)
+      ScalaVersions.cross2_3Version(crossScalaVersion)
     else crossScalaVersion
   }
-  def useCrossSuffix = T{
+  def useCrossSuffix = T {
     crossScalaVersion.startsWith("3.") && !scalaVersion().startsWith("3.")
   }
-  def artifactName = T{
+  def artifactName = T {
     val suffix = if (useCrossSuffix()) s"-cross-$crossScalaVersion" else ""
     super.artifactName() + suffix
   }
@@ -171,13 +173,13 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
 }
 
 trait AlmondModule
-  extends CrossSbtModule
-  with AlmondRepositories
-  with AlmondPublishModule
-  with TransitiveSources
-  with AlmondArtifactName
-  with AlmondScala2Or3Module
-  with PublishLocalNoFluff {
+    extends CrossSbtModule
+    with AlmondRepositories
+    with AlmondPublishModule
+    with TransitiveSources
+    with AlmondArtifactName
+    with AlmondScala2Or3Module
+    with PublishLocalNoFluff {
 
   // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
   // pin scala3-library suffix, so that 2.13 modules can have us as moduleDep fine
@@ -230,7 +232,7 @@ trait AlmondModule
     }
   }
 
-  def scalacOptions = T{
+  def scalacOptions = T {
     // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
     val sv = scalaVersion()
     val scala2Options =
@@ -239,7 +241,8 @@ trait AlmondModule
     super.scalacOptions() ++ scala2Options ++ Seq(
       "-deprecation",
       "-feature",
-      "-encoding", "utf-8",
+      "-encoding",
+      "utf-8",
       "-language:higherKinds",
       "-unchecked"
     )
@@ -247,12 +250,12 @@ trait AlmondModule
 }
 
 trait AlmondTestModule
-  extends ScalaModule
-  with TestModule
-  with AlmondRepositories {
+    extends ScalaModule
+    with TestModule
+    with AlmondRepositories {
   // with AlmondScala2Or3Module {
 
-  def ivyDeps = Agg(Deps.utest)
+  def ivyDeps       = Agg(Deps.utest)
   def testFramework = "utest.runner.Framework"
 
   // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
@@ -306,7 +309,7 @@ trait AlmondTestModule
     }
   }
 
-  def scalacOptions = T{
+  def scalacOptions = T {
     // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
     val sv = scalaVersion()
     val scala2Options =
@@ -315,7 +318,8 @@ trait AlmondTestModule
     super.scalacOptions() ++ scala2Options ++ Seq(
       "-deprecation",
       "-feature",
-      "-encoding", "utf-8",
+      "-encoding",
+      "utf-8",
       "-language:higherKinds",
       "-unchecked"
     )
@@ -332,8 +336,8 @@ trait AlmondTestModule
 
 trait BootstrapLauncher extends CrossSbtModule {
 
-  def launcherClassPath = T{ runClasspath() }
-  def launcherSharedClassPath = T{ Seq.empty[PathRef] }
+  def launcherClassPath       = T(runClasspath())
+  def launcherSharedClassPath = T(Seq.empty[PathRef])
 
   import coursier.launcher._
 
@@ -351,11 +355,12 @@ trait BootstrapLauncher extends CrossSbtModule {
         ClassPathEntry.Url("http://" + rel.stripPrefix("http/"))
       else
         default
-    } else default
+    }
+    else default
   }
   private def toResourceEntry(jar: Path): ClassPathEntry.Resource = {
     val lastModified = Files.getLastModifiedTime(jar)
-    val content = Files.readAllBytes(jar)
+    val content      = Files.readAllBytes(jar)
     ClassPathEntry.Resource(jar.getFileName.toString, lastModified.toMillis, content)
   }
   private def createLauncher(
@@ -367,7 +372,8 @@ trait BootstrapLauncher extends CrossSbtModule {
     fast: Boolean // !fast means standalone (can be copied to another machine, …)
   ): Unit = {
     val sharedClassLoaderContent =
-      if (fast) ClassLoaderContent(sharedCp.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
+      if (fast)
+        ClassLoaderContent(sharedCp.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
       else ClassLoaderContent(sharedCp.distinct.map(toResourceEntry))
     val classLoaderContent =
       if (fast) ClassLoaderContent(cp.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
@@ -388,23 +394,37 @@ trait BootstrapLauncher extends CrossSbtModule {
     System.getProperty("os.name")
       .toLowerCase(java.util.Locale.ROOT)
       .contains("windows")
-  def unixLauncher = T{
+  def unixLauncher = T {
     val mainClass = finalMainClass()
-    val sharedCp = launcherSharedClassPath().map(_.path.toNIO)
-    val cp = launcherClassPath().map(_.path.toNIO)
-    val dest = T.ctx().dest / "launcher"
+    val sharedCp  = launcherSharedClassPath().map(_.path.toNIO)
+    val cp        = launcherClassPath().map(_.path.toNIO)
+    val dest      = T.ctx().dest / "launcher"
 
-    createLauncher(sharedCp, cp.filterNot(sharedCp.toSet), mainClass, dest.toNIO, windows = false, fast = false)
+    createLauncher(
+      sharedCp,
+      cp.filterNot(sharedCp.toSet),
+      mainClass,
+      dest.toNIO,
+      windows = false,
+      fast = false
+    )
 
     PathRef(dest)
   }
-  def windowsLauncher = T{
+  def windowsLauncher = T {
     val mainClass = finalMainClass()
-    val sharedCp = launcherSharedClassPath().map(_.path.toNIO)
-    val cp = launcherClassPath().map(_.path.toNIO)
-    val dest = T.ctx().dest / "launcher.bat"
+    val sharedCp  = launcherSharedClassPath().map(_.path.toNIO)
+    val cp        = launcherClassPath().map(_.path.toNIO)
+    val dest      = T.ctx().dest / "launcher.bat"
 
-    createLauncher(sharedCp, cp.filterNot(sharedCp.toSet), mainClass, dest.toNIO, windows = true, fast = false)
+    createLauncher(
+      sharedCp,
+      cp.filterNot(sharedCp.toSet),
+      mainClass,
+      dest.toNIO,
+      windows = true,
+      fast = false
+    )
 
     PathRef(dest)
   }
@@ -412,23 +432,37 @@ trait BootstrapLauncher extends CrossSbtModule {
     if (isWindows) windowsLauncher
     else unixLauncher
 
-  def unixFastLauncher = T{
+  def unixFastLauncher = T {
     val mainClass = finalMainClass()
-    val sharedCp = launcherSharedClassPath().map(_.path.toNIO)
-    val cp = launcherClassPath().map(_.path.toNIO)
-    val dest = T.ctx().dest / "launcher"
+    val sharedCp  = launcherSharedClassPath().map(_.path.toNIO)
+    val cp        = launcherClassPath().map(_.path.toNIO)
+    val dest      = T.ctx().dest / "launcher"
 
-    createLauncher(sharedCp, cp.filterNot(sharedCp.toSet), mainClass, dest.toNIO, windows = false, fast = true)
+    createLauncher(
+      sharedCp,
+      cp.filterNot(sharedCp.toSet),
+      mainClass,
+      dest.toNIO,
+      windows = false,
+      fast = true
+    )
 
     PathRef(dest)
   }
-  def windowsFastLauncher = T{
+  def windowsFastLauncher = T {
     val mainClass = finalMainClass()
-    val sharedCp = launcherSharedClassPath().map(_.path.toNIO)
-    val cp = launcherClassPath().map(_.path.toNIO)
-    val dest = T.ctx().dest / "launcher.bat"
+    val sharedCp  = launcherSharedClassPath().map(_.path.toNIO)
+    val cp        = launcherClassPath().map(_.path.toNIO)
+    val dest      = T.ctx().dest / "launcher.bat"
 
-    createLauncher(sharedCp, cp.filterNot(sharedCp.toSet), mainClass, dest.toNIO, windows = true, fast = true)
+    createLauncher(
+      sharedCp,
+      cp.filterNot(sharedCp.toSet),
+      mainClass,
+      dest.toNIO,
+      windows = true,
+      fast = true
+    )
 
     PathRef(dest)
   }
@@ -458,15 +492,15 @@ trait PropertyFile extends AlmondPublishModule {
          |version=$ver
          |ammonite-spark-version=$ammSparkVer
          |""".stripMargin +
-      propertyExtra
-        .map {
-          case (k, v) =>
-            s"""$k=$v
-               |""".stripMargin
-        }
-        .mkString
+        propertyExtra
+          .map {
+            case (k, v) =>
+              s"""$k=$v
+                 |""".stripMargin
+          }
+          .mkString
 
-    val content = contentStr.getBytes("UTF-8")
+    val content           = contentStr.getBytes("UTF-8")
     val currentContentOpt = if (os.exists(f)) Some(os.read.bytes(f)) else None
 
     if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
@@ -498,13 +532,13 @@ trait DependencyListResource extends CrossSbtModule {
       .sorted
       .map {
         case (org, name, ver) =>
-        s"$org:$name:$ver"
+          s"$org:$name:$ver"
       }
       .mkString("\n")
       .getBytes("UTF-8")
 
     val dir = T.dest / "dependency-resources"
-    val f = dir / "almond" / "almond-user-dependencies.txt"
+    val f   = dir / "almond" / "almond-user-dependencies.txt"
 
     if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
       os.write.over(f, content, createFolders = true)
@@ -521,11 +555,12 @@ trait DependencyListResource extends CrossSbtModule {
 object Util {
   def withLoader[T](loader: ClassLoader)(f: => T): T = {
     val thread = Thread.currentThread()
-    val cl = thread.getContextClassLoader
+    val cl     = thread.getContextClassLoader
     try {
       thread.setContextClassLoader(loader)
       f
-    } finally thread.setContextClassLoader(cl)
+    }
+    finally thread.setContextClassLoader(cl)
   }
 
   def run(cmd: Seq[String], dir: File = null) = {
@@ -534,7 +569,7 @@ object Util {
     for (d <- Option(dir))
       b.directory(d)
     System.err.println(s"Running ${cmd.mkString(" ")}")
-    val p = b.start()
+    val p       = b.start()
     val retCode = p.waitFor()
     if (retCode != 0)
       sys.error(s"Error running ${cmd.mkString(" ")} (return code: $retCode)")
@@ -609,20 +644,33 @@ def publishSonatype(
 
   val isRelease = {
     val versions = artifacts.map(_._2.version).toSet
-    val set = versions.map(!_.endsWith("-SNAPSHOT"))
-    assert(set.size == 1, s"Found both snapshot and non-snapshot versions: ${versions.toVector.sorted.mkString(", ")}")
+    val set      = versions.map(!_.endsWith("-SNAPSHOT"))
+    assert(
+      set.size == 1,
+      s"Found both snapshot and non-snapshot versions: ${versions.toVector.sorted.mkString(", ")}"
+    )
     set.head
   }
   val publisher = new publish.SonatypePublisher(
-               uri = "https://oss.sonatype.org/service/local",
-       snapshotUri = "https://oss.sonatype.org/content/repositories/snapshots",
-       credentials = credentials,
-            signed = isRelease,
-           gpgArgs = Seq("--passphrase", pgpPassword, "--no-tty", "--pinentry-mode", "loopback", "--batch", "--yes", "-a", "-b"),
-       readTimeout = timeout.toMillis.toInt,
+    uri = "https://oss.sonatype.org/service/local",
+    snapshotUri = "https://oss.sonatype.org/content/repositories/snapshots",
+    credentials = credentials,
+    signed = isRelease,
+    gpgArgs = Seq(
+      "--passphrase",
+      pgpPassword,
+      "--no-tty",
+      "--pinentry-mode",
+      "loopback",
+      "--batch",
+      "--yes",
+      "-a",
+      "-b"
+    ),
+    readTimeout = timeout.toMillis.toInt,
     connectTimeout = timeout.toMillis.toInt,
-               log = log,
-      awaitTimeout = timeout.toMillis.toInt,
+    log = log,
+    awaitTimeout = timeout.toMillis.toInt,
     stagingRelease = isRelease
   )
 
@@ -634,12 +682,12 @@ trait Mima extends com.github.lolgab.mill.mima.Mima {
 
   // same as https://github.com/lolgab/mill-mima/blob/de28f3e9fbe92867f98e35f8dfd3c3a777cc033d/mill-mima/src/com/github/lolgab/mill/mima/Mima.scala#L29-L44
   // except we're ok if mimaPreviousVersions is empty
-  def mimaPreviousArtifacts = T{
+  def mimaPreviousArtifacts = T {
     val versions = mimaPreviousVersions().distinct
     mill.api.Result.Success(
       Agg.from(
         versions.map(version =>
-          ivy"${pomSettings().organization}:${artifactId()}:${version}"
+          ivy"${pomSettings().organization}:${artifactId()}:$version"
         )
       )
     )

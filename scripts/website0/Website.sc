@@ -1,4 +1,3 @@
-
 import $ivy.`org.jsoup:jsoup:1.10.3`
 
 import java.io.{BufferedReader, File, InputStreamReader}
@@ -19,12 +18,15 @@ final case class Mdoc(
     val cmd = Seq(
       "cs",
       "launch",
-      "--scala-version", scalaVersion,
+      "--scala-version",
+      scalaVersion,
       s"org.scalameta::mdoc:$mdocVersion"
     ) ++ dependencies ++ Seq(
       "--",
-      "--in", inputDir.getAbsolutePath,
-      "--out", outputDir.getAbsolutePath
+      "--in",
+      inputDir.getAbsolutePath,
+      "--out",
+      outputDir.getAbsolutePath
     ) ++ mdocProps.flatMap {
       case (k, v) =>
         Seq(s"--site.$k", v)
@@ -46,7 +48,11 @@ final case class Mdoc(
   def watch(yarnRunStartIn: Option[File] = None): Unit =
     yarnRunStartIn match {
       case Some(d) =>
-        Util.withBgProcess(Seq("yarn", "run", "start"), dir = d, waitFor = () => Util.waitForDir(outputDir)) {
+        Util.withBgProcess(
+          Seq("yarn", "run", "start"),
+          dir = d,
+          waitFor = () => Util.waitForDir(outputDir)
+        ) {
           run0(true)
         }
       case None =>
@@ -80,7 +86,7 @@ object Util {
     for (d <- Option(dir))
       b.directory(d)
     System.err.println(s"Running ${cmd.mkString(" ")}")
-    val p = b.start()
+    val p       = b.start()
     val retCode = p.waitFor()
     if (retCode != 0)
       sys.error(s"Error running ${cmd.mkString(" ")} (return code: $retCode)")
@@ -135,14 +141,14 @@ object Util {
     p.getOutputStream.close()
 
     // inspired by https://stackoverflow.com/a/16714180/3714539
-    val reader = new BufferedReader(new InputStreamReader(p.getInputStream))
-    val builder = new StringBuilder
+    val reader       = new BufferedReader(new InputStreamReader(p.getInputStream))
+    val builder      = new StringBuilder
     var line: String = null
     while ({ line = reader.readLine(); line != null }) {
       builder.append(line)
       builder.append(sys.props("line.separator"))
     }
-    val result = builder.toString
+    val result  = builder.toString
     val retCode = p.waitFor()
     if (retCode != 0)
       sys.error(s"Error running ${cmd.mkString(" ")} (return code: $retCode)")
@@ -182,9 +188,8 @@ object Relativize {
       site,
       new SimpleFileVisitor[Path] {
         override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-          if (file.getFileName.toString.endsWith(".html")) {
+          if (file.getFileName.toString.endsWith(".html"))
             processHtmlFile(site, file)
-          }
           super.visitFile(file, attrs)
         }
       }
@@ -195,26 +200,26 @@ object Relativize {
 
   def processHtmlFile(site: Path, file: Path): Unit = {
     val originRelativeUri = relativeUri(site.relativize(file))
-    val originUri = baseUri.resolve(originRelativeUri)
-    val originPath = Paths.get(originUri.getPath).getParent
+    val originUri         = baseUri.resolve(originRelativeUri)
+    val originPath        = Paths.get(originUri.getPath).getParent
     def relativizeAttribute(element: Element, attribute: String): Unit = {
       val absoluteHref = URI.create(element.attr(s"abs:$attribute"))
       if (absoluteHref.getHost == baseUri.getHost) {
-        val hrefPath = Paths.get(absoluteHref.getPath)
+        val hrefPath     = Paths.get(absoluteHref.getPath)
         val relativeHref = originPath.relativize(hrefPath)
         val fragment =
           if (absoluteHref.getFragment == null) ""
           else "#" + absoluteHref.getFragment
         val newHref = relativeUri(relativeHref).toString + fragment
         element.attr(attribute, newHref)
-      } else if (element.attr(attribute).startsWith("//")) {
+      }
+      else if (element.attr(attribute).startsWith("//"))
         // We force "//hostname" links to become "https://hostname" in order to make
         // the site browsable without file server. If we keep "//hostname"  unchanged
         // then users will try to load "file://hostname" which results in 404.
         // We hardcode https instead of http because it's OK to load https from http
         // but not the other way around.
         element.attr(attribute, "https:" + element.attr(attribute))
-      }
     }
     val doc = Jsoup.parse(file.toFile, StandardCharsets.UTF_8.name(), originUri.toString)
     def relativizeElement(element: String, attribute: String): Unit =

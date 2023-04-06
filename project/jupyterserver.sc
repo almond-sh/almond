@@ -1,11 +1,10 @@
-
 import java.nio.file._
 
 def kernelId = "scala-debug"
 
 def writeKernelJson(launcher: Path, jupyterDir: Path): Unit = {
   val launcherPath = launcher.toAbsolutePath.toString
-  val dir = jupyterDir.resolve(s"kernels/$kernelId")
+  val dir          = jupyterDir.resolve(s"kernels/$kernelId")
   Files.createDirectories(dir)
   val kernelJson = s"""{
     "language": "scala",
@@ -27,8 +26,8 @@ def jupyterServer(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
 
   os.makeDir.all(os.pwd / "notebooks")
   val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
-  val b = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
-  val env = b.environment()
+  val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
+  val env            = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
   val p = b.start()
   val hook: Thread = new Thread("jupyter-stop") {
@@ -48,8 +47,8 @@ def jupyterConsole(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = 
   writeKernelJson(launcher, jupyterDir)
 
   val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
-  val b = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
-  val env = b.environment()
+  val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
+  val env            = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
   val p = b.start()
   val hook: Thread = new Thread("jupyter-stop") {

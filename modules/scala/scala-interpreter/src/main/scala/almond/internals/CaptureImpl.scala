@@ -30,7 +30,6 @@ final class CaptureImpl(
       s => if (err0 != null) err0(s)
     ).printStream()
 
-
   def apply[T](
     stdout: String => Unit,
     stderr: String => Unit
@@ -51,13 +50,15 @@ final class CaptureImpl(
             System.setErr(err)
 
             block
-          } finally {
+          }
+          finally {
             System.setOut(oldOut)
             System.setErr(oldErr)
           }
         }
       }
-    } finally {
+    }
+    finally {
       out0 = null
       err0 = null
     }

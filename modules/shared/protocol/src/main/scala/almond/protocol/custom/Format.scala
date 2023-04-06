@@ -23,10 +23,9 @@ object Format {
 
   final case class Reply()
 
-
-  def requestType = MessageType[Request]("format_request")
+  def requestType  = MessageType[Request]("format_request")
   def responseType = MessageType[Response]("format_response")
-  def replyType = MessageType[Reply]("format_reply")
+  def replyType    = MessageType[Reply]("format_reply")
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make

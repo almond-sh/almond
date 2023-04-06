@@ -5,7 +5,7 @@ import ammonite.repl.api.ReplAPI
 import ammonite.util.Ref
 import pprint.PPrinter
 
-final class PrettyPrint private(
+final class PrettyPrint private (
   val value: Any,
   val pprinter: Ref[PPrinter],
   val fadeIn: Option[Boolean],
@@ -68,7 +68,13 @@ final class PrettyPrint private(
 
 object PrettyPrint {
   def apply(value: Any)(implicit jupyterApi: FullJupyterApi, replApi: ReplAPI): PrettyPrint =
-    new PrettyPrint(value, replApi.pprinter, None, jupyterApi.Internal.ansiTextToHtml _, UpdatableDisplay.generateId())
+    new PrettyPrint(
+      value,
+      replApi.pprinter,
+      None,
+      jupyterApi.Internal.ansiTextToHtml _,
+      UpdatableDisplay.generateId()
+    )
 
   def apply(value: Any, pprinter: Ref[PPrinter], ansiTextToHtml: String => String): PrettyPrint =
     new PrettyPrint(value, pprinter, None, ansiTextToHtml, UpdatableDisplay.generateId())

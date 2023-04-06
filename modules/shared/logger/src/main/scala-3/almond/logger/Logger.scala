@@ -40,23 +40,38 @@ final case class Logger(underlying: ActualLogger) {
 
 object Logger extends LoggerCompanionMethods {
 
-  def errorImpl(actualLogger: Expr[ActualLogger], message: Expr[String], throwable: Expr[Throwable])(using Quotes): Expr[Unit] = {
+  def errorImpl(
+    actualLogger: Expr[ActualLogger],
+    message: Expr[String],
+    throwable: Expr[Throwable]
+  )(using Quotes): Expr[Unit] =
     '{ if ($actualLogger.errorEnabled) $actualLogger.error($message, $throwable) }
-  }
 
-  def warnImpl(actualLogger: Expr[ActualLogger], message: Expr[String], throwable: Expr[Throwable])(using Quotes): Expr[Unit] =
+  def warnImpl(
+    actualLogger: Expr[ActualLogger],
+    message: Expr[String],
+    throwable: Expr[Throwable]
+  )(using Quotes): Expr[Unit] =
     '{
       if ($actualLogger.warningEnabled)
         $actualLogger.warn($message, $throwable)
     }
 
-  def infoImpl(actualLogger: Expr[ActualLogger], message: Expr[String], throwable: Expr[Throwable])(using Quotes): Expr[Unit] =
+  def infoImpl(
+    actualLogger: Expr[ActualLogger],
+    message: Expr[String],
+    throwable: Expr[Throwable]
+  )(using Quotes): Expr[Unit] =
     '{
       if ($actualLogger.infoEnabled)
         $actualLogger.info($message, $throwable)
     }
 
-  def debugImpl(actualLogger: Expr[ActualLogger], message: Expr[String], throwable: Expr[Throwable])(using Quotes): Expr[Unit] =
+  def debugImpl(
+    actualLogger: Expr[ActualLogger],
+    message: Expr[String],
+    throwable: Expr[Throwable]
+  )(using Quotes): Expr[Unit] =
     '{
       if ($actualLogger.debugEnabled)
         $actualLogger.debug($message, $throwable)

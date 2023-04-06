@@ -25,7 +25,7 @@ trait Display {
 
 object Display {
 
-  private lazy val registered: Unit = {
+  private lazy val registered: Unit =
     Displayers.register(
       classOf[Display],
       new Displayer[Display] {
@@ -33,8 +33,6 @@ object Display {
           d.data().asJava
       }
     )
-  }
-
 
   def markdown(content: String)(implicit output: OutputHandler): Unit =
     Markdown(content).display()
@@ -50,7 +48,6 @@ object Display {
 
   def svg(content: String)(implicit output: OutputHandler): Unit =
     Svg(content).display()
-
 
   trait Builder[C, T] {
 
@@ -71,6 +68,5 @@ object Display {
     def fromFile(path: String): T =
       build(Left(new File(path).toURI.toURL))
   }
-
 
 }

@@ -28,9 +28,9 @@ final class SendLog(
   assert(backOffFactor >= 1.0)
 
   private val commTarget = UUID.randomUUID().toString
-  private val commId = UUID.randomUUID().toString
+  private val commId     = UUID.randomUUID().toString
 
-  @volatile private var gotAck = false
+  @volatile private var gotAck      = false
   @volatile private var keepReading = true
 
   commHandler.registerCommTarget(
@@ -70,7 +70,7 @@ final class SendLog(
         import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 
         val fileName0 = Option(fileName).getOrElse {
-          val p = f.getAbsolutePath
+          val p    = f.getAbsolutePath
           val home = sys.props("user.home")
           if (replaceHome && p.startsWith(home))
             "~" + p.stripPrefix(home)
@@ -117,7 +117,8 @@ final class SendLog(
                 if (replaceHome) {
                   val home = sys.props("user.home")
                   l.map(_.replace(home, "~"))
-                } else
+                }
+                else
                   l
               // Beware: nospaces has a bad complexity (super slow when generating a large output)
               val res = writeToArray(SendLog.Data(l0))
@@ -128,10 +129,12 @@ final class SendLog(
               }
             }
           }
-        } catch {
+        }
+        catch {
           case _: InterruptedException =>
-            // normal exit
-        } finally {
+          // normal exit
+        }
+        finally {
           if (r != null)
             r.close()
           // no re-attempt here…
@@ -223,6 +226,5 @@ object SendLog {
         }
       );
     """
-
 
 }

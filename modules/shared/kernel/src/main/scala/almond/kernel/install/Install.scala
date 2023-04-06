@@ -32,10 +32,10 @@ object Install {
       is0 = is
 
       val buffer = new ByteArrayOutputStream
-      val data = Array.ofDim[Byte](16384)
+      val data   = Array.ofDim[Byte](16384)
 
       var nRead = 0
-      while ( {
+      while ({
         nRead = is0.read(data, 0, data.length)
         nRead != -1
       })
@@ -43,14 +43,13 @@ object Install {
 
       buffer.flush()
       buffer.toByteArray
-    } finally {
+    }
+    finally
       if (is0 != null)
         is0.close()
-    }
   }
 
-  /**
-    * Installs a Jupyter kernel.
+  /** Installs a Jupyter kernel.
     */
   def installIn(
     kernelId: String,
@@ -76,7 +75,7 @@ object Install {
 
     val dir = jupyterDir.resolve(kernelId)
 
-    if (Files.exists(dir)) {
+    if (Files.exists(dir))
       if (force)
         // not deleting dir itself - on Windows, sometimes running into java.nio.file.AccessDeniedException in
         // createDirectories below else
@@ -86,7 +85,6 @@ object Install {
           .foreach(deleteRecursively)
       else
         throw new InstallException.InstallDirAlreadyExists(dir)
-    }
 
     Files.createDirectories(dir)
 
@@ -102,12 +100,14 @@ object Install {
             )
           case Some(pos) =>
             val launcher0 = spec.argv(pos)
-            val dest = dir.resolve("launcher.jar")
-            val source = Paths.get(launcher0)
+            val dest      = dir.resolve("launcher.jar")
+            val source    = Paths.get(launcher0)
             if (!Files.exists(source))
               throw new Exception(s"Launcher $launcher0 in kernel spec command not found")
             if (!Files.isRegularFile(source))
-              throw new Exception(s"Launcher $launcher0 in kernel spec command is not a regular file")
+              throw new Exception(
+                s"Launcher $launcher0 in kernel spec command is not a regular file"
+              )
             val launcherContent = Files.readAllBytes(Paths.get(launcher0))
             Files.write(dest, launcherContent)
             spec.copy(
@@ -126,12 +126,12 @@ object Install {
     dir
   }
 
-  /**
-    * Gets the command that launched the current application if possible.
+  /** Gets the command that launched the current application if possible.
     *
     * Works if the coursier launcher is involved.
     *
-    * @param filterOutArgs: arguments to filter-out
+    * @param filterOutArgs:
+    *   arguments to filter-out
     */
   def currentAppCommand(filterOutArgs: Set[String] = Set.empty): Option[List[String]] =
     for {
@@ -151,12 +151,13 @@ object Install {
         .toList
     } yield "java" :: "-jar" :: mainJar0 :: mainArgs
 
-  /**
-    * Gets the command that launched the current application if possible.
+  /** Gets the command that launched the current application if possible.
     *
-    * Works if the current app is launched via a single JAR, specifying a main class in its manifest.
+    * Works if the current app is launched via a single JAR, specifying a main class in its
+    * manifest.
     *
-    * @param filterOutArgs: arguments to filter-out
+    * @param filterOutArgs:
+    *   arguments to filter-out
     */
   def fatJarCurrentAppCommand(filterOutArgs: Set[String] = Set.empty): Option[List[String]] =
     for {
@@ -174,7 +175,6 @@ object Install {
   def launcherPos(command: List[String]): Option[Int] =
     command match {
       case h :: t if h == "java" || h.endsWith("/java") =>
-
         @tailrec
         def helper(l: List[(String, Int)]): Option[Int] =
           l match {
@@ -251,7 +251,9 @@ object Install {
             .toSeq
         case None =>
           if (options.arg.isEmpty)
-            Install.currentAppCommand(Set("--install", "--force", "--global").flatMap(s => Seq(s, s"$s=true"))).getOrElse {
+            Install.currentAppCommand(Set("--install", "--force", "--global").flatMap(s =>
+              Seq(s, s"$s=true")
+            )).getOrElse {
               throw new InstallException.CannotGetKernelCommand
             }
           else
@@ -326,7 +328,8 @@ object Install {
         env
       )
       Right(dir)
-    } catch {
+    }
+    catch {
       case e: InstallException =>
         Left(e)
     }

@@ -16,10 +16,10 @@ import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext
 import almond.protocol.Status
 
-
 object ScalafmtTests extends TestSuite {
 
-  val fmtPool = ExecutionContext.fromExecutorService(coursier.cache.internal.ThreadUtil.fixedThreadPool(1))
+  val fmtPool =
+    ExecutionContext.fromExecutorService(coursier.cache.internal.ThreadUtil.fixedThreadPool(1))
 
   val queueEc = ExecutionContext.fromExecutorService(
     Executors.newSingleThreadExecutor(daemonThreadFactory("test-queue"))
@@ -41,7 +41,7 @@ object ScalafmtTests extends TestSuite {
       RawJson(writeToArray(request))
     )
     val messages = scalafmt.messageHandler.handle(Channel.Requests, msg) match {
-      case None => sys.error("format request left untouched")
+      case None          => sys.error("format request left untouched")
       case Some(Left(e)) => throw new Exception("Error testing format request", e)
       case Some(Right(stream)) =>
         stream
@@ -51,7 +51,7 @@ object ScalafmtTests extends TestSuite {
           .map {
             case (c, m) =>
               val decoded = Message.parse[RawJson](m) match {
-                case Left(e) => throw new Exception(s"Error decoding $m", e)
+                case Left(e)   => throw new Exception(s"Error decoding $m", e)
                 case Right(m0) => m0
               }
               (c, decoded)
@@ -59,11 +59,12 @@ object ScalafmtTests extends TestSuite {
     }
     messages.filter {
       case (Channel.Publish, m) if m.header.msg_type == Status.messageType.messageType => false
-      case _ => true
+      case _                                                                           => true
     }
   }
 
-  private def endsWithFormatReply(messages: Seq[(Channel, Message[RawJson])]): Seq[(Channel, Message[RawJson])] = {
+  private def endsWithFormatReply(messages: Seq[(Channel, Message[RawJson])])
+    : Seq[(Channel, Message[RawJson])] = {
     assert(messages.nonEmpty)
     // FIXME Could publish / request messages be out-of-order here?
     val (responseChannel, response) = messages.last
@@ -72,7 +73,8 @@ object ScalafmtTests extends TestSuite {
     messages.init
   }
 
-  private def onlyFormatResponses(messages: Seq[(Channel, Message[RawJson])]): Map[String, Format.Response] =
+  private def onlyFormatResponses(messages: Seq[(Channel, Message[RawJson])])
+    : Map[String, Format.Response] =
     messages
       .map {
         case (Channel.Publish, m) if m.header.msg_type == Format.responseType.messageType =>
@@ -82,7 +84,6 @@ object ScalafmtTests extends TestSuite {
           sys.error(s"Unexpected message ${m.header.msg_type} on channel $c ($m)")
       }
       .toMap
-
 
   val snippet1 =
     """def f(  n    :Int):    String
@@ -107,20 +108,20 @@ object ScalafmtTests extends TestSuite {
   val tests = Tests {
 
     "empty" - {
-      val request = Format.Request(ListMap())
-      val messages0 = messages(scalafmt, request)
+      val request         = Format.Request(ListMap())
+      val messages0       = messages(scalafmt, request)
       val processMessages = endsWithFormatReply(messages0)
       assert(processMessages.isEmpty)
     }
 
     "simple" - {
-      val initialCode = snippet1
+      val initialCode  = snippet1
       val expectedCode = formattedSnippet1
 
       val request = Format.Request(ListMap(
         "cell1" -> initialCode
       ))
-      val messages0 = messages(scalafmt, request)
+      val messages0       = messages(scalafmt, request)
       val processMessages = endsWithFormatReply(messages0)
       assert(processMessages.length == 1)
       val formattedCodeMap = onlyFormatResponses(processMessages)
@@ -142,7 +143,7 @@ object ScalafmtTests extends TestSuite {
         "cell1" -> snippet1,
         "cell2" -> snippet2
       ))
-      val messages0 = messages(scalafmt, request)
+      val messages0       = messages(scalafmt, request)
       val processMessages = endsWithFormatReply(messages0)
       assert(processMessages.length == 2)
       val formattedCodeMap = onlyFormatResponses(processMessages)

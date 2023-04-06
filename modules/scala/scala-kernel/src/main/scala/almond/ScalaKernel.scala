@@ -45,12 +45,11 @@ object ScalaKernel extends CaseApp[Options] {
             .getResource("almond/scala-logo-64x64.png")
         ),
         connectionFileArgs = Install.defaultConnectionFileArgs,
-        interruptMode = {
+        interruptMode =
           if (options.installOptions.interruptViaMessage)
             Some("message")
           else
-            None
-        },
+            None,
         env = options.installOptions.envMap()
       ) match {
         case Left(e) =>
@@ -62,7 +61,6 @@ object ScalaKernel extends CaseApp[Options] {
           sys.exit(0)
       }
 
-
     val connectionFile = options.connectionFile.getOrElse {
       Console.err.println(
         "No connection file passed, and installation not asked. Run with --install to install the kernel, " +
@@ -71,14 +69,12 @@ object ScalaKernel extends CaseApp[Options] {
       sys.exit(1)
     }
 
-
     val autoDependencies = options.autoDependencyMap()
-    val autoVersions = options.autoVersionsMap()
-    val forceProperties = options.forceProperties()
-    val mavenProfiles = options.mavenProfiles()
-    val extraLinks = options.extraLinks()
-    val predefFiles = options.predefFiles()
-
+    val autoVersions     = options.autoVersionsMap()
+    val forceProperties  = options.forceProperties()
+    val mavenProfiles    = options.mavenProfiles()
+    val extraLinks       = options.extraLinks()
+    val predefFiles      = options.predefFiles()
 
     if (autoDependencies.nonEmpty)
       log.debug(
@@ -90,8 +86,7 @@ object ScalaKernel extends CaseApp[Options] {
           .mkString("\n")
       )
 
-
-    val interpreterEc = singleThreadedExecutionContext("scala-interpreter")
+    val interpreterEc               = singleThreadedExecutionContext("scala-interpreter")
     val updateBackgroundVariablesEc = singleThreadedExecutionContext("update-background-variables")
 
     val zeromqThreads = ZeromqThreads.create("scala-kernel")
@@ -135,7 +130,6 @@ object ScalaKernel extends CaseApp[Options] {
     )
     log.debug("Created interpreter")
 
-
     // Actually init Ammonite interpreter in background
 
     val initThread = new Thread("interpreter-init") {
@@ -145,7 +139,8 @@ object ScalaKernel extends CaseApp[Options] {
           log.debug("Initializing interpreter (background)")
           interpreter.ammInterp
           log.debug("Initialized interpreter (background)")
-        } catch {
+        }
+        catch {
           case t: Throwable =>
             log.error(s"Caught exception while initializing interpreter, exiting", t)
             sys.exit(1)
@@ -157,20 +152,22 @@ object ScalaKernel extends CaseApp[Options] {
     val fmtMessageHandler =
       if (options.scalafmt) {
         // thread shuts down after 1 minute of inactivity, automatically re-spawned
-        val fmtPool = ExecutionContext.fromExecutorService(coursier.cache.internal.ThreadUtil.fixedThreadPool(1))
+        val fmtPool = ExecutionContext.fromExecutorService(
+          coursier.cache.internal.ThreadUtil.fixedThreadPool(1)
+        )
         val scalafmt = new Scalafmt(fmtPool, kernelThreads.queueEc, logCtx)
         scalafmt.messageHandler
-      } else
+      }
+      else
         MessageHandler.empty
 
     log.debug("Running kernel")
-    try {
+    try
       Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx, fmtMessageHandler)
         .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
         .unsafeRunSync()
-    } finally {
+    finally
       interpreter.shutdown()
-    }
   }
 
 }

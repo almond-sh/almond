@@ -17,7 +17,11 @@ trait AsyncInterpreterOps extends Interpreter {
     Some(cancellableFuturePool.cancellableFuture(isComplete(code)))
   override def asyncComplete(code: String, pos: Int): Some[CancellableFuture[Completion]] =
     Some(cancellableFuturePool.cancellableFuture(complete(code, pos)))
-  override def asyncInspect(code: String, pos: Int, detailLevel: Int): Some[CancellableFuture[Option[Inspection]]] =
+  override def asyncInspect(
+    code: String,
+    pos: Int,
+    detailLevel: Int
+  ): Some[CancellableFuture[Option[Inspection]]] =
     Some(cancellableFuturePool.cancellableFuture(inspect(code, pos)))
 
 }

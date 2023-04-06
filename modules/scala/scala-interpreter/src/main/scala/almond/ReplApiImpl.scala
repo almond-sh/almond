@@ -23,7 +23,6 @@ final class ReplApiImpl(
   sess0: SessionApiImpl
 ) extends ammonite.repl.ReplApiImpl { self =>
 
-
   private val defaultDisplayer = Displayers.registration().find(classOf[almond.ReplApiImpl.Foo])
 
   def printSpecial[T](
@@ -34,16 +33,19 @@ final class ReplApiImpl(
     onChangeOrError: Option[(Either[Throwable, T] => Unit) => Unit],
     pprinter: Ref[pprint.PPrinter],
     updatableResultsOpt: Option[JupyterApi.UpdatableResults]
-  )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Option[Iterator[String]] =
+  )(implicit
+    tprint: TPrint[T],
+    tcolors: TPrintColors,
+    classTagT: ClassTag[T]
+  ): Option[Iterator[String]] =
     execute0.currentPublishOpt match {
       case None =>
         None
       case Some(p) =>
-
         val isUpdatableDisplay =
           classTagT != null &&
-            classOf[almond.display.Display]
-              .isAssignableFrom(classTagT.runtimeClass)
+          classOf[almond.display.Display]
+            .isAssignableFrom(classTagT.runtimeClass)
 
         val jvmReprDisplayer: Displayer[_] =
           if (classTagT == null) defaultDisplayer
@@ -56,7 +58,8 @@ final class ReplApiImpl(
           val d = value.asInstanceOf[almond.display.Display]
           d.display()(p)
           Some(Iterator())
-        } else if (useJvmReprDisplay) {
+        }
+        else if (useJvmReprDisplay) {
           import scala.jdk.CollectionConverters._
           val m = jvmReprDisplayer
             .asInstanceOf[Displayer[T]]
@@ -67,16 +70,22 @@ final class ReplApiImpl(
             p.display(DisplayData(m.toMap))
             Some(Iterator())
           }
-        } else
-          for (updatableResults <- updatableResultsOpt if (onChange.nonEmpty && custom.isEmpty) || (onChangeOrError.nonEmpty && custom.nonEmpty)) yield {
+        }
+        else
+          for (
+            updatableResults <- updatableResultsOpt
+            if (onChange.nonEmpty && custom.isEmpty) || (onChangeOrError.nonEmpty && custom.nonEmpty)
+          ) yield {
 
             // Pre-compute how many lines and how many columns the prefix of the
             // printed output takes, so we can feed that information into the
             // pretty-printing of the main body
             val prefix = new pprint.Truncated(
               Iterator(
-                colors0().ident()(ident).render, ": ",
-                implicitly[pprint.TPrint[T]].render(tcolors), " = "
+                colors0().ident()(ident).render,
+                ": ",
+                implicitly[pprint.TPrint[T]].render(tcolors),
+                " = "
               ),
               pprinter().defaultWidth,
               pprinter().defaultHeight
@@ -87,9 +96,8 @@ final class ReplApiImpl(
 
             val rhs = custom match {
               case None =>
-
                 var currentValue = value // FIXME May be better to only hold weak references here
-                                         //       (in case we allow to wipe previous values at some point)
+                //       (in case we allow to wipe previous values at some point)
 
                 val id = updatableResults.updatable {
                   pprinter().tokenize(
@@ -114,7 +122,6 @@ final class ReplApiImpl(
                 id
 
               case Some(s) =>
-
                 val messageColor = Some(pprinter().colorLiteral)
                   .filter(_ == fansi.Attrs.Empty)
                   .getOrElse(fansi.Color.LightGray)
@@ -125,12 +132,12 @@ final class ReplApiImpl(
 
                 onChangeOrError.foreach(_ {
                   case Left(ex) =>
-
                     val messageColor = Some(pprinter().colorLiteral)
                       .filter(_ == fansi.Attrs.Empty)
                       .getOrElse(fansi.Color.LightGray)
 
-                    val err = Execute.showException(ex, colors0().error(), Attr.Reset, colors0().literal())
+                    val err =
+                      Execute.showException(ex, colors0().error(), Attr.Reset, colors0().literal())
                     val s = messageColor("[last attempt failed]").render + "\n" + err
                     updatableResults.update(id, s, last = false)
                   case Right(value0) =>
@@ -147,35 +154,37 @@ final class ReplApiImpl(
 
             output.iterator.map(_.render) ++ Iterator(rhs)
           }
-      }
-
-
+    }
 
   def replArgs0 = Vector.empty[Bind[_]]
-  def printer = execute0.printer
+  def printer   = execute0.printer
 
-  def sess = sess0
-  val prompt = Ref("nope")
-  val frontEnd = Ref[FrontEnd](null)
+  def sess                     = sess0
+  val prompt                   = Ref("nope")
+  val frontEnd                 = Ref[FrontEnd](null)
   def lastException: Throwable = execute0.lastExceptionOpt.orNull
-  def fullHistory = storage.fullHistory()
-  def history = execute0.history
-  val colors = colors0
-  def newCompiler() = ammInterp.compilerManager.init(force = true)
-  def _compilerManager = ammInterp.compilerManager
-  def fullImports = ammInterp.predefImports ++ imports
-  def imports = ammInterp.frameImports
-  def usedEarlierDefinitions = ammInterp.frameUsedEarlierDefinitions
-  def width = 80
-  def height = 80
+  def fullHistory              = storage.fullHistory()
+  def history                  = execute0.history
+  val colors                   = colors0
+  def newCompiler()            = ammInterp.compilerManager.init(force = true)
+  def _compilerManager         = ammInterp.compilerManager
+  def fullImports              = ammInterp.predefImports ++ imports
+  def imports                  = ammInterp.frameImports
+  def usedEarlierDefinitions   = ammInterp.frameUsedEarlierDefinitions
+  def width                    = 80
+  def height                   = 80
 
   val load: ReplLoad =
     new ReplLoad {
       def apply(line: String) =
-        ammInterp.processExec(line, execute0.currentLine, () => execute0.incrementLineCount()) match {
-          case Res.Failure(s) => throw new CompilationError(s)
+        ammInterp.processExec(
+          line,
+          execute0.currentLine,
+          () => execute0.incrementLineCount()
+        ) match {
+          case Res.Failure(s)      => throw new CompilationError(s)
           case Res.Exception(t, _) => throw t
-          case _ =>
+          case _                   =>
         }
 
       def exec(file: os.Path): Unit = {
@@ -186,18 +195,26 @@ final class ReplApiImpl(
 
   override protected[this] def internal0: FullReplAPI.Internal =
     new FullReplAPI.Internal {
-      def pprinter = self.pprinter
-      def colors = self.colors
+      def pprinter                      = self.pprinter
+      def colors                        = self.colors
       def replArgs: IndexedSeq[Bind[_]] = replArgs0
 
       val defaultDisplayer = Displayers.registration().find(classOf[ReplApiImpl.Foo])
 
       override def print[T](
-                             value: => T,
-                             ident: String,
-                             custom: Option[String]
-                           )(implicit tprint: TPrint[T], tcolors: TPrintColors, classTagT: ClassTag[T]): Iterator[String] =
-        printSpecial(value, ident, custom, None, None, pprinter, None)(tprint, tcolors, classTagT).getOrElse {
+        value: => T,
+        ident: String,
+        custom: Option[String]
+      )(implicit
+        tprint: TPrint[T],
+        tcolors: TPrintColors,
+        classTagT: ClassTag[T]
+      ): Iterator[String] =
+        printSpecial(value, ident, custom, None, None, pprinter, None)(
+          tprint,
+          tcolors,
+          classTagT
+        ).getOrElse {
           super.print(value, ident, custom)(tprint, tcolors, classTagT)
         }
     }

@@ -31,14 +31,13 @@ final class ZeromqSocketImpl(
 
   private val log = logCtx(getClass)
 
-  private val algorithm0 = algorithm.filter(_ != '-')
+  private val algorithm0  = algorithm.filter(_ != '-')
   private val macInstance = Mac.getInstance(algorithm0)
-  private val enableMac = key.value.nonEmpty
-  if (enableMac) {
+  private val enableMac   = key.value.nonEmpty
+  if (enableMac)
     macInstance.init(new SecretKeySpec(key.value.getBytes(UTF_8), algorithm0))
-  }
 
-  private def hmac(args: Array[Byte]*): String = {
+  private def hmac(args: Array[Byte]*): String =
     if (enableMac) {
       for (b <- args)
         macInstance.update(b)
@@ -47,11 +46,9 @@ final class ZeromqSocketImpl(
         .doFinal()
         .map(s => f"$s%02x")
         .mkString
-    } else {
-      ""
     }
-  }
-
+    else
+      ""
 
   val channel = context.socket(socketType)
   for (b <- identityOpt)
@@ -81,7 +78,8 @@ final class ZeromqSocketImpl(
 
           opened = true
           IO.unit
-        } else
+        }
+        else
           IO.raiseError(new Exception(s"Cannot bind / connect channel $uri"))
       }
     }
@@ -108,16 +106,27 @@ final class ZeromqSocketImpl(
 
         log.debug(
           "Sending:\n" +
-          "  header: " + Try(new String(message.header, "UTF-8")).toOption.getOrElse(message.header.toString) + "\n" +
-          "  content: " + Try(new String(message.content, "UTF-8")).toOption.getOrElse(message.content.toString) + "\n" +
-          "  idents: " + identsAsStrings(message.idents)
+            "  header: " +
+            Try(new String(message.header, "UTF-8"))
+              .toOption
+              .getOrElse(message.header.toString) +
+            "\n" +
+            "  content: " +
+            Try(new String(message.content, "UTF-8"))
+              .toOption
+              .getOrElse(message.content.toString) +
+            "\n" +
+            "  idents: " + identsAsStrings(message.idents)
         )
 
         for (c <- message.idents)
           channel.send(c.toArray, ZMQ.SNDMORE)
 
         channel.send(delimiterBytes, ZMQ.SNDMORE)
-        channel.send(hmac(message.header, message.parentHeader, message.metadata, message.content), ZMQ.SNDMORE)
+        channel.send(
+          hmac(message.header, message.parentHeader, message.metadata, message.content),
+          ZMQ.SNDMORE
+        )
         channel.send(message.header, ZMQ.SNDMORE)
         channel.send(message.parentHeader, ZMQ.SNDMORE)
         channel.send(message.metadata, ZMQ.SNDMORE)
@@ -127,7 +136,10 @@ final class ZeromqSocketImpl(
       }
     )
 
-  val read: IO[Option[Message]] = delayedCondition(!closed && opened, "Channel is not opened in read")(
+  val read: IO[Option[Message]] = delayedCondition(
+    !closed && opened,
+    "Channel is not opened in read"
+  )(
     IO.shift(ec) *> IO {
 
       val idents =
@@ -139,19 +151,22 @@ final class ZeromqSocketImpl(
       val signature = channel.recvStr()
 
       // FIXME Check for null return values of recv
-      val header = channel.recv()
+      val header       = channel.recv()
       val parentHeader = channel.recv()
-      val metaData = channel.recv()
-      val content = channel.recv()
+      val metaData     = channel.recv()
+      val content      = channel.recv()
 
       val message = Message(idents, header, parentHeader, metaData, content)
 
       val expectedSignature = hmac(header, parentHeader, metaData, content)
 
       if (expectedSignature == signature || !enableMac) {
-        log.debug(s"Received on $channel message with header ${message.header} and idents ${identsAsStrings(message.idents)})")
+        log.debug(
+          s"Received on $channel message with header ${message.header} and idents ${identsAsStrings(message.idents)})"
+        )
         Some(message)
-      } else {
+      }
+      else {
         log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
         None
       }

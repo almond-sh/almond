@@ -18,13 +18,12 @@ abstract class JupyterApi { api =>
   def stdinOpt(prompt: String = "", password: Boolean = false): Option[String]
 
   def silent(s: Boolean): Unit = {}
-  def silent: Boolean = false
+  def silent: Boolean          = false
 
   protected implicit def changingPublish: OutputHandler =
     new almond.interpreter.api.OutputHandler.OnlyUpdateVia(commHandler)
 
-  /**
-    * Jupyter publishing helper
+  /** Jupyter publishing helper
     *
     * Allows to push display items to the front-end.
     */

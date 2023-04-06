@@ -53,8 +53,7 @@ object AmmInterpreter {
     ImportData("almond.input.Input")
   )
 
-  /**
-    * Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
+  /** Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
     */
   def apply(
     execute0: Execute,
@@ -81,7 +80,10 @@ object AmmInterpreter {
       .iterator
       .collect {
         case (m, l) if m.getOrganization.contains("*") || m.getName.contains("*") =>
-          ModuleMatcher(coursier.Module(coursier.Organization(m.getOrganization), coursier.ModuleName(m.getName))) -> l
+          ModuleMatcher(coursier.Module(
+            coursier.Organization(m.getOrganization),
+            coursier.ModuleName(m.getName)
+          )) -> l
       }
       .toVector
 
@@ -119,7 +121,8 @@ object AmmInterpreter {
           },
           replCodeWrapper = codeWrapper,
           scriptCodeWrapper = codeWrapper,
-          alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
+          alreadyLoadedDependencies =
+            ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
         ) {
           override val compilerManager = new AlmondCompilerLifecycleManager(
             storage0.dirOpt.map(_.toNIO),
@@ -193,7 +196,7 @@ object AmmInterpreter {
         val deps = f0.getDependencies.asScala.toVector
         if (deps.exists(_.getVersion == "_")) {
           val dependencies0 = deps.map { dep =>
-            if (dep.getVersion == "_") {
+            if (dep.getVersion == "_")
               automaticVersions.get(dep.getModule) match {
                 case None =>
                   System.err.println(
@@ -204,11 +207,12 @@ object AmmInterpreter {
                 case Some(ver) =>
                   dep.withVersion(ver)
               }
-            } else
+            else
               dep
           }
           f0.withDependencies(dependencies0: _*)
-        } else
+        }
+        else
           f0
       }
 
@@ -237,7 +241,7 @@ object AmmInterpreter {
       if (mavenProfiles.nonEmpty)
         ammInterp0.resolutionHooks += { fetch =>
           val mavenProfiles0 = mavenProfiles.toVector.map {
-            case (p, true) => p
+            case (p, true)  => p
             case (p, false) => "!" + p
           }
           fetch.withResolutionParams(
@@ -248,7 +252,8 @@ object AmmInterpreter {
       log.info("Ammonite interpreter initialized")
 
       ammInterp0
-    } catch {
+    }
+    catch {
       case t: Throwable =>
         log.error(s"Caught exception while initializing interpreter", t)
         throw t

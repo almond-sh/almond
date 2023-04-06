@@ -12,31 +12,29 @@ class FunctionInputStream(internalCharset: Charset, f: => Option[String]) extend
   // not thread-safe
 
   private var bufferOpt = Option.empty[ByteBuffer]
-  private var done = false
+  private var done      = false
 
   @tailrec
   private def maybeFetchNewBuffer(): Option[ByteBuffer] =
     if (done)
       None
-    else {
-      if (bufferOpt.forall(!_.hasRemaining)) {
+    else if (bufferOpt.forall(!_.hasRemaining)) {
 
-        val s = f
+      val s = f
 
-        s match {
-          case Some(value) =>
-            val b0 = ByteBuffer.wrap(value.getBytes(UTF_8)).asReadOnlyBuffer()
-            bufferOpt = Some(b0)
-          case None =>
-            done = true
-            bufferOpt = None
-        }
+      s match {
+        case Some(value) =>
+          val b0 = ByteBuffer.wrap(value.getBytes(UTF_8)).asReadOnlyBuffer()
+          bufferOpt = Some(b0)
+        case None =>
+          done = true
+          bufferOpt = None
+      }
 
-        maybeFetchNewBuffer() // maybe we were given an empty string, and need to call f again
-      } else
-        bufferOpt
+      maybeFetchNewBuffer() // maybe we were given an empty string, and need to call f again
     }
-
+    else
+      bufferOpt
 
   def read(): Int =
     maybeFetchNewBuffer()

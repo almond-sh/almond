@@ -25,8 +25,8 @@ object LoggerTests extends TestSuite {
     "PrintStream" - {
 
       "nop" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.None, ps, colored = false)
 
         log.debug(sys.error("not called"))
@@ -41,8 +41,8 @@ object LoggerTests extends TestSuite {
       }
 
       "warn" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.Warning, ps, colored = false)
 
         log.debug(sys.error("not called"))
@@ -62,8 +62,8 @@ object LoggerTests extends TestSuite {
       }
 
       "debug" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.Debug, ps, colored = false)
 
         val n = 2
@@ -87,14 +87,14 @@ object LoggerTests extends TestSuite {
       }
 
       "with exceptions" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.Error, ps, colored = false)
 
         val n = 2
 
         val ex0 = new Exception("first")
-        val ex = new Exception("nope", ex0)
+        val ex  = new Exception("nope", ex0)
 
         log.error("/o\\ Errr", ex)
 
@@ -123,7 +123,10 @@ object LoggerTests extends TestSuite {
           .linesIterator
           .flatMap { s =>
             if (s.startsWith("  almond."))
-              Iterator(s.replaceFirst(Pattern.quote("LoggerTests$") + ".*" + Pattern.quote("("), "LoggerTests("))
+              Iterator(s.replaceFirst(
+                Pattern.quote("LoggerTests$") + ".*" + Pattern.quote("("),
+                "LoggerTests("
+              ))
             else if (s.startsWith("  "))
               Iterator.empty
             else

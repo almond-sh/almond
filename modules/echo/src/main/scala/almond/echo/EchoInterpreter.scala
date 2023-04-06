@@ -68,20 +68,30 @@ final class EchoInterpreter extends Interpreter {
     if (completePrint)
       Completion(0, firstWord.length, Seq("print"))
     else if (code.startsWith("meta:") && pos == "meta:".length)
-      Completion(pos, pos, Seq("sent"), RawJson(code.drop("meta:".length).getBytes(StandardCharsets.UTF_8)))
+      Completion(
+        pos,
+        pos,
+        Seq("sent"),
+        RawJson(code.drop("meta:".length).getBytes(StandardCharsets.UTF_8))
+      )
     else
       Completion.empty(pos)
   }
 
   override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
-    if (code.startsWith("print") && code.lift("print".length).forall(_.isSpaceChar) && pos <= "print".length) {
+    if (
+      code.startsWith("print") &&
+      code.lift("print".length).forall(_.isSpaceChar) &&
+      pos <= "print".length
+    ) {
       val data = DisplayData.text(
         s"""${Console.RED}${Console.BOLD}print${Console.RESET}
            |
            |detail level: ${Console.BLUE}${Console.BOLD}$detailLevel${Console.RESET}""".stripMargin
       )
       Some(Inspection.fromDisplayData(data))
-    } else
+    }
+    else
       None
 
 }
@@ -92,13 +102,13 @@ object EchoInterpreter {
 
     val p = new Properties
 
-    try {
+    try
       p.load(
         getClass
           .getClassLoader
           .getResourceAsStream("almond/echo.properties")
       )
-    } catch  {
+    catch {
       case _: NullPointerException =>
     }
 

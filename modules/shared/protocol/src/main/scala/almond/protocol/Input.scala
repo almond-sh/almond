@@ -15,7 +15,7 @@ object Input {
   )
 
   def requestType = MessageType[Request]("input_request")
-  def replyType = MessageType[Reply]("input_reply")
+  def replyType   = MessageType[Reply]("input_reply")
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make

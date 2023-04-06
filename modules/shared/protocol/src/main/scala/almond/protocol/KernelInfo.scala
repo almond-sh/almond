@@ -4,7 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 
 final case class KernelInfo(
-  status: String, // "ok"
+  status: String,           // "ok"
   protocol_version: String, // X.Y.Z
   implementation: String,
   implementation_version: String, // X.Y.Z
@@ -48,7 +48,6 @@ object KernelInfo {
       help_links = None
     )
 
-
   final case class LanguageInfo(
     name: String,
     version: String, // X.Y.Z
@@ -56,14 +55,14 @@ object KernelInfo {
     file_extension: String, // including the dot
     nbconvert_exporter: String,
     pygments_lexer: Option[String] = None, // only needed if it differs from name
-    codemirror_mode: Option[String] = None // only needed if it differs from name - FIXME could be a dict too?
+    codemirror_mode: Option[String] =
+      None // only needed if it differs from name - FIXME could be a dict too?
   )
 
   final case class Link(text: String, url: String)
 
-
   def requestType = MessageType[Unit]("kernel_info_request")
-  def replyType = MessageType[KernelInfo]("kernel_info_reply")
+  def replyType   = MessageType[KernelInfo]("kernel_info_reply")
 
   implicit val linkCodec: JsonValueCodec[Link] =
     JsonCodecMaker.make

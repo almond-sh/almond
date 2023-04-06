@@ -27,21 +27,19 @@ object History {
 
   }
 
-
   sealed abstract class AccessType(val name: String) extends Product with Serializable
 
   object AccessType {
-    case object Range extends AccessType("range")
-    case object Tail extends AccessType("tail")
+    case object Range  extends AccessType("range")
+    case object Tail   extends AccessType("tail")
     case object Search extends AccessType("search")
 
     val seq = Seq[AccessType](Range, Tail, Search)
     val map = seq.map(t => t.name -> t).toMap
   }
 
-
   def requestType = MessageType[Request]("history_request")
-  def replyType = MessageType[Reply]("history_reply")
+  def replyType   = MessageType[Reply]("history_reply")
 
   implicit val accessTypeCodec: JsonValueCodec[AccessType] = new JsonValueCodec[AccessType] {
     val stringCodec = JsonCodecMaker.make[String]

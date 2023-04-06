@@ -1,7 +1,6 @@
 package almond.interpreter.api
 
-/**
-  * Receiver of messages from client code running in the browser.
+/** Receiver of messages from client code running in the browser.
   *
   * See [[CommHandler]] to register it.
   */

@@ -2,7 +2,7 @@ package almond.display
 
 import java.net.URL
 
-final class Json private(
+final class Json private (
   val contentOrUrl: Either[URL, String],
   // FIXME This may not be the right terminology (see https://en.wikipedia.org/wiki/Media_type).
   //       This could also be generalized to the other Display classes.
@@ -41,6 +41,6 @@ object Json extends TextDisplay.Builder[Json] {
   protected def build(contentOrUrl: Either[URL, String]): Json =
     new Json(contentOrUrl, None, UpdatableDisplay.generateId())
 
-  def mimeType = "application/json"
+  def mimeType                     = "application/json"
   def mimeType(vendorPart: String) = s"application/${vendorPart}json"
 }

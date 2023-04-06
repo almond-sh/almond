@@ -10,11 +10,10 @@ import cats.effect.IO
 
 import scala.concurrent.ExecutionContext
 
-/**
-  * Wraps a partial function, able to handle some [[Message]]s arriving via a given [[Channel]].
+/** Wraps a partial function, able to handle some [[Message]]s arriving via a given [[Channel]].
   *
-  * If a [[Message]] is handled, one can get either a [[Throwable]], meaning the message was malformed, or
-  * a [[Stream]] of [[RawMessage]] to be sent on a given [[Channel]] as answer.
+  * If a [[Message]] is handled, one can get either a [[Throwable]], meaning the message was
+  * malformed, or a [[Stream]] of [[RawMessage]] to be sent on a given [[Channel]] as answer.
   */
 final case class MessageHandler(
   handler: PartialFunction[
@@ -30,10 +29,16 @@ final case class MessageHandler(
 
   private lazy val lifted = handler.lift
 
-  def handle(channel: Channel, message: Message[RawJson]): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
+  def handle(
+    channel: Channel,
+    message: Message[RawJson]
+  ): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
     lifted((channel, message))
 
-  def handle(channel: Channel, message: RawMessage): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
+  def handle(
+    channel: Channel,
+    message: RawMessage
+  ): Option[Either[Throwable, Stream[IO, (Channel, RawMessage)]]] =
     Message.parse[RawJson](message) match {
       case Left(error) =>
         Some(Left(new Exception(s"Error decoding message: $error")))
@@ -62,13 +67,16 @@ object MessageHandler {
   def empty: MessageHandler =
     MessageHandler(PartialFunction.empty)
 
-  /**
-    * Constructs a [[MessageHandler]], able to handle a [[Message]] of a single type from a single [[Channel]].
+  /** Constructs a [[MessageHandler]], able to handle a [[Message]] of a single type from a single
+    * [[Channel]].
     *
-    * The passed handler should return a [[Stream]] of messages as a response to the incoming message.
+    * The passed handler should return a [[Stream]] of messages as a response to the incoming
+    * message.
     *
-    * @param channel: [[Channel]] this [[MessageHandler]] handles [[Message]]s from
-    * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
+    * @param channel:
+    *   [[Channel]] this [[MessageHandler]] handles [[Message]]s from
+    * @param messageType:
+    *   type of the [[Message]]s this [[MessageHandler]] handles
     */
   def apply[T](
     channel: Channel,
@@ -81,13 +89,16 @@ object MessageHandler {
         tryDecode(message)(codec).map(handler)
     }
 
-  /**
-    * Constructs a [[MessageHandler]], able to handle a [[Message]] of a single type from one of several [[Channel]]s.
+  /** Constructs a [[MessageHandler]], able to handle a [[Message]] of a single type from one of
+    * several [[Channel]]s.
     *
-    * The passed handler should return a [[Stream]] of messages as a response to the incoming message.
+    * The passed handler should return a [[Stream]] of messages as a response to the incoming
+    * message.
     *
-    * @param channels: Set of [[Channel]]s this [[MessageHandler]] handles [[Message]]s from
-    * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
+    * @param channels:
+    *   Set of [[Channel]]s this [[MessageHandler]] handles [[Message]]s from
+    * @param messageType:
+    *   type of the [[Message]]s this [[MessageHandler]] handles
     */
   def apply[T](
     channels: Set[Channel],
@@ -100,19 +111,23 @@ object MessageHandler {
         tryDecode(message)(codec).map(msg => handler(channel, msg))
     }
 
-  private def tryDecode[T: JsonValueCodec](message: Message[RawJson]): Either[Exception, Message[T]] =
+  private def tryDecode[T: JsonValueCodec](message: Message[RawJson])
+    : Either[Exception, Message[T]] =
     message
       .decodeAs[T]
       .left
       .map(e => new Exception(s"Error decoding message: $e"))
 
-  /**
-    * Constructs a [[MessageHandler]], that reports the kernel as busy while a [[Message]] is being processed.
+  /** Constructs a [[MessageHandler]], that reports the kernel as busy while a [[Message]] is being
+    * processed.
     *
-    * Messages can be pushed to the queue passed to the handler, while the [[IO]] it returns is being run.
+    * Messages can be pushed to the queue passed to the handler, while the [[IO]] it returns is
+    * being run.
     *
-    * @param channel: [[Channel]] this [[MessageHandler]] handles [[Message]]s from
-    * @param messageType: type of the [[Message]]s this [[MessageHandler]] handles
+    * @param channel:
+    *   [[Channel]] this [[MessageHandler]] handles [[Message]]s from
+    * @param messageType:
+    *   type of the [[Message]]s this [[MessageHandler]] handles
     */
   def blocking[T: JsonValueCodec](
     channel: Channel,
@@ -169,7 +184,10 @@ object MessageHandler {
 
         val t0 = t.attempt.flatMap {
           case Left(e) =>
-            log.error(s"Internal error while processing ${currentMessage.header.msg_type} message", e)
+            log.error(
+              s"Internal error while processing ${currentMessage.header.msg_type} message",
+              e
+            )
             IO.raiseError(e)
           case Right(()) =>
             IO.unit
