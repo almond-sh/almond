@@ -56,6 +56,10 @@ final class ZeromqSocketImpl(
   channel.setLinger(1000)
   if (socketType == SocketType.ROUTER)
     channel.setRouterHandover(true)
+  if (socketType == SocketType.PUB) {
+    // If publisher's socket queue gets filled, all new messages are dropped; remove queue size constraint
+    channel.setHWM(0)
+  }
 
   @volatile private var opened = false
   @volatile private var closed = false
