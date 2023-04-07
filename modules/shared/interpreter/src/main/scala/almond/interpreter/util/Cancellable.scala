@@ -4,19 +4,18 @@ import cats.effect.IO
 
 import scala.util.{Failure, Success}
 
-/**
-  * Handles cancellation of prior running requests, in case a new one is incoming.
+/** Handles cancellation of prior running requests, in case a new one is incoming.
   *
-  * This only applies if `asyncOpt` returns non-empty results, meaning [[B]] is asynchronously calculated,
-  * and that this calculation can be stopped. If a new request arrives, [[CancellableFuture.cancel]] is
-  * called on previous requests that are still running.
+  * This only applies if `asyncOpt` returns non-empty results, meaning [[B]] is asynchronously
+  * calculated, and that this calculation can be stopped. If a new request arrives,
+  * [[CancellableFuture.cancel]] is called on previous requests that are still running.
   */
 final class Cancellable[A, B](
   sync: A => IO[B],
   asyncOpt: A => Option[CancellableFuture[B]]
 ) {
 
-  private var runningCompletionOpt = Option.empty[CancellableFuture[B]]
+  private var runningCompletionOpt  = Option.empty[CancellableFuture[B]]
   private val runningCompletionLock = new Object
 
   def run(a: A): IO[B] = {

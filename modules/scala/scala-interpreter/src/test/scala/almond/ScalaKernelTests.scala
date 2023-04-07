@@ -26,7 +26,7 @@ object ScalaKernelTests extends TestSuite {
   import almond.interpreter.TestInterpreter.StringBOps
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
-  val bgVarEc = new SequentialExecutionContext
+  val bgVarEc       = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
 
@@ -35,7 +35,6 @@ object ScalaKernelTests extends TestSuite {
     if (!attemptShutdownExecutionContext(interpreterEc))
       println(s"Don't know how to shutdown $interpreterEc")
   }
-
 
   val tests = Tests {
 
@@ -55,7 +54,7 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
+        case (Channel.Publish, _)                                          =>
         case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
       }
 
@@ -75,8 +74,8 @@ object ScalaKernelTests extends TestSuite {
         execute(sessionId, """val s = "exit"""")
       )
 
-
-      val streams = ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
+      val streams =
+        ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
         params = ScalaInterpreterParams(
@@ -112,7 +111,9 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
@@ -121,7 +122,6 @@ object ScalaKernelTests extends TestSuite {
         execute(sessionId, "val n = 2"),
         execute(sessionId, """val s = "other"""", lastMsgId)
       )
-
 
       val streams = ClientStreams.create(input, stopWhen)
 
@@ -170,13 +170,18 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
       val input = Stream(
         execute(sessionId, """class Bar(val value: String)"""),
-        execute(sessionId, """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))"""),
+        execute(
+          sessionId,
+          """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))"""
+        ),
         execute(sessionId, """val b = new Bar("other")""", lastMsgId)
       )
 
@@ -232,7 +237,9 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
@@ -241,7 +248,6 @@ object ScalaKernelTests extends TestSuite {
         execute(sessionId, """handle.withContent("<i>bzz</i>").update()"""),
         execute(sessionId, """val s = "other"""", lastMsgId)
       )
-
 
       val streams = ClientStreams.create(input, stopWhen)
 
@@ -258,7 +264,7 @@ object ScalaKernelTests extends TestSuite {
       t.unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
       val expectedRequestsMessageTypes = Seq(
         "execute_reply",
@@ -312,16 +318,20 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
       val input = Stream(
-        execute(sessionId, "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global"),
+        execute(
+          sessionId,
+          "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global"
+        ),
         execute(sessionId, "val f = Future { Thread.sleep(3000L); 2 }"),
         execute(sessionId, "Thread.sleep(6000L)", lastMsgId)
       )
-
 
       val streams = ClientStreams.create(input, stopWhen)
 
@@ -374,10 +384,12 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute(sessionId, "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global"),
+        execute(
+          sessionId,
+          "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global"
+        ),
         execute(sessionId, "val f = Future { Thread.sleep(3000L); 2 }")
       )
-
 
       val streams = ClientStreams.create(input, stopWhen)
 
@@ -421,7 +433,9 @@ object ScalaKernelTests extends TestSuite {
 
         val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
-            IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+            IO.pure(
+              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+            )
 
         // Initial messages from client
 
@@ -431,7 +445,6 @@ object ScalaKernelTests extends TestSuite {
           execute(sessionId, "a() = 2"),
           execute(sessionId, "a() = 3", lastMsgId)
         )
-
 
         val streams = ClientStreams.create(input, stopWhen)
 
@@ -449,7 +462,7 @@ object ScalaKernelTests extends TestSuite {
         t.unsafeRunTimedOrThrow()
 
         val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-        val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+        val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
         val expectedRequestsMessageTypes = Seq(
           "execute_reply",
@@ -528,17 +541,20 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
+        case (Channel.Publish, _)                                                                =>
         case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
-        case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType =>
+        case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
       }
 
       // When the pseudo-client exits
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(_.msg_id == lastMsgId))
-
+          IO.pure(
+            m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(
+              _.msg_id == lastMsgId
+            )
+          )
 
       // Initial messages from client
 
@@ -547,8 +563,8 @@ object ScalaKernelTests extends TestSuite {
         execute(sessionId, """val s = "ok done"""", msgId = lastMsgId)
       )
 
-
-      val streams = ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
+      val streams =
+        ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
 
       val interpreter = new ScalaInterpreter(
         params = ScalaInterpreterParams(
@@ -562,7 +578,7 @@ object ScalaKernelTests extends TestSuite {
 
       t.unsafeRunTimedOrThrow()
 
-      val messageTypes = streams.generatedMessageTypes()
+      val messageTypes        = streams.generatedMessageTypes()
       val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control))
 
       val expectedMessageTypes = Seq(
@@ -593,15 +609,19 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
       val input = Stream(
-        execute(sessionId, """val url = Thread.currentThread().getContextClassLoader.getResource("foo")"""),
+        execute(
+          sessionId,
+          """val url = Thread.currentThread().getContextClassLoader.getResource("foo")"""
+        ),
         execute(sessionId, """assert(url.toString == "https://google.fr")""", lastMsgId)
       )
-
 
       val streams = ClientStreams.create(input, stopWhen)
 
@@ -677,7 +697,6 @@ object ScalaKernelTests extends TestSuite {
 
       val payloads = streams.executeReplyPayloads
 
-
       val expectedPayloads = Map(
         2 -> Seq(
           RawJson("""{"source":"ask_exit","keepkernel":false}""".bytes)
@@ -743,7 +762,9 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
@@ -768,7 +789,7 @@ object ScalaKernelTests extends TestSuite {
       t.unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
       val expectedRequestsMessageTypes = Seq(
         "execute_reply",
@@ -807,7 +828,9 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
@@ -815,7 +838,11 @@ object ScalaKernelTests extends TestSuite {
         execute(sessionId, """val before = repl.history.toVector"""),
         execute(sessionId, """val a = 2"""),
         execute(sessionId, """val b = a + 1"""),
-        execute(sessionId, """val after = repl.history.toVector.mkString(",").toString""", lastMsgId)
+        execute(
+          sessionId,
+          """val after = repl.history.toVector.mkString(",").toString""",
+          lastMsgId
+        )
       )
 
       val streams = ClientStreams.create(input, stopWhen)
@@ -833,7 +860,7 @@ object ScalaKernelTests extends TestSuite {
       t.unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
       val expectedRequestsMessageTypes = Seq(
         "execute_reply",
@@ -878,7 +905,9 @@ object ScalaKernelTests extends TestSuite {
 
         val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
-            IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+            IO.pure(
+              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+            )
 
         // Initial messages from client
 
@@ -904,7 +933,7 @@ object ScalaKernelTests extends TestSuite {
         t.unsafeRunTimedOrThrow()
 
         val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-        val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+        val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
         val expectedRequestsMessageTypes = Seq(
           "execute_reply",
@@ -970,7 +999,9 @@ object ScalaKernelTests extends TestSuite {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       // Initial messages from client
 
@@ -996,7 +1027,7 @@ object ScalaKernelTests extends TestSuite {
       t.unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
       val expectedRequestsMessageTypes = Seq(
         "execute_reply",

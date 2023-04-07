@@ -9,7 +9,7 @@ final class TestOutputHandler extends OutputHandler {
   import TestOutputHandler._
 
   private val output = new ListBuffer[Output]
-  private val lock = new Object
+  private val lock   = new Object
 
   def stdout(s: String): Unit =
     lock.synchronized {
@@ -41,9 +41,9 @@ object TestOutputHandler {
   sealed abstract class Output extends Product with Serializable
 
   object Output {
-    final case class Stdout(s: String) extends Output
-    final case class Stderr(s: String) extends Output
-    final case class Display(data: DisplayData) extends Output
+    final case class Stdout(s: String)                extends Output
+    final case class Stderr(s: String)                extends Output
+    final case class Display(data: DisplayData)       extends Output
     final case class UpdateDisplay(data: DisplayData) extends Output
   }
 

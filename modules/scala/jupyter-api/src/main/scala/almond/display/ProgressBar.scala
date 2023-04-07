@@ -1,6 +1,6 @@
 package almond.display
 
-final class ProgressBar private(
+final class ProgressBar private (
   val label: Option[String],
   val total: Int,
   val progress: Option[Int],
@@ -43,13 +43,13 @@ final class ProgressBar private(
       }
 
   private def html: String = {
-    val widthPart = s"style='width:$htmlWidth'"
+    val widthPart    = s"style='width:$htmlWidth'"
     val progressPart = progress.fold("")(v => s"value='$v'")
-    val idPart = finalLabelOpt.fold("")(_ => s"id='progress-$displayId'")
+    val idPart       = finalLabelOpt.fold("")(_ => s"id='progress-$displayId'")
 
     // FIXME Escape label?
     val labelPart = finalLabelOpt.fold("")(l => s"<label for='progress-$displayId'>$l</label><br>")
-    val bar = s"""<progress $idPart $widthPart max='$total' $progressPart></progress>"""
+    val bar       = s"""<progress $idPart $widthPart max='$total' $progressPart></progress>"""
 
     labelPart + bar
   }
@@ -58,15 +58,15 @@ final class ProgressBar private(
 
     val bar = progress match {
       case None =>
-        val ellipsis = (total - 2).min(3).max(0)
-        val remaining = (total - 2 - ellipsis).max(0)
-        val remainingLeft = remaining / 2
+        val ellipsis       = (total - 2).min(3).max(0)
+        val remaining      = (total - 2 - ellipsis).max(0)
+        val remainingLeft  = remaining / 2
         val remainingRight = remaining - remainingLeft
         "[" + (" " * remainingLeft) + ("." * ellipsis) + (" " * remainingRight) + "]"
       case Some(p) =>
         val remaining = (total - 2).max(0)
-        val filled = ((p * remaining) / total).max(0)
-        val empty = (remaining - filled).max(0)
+        val filled    = ((p * remaining) / total).max(0)
+        val empty     = (remaining - filled).max(0)
         "[" + ("#" * filled) + (" " * empty) + "]"
     }
 

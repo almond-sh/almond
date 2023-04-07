@@ -26,7 +26,7 @@ object TestUtil {
         ExecuteResult.Success(
           s.data.copy(data = s.data.data.map {
             case ("text/plain", v) => ("text/plain", noCrLf(v))
-            case (k, v) => (k, v)
+            case (k, v)            => (k, v)
           })
         )
       case other => other
@@ -61,7 +61,6 @@ object TestUtil {
       ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
     ).on(Channel.Requests)
 
-
   class SessionRunner(
     interpreterEc: ExecutionContext,
     bgVarEc: ExecutionContext,
@@ -77,7 +76,9 @@ object TestUtil {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId))
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
 
       assert(input.nonEmpty)
 
@@ -114,7 +115,10 @@ object TestUtil {
 
       for ((a, b) <- publish0.zip(publish) if a != b)
         System.err.println(s"Expected $b, got $a")
-      for (k <- replies0.keySet.intersect(expectedReplies.keySet) if replies0.get(k) != expectedReplies.get(k))
+      for (
+        k <- replies0.keySet.intersect(expectedReplies.keySet)
+        if replies0.get(k) != expectedReplies.get(k)
+      )
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got ${replies0(k)}")
       for (k <- replies0.keySet.--(expectedReplies.keySet))
         System.err.println(s"At line $k: expected nothing, got ${replies0(k)}")

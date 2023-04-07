@@ -21,10 +21,16 @@ final class DefaultCommHandler(
 
   private val message: Message[_] =
     Message(
-      header = Header("", "username", "", "", Some(Protocol.versionStr)), // FIXME Hardcoded user / session id
+      header =
+        Header(
+          "",
+          "username",
+          "",
+          "",
+          Some(Protocol.versionStr)
+        ), // FIXME Hardcoded user / session id
       content = ()
     )
-
 
   def registerCommTarget(name: String, target: CommTarget): Unit =
     registerCommTarget(name, IOCommTarget.fromCommTarget(target, commEc))
@@ -39,8 +45,11 @@ final class DefaultCommHandler(
   def unregisterCommId(id: String): Unit =
     commTargetManager.removeId(id)
 
-
-  private def publish[T: JsonValueCodec](messageType: MessageType[T], content: T, metadata: Array[Byte]): Unit =
+  private def publish[T: JsonValueCodec](
+    messageType: MessageType[T],
+    content: T,
+    metadata: Array[Byte]
+  ): Unit =
     message
       .publish(messageType, content, RawJson(metadata))
       .enqueueOn(Channel.Publish, queue)
@@ -54,7 +63,6 @@ final class DefaultCommHandler(
 
   def commClose(id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
     publish(Comm.closeType, Comm.Close(id, RawJson(data)), metadata)
-
 
   def updateDisplay(data: DisplayData): Unit = {
 

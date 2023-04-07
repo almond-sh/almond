@@ -8,10 +8,10 @@ object OS {
 
   sealed abstract class Unix extends OS
 
-  case object Linux extends Unix
-  case object Mac extends Unix
+  case object Linux   extends Unix
+  case object Mac     extends Unix
   case object Windows extends OS
-  case object BSD extends Unix
+  case object BSD     extends Unix
 
   lazy val current = {
 

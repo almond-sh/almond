@@ -23,7 +23,6 @@ final class ZeromqConnection(
 
   import ZeromqConnection._
 
-
   private val log = logCtx(getClass)
 
   private def routerDealer =
@@ -99,9 +98,9 @@ final class ZeromqConnection(
           override def run(): Unit = {
 
             val ignoreExceptions: PartialFunction[Throwable, Unit] = {
-              case ex: ZMQException if ex.getErrorCode == 4 =>
+              case ex: ZMQException if ex.getErrorCode == 4                                       =>
               case ex: ZError.IOException if ex.getCause.isInstanceOf[ClosedByInterruptException] =>
-              case _: ClosedByInterruptException =>
+              case _: ClosedByInterruptException                                                  =>
             }
 
             val heartbeat = threads.context.socket(repReq)
@@ -109,17 +108,15 @@ final class ZeromqConnection(
             heartbeat.setLinger(1000)
             heartbeat.bind(params.heartbeatUri)
 
-            try {
+            try
               while (true) {
                 val msg = heartbeat.recv()
                 heartbeat.send(msg) // FIXME Ignoring return value, that indicates success or not
               }
-            }
             catch ignoreExceptions
-            finally {
+            finally
               try heartbeat.close()
               catch ignoreExceptions
-            }
           }
         }
       )
@@ -129,9 +126,9 @@ final class ZeromqConnection(
   private def channelSocket0(channel: Channel): ZeromqSocket =
     channel match {
       case Channel.Requests => requests0
-      case Channel.Control => control0
-      case Channel.Publish => publish0
-      case Channel.Input => stdin0
+      case Channel.Control  => control0
+      case Channel.Publish  => publish0
+      case Channel.Input    => stdin0
     }
 
   @volatile private var selectorOpt = Option.empty[Selector]
@@ -143,7 +140,6 @@ final class ZeromqConnection(
       case None =>
         throw new Exception("Channel not opened")
     }
-
 
   val open: IO[Unit] = {
 

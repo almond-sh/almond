@@ -24,7 +24,6 @@ final case class CommMessageHandlers(
             .enqueueOn(Channel.Requests, queue)
 
         case Some(target) =>
-
           commManager.addId(target, message.content.comm_id)
           target.open(message.content.comm_id, message.content.data.value)
       }
@@ -51,25 +50,26 @@ final case class CommMessageHandlers(
     }
 
   def commInfoHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, CommInfo.requestType, queueEc, logCtx) { (message, queue) =>
+    MessageHandler.blocking(Channel.Requests, CommInfo.requestType, queueEc, logCtx) {
+      (message, queue) =>
 
-      val commsIO =
-        message.content.target_name match {
-          case None =>
-            commManager.allInfos
-          case Some(name) =>
-            val info = CommInfo.Info(name)
-            commManager.allIds(name).map(_.map(_ -> info).toMap)
-        }
+        val commsIO =
+          message.content.target_name match {
+            case None =>
+              commManager.allInfos
+            case Some(name) =>
+              val info = CommInfo.Info(name)
+              commManager.allIds(name).map(_.map(_ -> info).toMap)
+          }
 
-      for {
-        comms <- commsIO
-        _ <- queue.enqueue1(
-          message
-            .reply(CommInfo.replyType, CommInfo.Reply(comms))
-            .on(Channel.Requests)
-        )
-      } yield ()
+        for {
+          comms <- commsIO
+          _ <- queue.enqueue1(
+            message
+              .reply(CommInfo.replyType, CommInfo.Reply(comms))
+              .on(Channel.Requests)
+          )
+        } yield ()
     }
 
   def messageHandler: MessageHandler =

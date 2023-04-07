@@ -2,7 +2,13 @@ package org.apache.spark.sql.almondinternals
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ConcurrentHashMap, ScheduledFuture, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
+import java.util.concurrent.{
+  ConcurrentHashMap,
+  ScheduledFuture,
+  ScheduledThreadPoolExecutor,
+  ThreadFactory,
+  TimeUnit
+}
 
 import almond.interpreter.api.{CommHandler, CommTarget, OutputHandler}
 import org.apache.spark.scheduler._
@@ -30,7 +36,9 @@ final class ProgressSparkListener(
     commTargetName,
     CommTarget { (_, data) =>
 
-      Try(com.github.plokhotnyuk.jsoniter_scala.core.readFromArray(data)(CancelStageReq.codec)).toEither match {
+      Try(
+        com.github.plokhotnyuk.jsoniter_scala.core.readFromArray(data)(CancelStageReq.codec)
+      ).toEither match {
         case Left(err) =>
           publish.stderr(s"Error decoding message: $err" + '\n')
         case Right(req) =>
@@ -38,9 +46,11 @@ final class ProgressSparkListener(
           if (elems.containsKey(stageId)) {
             publish.stderr(s"Cancelling stage $stageId" + '\n')
             session.sparkContext.cancelStage(stageId)
-          } else {
-            publish.stderr(s"Stage $stageId not found (only have ${elems.asScala.toVector.map(_._1).sorted})" + '\n')
           }
+          else
+            publish.stderr(
+              s"Stage $stageId not found (only have ${elems.asScala.toVector.map(_._1).sorted})" + '\n'
+            )
       }
     }
   )
@@ -103,7 +113,7 @@ private[almondinternals] class ProgressBarUpdater(
     val threadNumber = new AtomicInteger(1)
     (r: Runnable) => {
       val threadNumber0 = threadNumber.getAndIncrement()
-      val t = new Thread(r, s"almond-spark-listener-update-$threadNumber0")
+      val t             = new Thread(r, s"almond-spark-listener-update-$threadNumber0")
       t.setDaemon(true)
       t.setPriority(Thread.NORM_PRIORITY)
       t

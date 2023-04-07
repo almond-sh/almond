@@ -29,7 +29,7 @@ object InputManager {
   ) extends InputStream {
 
     private var bufferOpt = Option.empty[ByteBuffer]
-    private var done = false
+    private var done      = false
 
     private def maybeFetchNewBuffer(): Option[ByteBuffer] =
       if (done)
@@ -61,7 +61,6 @@ object InputManager {
 
         bufferOpt
       }
-
 
     def read(): Int =
       maybeFetchNewBuffer()

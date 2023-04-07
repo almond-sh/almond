@@ -14,11 +14,10 @@ import scala.concurrent.ExecutionContext
 object IOInterpreterTests extends TestSuite {
 
   private val pool = Executors.newScheduledThreadPool(4, ThreadUtil.daemonThreadFactory("test"))
-  private val ec = ExecutionContext.fromExecutorService(pool)
+  private val ec   = ExecutionContext.fromExecutorService(pool)
 
-  override def utestAfterAll() = {
+  override def utestAfterAll() =
     pool.shutdown()
-  }
 
   val tests = Tests {
 
@@ -27,7 +26,8 @@ object IOInterpreterTests extends TestSuite {
       "cancel previous requests" - {
 
         val interpreter: Interpreter = new TestInterpreter
-        val ioInterpreter: IOInterpreter = new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+        val ioInterpreter: IOInterpreter =
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
 
         val ios = Seq(
           // the "cancel" completion checks are only completed if they are cancelled
@@ -55,7 +55,8 @@ object IOInterpreterTests extends TestSuite {
       "cancel previous requests" - {
 
         val interpreter: Interpreter = new TestInterpreter
-        val ioInterpreter: IOInterpreter = new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+        val ioInterpreter: IOInterpreter =
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
 
         val ios = Seq(
           // the "cancel" completions are only completed if they are cancelled
@@ -83,7 +84,8 @@ object IOInterpreterTests extends TestSuite {
       "cancel previous requests" - {
 
         val interpreter: Interpreter = new TestInterpreter
-        val ioInterpreter: IOInterpreter = new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+        val ioInterpreter: IOInterpreter =
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
 
         val ios = Seq(
           // the "cancel" inspections are only completed if they are cancelled

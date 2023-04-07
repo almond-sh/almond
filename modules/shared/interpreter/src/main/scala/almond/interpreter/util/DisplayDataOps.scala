@@ -53,7 +53,7 @@ object DisplayDataOps {
 
   private def isJsonMimeType(mimeType: String): Boolean =
     mimeType == "application/json" ||
-      (mimeType.startsWith("application/") && mimeType.endsWith("+json"))
+    (mimeType.startsWith("application/") && mimeType.endsWith("+json"))
 
   implicit def toDisplayDataOps(displayData: DisplayData): DisplayDataOps =
     new DisplayDataOps(displayData)

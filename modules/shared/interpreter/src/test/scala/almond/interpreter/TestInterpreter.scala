@@ -64,7 +64,8 @@ final class TestInterpreter extends Interpreter {
     else if (code.startsWith("echo:")) {
       count += 1
       ExecuteResult.Success(DisplayData.text(code.stripPrefix("echo:")))
-    } else
+    }
+    else
       ExecuteResult.Error("not input")
 
   private var count = 0
@@ -77,12 +78,20 @@ final class TestInterpreter extends Interpreter {
     val res =
       if (code == "cancel") {
         val p = Promise[Completion]()
-        CancellableFuture(p.future, () => p.complete(Success(Completion(0, code.length, Seq("cancelled")))))
-      } else if (code.startsWith("meta:")) {
+        CancellableFuture(
+          p.future,
+          () => p.complete(Success(Completion(0, code.length, Seq("cancelled"))))
+        )
+      }
+      else if (code.startsWith("meta:")) {
         val c = Completion(pos, pos, Seq("sent"), RawJson(code.drop("meta:".length).bytes))
         CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
-      } else
-        CancellableFuture(Future.successful(Completion(pos, pos, Seq("?"))), () => sys.error("should not happen"))
+      }
+      else
+        CancellableFuture(
+          Future.successful(Completion(pos, pos, Seq("?"))),
+          () => sys.error("should not happen")
+        )
 
     Some(res)
   }
@@ -97,15 +106,17 @@ final class TestInterpreter extends Interpreter {
         val p = Promise[Option[Inspection]]()
         CancellableFuture(
           p.future,
-          () => p.complete(
-            Success(
-              Some(
-                Inspection(Map("cancelled" -> RawJson("true".bytes)))
+          () =>
+            p.complete(
+              Success(
+                Some(
+                  Inspection(Map("cancelled" -> RawJson("true".bytes)))
+                )
               )
             )
-          )
         )
-      } else
+      }
+      else
         CancellableFuture(
           Future.successful(
             Some(
@@ -128,15 +139,17 @@ final class TestInterpreter extends Interpreter {
         val p = Promise[Option[IsCompleteResult]]()
         CancellableFuture(
           p.future,
-          () => p.complete(
-            Success(
-              Some(
-                IsCompleteResult.Invalid
+          () =>
+            p.complete(
+              Success(
+                Some(
+                  IsCompleteResult.Invalid
+                )
               )
             )
-          )
         )
-      } else
+      }
+      else
         CancellableFuture(
           Future.successful(
             Some(
@@ -153,7 +166,7 @@ final class TestInterpreter extends Interpreter {
     sys.error("should not be called")
 
   private var commHandlerOpt0 = Option.empty[CommHandler]
-  override def supportComm = true
+  override def supportComm    = true
   override def setCommHandler(commHandler: CommHandler): Unit =
     commHandlerOpt0 = Some(commHandler)
 

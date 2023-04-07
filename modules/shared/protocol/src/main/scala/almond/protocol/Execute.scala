@@ -14,7 +14,6 @@ object Execute {
     stop_on_error: Option[Boolean] = None
   )
 
-
   sealed abstract class Reply extends Product with Serializable
 
   object Reply {
@@ -49,13 +48,13 @@ object Execute {
         )
     }
 
-
     final case class Error private[protocol] (
       ename: String,
       evalue: String,
       traceback: List[String],
       status: String, // no default value here for the value not to be swallowed by the JSON encoder
-      execution_count: Int = -1 // required in some context (e.g. errored execute_reply from jupyter console)
+      execution_count: Int =
+        -1 // required in some context (e.g. errored execute_reply from jupyter console)
     ) extends Reply {
       assert(status == "error")
     }
@@ -101,7 +100,6 @@ object Execute {
 
   }
 
-
   final case class Input(
     code: String,
     execution_count: Int
@@ -120,7 +118,10 @@ object Execute {
   )
 
   final case class DisplayData(
-    data: Map[String, RawJson], // values are always strings, except if key corresponds to a JSON MIME type
+    data: Map[
+      String,
+      RawJson
+    ], // values are always strings, except if key corresponds to a JSON MIME type
     metadata: Map[String, RawJson],
     transient: DisplayData.Transient = DisplayData.Transient()
   )
@@ -137,15 +138,14 @@ object Execute {
     traceback: List[String]
   )
 
-
   def requestType = MessageType[Request]("execute_request")
-  def inputType = MessageType[Input]("execute_input")
-  def resultType = MessageType[Result]("execute_result")
-  def replyType = MessageType[Reply]("execute_reply")
+  def inputType   = MessageType[Input]("execute_input")
+  def resultType  = MessageType[Result]("execute_result")
+  def replyType   = MessageType[Reply]("execute_reply")
 
-  def errorType = MessageType[Error]("error")
-  def displayDataType = MessageType[DisplayData]("display_data")
-  def streamType = MessageType[Stream]("stream")
+  def errorType             = MessageType[Error]("error")
+  def displayDataType       = MessageType[DisplayData]("display_data")
+  def streamType            = MessageType[Stream]("stream")
   def updateDisplayDataType = MessageType[DisplayData]("update_display_data")
 
   implicit val requestCodec: JsonValueCodec[Request] =
@@ -184,8 +184,8 @@ object Execute {
       def encodeValue(reply: Reply, out: JsonWriter): Unit =
         reply match {
           case s: Reply.Success => successCodec.encodeValue(s, out)
-          case e: Reply.Error => errorCodec.encodeValue(e, out)
-          case a: Reply.Abort => abortCodec.encodeValue(a, out)
+          case e: Reply.Error   => errorCodec.encodeValue(e, out)
+          case a: Reply.Abort   => abortCodec.encodeValue(a, out)
         }
       def nullValue: Reply =
         Reply.Success(0, Map.empty, "ok", Nil)

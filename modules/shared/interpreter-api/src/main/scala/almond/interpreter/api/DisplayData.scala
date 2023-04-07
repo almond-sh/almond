@@ -22,15 +22,15 @@ final case class DisplayData(
 object DisplayData {
 
   object ContentType {
-    def text = "text/plain"
+    def text     = "text/plain"
     def markdown = "text/markdown"
-    def html = "text/html"
-    def latex = "text/latex"
-    def js = "application/javascript"
-    def jpg = "image/jpeg"
-    def png = "image/png"
-    def gif = "image/gif"
-    def svg = "image/svg+xml"
+    def html     = "text/html"
+    def latex    = "text/latex"
+    def js       = "application/javascript"
+    def jpg      = "image/jpeg"
+    def png      = "image/png"
+    def gif      = "image/gif"
+    def svg      = "image/svg+xml"
   }
 
   def text(text: String): DisplayData =

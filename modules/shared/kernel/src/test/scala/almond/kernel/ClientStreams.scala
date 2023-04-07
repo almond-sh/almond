@@ -18,7 +18,10 @@ import scala.util.Try
 final case class ClientStreams(
   source: Stream[IO, (Channel, RawMessage)],
   sink: Pipe[IO, (Channel, RawMessage), Unit],
-  generatedMessages: mutable.ListBuffer[Either[(Channel, Message[RawJson]), (Channel, Message[RawJson])]]
+  generatedMessages: mutable.ListBuffer[Either[
+    (Channel, Message[RawJson]),
+    (Channel, Message[RawJson])
+  ]]
 ) {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -40,7 +43,7 @@ final case class ClientStreams(
       .toList
 
     l match {
-      case Nil => throw new Exception(s"No message of type $msgType on $channel")
+      case Nil     => throw new Exception(s"No message of type $msgType on $channel")
       case List(m) => m
       case _ => throw new Exception(s"Too many messages of type $msgType on $channel (${l.length})")
     }
@@ -62,7 +65,7 @@ final case class ClientStreams(
       .toList
 
     l match {
-      case Nil => throw new Exception(s"No message of type $msgType on $channel")
+      case Nil     => throw new Exception(s"No message of type $msgType on $channel")
       case List(m) => m
       case _ => throw new Exception(s"Too many messages of type $msgType on $channel (${l.length})")
     }
@@ -101,7 +104,7 @@ final case class ClientStreams(
       .collect {
         case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
           m.decodeAs[Execute.Reply] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) => Seq(m.content)
           }
       }
@@ -118,7 +121,7 @@ final case class ClientStreams(
       .collect {
         case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
           m.decodeAs[Execute.Reply] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) => Seq(m.content)
           }
       }
@@ -133,10 +136,11 @@ final case class ClientStreams(
     generatedMessages
       .iterator
       .collect {
-        case Left((Channel.Publish, m)) if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
           val isUpdate = m.header.msg_type == "update_display_data"
           m.decodeAs[Execute.DisplayData] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) => Seq(m.content -> isUpdate)
           }
       }
@@ -147,9 +151,10 @@ final case class ClientStreams(
     generatedMessages
       .iterator
       .collect {
-        case Left((Channel.Publish, m)) if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
           m.decodeAs[Execute.DisplayData] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) => Seq(m.content.data.get("text/plain").fold("")(_.stringOrEmpty))
           }
       }
@@ -170,9 +175,10 @@ final case class ClientStreams(
                 case _ => Nil
               }
           }
-        case Left((Channel.Publish, m)) if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
           m.decodeAs[Execute.DisplayData] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) => m.content.data.get("text/plain").toSeq.map(_.stringOrEmpty)
           }
       }
@@ -212,7 +218,6 @@ object ClientStreams {
 
       s0.evalMap {
         case (c, m) =>
-
           Message.parse[RawJson](m) match {
             case Left(e) =>
               IO.raiseError(new Exception(s"Error decoding message: $e"))
@@ -228,7 +233,9 @@ object ClientStreams {
 
               val resp = handler.handle(c, m0) match {
                 case None =>
-                  IO.raiseError(new Exception(s"Unhandled message on $c of type ${m0.header.msg_type}: $m"))
+                  IO.raiseError(
+                    new Exception(s"Unhandled message on $c of type ${m0.header.msg_type}: $m")
+                  )
                 case Some(Left(e)) =>
                   IO.raiseError(new Exception("Error processing message", e))
                 case Some(Right(s)) =>

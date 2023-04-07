@@ -5,7 +5,13 @@ import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.api.JupyterApi
-import almond.internals.{Capture, FunctionInputStream, FunctionOutputStream, HtmlAnsiOutputStream, UpdatableResults}
+import almond.internals.{
+  Capture,
+  FunctionInputStream,
+  FunctionOutputStream,
+  HtmlAnsiOutputStream,
+  UpdatableResults
+}
 import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
@@ -22,8 +28,8 @@ import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
-/**
-  * Wraps contextual things around when executing code (capturing output, stdin via front-ends, interruption, etc.)
+/** Wraps contextual things around when executing code (capturing output, stdin via front-ends,
+  * interruption, etc.)
   */
 final class Execute(
   trapOutput: Boolean,
@@ -40,7 +46,7 @@ final class Execute(
   private var currentInputManagerOpt0 = Option.empty[InputManager]
 
   private var interruptedStackTraceOpt0 = Option.empty[Array[StackTraceElement]]
-  private var currentThreadOpt0 = Option.empty[Thread]
+  private var currentThreadOpt0         = Option.empty[Thread]
 
   private var history0 = new History(Vector())
 
@@ -49,7 +55,8 @@ final class Execute(
     currentInputManagerOpt0.flatMap { m =>
 
       val res = {
-        implicit val ec = ExecutionContext.global // just using that one to map over an existing future…
+        implicit val ec =
+          ExecutionContext.global // just using that one to map over an existing future…
         log.info("Awaiting input")
         Await.result(
           m.readInput()
@@ -61,7 +68,7 @@ final class Execute(
       log.info("Received input")
 
       res match {
-        case Success(s) => Some(s)
+        case Success(s)                                    => Some(s)
         case Failure(_: InputManager.NoMoreInputException) => None
         case Failure(e) => throw new Exception("Error getting more input", e)
       }
@@ -86,10 +93,11 @@ final class Execute(
     }
 
   private val resultVariables = new mutable.HashMap[String, String]
-  private val resultOutput = new StringBuilder
-  private val resultStream = new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
+  private val resultOutput    = new StringBuilder
+  private val resultStream =
+    new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
-  private var currentLine0 = 0
+  private var currentLine0          = 0
   private var currentNoHistoryLine0 = Int.MaxValue / 2
 
   private val printer0 = Printer(
@@ -123,7 +131,7 @@ final class Execute(
         resultVariables += k -> v
       override def update(k: String, v: String, last: Boolean) =
         updatableResultsOpt0 match {
-          case None => throw new Exception("Results updating not available")
+          case None    => throw new Exception("Results updating not available")
           case Some(r) => r.update(k, v, last)
         }
     }
@@ -133,7 +141,8 @@ final class Execute(
     try {
       currentInputManagerOpt0 = m
       f
-    } finally {
+    }
+    finally {
       currentInputManagerOpt0 = previous
       m.foreach(_.done())
     }
@@ -145,7 +154,8 @@ final class Execute(
       try {
         System.setIn(input0)
         t
-      } finally {
+      }
+      finally {
         System.setIn(previous)
         input0.clear()
       }
@@ -156,32 +166,35 @@ final class Execute(
     try {
       currentPublishOpt0 = handlerOpt
       f
-    } finally {
-      currentPublishOpt0 = previous
     }
+    finally
+      currentPublishOpt0 = previous
   }
 
   private def capturingOutput[T](t: => T): T =
     currentPublishOpt0 match {
-      case None => t
+      case None    => t
       case Some(p) => capture0(p.stdout, p.stderr)(t)
     }
 
   private def interruptible[T](t: => T): T = {
     interruptedStackTraceOpt0 = None
     currentThreadOpt0 = Some(Thread.currentThread())
-    try {
+    try
       Signaller("INT") {
         currentThreadOpt0 match {
           case None =>
             log.warn("Received SIGINT, but no execution is running")
           case Some(t) =>
             interruptedStackTraceOpt0 = Some(t.getStackTrace)
-            log.debug(s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}")
+            log.debug(
+              s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}"
+            )
             if (useThreadInterrupt) {
               log.debug(s"Calling 'Thread.interrupt'")
               t.interrupt()
-            } else {
+            }
+            else {
               log.debug(s"Calling 'Thread.stop'")
               t.stop()
             }
@@ -189,9 +202,8 @@ final class Execute(
       }.apply {
         t
       }
-    } finally {
+    finally
       currentThreadOpt0 = None
-    }
   }
 
   def interrupt(): Unit =
@@ -199,21 +211,22 @@ final class Execute(
       case None =>
         log.warn("Interrupt asked, but no execution is running")
       case Some(t) =>
-        log.debug(s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}")
+        log.debug(
+          s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}"
+        )
         if (useThreadInterrupt) {
           log.debug(s"Calling 'Thread.interrupt'")
           t.interrupt()
-        } else {
+        }
+        else {
           log.debug(s"Calling 'Thread.stop'")
           t.stop()
         }
     }
 
-
   private var lastExceptionOpt0 = Option.empty[Throwable]
 
   def lastExceptionOpt: Option[Throwable] = lastExceptionOpt0
-
 
   private def ammResult(
     ammInterp: ammonite.interp.Interpreter,
@@ -271,17 +284,17 @@ final class Execute(
                 }
 
                 val variables = resultVariables.toMap
-                val res0 = resultOutput.result()
+                val res0      = resultOutput.result()
                 log.debug(s"Result of '$code0': $res0")
                 resultOutput.clear()
                 resultVariables.clear()
                 val data =
-                  if (variables.isEmpty) {
+                  if (variables.isEmpty)
                     if (res0.isEmpty)
                       DisplayData.empty
                     else
                       DisplayData.text(res0)
-                  } else
+                  else
                     updatableResultsOpt0 match {
                       case None =>
                         DisplayData.text(res0)
@@ -342,7 +355,6 @@ final class Execute(
             outputHandler.foreach(_.stderr(err.message)) // necessary?
             err
           case Some(st) =>
-
             val cutoff = Set("$main", "evaluatorRunPrinter")
 
             ExecuteResult.Error(
@@ -350,7 +362,7 @@ final class Execute(
                 "Interrupted!" +: st
                   .takeWhile(x => !cutoff(x.getMethodName))
                   .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
-                ).mkString(System.lineSeparator())
+              ).mkString(System.lineSeparator())
             )
         }
 
@@ -372,28 +384,32 @@ object Execute {
   // these come from Ammonite
   // exception display was tweaked a bit (too much red for notebooks else)
 
-  private def highlightFrame(f: StackTraceElement,
-                     highlightError: fansi.Attrs,
-                     source: fansi.Attrs) = {
+  private def highlightFrame(
+    f: StackTraceElement,
+    highlightError: fansi.Attrs,
+    source: fansi.Attrs
+  ) = {
     val src =
       if (f.isNativeMethod) source("Native Method")
       else if (f.getFileName == null) source("Unknown Source")
       else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
 
     val prefix :+ clsName = f.getClassName.split('.').toSeq
-    val prefixString = prefix.map(_+'.').mkString("")
-    val clsNameString = clsName //.replace("$", error("$"))
+    val prefixString      = prefix.map(_ + '.').mkString("")
+    val clsNameString     = clsName // .replace("$", error("$"))
     val method =
-    fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
-      highlightError(f.getMethodName)
+      fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
+        highlightError(f.getMethodName)
 
     fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
   }
 
-  def showException(ex: Throwable,
-                    error: fansi.Attrs,
-                    highlightError: fansi.Attrs,
-                    source: fansi.Attrs) = {
+  def showException(
+    ex: Throwable,
+    error: fansi.Attrs,
+    highlightError: fansi.Attrs,
+    source: fansi.Attrs
+  ) = {
 
     val cutoff = Set("$main", "evaluatorRunPrinter")
     val traces = Ex.unapplySeq(ex).get.map(exception =>
@@ -409,9 +425,14 @@ object Execute {
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteResult.Error(
-      msg + exOpt.fold("")(ex => (if (msg.isEmpty) "" else "\n") + showException(
-        ex, colors.error(), fansi.Attr.Reset, colors.literal()
-      ))
+      msg + exOpt.fold("")(ex =>
+        (if (msg.isEmpty) "" else "\n") + showException(
+          ex,
+          colors.error(),
+          fansi.Attr.Reset,
+          colors.literal()
+        )
+      )
     )
 
 }

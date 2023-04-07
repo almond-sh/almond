@@ -3,17 +3,17 @@ package almond.interpreter.api
 import java.util.UUID
 import java.nio.charset.StandardCharsets
 
-/**
-  * Kind of message broker between the Jupyter UI and the kernel.
+/** Kind of message broker between the Jupyter UI and the kernel.
   *
   * See https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#custom-messages.
   *
   * Typically available in the implicit scope of user code run via the kernel.
   *
-  * Can be used by users to send messages to custom code running in the browser, and receive messages from it.
+  * Can be used by users to send messages to custom code running in the browser, and receive
+  * messages from it.
   *
-  * Registering a target with name `"target_name"` allows to receive messages from frontends.
-  * From the Jupyter classic UI, one can send messages to this target via code like
+  * Registering a target with name `"target_name"` allows to receive messages from frontends. From
+  * the Jupyter classic UI, one can send messages to this target via code like
   * {{{
   *   var comm = Jupyter.notebook.kernel.comm_manager.new_comm("target_name", '{"a": 2, "b": false}');
   *   comm.open();
@@ -35,7 +35,6 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
   def commMessage(id: String, data: Array[Byte], metadata: Array[Byte]): Unit
   @throws(classOf[IllegalArgumentException])
   def commClose(id: String, data: Array[Byte], metadata: Array[Byte]): Unit
-
 
   final def receiver(
     name: String,

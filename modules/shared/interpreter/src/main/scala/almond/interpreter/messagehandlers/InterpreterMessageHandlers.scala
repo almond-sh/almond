@@ -29,7 +29,6 @@ final case class InterpreterMessageHandlers(
   import com.github.plokhotnyuk.jsoniter_scala.core._
   import InterpreterMessageHandlers._
 
-
   def executeHandler: MessageHandler =
     blocking(Channel.Requests, Execute.requestType, queueEc, logCtx) { (message, queue) =>
 
@@ -75,7 +74,9 @@ final case class InterpreterMessageHandlers(
           case e: ExecuteResult.Error =>
             val extra =
               if (message.content.stop_on_error.getOrElse(false))
-                interpreter.cancelledSignal.set(true) *> runAfterQueued(interpreter.cancelledSignal.set(false))
+                interpreter.cancelledSignal.set(true) *> runAfterQueued(
+                  interpreter.cancelledSignal.set(false)
+                )
               else
                 IO.unit
             val error = Execute.Error("", "", List(e.message))
@@ -92,8 +93,15 @@ final case class InterpreterMessageHandlers(
           case v: ExecuteResult.Success =>
             Execute.Reply.Success(countAfter, v.data.jsonData)
           case ex: ExecuteResult.Error =>
-            val traceBack = Seq(ex.name, ex.message).filter(_.nonEmpty).mkString(": ") :: ex.stackTrace.map("    " + _)
-            Execute.Reply.Error(ex.name, ex.message, traceBack /* or just stackTrace? */, countAfter)
+            val traceBack = Seq(ex.name, ex.message).filter(_.nonEmpty).mkString(
+              ": "
+            ) :: ex.stackTrace.map("    " + _)
+            Execute.Reply.Error(
+              ex.name,
+              ex.message,
+              traceBack /* or just stackTrace? */,
+              countAfter
+            )
           case ExecuteResult.Abort =>
             Execute.Reply.Abort()
           case ExecuteResult.Exit =>
@@ -105,7 +113,6 @@ final case class InterpreterMessageHandlers(
           .enqueueOn(Channel.Requests, queue)
       } yield ()
     }
-
 
   def completeHandler: MessageHandler =
     blocking(Channel.Requests, Complete.requestType, queueEc, logCtx) { (message, queue) =>
@@ -124,7 +131,6 @@ final case class InterpreterMessageHandlers(
       } yield ()
     }
 
-
   def isCompleteHandler: MessageHandler =
     blocking(Channel.Requests, IsComplete.requestType, queueEc, logCtx) { (message, queue) =>
 
@@ -139,12 +145,15 @@ final case class InterpreterMessageHandlers(
       } yield ()
     }
 
-
   def inspectHandler: MessageHandler =
     blocking(Channel.Requests, Inspect.requestType, queueEc, logCtx) { (message, queue) =>
 
       for {
-        resOpt <- interpreter.inspect(message.content.code, message.content.cursor_pos, message.content.detail_level)
+        resOpt <- interpreter.inspect(
+          message.content.code,
+          message.content.cursor_pos,
+          message.content.detail_level
+        )
         reply = Inspect.Reply(
           found = resOpt.nonEmpty,
           data = resOpt.map(_.data).getOrElse(Map.empty),
@@ -156,7 +165,6 @@ final case class InterpreterMessageHandlers(
       } yield ()
     }
 
-
   def historyHandler: MessageHandler =
     blocking(Channel.Requests, History.requestType, queueEc, logCtx) { (message, queue) =>
       // for now, always sending back an empty response
@@ -165,9 +173,13 @@ final case class InterpreterMessageHandlers(
         .enqueueOn(Channel.Requests, queue)
     }
 
-
   def kernelInfoHandler: MessageHandler =
-    blocking(Channel.Requests, MessageType[Unit](KernelInfo.requestType.messageType), queueEc, logCtx) { (message, queue) =>
+    blocking(
+      Channel.Requests,
+      MessageType[Unit](KernelInfo.requestType.messageType),
+      queueEc,
+      logCtx
+    ) { (message, queue) =>
 
       for {
         info <- interpreter.kernelInfo
@@ -176,7 +188,6 @@ final case class InterpreterMessageHandlers(
           .enqueueOn(Channel.Requests, queue)
       } yield ()
     }
-
 
   def handler: MessageHandler =
     kernelInfoHandler.orElse(
@@ -188,18 +199,19 @@ final case class InterpreterMessageHandlers(
 
   def shutdownHandler: MessageHandler =
     // v5.3 spec states "The request can be sent on either the control or shell channels.".
-    MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) { (channel, message) =>
+    MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) {
+      (channel, message) =>
 
-      val reply = message
-        .reply(Shutdown.replyType, Shutdown.Reply(message.content.restart))
-        .streamOn(channel)
+        val reply = message
+          .reply(Shutdown.replyType, Shutdown.Reply(message.content.restart))
+          .streamOn(channel)
 
-      val prepareShutdown = exitSignal
-        .set(true)
-        .flatMap(_ => interpreter.shutdown)
+        val prepareShutdown = exitSignal
+          .set(true)
+          .flatMap(_ => interpreter.shutdown)
 
-      Stream.eval(prepareShutdown)
-        .flatMap(_ => reply)
+        Stream.eval(prepareShutdown)
+          .flatMap(_ => reply)
     }
 
   def interruptHandler: MessageHandler =

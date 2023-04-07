@@ -28,7 +28,7 @@ object UpdatableDisplay {
       .get("almond.ids.random")
       .forall(s => s == "1" || s.toLowerCase(Locale.ROOT) == "true")
 
-  private val idCounter = new AtomicInteger
+  private val idCounter  = new AtomicInteger
   private val divCounter = new AtomicInteger
 
   def generateId(): String =

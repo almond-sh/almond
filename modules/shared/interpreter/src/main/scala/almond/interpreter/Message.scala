@@ -11,8 +11,7 @@ import fs2.Stream
 
 import scala.util.Try
 
-/**
-  * Fully-decoded message, with content of type [[T]]
+/** Fully-decoded message, with content of type [[T]]
   */
 final case class Message[T](
   header: Header,
@@ -34,8 +33,8 @@ final case class Message[T](
       msg_type = messageType.messageType
     )
 
-  /**
-    * Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Publish]] channel.
+  /** Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Publish]]
+    * channel.
     *
     * Sets the identity of the response message for the [[Channel.Publish]] channel.
     */
@@ -53,8 +52,8 @@ final case class Message[T](
       metadata
     )
 
-  /**
-    * Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Requests]] channel.
+  /** Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Requests]]
+    * channel.
     */
   def reply[U](
     messageType: MessageType[U],
@@ -69,8 +68,7 @@ final case class Message[T](
       metadata
     )
 
-  /**
-    * Encodes this [[Message]] as a [[RawMessage]].
+  /** Encodes this [[Message]] as a [[RawMessage]].
     */
   def asRawMessage(implicit encoder: JsonValueCodec[T]): RawMessage =
     RawMessage(
@@ -81,10 +79,12 @@ final case class Message[T](
       writeToArray(content)
     )
 
-
   // helpers
 
-  def decodeAs[U](implicit ev: T =:= RawJson, decoder: JsonValueCodec[U]): Either[Throwable, Message[U]] =
+  def decodeAs[U](implicit
+    ev: T =:= RawJson,
+    decoder: JsonValueCodec[U]
+  ): Either[Throwable, Message[U]] =
     Try(readFromArray[U](ev(content).value))
       .toEither
       .map(t => copy(content = t))
@@ -92,10 +92,14 @@ final case class Message[T](
   def on(channel: Channel)(implicit encoder: JsonValueCodec[T]): (Channel, RawMessage) =
     channel -> asRawMessage
 
-  def streamOn[F[_]](channel: Channel)(implicit encoder: JsonValueCodec[T]): Stream[F, (Channel, RawMessage)] =
+  def streamOn[F[_]](channel: Channel)(implicit
+    encoder: JsonValueCodec[T]
+  ): Stream[F, (Channel, RawMessage)] =
     Stream(channel -> asRawMessage)
 
-  def enqueueOn(channel: Channel, queue: Queue[IO, (Channel, RawMessage)])(implicit encoder: JsonValueCodec[T]): IO[Unit] =
+  def enqueueOn(channel: Channel, queue: Queue[IO, (Channel, RawMessage)])(implicit
+    encoder: JsonValueCodec[T]
+  ): IO[Unit] =
     queue.enqueue1(channel -> asRawMessage)
 
   def clearParentHeader: Message[T] =
@@ -119,13 +123,19 @@ object Message {
 
   def parse[T: JsonValueCodec](rawMessage: RawMessage): Either[Throwable, Message[T]] =
     for {
-      header <- Try(readFromArray[Header](rawMessage.header)).toEither
+      header  <- Try(readFromArray[Header](rawMessage.header)).toEither
       content <- Try(readFromArray[T](rawMessage.content)).toEither
     } yield {
       // FIXME Parent header is optional, but this unnecessarily traps errors
       val parentHeaderOpt = Try(readFromArray[Header](rawMessage.parentHeader)).toOption
 
-      Message(header, content, parentHeaderOpt, rawMessage.idents.toList, RawJson(rawMessage.metadata))
+      Message(
+        header,
+        content,
+        parentHeaderOpt,
+        rawMessage.idents.toList,
+        RawJson(rawMessage.metadata)
+      )
     }
 
 }

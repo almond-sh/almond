@@ -21,7 +21,7 @@ trait VariableInspectorApiImpl extends JupyterApi {
   protected def allowVariableInspector: Option[Boolean]
 
   private var variableTrackingEnabled = new AtomicBoolean(allowVariableInspector.getOrElse(false))
-  private val variables = new ConcurrentLinkedQueue[Variable[_]]
+  private val variables               = new ConcurrentLinkedQueue[Variable[_]]
 
   protected def declareVariable[T](
     name: String,
@@ -60,9 +60,10 @@ trait VariableInspectorApiImpl extends JupyterApi {
       defaultHeight = 1,
       additionalHandlers = variableInspectorImplPPrinter().additionalHandlers
     )
-    val retainedVariables = VariableInspectorApiImpl.removeDuplicatesBy(variables.iterator().asScala.toVector)(_.name)
+    val retainedVariables =
+      VariableInspectorApiImpl.removeDuplicatesBy(variables.iterator().asScala.toVector)(_.name)
     val list = retainedVariables.map(_.iVariable(pprinter))
-    val str = writeToString(list)(iVariableListCodec)
+    val str  = writeToString(list)(iVariableListCodec)
     publish.display(DisplayData.text(str))
   }
 }
@@ -71,7 +72,7 @@ private object VariableInspectorApiImpl {
 
   // keeps the last element for each key
   private def removeDuplicatesBy[T, U](l: Seq[T])(key: T => U): List[T] = {
-    val b = List.newBuilder[T]
+    val b           = List.newBuilder[T]
     val alreadySeen = new mutable.HashSet[U]
     l.reverseIterator.foreach { t =>
       val u = key(t)
@@ -93,7 +94,7 @@ private object VariableInspectorApiImpl {
         varName = name,
         varSize = "",
         varShape = "",
-        varContent = {
+        varContent =
           value() match {
             case Left(str) => str
             case Right(t) =>
@@ -108,8 +109,7 @@ private object VariableInspectorApiImpl {
                 .replaceAll(java.util.regex.Pattern.quote("(") + "\n\\s+", "(")
                 .replaceAll("\n\\s+", " ")
                 .replaceAll("\n", " ")
-          }
-        },
+          },
         varType = tprint.render(TPrintColors.BlackWhite).render,
         isMatrix = false,
         isWidget = None

@@ -29,9 +29,8 @@ final class ScalaInterpreterInspections(
 
   private val log = logCtx(getClass)
 
-
   @volatile private var metabrowseServerOpt0 = Option.empty[(MetabrowseServer, Int, String)]
-  private val metabrowseServerCreateLock = new Object
+  private val metabrowseServerCreateLock     = new Object
 
   private def metabrowseServerOpt() =
     if (metabrowse)
@@ -48,7 +47,11 @@ final class ScalaInterpreterInspections(
 
   private def createMetabrowseServer() = {
 
-    if (metabrowse && !sys.props.contains("org.jboss.logging.provider") && !sys.props.get("almond.adjust.jboss.logging.provider").contains("0")) {
+    if (
+      metabrowse &&
+      !sys.props.contains("org.jboss.logging.provider") &&
+      !sys.props.get("almond.adjust.jboss.logging.provider").contains("0")
+    ) {
       log.info("Setting Java property org.jboss.logging.provider to slf4j")
       sys.props("org.jboss.logging.provider") = "slf4j"
     }
@@ -122,10 +125,10 @@ final class ScalaInterpreterInspections(
       case (metabrowseServer, metabrowsePort0, metabrowseWindowId) =>
         val pressy0 = compilerManager.pressy.compiler
 
-        val prefix = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
-        val suffix = newLine + "}"
+        val prefix  = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
+        val suffix  = newLine + "}"
         val allCode = prefix + code + suffix
-        val index = prefix.length + pos
+        val index   = prefix.length + pos
 
         val currentFile = new scala.reflect.internal.util.BatchSourceFile(
           ammonite.compiler.Compiler.makeFile(allCode.getBytes, name = "Current.sc"),
@@ -136,25 +139,38 @@ final class ScalaInterpreterInspections(
         pressy0.askReload(List(currentFile), r)
         r.get.swap match {
           case Left(e) =>
-            log.warn(s"Error loading '${code.take(pos)}|${code.drop(pos)}' into presentation compiler", e)
+            log.warn(
+              s"Error loading '${code.take(pos)}|${code.drop(pos)}' into presentation compiler",
+              e
+            )
             None
           case Right(()) =>
             val r0 = new scala.tools.nsc.interactive.Response[pressy0.Tree]
-            pressy0.askTypeAt(new scala.reflect.internal.util.OffsetPosition(currentFile, index), r0)
+            pressy0.askTypeAt(
+              new scala.reflect.internal.util.OffsetPosition(currentFile, index),
+              r0
+            )
             r0.get.swap match {
               case Left(e) =>
-                log.debug(s"Getting type info for '${code.take(pos)}|${code.drop(pos)}' via presentation compiler", e)
+                log.debug(
+                  s"Getting type info for '${code.take(pos)}|${code.drop(pos)}' via presentation compiler",
+                  e
+                )
                 None
               case Right(tree) =>
-
-                val r0 = pressy0.askForResponse(() => metabrowseServer.urlForSymbol(pressy0)(tree.symbol))
+                val r0 =
+                  pressy0.askForResponse(() => metabrowseServer.urlForSymbol(pressy0)(tree.symbol))
                 r0.get.swap match {
                   case Left(e) =>
-                    log.warn(s"Error loading '${code.take(pos)}|${code.drop(pos)}' into presentation compiler", e)
+                    log.warn(
+                      s"Error loading '${code.take(pos)}|${code.drop(pos)}' into presentation compiler",
+                      e
+                    )
                     None
                   case Right(relUrlOpt) =>
                     log.debug(s"url of $tree: $relUrlOpt")
-                    val urlOpt = relUrlOpt.map(relUrl => s"http://$metabrowseHost:$metabrowsePort0/$relUrl")
+                    val urlOpt =
+                      relUrlOpt.map(relUrl => s"http://$metabrowseHost:$metabrowsePort0/$relUrl")
 
                     val typeStr = ScalaInterpreterInspections.typeOfTree(pressy0)(tree)
                       .get
@@ -182,7 +198,7 @@ final class ScalaInterpreterInspections(
                 }
             }
         }
-      }
+    }
 
   def shutdown(): Unit =
     for ((metabrowseServer, _, _) <- metabrowseServerOpt0) {
@@ -198,8 +214,14 @@ object ScalaInterpreterInspections {
 
     lazy val javaDirs = {
       val l = Seq(sys.props("java.home")) ++
-        sys.props.get("java.ext.dirs").toSeq.flatMap(_.split(File.pathSeparator)).filter(_.nonEmpty) ++
-        sys.props.get("java.endorsed.dirs").toSeq.flatMap(_.split(File.pathSeparator)).filter(_.nonEmpty)
+        sys.props.get("java.ext.dirs")
+          .toSeq
+          .flatMap(_.split(File.pathSeparator))
+          .filter(_.nonEmpty) ++
+        sys.props.get("java.endorsed.dirs")
+          .toSeq
+          .flatMap(_.split(File.pathSeparator))
+          .filter(_.nonEmpty)
       l.map(_.stripSuffix("/") + "/")
     }
 
@@ -209,18 +231,17 @@ object ScalaInterpreterInspections {
         javaDirs.exists(path.startsWith)
       }
 
-    def classpath(cl: ClassLoader): Stream[java.net.URL] = {
+    def classpath(cl: ClassLoader): Stream[java.net.URL] =
       if (cl == null)
         Stream()
       else {
         val cp = cl match {
           case u: java.net.URLClassLoader => u.getURLs.toStream
-          case _ => Stream()
+          case _                          => Stream()
         }
 
         cp #::: classpath(cl.getParent)
       }
-    }
 
     val baseJars = classpath(loader)
       .map(_.toURI)
@@ -253,17 +274,17 @@ object ScalaInterpreterInspections {
       import c._
 
       val stringOrTree = t match {
-        case t: DefDef => Right(t.symbol.asMethod.info.toLongString)
+        case t: DefDef                  => Right(t.symbol.asMethod.info.toLongString)
         case t: ValDef if t.tpt != null => Left(t.tpt)
         case t: ValDef if t.rhs != null => Left(t.rhs)
-        case x => Left(x)
+        case x                          => Left(x)
       }
 
       stringOrTree match {
-        case Right(string) => Some(string)
-        case Left(null) => None
+        case Right(string)                    => Some(string)
+        case Left(null)                       => None
         case Left(tree) if tree.tpe ne NoType => Some(tree.tpe.widen.toString)
-        case _ => None
+        case _                                => None
       }
     }
 

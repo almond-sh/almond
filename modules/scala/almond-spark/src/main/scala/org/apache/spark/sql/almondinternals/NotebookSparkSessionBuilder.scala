@@ -13,16 +13,15 @@ import org.apache.spark.sql.ammonitesparkinternals.AmmoniteSparkSessionBuilder
 
 import scala.collection.JavaConverters._
 
-class NotebookSparkSessionBuilder
- (implicit
-   interpApi: InterpAPI,
-   replApi: ReplAPI,
-   publish: OutputHandler,
-   commHandler: CommHandler
- ) extends AmmoniteSparkSessionBuilder {
+class NotebookSparkSessionBuilder(implicit
+  interpApi: InterpAPI,
+  replApi: ReplAPI,
+  publish: OutputHandler,
+  commHandler: CommHandler
+) extends AmmoniteSparkSessionBuilder {
 
   private var progress0 = true
-  private var keep0 = true
+  private var keep0     = true
 
   private var logsInDeveloperConsoleOpt = Option.empty[Boolean]
 
@@ -45,7 +44,9 @@ class NotebookSparkSessionBuilder
       case Some(true) =>
         val fileOpt = NotebookSparkSessionBuilder.logFile(classOf[SparkSession])
         if (fileOpt.isEmpty)
-          Console.err.println("Warning: cannot determine log file, logs won't be sent to developer console.")
+          Console.err.println(
+            "Warning: cannot determine log file, logs won't be sent to developer console."
+          )
         fileOpt
       case None =>
         NotebookSparkSessionBuilder.logFile(classOf[SparkSession])
@@ -69,9 +70,9 @@ class NotebookSparkSessionBuilder
       )
 
       session
-    } finally {
-      sendLogOpt.foreach(_.stop())
     }
+    finally
+      sendLogOpt.foreach(_.stop())
   }
 
 }

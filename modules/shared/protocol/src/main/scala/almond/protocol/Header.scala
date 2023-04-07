@@ -18,7 +18,11 @@ final case class Header(
 
 object Header {
 
-  def random(user: String, msgType: MessageType[_], sessionId: String = UUID.randomUUID().toString): Header =
+  def random(
+    user: String,
+    msgType: MessageType[_],
+    sessionId: String = UUID.randomUUID().toString
+  ): Header =
     Header(
       UUID.randomUUID().toString,
       user,

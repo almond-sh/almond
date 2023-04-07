@@ -26,9 +26,12 @@ final class InputHandler(
 
   private val ongoing = new ConcurrentHashMap[String, Promise[String]]
 
-  def inputManager(parentMessage: Message[_], send: (Channel, RawMessage) => IO[Unit]): InputManager =
+  def inputManager(
+    parentMessage: Message[_],
+    send: (Channel, RawMessage) => IO[Unit]
+  ): InputManager =
     new InputManager {
-      private val list = new ConcurrentHashMap[String, Unit]
+      private val list  = new ConcurrentHashMap[String, Unit]
       private var done0 = false
       def done(): Unit = {
         for ((id, ()) <- list.asScala.toSeq; p <- Option(ongoing.remove(id)))
@@ -42,7 +45,7 @@ final class InputHandler(
         else {
 
           val id = UUID.randomUUID().toString
-          val p = Promise[String]() // timeout that if not completed in imparted time?
+          val p  = Promise[String]() // timeout that if not completed in imparted time?
 
           val msg = parentMessage.publish(
             Input.requestType,
@@ -76,7 +79,6 @@ final class InputHandler(
 
       msg.parent_header match {
         case None =>
-
           // I wish the client would send the header back via parent_header…
 
           val m = ongoing.asScala
@@ -84,7 +86,8 @@ final class InputHandler(
             log.warn("Input reply has no parent header")
             val (id, p) = m.head
             resp(id, p)
-          } else {
+          }
+          else {
             log.warn("Unhandled input reply (missing parent header)")
             Stream.empty
           }
@@ -92,7 +95,9 @@ final class InputHandler(
         case Some(parentHeader) =>
           Option(ongoing.get(parentHeader.msg_id)) match {
             case None =>
-              log.warn(s"Unhandled input reply (unrecognized parent message id ${parentHeader.msg_id})")
+              log.warn(
+                s"Unhandled input reply (unrecognized parent message id ${parentHeader.msg_id})"
+              )
               Stream.empty
             case Some(p) =>
               resp(parentHeader.msg_id, p)

@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters._
 
 final class CommTargetManagerImpl extends CommTargetManager {
 
-  private val targets = new ConcurrentHashMap[String, IOCommTarget]
+  private val targets       = new ConcurrentHashMap[String, IOCommTarget]
   private val commIdTargets = new ConcurrentHashMap[String, IOCommTarget]
 
   def addTarget(name: String, target: IOCommTarget): Unit = {
@@ -42,7 +42,6 @@ final class CommTargetManagerImpl extends CommTargetManager {
 
   def removeId(id: String): Option[IOCommTarget] =
     Option(commIdTargets.remove(id))
-
 
   // small and unlikely chance of discrepancies between targets and commIdTargets, as we query them at different times…
   val allInfos: IO[Map[String, CommInfo.Info]] =

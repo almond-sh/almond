@@ -29,9 +29,8 @@ object Inspect {
       Reply("ok", found, data, metadata)
   }
 
-
   def requestType = MessageType[Request]("inspect_request")
-  def replyType = MessageType[Reply]("inspect_reply")
+  def replyType   = MessageType[Reply]("inspect_reply")
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make
