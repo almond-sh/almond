@@ -32,7 +32,7 @@ object KernelTests extends TestSuite {
 
   val tests = Tests {
 
-    "stdin" - {
+    test("stdin") {
 
       // These describe how the pseudo-client reacts to incoming messages - it answers input_request, and
       // ignores stuff on the publish channel
@@ -84,7 +84,7 @@ object KernelTests extends TestSuite {
       assert(inputReply.content.value == "> foo")
     }
 
-    "client comm" - {
+    test("client comm") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
@@ -147,7 +147,7 @@ object KernelTests extends TestSuite {
       assert(stdMsgTypes == expectedStdMsgTypes)
     }
 
-    "history request" - {
+    test("history request") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) => IO.pure(m.header.msg_type == "history_reply")
@@ -176,7 +176,7 @@ object KernelTests extends TestSuite {
       assert(msgTypes == expectedMsgTypes)
     }
 
-    "shutdown request" - {
+    test("shutdown request") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, _) =>
@@ -208,7 +208,7 @@ object KernelTests extends TestSuite {
       assert(msgTypes == expectedMsgTypes)
     }
 
-    "completion metadata" - {
+    test("completion metadata") {
 
       val ignoreExpectedReplies = MessageHandler.discard {
         case (Channel.Publish, _)                                           =>

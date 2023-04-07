@@ -32,12 +32,12 @@ object EvaluatorTests extends TestSuite {
 
   val tests = Tests {
 
-    "from Ammonite" - {
+    test("from Ammonite") {
 
       // These sessions were copy-pasted from ammonite.session.EvaluatorTests
       // Running them here to test our custom preprocessor.
 
-      "multistatement" - {
+      test("multistatement") {
         val sv         = scala.util.Properties.versionNumberString
         val isScala212 = sv.startsWith("2.12.")
         runner.run(
@@ -61,7 +61,7 @@ object EvaluatorTests extends TestSuite {
         )
       }
 
-      "lazy vals" - {
+      test("lazy vals") {
         runner.run(
           Seq(
             "lazy val x = 'h'"            -> (if (TestUtil.isScala2) "" else "x: Char = <lazy>"),
@@ -87,7 +87,7 @@ object EvaluatorTests extends TestSuite {
         )
       }
 
-      "vars" - {
+      test("vars") {
         runner.run(
           Seq(
             "var x: Int = 10" -> ifNotVarUpdates("x: Int = 10"),
@@ -103,7 +103,7 @@ object EvaluatorTests extends TestSuite {
       }
     }
 
-    "type annotation" - {
+    test("type annotation") {
       if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2)
         runner.run(
           Seq(
@@ -117,7 +117,7 @@ object EvaluatorTests extends TestSuite {
         )
     }
 
-    "pattern match still compile" - {
+    test("pattern match still compile") {
       // no updates for var-s defined via pattern matching
       runner.run(
         Seq(
