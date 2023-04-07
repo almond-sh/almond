@@ -69,7 +69,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest = "3.1.3"
+  def scala3Latest = "3.2.2"
   def scala3Compat = "3.1.3"
   def cross2_3Version(sv: String) =
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
@@ -79,6 +79,8 @@ object ScalaVersions {
   val binaries = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
+    "3.2.1",
+    "3.2.0",
     scala3Compat,
     "3.1.2",
     "3.1.1",
