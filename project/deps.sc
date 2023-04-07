@@ -72,7 +72,7 @@ object Deps {
 
 object ScalaVersions {
   def scala3Latest = "3.2.2"
-  def scala3Compat = "3.1.3"
+  def scala3Compat = "3.2.0"
   def cross2_3Version(sv: String) =
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
     else "2.13.10"
@@ -82,11 +82,7 @@ object ScalaVersions {
   val all = Seq(
     scala3Latest,
     "3.2.1",
-    "3.2.0",
     scala3Compat,
-    "3.1.2",
-    "3.1.1",
-    "3.1.0",
     scala213,
     "2.13.9",
     "2.13.8",
