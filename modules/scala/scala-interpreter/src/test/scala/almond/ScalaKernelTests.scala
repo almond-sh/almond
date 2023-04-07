@@ -675,7 +675,8 @@ object ScalaKernelTests extends TestSuite {
       val interpreter = new ScalaInterpreter(
         params = ScalaInterpreterParams(
           initialColors = Colors.BlackWhite
-        )
+        ),
+        logCtx = logCtx
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
@@ -725,7 +726,8 @@ object ScalaKernelTests extends TestSuite {
         params = ScalaInterpreterParams(
           initialColors = Colors.BlackWhite,
           trapOutput = true
-        )
+        ),
+        logCtx = logCtx
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
