@@ -106,23 +106,26 @@ object AmmInterpreter {
 
       log.info("Creating Ammonite interpreter")
 
-      val ammInterp0: ammonite.interp.Interpreter =
-        new ammonite.interp.Interpreter(
-          ammonite.compiler.CompilerBuilder,
-          ammonite.compiler.Parsers,
+      val interpParams = ammonite.interp.Interpreter.Parameters(
           printer = execute0.printer,
           storage = storage0,
           wd = os.pwd,
           colors = replApi.colors,
           verboseOutput = true, // ???
+          alreadyLoadedDependencies =
+            ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
+      )
+      val ammInterp0: ammonite.interp.Interpreter =
+        new ammonite.interp.Interpreter(
+          ammonite.compiler.CompilerBuilder,
+          () => ammonite.compiler.Parsers,
           getFrame = () => frames0().head,
           createFrame = () => {
             val f = replApi.sess.childFrame(frames0().head); frames0() = f :: frames0(); f
           },
           replCodeWrapper = codeWrapper,
           scriptCodeWrapper = codeWrapper,
-          alreadyLoadedDependencies =
-            ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
+          parameters = interpParams
         ) {
           override val compilerManager = new AlmondCompilerLifecycleManager(
             storage0.dirOpt.map(_.toNIO),
