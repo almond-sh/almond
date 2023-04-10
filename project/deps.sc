@@ -40,7 +40,7 @@ object Deps {
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else
       ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
-  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.13.6"
+  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.13.7"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.9.0"
@@ -63,8 +63,6 @@ object Deps {
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.7"
-  def sparkSql24               = ivy"org.apache.spark::spark-sql:2.4.0"
-  def sparkSql                 = ivy"org.apache.spark::spark-sql:3.2.0"
   def utest                    = ivy"com.lihaoyi::utest:0.8.1"
 }
 

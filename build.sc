@@ -269,30 +269,6 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   )
 }
 
-class AlmondSpark(val crossScalaVersion: String) extends AlmondModule with Mima {
-  def compileModuleDeps = Seq(
-    scala.`scala-kernel-api`()
-  )
-  def ivyDeps = Agg(
-    Deps.ammoniteSpark,
-    Deps.jsoniterScalaCore
-  )
-  def compileIvyDeps = T {
-    val sparkSql =
-      if (crossScalaVersion.startsWith("2.12."))
-        Deps.sparkSql24
-      else
-        Deps.sparkSql
-    Agg(
-      Deps.ammoniteReplApi(crossScalaVersion),
-      Deps.jsoniterScalaMacros,
-      sparkSql
-    )
-  }
-  // TODO?
-  // sources.in(Compile, doc) := Nil
-}
-
 class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule with Mima {
   def ivyDeps = Agg(
     Deps.jvmRepr
@@ -348,7 +324,6 @@ object scala extends Module {
   object `scala-kernel-helper`
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
-  object `almond-spark`   extends Cross[AlmondSpark](ScalaVersions.scala212, ScalaVersions.scala213)
   object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 }
 
@@ -685,6 +660,16 @@ object ci extends Module {
       else ("v" + almondVersion, false)
     Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
       launchers: _*
+    )
+  }
+}
+
+object dummy extends Module {
+  // dummy module to get Scala Steward updates for ammonite-spark
+  object `amm-spark` extends ScalaModule {
+    def scalaVersion = ScalaVersions.scala212
+    def ivyDeps = super.ivyDeps() ++ Agg(
+      Deps.ammoniteSpark
     )
   }
 }
