@@ -10,6 +10,7 @@ import almond.kernel.install.Install
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
+import cats.effect.unsafe.IORuntime
 import coursier.cputil.ClassPathUtil
 
 import scala.language.reflectiveCalls
@@ -185,7 +186,7 @@ object ScalaKernel extends CaseApp[Options] {
     try
       Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx, fmtMessageHandler)
         .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
-        .unsafeRunSync()
+        .unsafeRunSync()(IORuntime.global)
     finally
       interpreter.shutdown()
   }

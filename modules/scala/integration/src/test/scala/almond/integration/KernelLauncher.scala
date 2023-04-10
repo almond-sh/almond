@@ -5,6 +5,7 @@ import almond.channels.{Channel, Connection, ConnectionParameters, Message => Ra
 import almond.testkit.Dsl._
 import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 import fs2.concurrent.SignallingRef
 
@@ -153,13 +154,8 @@ object KernelLauncher {
 
         val poisonPill: (Channel, RawMessage) = null
 
-        val s = {
-          implicit val shift = IO.contextShift(ExecutionContext.global)
-          SignallingRef[IO, Boolean](false).unsafeRunSync()
-        }
+        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
 
-        implicit val contextShift =
-          IO.contextShift(ExecutionContext.global) // hope that EC will do the job…
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
           fib2 <- streams.sink(conn.stream().interruptWhen(s)).compile.drain.start
@@ -175,14 +171,14 @@ object KernelLauncher {
           }
         } yield ()
 
-        try Await.result(t.unsafeToFuture(), 1.minute)
+        try Await.result(t.unsafeToFuture()(IORuntime.global), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
       }
 
       def close(): Unit =
-        conn.close.unsafeRunSync()
+        conn.close.unsafeRunSync()(IORuntime.global)
     }
 
   def runner(): Runner with AutoCloseable =
@@ -243,9 +239,9 @@ object KernelLauncher {
           bind = false,
           threads,
           TestLogging.logCtx
-        ).unsafeRunSync()
+        ).unsafeRunSync()(IORuntime.global)
 
-        conn.open.unsafeRunSync()
+        conn.open.unsafeRunSync()(IORuntime.global)
 
         val sess = session(conn)
         sessions = sess :: sessions

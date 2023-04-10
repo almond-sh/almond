@@ -61,7 +61,7 @@ class Channels(val crossScalaVersion: String) extends AlmondModule with Mima {
     shared.logger()
   )
   def ivyDeps = Agg(
-    Deps.fs2,
+    Deps.fs2(crossScalaVersion),
     Deps.jeromq
   )
   object test extends Tests with AlmondTestModule
@@ -103,7 +103,7 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   def ivyDeps = Agg(
     Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,
-    Deps.fs2
+    Deps.fs2(crossScalaVersion)
   )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(

@@ -7,7 +7,8 @@ import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
 import almond.protocol.{Execute, Inspect, MessageType, RawJson}
 import cats.effect.IO
-import fs2.concurrent.Queue
+import cats.effect.std.Queue
+import cats.effect.unsafe.IORuntime
 import fs2.{Pipe, Stream}
 
 import scala.collection.compat.immutable.LazyList
@@ -268,14 +269,11 @@ object ClientStreams {
 
     val poisonPill: (Channel, RawMessage) = null
 
-    val q = {
-      implicit val shift = IO.contextShift(ExecutionContext.global)
-      Queue.bounded[IO, (Channel, RawMessage)](10).unsafeRunSync()
-    }
+    val q = Queue.bounded[IO, (Channel, RawMessage)](10).unsafeRunSync()(IORuntime.global)
 
     val sink: Pipe[IO, (Channel, RawMessage), Unit] = { s =>
 
-      val s0 = Stream.bracket(IO.unit)(_ => q.enqueue1(poisonPill))
+      val s0 = Stream.bracket(IO.unit)(_ => q.offer(poisonPill))
         .flatMap(_ => s)
 
       s0.evalMap {
@@ -288,7 +286,7 @@ object ClientStreams {
 
               val extra = stopWhen(c, m0).flatMap {
                 case true =>
-                  q.enqueue1(poisonPill)
+                  q.offer(poisonPill)
                 case false =>
                   IO.unit
               }
@@ -301,7 +299,7 @@ object ClientStreams {
                 case Some(Left(e)) =>
                   IO.raiseError(new Exception("Error processing message", e))
                 case Some(Right(s)) =>
-                  s.evalMap(q.enqueue1).compile.drain
+                  s.evalMap(q.offer).compile.drain
               }
 
               // bracket?
@@ -315,7 +313,7 @@ object ClientStreams {
     }
 
     ClientStreams(
-      initialMessages ++ q.dequeue.takeWhile(_ != poisonPill).evalMap {
+      initialMessages ++ Stream.repeatEval(q.take).takeWhile(_ != poisonPill).evalMap {
         case (c, m) =>
           Message.parse[RawJson](m) match {
             case Left(e) =>

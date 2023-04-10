@@ -17,7 +17,8 @@ import almond.interpreter.messagehandlers.{
 import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import cats.effect.IO
-import fs2.concurrent.{Queue, SignallingRef}
+import cats.effect.std.Queue
+import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
 
 import scala.concurrent.ExecutionContext
@@ -37,10 +38,7 @@ final case class Kernel(
 
   def replies(requests: Stream[IO, (Channel, RawMessage)]): Stream[IO, (Channel, RawMessage)] = {
 
-    val exitSignal = {
-      implicit val shift = IO.contextShift(kernelThreads.scheduleEc) // or another ExecutionContext?
-      SignallingRef[IO, Boolean](false)
-    }
+    val exitSignal = SignallingRef[IO, Boolean](false)
 
     Stream.eval(exitSignal).flatMap { exitSignal0 =>
 
@@ -50,7 +48,7 @@ final case class Kernel(
         Some(inputHandler),
         kernelThreads.queueEc,
         logCtx,
-        io => mainQueue.enqueue1(Some(Stream.eval_(io))),
+        io => mainQueue.offer(Some(Stream.exec(io))),
         exitSignal0
       )
 
@@ -99,20 +97,17 @@ final case class Kernel(
 
         sendStatus(Status.starting) ++
           sendStatus(Status.busy) ++
-          Stream.eval_(attemptInit) ++
+          Stream.exec(attemptInit) ++
           sendStatus(Status.idle)
       }
 
       val mainStream = {
 
-        val requests0 = {
-          implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
-          requests.interruptWhen(exitSignal0)
-        }
+        val requests0 = requests.interruptWhen(exitSignal0)
 
         // For each incoming message, an IO that processes it, and gives the response messages
         val streams: Stream[IO, Stream[IO, (Channel, RawMessage)]] =
-          requests0.map {
+          requests0.parEvalMap(20) {
             case (channel, rawMessage) =>
               interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
                 case None =>
@@ -121,57 +116,47 @@ final case class Kernel(
                   immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
                     case None =>
                       log.warn(s"Ignoring unhandled message on $channel:\n$rawMessage")
-                      Stream.empty
+                      IO.pure(Stream.empty)
 
                     case Some(output) =>
                       // process stdin messages and send response back straightaway
-                      output
+                      IO.pure(output)
                   }
 
                 case Some(output) =>
                   // enqueue stream that processes the incoming message, so that the main messages are
                   // still processed and answered in order
-                  Stream.eval_(mainQueue.enqueue1(Some(output)))
+                  mainQueue.offer(Some(output)).map(_ => Stream.empty)
               }
           }
 
         // Try to process messages eagerly, to e.g. process comm messages even while an execute_request is
         // being processed.
         // Order of the main messages and their answers is still preserved via mainQueue, see also comments above.
-        val mergedStreams = {
-          implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
-          streams.parJoin(20) // https://twitter.com/mpilquist/status/943653692745666560
-        }
+        val mergedStreams = streams.parJoinUnbounded
 
         // Put poison pill (null) at the end of mainQueue when all input messages have been processed
-        val s1 = Stream.bracket(IO.unit)(_ => mainQueue.enqueue1(None))
+        val s1 = Stream.bracket(IO.unit)(_ => mainQueue.offer(None))
           .flatMap(_ => mergedStreams)
 
         // Reponses for the main messages
-        val s2 = mainQueue
-          .dequeue
+        val s2 = Stream.repeatEval(mainQueue.take)
           .takeWhile(_.nonEmpty)
           .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
 
         // Merge s1 (messages answered straightaway and enqueuing of the main messages) and s2 (responses of main
         // messages, that are processed sequentially via mainQueue)
-        {
-          implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
-          s1.merge(s2)
-        }
+        s1.merge(s2)
       }
 
       // Put poison pill (null) at the end of backgroundMessagesQueue when all input messages have been processed
       // and answered.
-      val mainStream0 = Stream.bracket(IO.unit)(_ => backgroundMessagesQueue.enqueue1(null))
+      val mainStream0 = Stream.bracket(IO.unit)(_ => backgroundMessagesQueue.offer(null))
         .flatMap(_ => initStream ++ mainStream)
 
       // Merge responses to all incoming messages with background messages (comm messages sent by user code when it
       // is run)
-      {
-        implicit val shift = IO.contextShift(kernelThreads.scheduleEc)
-        mainStream0.merge(backgroundMessagesQueue.dequeue.takeWhile(_ != null))
-      }
+      mainStream0.merge(Stream.repeatEval(backgroundMessagesQueue.take).takeWhile(_ != null))
     }
   }
 
@@ -273,14 +258,8 @@ object Kernel {
     extraHandler: MessageHandler
   ): IO[Kernel] =
     for {
-      backgroundMessagesQueue <- {
-        implicit val shift = IO.contextShift(kernelThreads.queueEc)
-        Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
-      }
-      mainQueue <- {
-        implicit val shift = IO.contextShift(kernelThreads.queueEc)
-        Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
-      }
+      backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
+      mainQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {

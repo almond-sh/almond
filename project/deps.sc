@@ -48,9 +48,10 @@ object Deps {
   def coursier           = ivy"io.get-coursier::coursier:2.1.3"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
-  def fs2                = ivy"co.fs2::fs2-core:2.5.11"
-  def jansi              = ivy"org.fusesource.jansi:jansi:2.4.0"
-  def jeromq             = ivy"org.zeromq:jeromq:0.5.3"
+  def fs2(sv: String) =
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.6.1" else ivy"co.fs2:fs2-core_2.13:3.6.1"
+  def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
+  def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =

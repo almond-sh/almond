@@ -6,6 +6,7 @@ import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
 import almond.protocol.RawJson
 import almond.util.ThreadUtil
+import cats.effect.unsafe.IORuntime
 import cats.implicits._
 import utest._
 
@@ -38,7 +39,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()
+        val res = t.unsafeRunSync()(IORuntime.global)
         val expectedRes = Seq(
           Some(IsCompleteResult.Invalid),
           Some(IsCompleteResult.Invalid),
@@ -67,7 +68,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()
+        val res = t.unsafeRunSync()(IORuntime.global)
         val expectedRes = Seq(
           Completion(0, "cancel".length, Seq("cancelled")),
           Completion(0, "cancel".length, Seq("cancelled")),
@@ -96,7 +97,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()
+        val res = t.unsafeRunSync()(IORuntime.global)
         val expectedRes = Seq(
           Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
           Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),

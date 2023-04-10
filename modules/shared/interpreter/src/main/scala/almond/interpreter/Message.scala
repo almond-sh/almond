@@ -6,7 +6,7 @@ import java.util.UUID
 import almond.channels.{Channel, Message => RawMessage}
 import almond.protocol.{Header, MessageType, RawJson}
 import cats.effect.IO
-import fs2.concurrent.Queue
+import cats.effect.std.Queue
 import fs2.Stream
 
 import scala.util.Try
@@ -100,7 +100,7 @@ final case class Message[T](
   def enqueueOn(channel: Channel, queue: Queue[IO, (Channel, RawMessage)])(implicit
     encoder: JsonValueCodec[T]
   ): IO[Unit] =
-    queue.enqueue1(channel -> asRawMessage)
+    queue.offer(channel -> asRawMessage)
 
   def clearParentHeader: Message[T] =
     copy(parent_header = None)

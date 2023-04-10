@@ -21,11 +21,11 @@ object IOCommTarget {
       extends IOCommTarget {
 
     def open(id: String, data: Array[Byte]): IO[Unit] =
-      IO.shift(commEc) *> IO(commTarget.open(id, data))
+      IO(commTarget.open(id, data)).evalOn(commEc)
     def message(id: String, data: Array[Byte]): IO[Unit] =
-      IO.shift(commEc) *> IO(commTarget.message(id, data))
+      IO(commTarget.message(id, data)).evalOn(commEc)
     def close(id: String, data: Array[Byte]): IO[Unit] =
-      IO.shift(commEc) *> IO(commTarget.close(id, data))
+      IO(commTarget.close(id, data)).evalOn(commEc)
   }
 
 }

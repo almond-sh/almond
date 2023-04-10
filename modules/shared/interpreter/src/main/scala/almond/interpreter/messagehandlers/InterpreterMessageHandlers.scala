@@ -10,9 +10,11 @@ import almond.logger.LoggerContext
 import almond.protocol._
 import almond.protocol.Codecs.unitCodec
 import cats.effect.IO
+import cats.effect.std.Queue
+import cats.effect.unsafe.IORuntime
 import cats.syntax.apply._
 import fs2.Stream
-import fs2.concurrent.{Queue, SignallingRef}
+import fs2.concurrent.SignallingRef
 
 import scala.concurrent.ExecutionContext
 
@@ -35,7 +37,7 @@ final case class InterpreterMessageHandlers(
       val handler = new QueueOutputHandler(message, queue, commHandlerOpt)
 
       lazy val inputManagerOpt = inputHandlerOpt.map { h =>
-        h.inputManager(message, (c, m) => queue.enqueue1((c, m)))
+        h.inputManager(message, (c, m) => queue.offer((c, m)))
       }
 
       // TODO Take message.content.silent into account
@@ -239,7 +241,7 @@ object InterpreterMessageHandlers {
       message
         .publish(Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
         .enqueueOn(Channel.Publish, queue)
-        .unsafeRunSync()
+        .unsafeRunSync()(IORuntime.global)
 
     def stdout(s: String): Unit =
       print("stdout", s)
@@ -257,7 +259,7 @@ object InterpreterMessageHandlers {
       message
         .publish(Execute.displayDataType, content)
         .enqueueOn(Channel.Publish, queue)
-        .unsafeRunSync()
+        .unsafeRunSync()(IORuntime.global)
     }
 
     def updateDisplay(displayData: DisplayData): Unit =

@@ -12,6 +12,7 @@ import almond.testkit.TestLogging.logCtx
 import almond.util.SequentialExecutionContext
 import ammonite.util.Colors
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.eed3si9n.expecty.Expecty.expect
 import fs2.Stream
 
@@ -20,6 +21,7 @@ import java.nio.file.Paths
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration.FiniteDuration
 
 object TestUtil {
 
@@ -45,8 +47,13 @@ object TestUtil {
   implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
     def unsafeRunTimedOrThrow(duration: Duration = Duration.Inf): T =
-      io.unsafeRunTimed(duration).getOrElse {
-        throw new Exception("Timeout")
+      duration match {
+        case finite: FiniteDuration =>
+          io.unsafeRunTimed(finite)(IORuntime.global).getOrElse {
+            throw new Exception("Timeout")
+          }
+        case _ =>
+          io.unsafeRunSync()(IORuntime.global)
       }
   }
 

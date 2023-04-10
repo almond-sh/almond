@@ -6,7 +6,8 @@ import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.Message
 import almond.protocol._
 import cats.effect.IO
-import fs2.concurrent.Queue
+import cats.effect.std.Queue
+import cats.effect.unsafe.IORuntime
 
 import scala.concurrent.ExecutionContext
 
@@ -53,7 +54,7 @@ final class DefaultCommHandler(
     message
       .publish(messageType, content, RawJson(metadata))
       .enqueueOn(Channel.Publish, queue)
-      .unsafeRunSync()
+      .unsafeRunSync()(IORuntime.global)
 
   def commOpen(targetName: String, id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
     publish(Comm.openType, Comm.Open(id, targetName, RawJson(data)), metadata)

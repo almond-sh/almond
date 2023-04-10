@@ -144,9 +144,9 @@ object Display {
         contentType -> Base64.getEncoder.encodeToString(rawImage)
       }
       else {
-        val dimensionAttrs = dimensionMetadata(width, height)
-          .map { case (k, v) => s"$k=$v" }
-          .mkString(" ")
+        val dimensionAttrs = dimensionMetadata(width, height).map { case (k, v) =>
+          s"$k=$v"
+        }.mkString(" ")
         ContentType.html -> s"<img src='$url' $dimensionAttrs/>"
       }
       DisplayData(

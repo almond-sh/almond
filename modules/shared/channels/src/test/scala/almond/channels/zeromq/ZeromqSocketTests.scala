@@ -5,6 +5,7 @@ import java.util.concurrent.Executors
 import almond.channels.{ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.util.Secret
+import cats.effect.unsafe.IORuntime
 import org.zeromq.{SocketType, ZMQ}
 import utest._
 
@@ -87,7 +88,7 @@ object ZeromqSocketTests extends TestSuite {
           _ <- rep.close
         } yield ()
 
-      t.unsafeRunSync()
+      t.unsafeRunSync()(IORuntime.global)
     }
 
     test("simpleWithNoKey") {
@@ -150,7 +151,7 @@ object ZeromqSocketTests extends TestSuite {
           _ <- rep.close
         } yield ()
 
-      t.unsafeRunSync()
+      t.unsafeRunSync()(IORuntime.global)
     }
 
   }

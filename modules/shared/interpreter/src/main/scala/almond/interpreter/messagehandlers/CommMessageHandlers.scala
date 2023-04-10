@@ -64,7 +64,7 @@ final case class CommMessageHandlers(
 
         for {
           comms <- commsIO
-          _ <- queue.enqueue1(
+          _ <- queue.offer(
             message
               .reply(CommInfo.replyType, CommInfo.Reply(comms))
               .on(Channel.Requests)
