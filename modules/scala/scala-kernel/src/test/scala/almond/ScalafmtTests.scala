@@ -107,14 +107,14 @@ object ScalafmtTests extends TestSuite {
 
   val tests = Tests {
 
-    "empty" - {
+    test("empty") {
       val request         = Format.Request(ListMap())
       val messages0       = messages(scalafmt, request)
       val processMessages = endsWithFormatReply(messages0)
       assert(processMessages.isEmpty)
     }
 
-    "simple" - {
+    test("simple") {
       val initialCode  = snippet1
       val expectedCode = formattedSnippet1
 
@@ -138,7 +138,7 @@ object ScalafmtTests extends TestSuite {
       assert(formattedCode == expectedCode)
     }
 
-    "multiple cells" - {
+    test("multiple cells") {
       val request = Format.Request(ListMap(
         "cell1" -> snippet1,
         "cell2" -> snippet2

@@ -10,8 +10,8 @@ object MessageTests extends TestSuite {
   import TestInterpreter._
 
   val tests = Tests {
-    "metadata" - {
-      "empty" - {
+    test("metadata") {
+      test("empty") {
         val rawMsg = RawMessage(
           Nil,
           """{"username":"","version":"5.2","session":"66fee418-b43a-42b2-bba9-cc91ffac014a","msg_id":"40fe2409-d5ad-4a5d-a71c-31411eeb2ea5","msg_type":"execute_request","date":"2018-09-06T08:27:35.616295Z"}""".bytes,
@@ -37,7 +37,7 @@ object MessageTests extends TestSuite {
         assert(res == expectedRes)
       }
 
-      "jupyterlab-like" - {
+      test("jupyterlab-like") {
         val rawMsg = RawMessage(
           Nil,
           """{"username":"","version":"5.2","session":"66fee418-b43a-42b2-bba9-cc91ffac014a","msg_id":"40fe2409-d5ad-4a5d-a71c-31411eeb2ea5","msg_type":"execute_request","date":"2018-09-06T08:27:35.616295Z"}""".bytes,

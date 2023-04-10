@@ -152,12 +152,12 @@ object ScalaInterpreterTests extends TestSuite {
 
   val tests = Tests {
 
-    "execute" - {
+    test("execute") {
 
       // Code running is tested in (much) more detail in Ammonite itself.
       // We just test that things are wired up correctly here.
 
-      "value" - {
+      test("value") {
         val code        = "val n = 2"
         val res         = interpreter.execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("n: Int = 2"))
@@ -180,14 +180,14 @@ object ScalaInterpreterTests extends TestSuite {
         assert(textOpt == expectedTextOpt)
       }
 
-      "exception" - {
+      test("exception") {
         val code = """sys.error("foo")"""
         val res  = interpreter.execute(code)
         assert(res.asError.exists(_.message.contains("java.lang.RuntimeException: foo")))
       }
     }
 
-    "completion" - {
+    test("completion") {
 
       // Completions are tested in more detail in Ammonite too.
       // Compared to it, we filter out stuff that contains '$', and pay
@@ -195,7 +195,7 @@ object ScalaInterpreterTests extends TestSuite {
       // (the Jupyter UI will replace some of the user code with a completion
       // using that parameter).
 
-      * - {
+      test {
         val code        = "repl.la"
         val expectedRes = Completion(5, 7, Seq("lastException"))
         val res         = interpreter.complete(code, code.length)
@@ -216,7 +216,7 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res == expectedRes || alternativeRes == alternativeExpectedRes)
       }
 
-      * - {
+      test {
         if (TestUtil.isScala2) listTest()
         else "disabled"
       }
@@ -246,14 +246,14 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res == expectedRes)
       }
 
-      * - {
+      test {
         if (TestUtil.isScala2) hashMapTest()
         else "disabled"
       }
 
     }
 
-    "predef code" - {
+    test("predef code") {
       "simple" - Predef.simple()
       "no variable name" - Predef.noVariableName()
       test("compilation error") {
@@ -263,7 +263,7 @@ object ScalaInterpreterTests extends TestSuite {
       "exception" - Predef.exception()
     }
 
-    "predef files" - {
+    test("predef files") {
       "simple" - Predef.simple(fileBased = true)
       "no variable name" - Predef.noVariableName(fileBased = true)
       test("compilation error") {
@@ -273,14 +273,14 @@ object ScalaInterpreterTests extends TestSuite {
       "exception" - Predef.exception(fileBased = true)
     }
 
-    "silent" - {
-      "defaults false" - {
+    test("silent") {
+      test("defaults false") {
         val code        = "val silent = kernel.silent"
         val res         = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text("silent: Boolean = false"))
         assert(res == expectedRes)
       }
-      "can be set to true" - {
+      test("can be set to true") {
         val code =
           """
             | val silentBefore = kernel.silent
@@ -294,7 +294,7 @@ object ScalaInterpreterTests extends TestSuite {
         ))
         assert(TestUtil.noCrLf(res) == TestUtil.noCrLf(expectedRes))
       }
-      "can be set to false" - {
+      test("can be set to false") {
         val code =
           """
             | kernel.silent(true)
@@ -309,7 +309,7 @@ object ScalaInterpreterTests extends TestSuite {
         ))
         assert(TestUtil.noCrLf(res) == TestUtil.noCrLf(expectedRes))
       }
-      "affects subsequent calls to execute when enabled" - {
+      test("affects subsequent calls to execute when enabled") {
         val code0 =
           """
             | kernel.silent(true)
@@ -337,7 +337,7 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res2 == expectedRes2)
       }
 
-      "affects subsequent calls to execute when disabled" - {
+      test("affects subsequent calls to execute when disabled") {
         val code0 = "kernel.silent(true)"
         val code1 =
           """
@@ -375,9 +375,9 @@ object ScalaInterpreterTests extends TestSuite {
       }
     }
 
-    "dependencies" - {
-      "auto dependency" - {
-        "example" - {
+    test("dependencies") {
+      test("auto dependency") {
+        test("example") {
           if (TestUtil.isScala212) {
             val code =
               """import $ivy.`org.scalacheck::scalacheck:1.14.0`
@@ -389,8 +389,8 @@ object ScalaInterpreterTests extends TestSuite {
         }
       }
 
-      "auto version" - {
-        "simple" - {
+      test("auto version") {
+        test("simple") {
           val code =
             """import $ivy.`org.scalacheck::scalacheck:_ compat`
               |import org.scalacheck.Arbitrary

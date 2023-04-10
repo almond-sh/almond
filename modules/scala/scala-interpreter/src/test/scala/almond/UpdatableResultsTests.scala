@@ -14,7 +14,7 @@ object UpdatableResultsTests extends TestSuite {
 
   val tests = Tests {
 
-    "early update" - {
+    test("early update") {
       val updates = new java.util.concurrent.ConcurrentLinkedQueue[DisplayData]
       val r       = new UpdatableResults(ec, LoggerContext.nop, updates.add)
       r.update("<foo>", "value", last = true)

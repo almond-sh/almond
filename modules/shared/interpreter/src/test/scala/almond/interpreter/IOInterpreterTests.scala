@@ -21,9 +21,9 @@ object IOInterpreterTests extends TestSuite {
 
   val tests = Tests {
 
-    "completion check" - {
+    test("completion check") {
 
-      "cancel previous requests" - {
+      test("cancel previous requests") {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
@@ -50,9 +50,9 @@ object IOInterpreterTests extends TestSuite {
 
     }
 
-    "completion" - {
+    test("completion") {
 
-      "cancel previous requests" - {
+      test("cancel previous requests") {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
@@ -79,9 +79,9 @@ object IOInterpreterTests extends TestSuite {
 
     }
 
-    "inspection" - {
+    test("inspection") {
 
-      "cancel previous requests" - {
+      test("cancel previous requests") {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =

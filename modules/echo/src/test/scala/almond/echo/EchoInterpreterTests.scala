@@ -49,25 +49,25 @@ object EchoInterpreterTests extends TestSuite {
         assert(res == expectedRes)
       }
 
-      * - {
+      test {
         val res         = interpreter.complete("pri")
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }
 
-      * - {
+      test {
         val res         = interpreter.complete("pri", 0)
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }
 
-      * - {
+      test {
         val res         = interpreter.complete("pri", 1)
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
       }
 
-      * - {
+      test {
         val res         = interpreter.complete("pri foo", 1)
         val expectedRes = Completion(0, 3, Seq("print"))
         assert(res == expectedRes)
@@ -79,29 +79,29 @@ object EchoInterpreterTests extends TestSuite {
       val interpreter: Interpreter = new EchoInterpreter
 
       test("none") {
-        * - {
+        test {
           val res = interpreter.inspect("foo", 2)
           assert(res.isEmpty)
         }
 
-        * - {
+        test {
           val res = interpreter.inspect("print foo", 7)
           assert(res.isEmpty)
         }
       }
 
       test("print") {
-        * - {
+        test {
           val res = interpreter.inspect("print foo", 0)
           assert(res.nonEmpty)
         }
 
-        * - {
+        test {
           val res = interpreter.inspect("print foo", 2)
           assert(res.nonEmpty)
         }
 
-        * - {
+        test {
           val res = interpreter.inspect("print foo", "print".length)
           assert(res.nonEmpty)
         }

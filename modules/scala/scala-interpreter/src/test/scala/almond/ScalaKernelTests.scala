@@ -38,7 +38,7 @@ object ScalaKernelTests extends TestSuite {
 
   val tests = Tests {
 
-    "stdin" - {
+    test("stdin") {
 
       // How the pseudo-client behaves
 
@@ -100,7 +100,7 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
-    "stop on error" - {
+    test("stop on error") {
 
       // How the pseudo-client behaves
 
@@ -159,7 +159,7 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
-    "jvm-repr" - {
+    test("jvm-repr") {
 
       // How the pseudo-client behaves
 
@@ -226,7 +226,7 @@ object ScalaKernelTests extends TestSuite {
       assert(displayData == expectedDisplayData)
     }
 
-    "updatable display" - {
+    test("updatable display") {
 
       // How the pseudo-client behaves
 
@@ -307,7 +307,7 @@ object ScalaKernelTests extends TestSuite {
       assert(displayData == expectedDisplayData)
     }
 
-    "auto-update Future results upon completion" - {
+    test("auto-update Future results upon completion") {
 
       // How the pseudo-client behaves
 
@@ -367,7 +367,7 @@ object ScalaKernelTests extends TestSuite {
 
     }
 
-    "auto-update Future results in background upon completion" - {
+    test("auto-update Future results in background upon completion") {
 
       // same as above, except no cell is running when the future completes
 
@@ -421,7 +421,7 @@ object ScalaKernelTests extends TestSuite {
       assert(messageTypes == expectedMessageTypes)
     }
 
-    "auto-update Rx stuff upon change" - {
+    test("auto-update Rx stuff upon change") {
 
       if (isScala212) {
         // How the pseudo-client behaves
@@ -520,7 +520,7 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
-    "handle interrupt messages" - {
+    test("handle interrupt messages") {
 
       val sessionId = UUID.randomUUID().toString
       val lastMsgId = UUID.randomUUID().toString
@@ -598,7 +598,7 @@ object ScalaKernelTests extends TestSuite {
       assert(controlMessageTypes == expectedControlMessageTypes)
     }
 
-    "start from custom class loader" - {
+    test("start from custom class loader") {
 
       // How the pseudo-client behaves
 
@@ -659,7 +659,7 @@ object ScalaKernelTests extends TestSuite {
       assert(messageTypes == expectedMessageTypes)
     }
 
-    "exit" - {
+    test("exit") {
 
       val sessionId = UUID.randomUUID().toString
 
@@ -675,7 +675,8 @@ object ScalaKernelTests extends TestSuite {
       val interpreter = new ScalaInterpreter(
         params = ScalaInterpreterParams(
           initialColors = Colors.BlackWhite
-        )
+        ),
+        logCtx = logCtx
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
@@ -706,7 +707,7 @@ object ScalaKernelTests extends TestSuite {
       assert(payloads == expectedPayloads)
     }
 
-    "trap output" - {
+    test("trap output") {
 
       val sessionId = UUID.randomUUID().toString
 
@@ -725,7 +726,8 @@ object ScalaKernelTests extends TestSuite {
         params = ScalaInterpreterParams(
           initialColors = Colors.BlackWhite,
           trapOutput = true
-        )
+        ),
+        logCtx = logCtx
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads)
@@ -751,7 +753,7 @@ object ScalaKernelTests extends TestSuite {
       assert(messageTypes == expectedMessageTypes)
     }
 
-    "last exception" - {
+    test("last exception") {
 
       // How the pseudo-client behaves
 
@@ -817,7 +819,7 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
-    "history" - {
+    test("history") {
 
       // How the pseudo-client behaves
 
@@ -893,7 +895,7 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
-    "update vars" - {
+    test("update vars") {
       if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) {
 
         // How the pseudo-client behaves
@@ -1075,7 +1077,7 @@ object ScalaKernelTests extends TestSuite {
       assert(displayData == expectedDisplayData)
     }
 
-    "update lazy vals" - {
+    test("update lazy vals") {
       if (TestUtil.isScala2) updateLazyValsTest()
       else "disabled"
     }
