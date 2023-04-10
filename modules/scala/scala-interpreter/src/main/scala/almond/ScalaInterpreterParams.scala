@@ -33,5 +33,6 @@ final case class ScalaInterpreterParams(
   autoUpdateLazyVals: Boolean = true,
   autoUpdateVars: Boolean = true,
   allowVariableInspector: Option[Boolean] = None,
-  useThreadInterrupt: Boolean = false
+  useThreadInterrupt: Boolean = false,
+  outputDir: Either[os.Path, Boolean] = Right(true)
 )
