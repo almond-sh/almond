@@ -28,6 +28,10 @@ final case class Options(
   autoVersion: List[String] = Nil,
   defaultAutoDependencies: Boolean = true,
   defaultAutoVersions: Boolean = true,
+  @HelpMessage("Default almond-spark version to load when Spark is loaded as a library")
+  defaultAlmondSparkVersion: Option[String] = None,
+  @HelpMessage("Default almond-scalapy version to load when ScalaPy is loaded as a library")
+  defaultAlmondScalapyVersion: Option[String] = None,
   @HelpMessage("Force Maven properties during dependency resolution")
   forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
@@ -67,6 +71,15 @@ final case class Options(
 
   private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
+  private lazy val ammSparkVersion = defaultAlmondSparkVersion
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .getOrElse(Properties.ammoniteSparkVersion)
+  private lazy val almondScalapyVersion = defaultAlmondScalapyVersion
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .getOrElse(Properties.version)
+
   def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
 
     val default =
@@ -74,11 +87,11 @@ final case class Options(
         Map(
           Module.of("org.apache.spark", "*") -> Seq(Dependency.of(
             Module.of("sh.almond", s"almond-spark_$sbv"),
-            Properties.version
+            ammSparkVersion
           )),
           Module.of("me.shadaj", "scalapy*") -> Seq(Dependency.of(
             Module.of("sh.almond", s"almond-scalapy_$sbv"),
-            Properties.version
+            almondScalapyVersion
           ))
         )
       else
@@ -125,7 +138,7 @@ final case class Options(
     val default =
       if (defaultAutoVersions)
         Map(
-          Module.of("sh.almond", s"almond-spark_$sbv")   -> Properties.version,
+          Module.of("sh.almond", s"almond-spark_$sbv")   -> Properties.ammoniteSparkVersion,
           Module.of("sh.almond", s"ammonite-spark_$sbv") -> Properties.ammoniteSparkVersion
         )
       else
