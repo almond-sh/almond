@@ -107,13 +107,13 @@ object AmmInterpreter {
       log.info("Creating Ammonite interpreter")
 
       val interpParams = ammonite.interp.Interpreter.Parameters(
-          printer = execute0.printer,
-          storage = storage0,
-          wd = os.pwd,
-          colors = replApi.colors,
-          verboseOutput = true, // ???
-          alreadyLoadedDependencies =
-            ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
+        printer = execute0.printer,
+        storage = storage0,
+        wd = os.pwd,
+        colors = replApi.colors,
+        verboseOutput = true, // ???
+        alreadyLoadedDependencies =
+          ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
       )
       val ammInterp0: ammonite.interp.Interpreter =
         new ammonite.interp.Interpreter(

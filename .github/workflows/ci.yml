@@ -108,6 +108,20 @@ jobs:
     - run: ./mill docs.generate
       shell: bash
 
+  format:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/setup-action@v1.3.0
+      with:
+        jvm: "temurin:17"
+        apps: scalafmt:3.0.0
+    - run: scalafmt --check
+
   publishLocal:
     runs-on: ubuntu-latest
     steps:
