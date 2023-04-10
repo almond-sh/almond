@@ -73,7 +73,8 @@ object AmmInterpreter {
     autoUpdateVars: Boolean,
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
-    variableInspectorEnabled: () => Boolean
+    variableInspectorEnabled: () => Boolean,
+    outputDir: Either[os.Path, Boolean]
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -115,9 +116,16 @@ object AmmInterpreter {
         alreadyLoadedDependencies =
           ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
       )
+      val outputDir0 = outputDir match {
+        case Left(path)   => Some(path.toNIO)
+        case Right(true)  => Some(os.temp.dir(prefix = "almond-output").toNIO)
+        case Right(false) => None
+      }
       val ammInterp0: ammonite.interp.Interpreter =
         new ammonite.interp.Interpreter(
-          ammonite.compiler.CompilerBuilder,
+          ammonite.compiler.CompilerBuilder(
+            outputDir = outputDir0
+          ),
           () => ammonite.compiler.Parsers,
           getFrame = () => frames0().head,
           createFrame = () => {
@@ -136,6 +144,7 @@ object AmmInterpreter {
             autoUpdateLazyVals,
             autoUpdateVars,
             variableInspectorEnabled,
+            outputDir0,
             logCtx
           )
         }

@@ -124,7 +124,14 @@ object ScalaKernel extends CaseApp[Options] {
         autoUpdateLazyVals = options.autoUpdateLazyVals,
         autoUpdateVars = options.autoUpdateVars,
         allowVariableInspector = options.variableInspector,
-        useThreadInterrupt = options.useThreadInterrupt
+        useThreadInterrupt = options.useThreadInterrupt,
+        outputDir = options.outputDirectory
+          .filter(_.trim.nonEmpty)
+          .map(os.Path(_, os.pwd))
+          .toLeft {
+            options.tmpOutputDirectory
+              .getOrElse(true) // Create tmp output dir by default
+          }
       ),
       logCtx = logCtx
     )

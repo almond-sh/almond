@@ -14,6 +14,7 @@ import coursier.parse.{DependencyParser, ModuleParser}
 import scala.collection.compat._
 import scala.jdk.CollectionConverters._
 
+// format: off
 @ProgName("almond")
 final case class Options(
   install: Boolean = false,
@@ -66,8 +67,14 @@ final case class Options(
   @HelpMessage(
     "Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel."
   )
-  useThreadInterrupt: Boolean = false
+  useThreadInterrupt: Boolean = false,
+
+  @ExtraName("outputDir")
+    outputDirectory: Option[String] = None,
+  @ExtraName("tmpOutputDir")
+    tmpOutputDirectory: Option[Boolean] = None
 ) {
+  // format: on
 
   private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
 
