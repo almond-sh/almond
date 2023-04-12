@@ -8,6 +8,7 @@ import almond.interpreter.input.InputManager
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
+import almond.toree.{CellMagicHook, LineMagicHook}
 import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
@@ -81,6 +82,11 @@ final class ScalaInterpreter(
       silent0,
       params.allowVariableInspector
     )
+
+  if (params.toreeMagics) {
+    jupyterApi.addExecuteHook(LineMagicHook.hook(replApi.pprinter))
+    jupyterApi.addExecuteHook(CellMagicHook.hook(jupyterApi.publish))
+  }
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
 

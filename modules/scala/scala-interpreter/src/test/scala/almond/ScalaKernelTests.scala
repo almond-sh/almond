@@ -20,6 +20,7 @@ import fs2.Stream
 import utest._
 
 import scala.collection.compat._
+import scala.util.Properties
 
 object ScalaKernelTests extends TestSuite {
 
@@ -960,6 +961,153 @@ object ScalaKernelTests extends TestSuite {
       )
     }
 
+    test("toree AddDeps") {
+      toreeAddDepsTest()
+    }
+    // unsupported yet, needs tweaking in the Ammonite dependency parser
+    // test("toree AddDeps intransitive") {
+    //   toreeAddDepsTest(transitive = false)
+    // }
+
+    def toreeAddDepsTest(transitive: Boolean = true): Unit = {
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      val sbv = {
+        val sv = Properties.versionNumberString
+        if (sv.startsWith("2.")) sv.split('.').take(2).mkString(".")
+        else sv.takeWhile(_ != '.')
+      }
+
+      kernel.execute(
+        "import caseapp.CaseApp",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
+      )
+      kernel.execute(
+        "import caseapp.util._",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
+      )
+      val suffix = if (transitive) " --transitive" else ""
+      kernel.execute(
+        s"%AddDeps     com.github.alexarchambault case-app_$sbv 2.1.0-M24" + suffix,
+        "import $ivy.$                                               " + (" " * sbv.length) + maybePostImportNewLine,
+        ignoreStreams = true // ignoring coursier messages (that it prints when downloading things)
+      )
+      kernel.execute(
+        "import caseapp.CaseApp",
+        "import caseapp.CaseApp" + maybePostImportNewLine
+      )
+      if (transitive)
+        kernel.execute(
+          "import caseapp.util._",
+          "import caseapp.util._" + maybePostImportNewLine
+        )
+      else
+        kernel.execute(
+          "import caseapp.util._",
+          errors = Seq(
+            ("", "Compilation Failed", List("Compilation Failed"))
+          ),
+          ignoreStreams = true
+        )
+    }
+
+    test("toree Html") {
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      kernel.execute(
+        """%%html
+          |<p>
+          |<b>Hello</b>
+          |</p>
+          |""".stripMargin,
+        "",
+        displaysHtml = Seq(
+          """<p>
+            |<b>Hello</b>
+            |</p>
+            |""".stripMargin
+        )
+      )
+    }
+
+    test("toree Truncation") {
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      val nl = System.lineSeparator()
+
+      kernel.execute(
+        "%truncation",
+        "",
+        stdout =
+          "Truncation is currently on" + nl
+      )
+      kernel.execute(
+        "%truncation off",
+        "",
+        stdout =
+          "Output will NOT be truncated" + nl
+      )
+      kernel.execute(
+        "(1 to 200).toVector",
+        "res0: Vector[Int] = " + (1 to 200).toVector.toString
+      )
+      kernel.execute(
+        "%truncation on",
+        "",
+        stdout =
+          "Output WILL be truncated." + nl
+      )
+      kernel.execute(
+        "(1 to 200).toVector",
+        "res1: Vector[Int] = " +
+          (1 to 38)
+            .toVector
+            .map("  " + _ + "," + "\n")
+            .mkString("Vector(" + "\n", "", "...")
+      )
+    }
   }
 
 }

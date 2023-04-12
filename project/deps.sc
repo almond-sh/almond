@@ -104,4 +104,9 @@ object ScalaVersions {
     "2.12.10",
     "2.12.9"
   ).distinct
+
+  def binary(sv: String) =
+    if (sv.startsWith("2.12.")) scala212
+    else if (sv.startsWith("2.13.")) scala213
+    else scala3Compat
 }

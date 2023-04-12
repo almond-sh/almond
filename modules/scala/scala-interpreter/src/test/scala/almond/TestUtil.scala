@@ -55,10 +55,13 @@ object TestUtil {
       displaysText: Seq[String] = null,
       displaysHtml: Seq[String] = null,
       displaysTextUpdates: Seq[String] = null,
-      displaysHtmlUpdates: Seq[String] = null
+      displaysHtmlUpdates: Seq[String] = null,
+      ignoreStreams: Boolean = false,
+      stdout: String = null
     )(implicit sessionId: SessionId): Unit = {
 
-      val expectError0 = expectError || Option(errors).exists(_.nonEmpty)
+      val expectError0   = expectError || Option(errors).nonEmpty
+      val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty
 
       val input = Stream(
         TestUtil.execute(code, stopOnError = !expectError0)
@@ -73,7 +76,8 @@ object TestUtil {
         .unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+        .filter(if (ignoreStreams0) _ != "stream" else _ => true)
 
       val expectedRequestsMessageTypes =
         if (reply == null && !expectError0)
@@ -102,6 +106,11 @@ object TestUtil {
           prefix :+ "execute_result"
       }
       assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      if (stdout != null) {
+        val stdoutMessages = streams.output.mkString
+        assert(stdout == stdoutMessages)
+      }
 
       val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
       assert(replies == Option(reply).toVector)

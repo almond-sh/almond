@@ -86,4 +86,11 @@ object OutputHandler {
       underlying.updateDisplay(displayData)
   }
 
+  object NopOutputHandler extends OutputHandler {
+    def stdout(s: String): Unit                       = ()
+    def stderr(s: String): Unit                       = ()
+    def display(displayData: DisplayData): Unit       = ()
+    def updateDisplay(displayData: DisplayData): Unit = ()
+  }
+
 }

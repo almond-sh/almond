@@ -131,7 +131,8 @@ object ScalaKernel extends CaseApp[Options] {
           .toLeft {
             options.tmpOutputDirectory
               .getOrElse(true) // Create tmp output dir by default
-          }
+          },
+        toreeMagics = options.toreeMagics
       ),
       logCtx = logCtx
     )

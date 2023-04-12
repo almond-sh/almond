@@ -159,12 +159,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     if (crossScalaVersion.startsWith("3."))
       Seq(
         shared.interpreter(ScalaVersions.scala3Compat),
-        scala.`scala-kernel-api`()
+        scala.`scala-kernel-api`(),
+        scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
     else
       Seq(
         shared.interpreter(),
-        scala.`scala-kernel-api`()
+        scala.`scala-kernel-api`(),
+        scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
   def ivyDeps = T {
     val metabrowse =
@@ -302,6 +304,12 @@ class Echo(val crossScalaVersion: String) extends AlmondModule {
   }
 }
 
+class ToreeHooks(val crossScalaVersion: String) extends AlmondModule {
+  def compileModuleDeps = super.compileModuleDeps ++ Seq(
+    scala.`scala-kernel-api`(ScalaVersions.binary(crossScalaVersion))
+  )
+}
+
 object shared extends Module {
   object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.binaries: _*)
   object logger                 extends Cross[Logger](ScalaVersions.binaries: _*)
@@ -325,6 +333,8 @@ object scala extends Module {
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
   object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
+
+  object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
 }
 
 object echo extends Cross[Echo](ScalaVersions.binaries: _*)

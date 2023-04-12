@@ -13,7 +13,8 @@ def writeKernelJson(launcher: Path, jupyterDir: Path): Unit = {
       "$launcherPath",
       "--log", "info",
       "--connection-file", "{connection_file}",
-      "--variable-inspector"
+      "--variable-inspector",
+      "--toree-magics"
     ]
   }"""
   Files.write(dir.resolve("kernel.json"), kernelJson.getBytes("UTF-8"))

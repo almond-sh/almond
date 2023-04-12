@@ -72,7 +72,10 @@ final case class Options(
   @ExtraName("outputDir")
     outputDirectory: Option[String] = None,
   @ExtraName("tmpOutputDir")
-    tmpOutputDirectory: Option[Boolean] = None
+    tmpOutputDirectory: Option[Boolean] = None,
+
+  @HelpMessage("Add experimental support for Toree magics")
+    toreeMagics: Boolean = false
 ) {
   // format: on
 

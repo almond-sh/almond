@@ -193,6 +193,16 @@ final case class ClientStreams(
               }
           }
         case Left((Channel.Publish, m))
+            if m.header.msg_type == "stream" =>
+          m.decodeAs[Execute.Stream] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              if (m.content.name == "stdout")
+                Seq(m.content.text)
+              else
+                Nil
+          }
+        case Left((Channel.Publish, m))
             if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
           m.decodeAs[Execute.DisplayData] match {
             case Left(_)  => Nil
