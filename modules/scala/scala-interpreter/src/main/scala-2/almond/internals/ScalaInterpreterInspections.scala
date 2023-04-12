@@ -14,6 +14,7 @@ import ammonite.util.Util.newLine
 import metabrowse.server.{MetabrowseServer, Sourcepath}
 import scala.meta.dialects
 
+import scala.collection.compat._
 import scala.tools.nsc.Global
 import scala.tools.nsc.interactive.{Global => Interactive}
 import scala.util.Random
@@ -231,13 +232,13 @@ object ScalaInterpreterInspections {
         javaDirs.exists(path.startsWith)
       }
 
-    def classpath(cl: ClassLoader): Stream[java.net.URL] =
+    def classpath(cl: ClassLoader): immutable.LazyList[java.net.URL] =
       if (cl == null)
-        Stream()
+        immutable.LazyList()
       else {
         val cp = cl match {
-          case u: java.net.URLClassLoader => u.getURLs.toStream
-          case _                          => Stream()
+          case u: java.net.URLClassLoader => u.getURLs.to(immutable.LazyList)
+          case _                          => immutable.LazyList()
         }
 
         cp #::: classpath(cl.getParent)
