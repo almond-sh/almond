@@ -29,9 +29,8 @@ final class InterpreterToIOInterpreter(
 
   private val cancelledSignal0 = {
     implicit val shift =
-      IO.contextShift(
-        interpreterEc
-      ) // maybe not the right ec, but that one shouldn't be used yet at that point
+      // maybe not the right ec, but that one shouldn't be used yet at that point
+      IO.contextShift(interpreterEc)
     SignallingRef[IO, Boolean](false).unsafeRunSync()
   }
   def cancelledSignal: SignallingRef[IO, Boolean] =

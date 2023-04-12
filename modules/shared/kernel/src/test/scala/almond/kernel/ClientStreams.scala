@@ -191,7 +191,7 @@ object ClientStreams {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
 
-  private implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
+  implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
     def stringOrEmpty: String =
       Try(readFromArray[String](rawJson.value)).toOption.getOrElse("")
   }

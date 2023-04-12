@@ -44,17 +44,129 @@ object TestUtil {
       }
   }
 
+  final case class SessionId(sessionId: String = UUID.randomUUID().toString)
+
+  implicit class KernelOps(private val kernel: Kernel) extends AnyVal {
+    def execute(
+      code: String,
+      reply: String = null,
+      expectError: Boolean = false,
+      displaysText: Seq[String] = null,
+      displaysHtml: Seq[String] = null,
+      displaysTextUpdates: Seq[String] = null,
+      displaysHtmlUpdates: Seq[String] = null
+    )(implicit sessionId: SessionId): Unit = {
+
+      val input = Stream(
+        TestUtil.execute(code, stopOnError = !expectError)
+      )
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) => IO.pure(m.header.msg_type == "execute_reply")
+
+      val streams = ClientStreams.create(input, stopWhen)
+
+      kernel.run(streams.source, streams.sink)
+        .unsafeRunTimedOrThrow()
+
+      val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
+      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+
+      val expectedRequestsMessageTypes =
+        if (reply == null && !expectError)
+          Nil
+        else
+          Seq("execute_reply")
+      assert(requestsMessageTypes == Seq("execute_reply"))
+
+      val expectedPublishMessageTypes = {
+        val displayDataCount = Seq(
+          Option(displaysText).fold(0)(_.length),
+          Option(displaysHtml).fold(0)(_.length)
+        ).max
+        val updateDisplayDataCount = Seq(
+          Option(displaysTextUpdates).fold(0)(_.length),
+          Option(displaysHtmlUpdates).fold(0)(_.length)
+        ).max
+        val prefix = Seq("execute_input") ++
+          Seq.fill(displayDataCount)("display_data") ++
+          Seq.fill(updateDisplayDataCount)("update_display_data")
+        if (expectError)
+          prefix :+ "error"
+        else if (reply == null || reply.isEmpty)
+          prefix
+        else
+          prefix :+ "execute_result"
+      }
+      assert(publishMessageTypes == expectedPublishMessageTypes)
+
+      val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
+      assert(replies == Option(reply).toVector)
+
+      for (expectedTextDisplay <- Option(displaysText)) {
+        import ClientStreams.RawJsonOps
+
+        val textDisplay = streams.displayData.collect {
+          case (data, false) =>
+            data.data.get("text/plain")
+              .map(_.stringOrEmpty)
+              .getOrElse("")
+        }
+
+        assert(textDisplay == expectedTextDisplay)
+      }
+
+      for (expectedHtmlDisplay <- Option(displaysHtml)) {
+        import ClientStreams.RawJsonOps
+
+        val htmlDisplay = streams.displayData.collect {
+          case (data, false) =>
+            data.data.get("text/html")
+              .map(_.stringOrEmpty)
+              .getOrElse("")
+        }
+
+        assert(htmlDisplay == expectedHtmlDisplay)
+      }
+
+      for (expectedTextDisplayUpdates <- Option(displaysTextUpdates)) {
+        import ClientStreams.RawJsonOps
+
+        val textDisplayUpdates = streams.displayData.collect {
+          case (data, true) =>
+            data.data.get("text/plain")
+              .map(_.stringOrEmpty)
+              .getOrElse("")
+        }
+
+        assert(textDisplayUpdates == expectedTextDisplayUpdates)
+      }
+
+      for (expectedHtmlDisplayUpdates <- Option(displaysHtmlUpdates)) {
+        import ClientStreams.RawJsonOps
+
+        val htmlDisplayUpdates = streams.displayData.collect {
+          case (data, true) =>
+            data.data.get("text/html")
+              .map(_.stringOrEmpty)
+              .getOrElse("")
+        }
+
+        assert(htmlDisplayUpdates == expectedHtmlDisplayUpdates)
+      }
+    }
+  }
+
   def execute(
-    sessionId: String,
     code: String,
     msgId: String = UUID.randomUUID().toString,
     stopOnError: Boolean = true
-  ) =
+  )(implicit sessionId: SessionId) =
     Message(
       Header(
         msgId,
         "test",
-        sessionId,
+        sessionId.sessionId,
         ProtocolExecute.requestType.messageType,
         Some(Protocol.versionStr)
       ),
@@ -71,8 +183,8 @@ object TestUtil {
 
       val (input, replies) = inputs.unzip
 
-      val sessionId = UUID.randomUUID().toString
-      val lastMsgId = UUID.randomUUID().toString
+      implicit val sessionId: SessionId = SessionId()
+      val lastMsgId                     = UUID.randomUUID().toString
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
@@ -83,8 +195,8 @@ object TestUtil {
       assert(input.nonEmpty)
 
       val input0 = Stream(
-        input.init.map(s => execute(sessionId, s)) :+
-          execute(sessionId, input.last, lastMsgId): _*
+        input.init.map(s => execute(s)) :+
+          execute(input.last, lastMsgId): _*
       )
 
       val streams = ClientStreams.create(input0, stopWhen)
