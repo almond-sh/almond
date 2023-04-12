@@ -65,7 +65,7 @@ final class Execute(
           Duration.Inf
         )
       }
-      log.info("Received input")
+      log.info(s"Received input ${res.map { case "" => "[empty]"; case _ => "[non empty]" }}")
 
       res match {
         case Success(s)                                    => Some(s)
