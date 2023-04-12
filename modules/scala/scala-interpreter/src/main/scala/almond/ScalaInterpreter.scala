@@ -62,27 +62,27 @@ final class ScalaInterpreter(
     params.useThreadInterrupt
   )
 
+  val sessApi = new SessionApiImpl(frames0)
+
+  val replApi =
+    new ReplApiImpl(
+      execute0,
+      storage,
+      colors0,
+      ammInterp,
+      sessApi
+    )
+
+  val jupyterApi =
+    new JupyterApiImpl(
+      execute0,
+      commHandlerOpt,
+      replApi,
+      silent0,
+      params.allowVariableInspector
+    )
+
   lazy val ammInterp: ammonite.interp.Interpreter = {
-
-    val sessApi = new SessionApiImpl(frames0)
-
-    val replApi =
-      new ReplApiImpl(
-        execute0,
-        storage,
-        colors0,
-        ammInterp,
-        sessApi
-      )
-
-    val jupyterApi =
-      new JupyterApiImpl(
-        execute0,
-        commHandlerOpt,
-        replApi,
-        silent0,
-        params.allowVariableInspector
-      )
 
     for (ec <- params.updateBackgroundVariablesEcOpt)
       UpdatableFuture.setup(replApi, jupyterApi, ec)
@@ -129,7 +129,15 @@ final class ScalaInterpreter(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult =
-    execute0(ammInterp, code, inputManager, outputHandler, colors0, storeHistory)
+    execute0(
+      ammInterp,
+      code,
+      inputManager,
+      outputHandler,
+      colors0,
+      storeHistory,
+      jupyterApi.executeHooks
+    )
 
   def currentLine(): Int =
     execute0.currentLine

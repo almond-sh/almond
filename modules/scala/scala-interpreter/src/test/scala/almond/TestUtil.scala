@@ -51,14 +51,17 @@ object TestUtil {
       code: String,
       reply: String = null,
       expectError: Boolean = false,
+      errors: Seq[(String, String, List[String])] = null,
       displaysText: Seq[String] = null,
       displaysHtml: Seq[String] = null,
       displaysTextUpdates: Seq[String] = null,
       displaysHtmlUpdates: Seq[String] = null
     )(implicit sessionId: SessionId): Unit = {
 
+      val expectError0 = expectError || Option(errors).exists(_.nonEmpty)
+
       val input = Stream(
-        TestUtil.execute(code, stopOnError = !expectError)
+        TestUtil.execute(code, stopOnError = !expectError0)
       )
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
@@ -73,7 +76,7 @@ object TestUtil {
       val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
 
       val expectedRequestsMessageTypes =
-        if (reply == null && !expectError)
+        if (reply == null && !expectError0)
           Nil
         else
           Seq("execute_reply")
@@ -91,7 +94,7 @@ object TestUtil {
         val prefix = Seq("execute_input") ++
           Seq.fill(displayDataCount)("display_data") ++
           Seq.fill(updateDisplayDataCount)("update_display_data")
-        if (expectError)
+        if (expectError0)
           prefix :+ "error"
         else if (reply == null || reply.isEmpty)
           prefix
@@ -115,6 +118,9 @@ object TestUtil {
 
         assert(textDisplay == expectedTextDisplay)
       }
+
+      val receivedErrors = streams.executeErrors.toVector.sortBy(_._1).map(_._2)
+      assert(errors == null || receivedErrors == errors)
 
       for (expectedHtmlDisplay <- Option(displaysHtml)) {
         import ClientStreams.RawJsonOps

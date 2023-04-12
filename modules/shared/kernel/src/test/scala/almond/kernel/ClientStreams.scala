@@ -115,6 +115,23 @@ final case class ClientStreams(
       }
       .toMap
 
+  def executeErrors: Map[Int, (String, String, List[String])] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+          m.decodeAs[Execute.Reply] match {
+            case Left(_)  => Nil
+            case Right(m) => Seq(m.content)
+          }
+      }
+      .flatten
+      .collect {
+        case e: Execute.Reply.Error =>
+          (e.execution_count, (e.ename, e.evalue, e.traceback))
+      }
+      .toMap
+
   def executeReplyPayloads: Map[Int, Seq[RawJson]] =
     generatedMessages
       .iterator

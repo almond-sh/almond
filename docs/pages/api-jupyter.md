@@ -153,3 +153,50 @@ kernel.publish.updateHtml("Got all items", id)
 ```
 
 ![](/demo/updatable.gif)
+
+### Hooks
+
+Hooks allow to pre-process code right before it's executed. Use like
+```scala
+private def runSql(sql: String): String = {
+  println("Running query...")
+  val fakeResult =
+    """<table>
+      |<tr>
+      |<th>Id</th>
+      |<th>Name</th>
+      |</tr>
+      |<tr>
+      |<td>1</td>
+      |<td>Tree</td>
+      |</tr>
+      |<tr>
+      |<td>2</td>
+      |<td>Apple</td>
+      |</tr>
+      |</table>
+      |""".stripMargin
+  fakeResult
+}
+
+kernel.addExecuteHook { code =>
+  import almond.api.JupyterApi
+  import almond.interpreter.api.DisplayData
+
+  if (code.linesIterator.take(1).toList == List("%sql")) {
+    val sql = code.linesWithSeparators.drop(1).mkString // drop first line with "%sql"
+    val result = runSql(sql)
+    Left(JupyterApi.ExecuteHookResult.Success(DisplayData.html(result)))
+  }
+  else
+    Right(code) // just pass on code
+}
+```
+
+Such code can be run either in a cell or in a predef file.
+
+Later on, users can run things like
+```text
+%sql
+SELECT id, name FROM my_table
+```

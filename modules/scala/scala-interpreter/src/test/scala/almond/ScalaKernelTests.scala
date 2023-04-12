@@ -875,6 +875,91 @@ object ScalaKernelTests extends TestSuite {
       if (TestUtil.isScala2) updateLazyValsTest()
       else "disabled"
     }
+
+    test("hooks") {
+
+      val predef =
+        """private val foos0 = new scala.collection.mutable.ListBuffer[String]
+          |
+          |def foos(): List[String] =
+          |  foos0.result()
+          |
+          |kernel.addExecuteHook { code =>
+          |  import almond.api.JupyterApi
+          |
+          |  var errorOpt = Option.empty[JupyterApi.ExecuteHookResult]
+          |  val remainingCode = code.linesWithSeparators.zip(code.linesIterator)
+          |    .map {
+          |      case (originalLine, line) =>
+          |        if (line == "%AddFoo") ""
+          |        else if (line.startsWith("%AddFoo ")) {
+          |          foos0 ++= line.split("\\s+").drop(1).toSeq
+          |          ""
+          |        }
+          |        else if (line == "%Error") {
+          |          errorOpt = Some(JupyterApi.ExecuteHookResult.Error("thing", "erroring", List("aa", "bb")))
+          |          ""
+          |        }
+          |        else if (line == "%Abort") {
+          |          errorOpt = Some(JupyterApi.ExecuteHookResult.Abort)
+          |          ""
+          |        }
+          |        else if (line == "%Exit") {
+          |          errorOpt = Some(JupyterApi.ExecuteHookResult.Exit)
+          |          ""
+          |        }
+          |        else
+          |          originalLine
+          |    }
+          |    .mkString
+          |
+          |  errorOpt.toLeft(remainingCode)
+          |}
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      kernel.execute(
+        "val before = foos()",
+        "before: List[String] = List()"
+      )
+      kernel.execute("""%AddFoo a""", "")
+      kernel.execute("""%AddFoo b""", "")
+      kernel.execute(
+        "val after = foos()",
+        """after: List[String] = List("a", "b")"""
+      )
+      kernel.execute(
+        "%Error",
+        errors = Seq(
+          ("thing", "erroring", List("thing: erroring", "    aa", "    bb"))
+        )
+      )
+      kernel.execute("%Abort")
+      kernel.execute(
+        """val a = "a"
+          |""".stripMargin,
+        """a: String = "a""""
+      )
+      kernel.execute(
+        """%Exit
+          |val b = "b"
+          |""".stripMargin,
+        ""
+      )
+    }
+
   }
 
 }
