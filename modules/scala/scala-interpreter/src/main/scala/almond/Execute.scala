@@ -26,7 +26,7 @@ import fastparse.Parsed
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /** Wraps contextual things around when executing code (capturing output, stdin via front-ends,
   * interruption, etc.)
@@ -65,7 +65,7 @@ final class Execute(
           Duration.Inf
         )
       }
-      log.info("Received input")
+      log.info(s"Received input ${res.map { case "" => "[empty]"; case _ => "[non empty]" }}")
 
       res match {
         case Success(s)                                    => Some(s)
@@ -136,7 +136,7 @@ final class Execute(
         }
     }
 
-  private def withInputManager[T](m: Option[InputManager])(f: => T): T = {
+  private def withInputManager[T](m: Option[InputManager], done: Boolean = true)(f: => T): T = {
     val previous = currentInputManagerOpt0
     try {
       currentInputManagerOpt0 = m
@@ -144,7 +144,8 @@ final class Execute(
     }
     finally {
       currentInputManagerOpt0 = previous
-      m.foreach(_.done())
+      if (done)
+        m.foreach(_.done())
     }
   }
 
@@ -337,7 +338,8 @@ final class Execute(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler],
     colors0: Ref[Colors],
-    storeHistory: Boolean
+    storeHistory: Boolean,
+    executeHooks: Seq[JupyterApi.ExecuteHook]
   ): ExecuteResult = {
 
     if (storeHistory) {
@@ -345,36 +347,84 @@ final class Execute(
       history0 = history0 :+ code
     }
 
-    ammResult(ammInterp, code, inputManager, outputHandler, storeHistory) match {
-      case Res.Success((_, data)) =>
-        ExecuteResult.Success(data)
-      case Res.Failure(msg) =>
-        interruptedStackTraceOpt0 match {
-          case None =>
-            val err = Execute.error(colors0(), None, msg)
-            outputHandler.foreach(_.stderr(err.message)) // necessary?
-            err
-          case Some(st) =>
-            val cutoff = Set("$main", "evaluatorRunPrinter")
+    val finalCodeOrResult =
+      withOutputHandler(outputHandler) {
+        interruptible {
+          withInputManager(inputManager, done = false) {
+            withClientStdin {
+              capturingOutput {
+                executeHooks.foldLeft[Try[Either[JupyterApi.ExecuteHookResult, String]]](
+                  Success(Right(code))
+                ) {
+                  (codeOrDisplayDataAttempt, hook) =>
+                    codeOrDisplayDataAttempt.flatMap { codeOrDisplayData =>
+                      try Success(codeOrDisplayData.flatMap { value =>
+                          hook.hook(value)
+                        })
+                      catch {
+                        case e: Throwable => // kind of meh, but Ammonite does the same it seems…
+                          Failure(e)
+                      }
+                    }
+                }
+              }
+            }
+          }
+        }
+      }
 
-            ExecuteResult.Error(
-              (
-                "Interrupted!" +: st
-                  .takeWhile(x => !cutoff(x.getMethodName))
-                  .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
-              ).mkString(System.lineSeparator())
-            )
+    finalCodeOrResult match {
+      case Failure(ex) =>
+        log.error(s"exception when running hooks (${ex.getMessage})", ex)
+        Execute.error(colors0(), Some(ex), "")
+
+      case Success(Left(res)) =>
+        res match {
+          case s: JupyterApi.ExecuteHookResult.Success =>
+            ExecuteResult.Success(s.data)
+          case e: JupyterApi.ExecuteHookResult.Error =>
+            ExecuteResult.Error(e.name, e.message, e.stackTrace)
+          case JupyterApi.ExecuteHookResult.Abort =>
+            ExecuteResult.Abort
+          case JupyterApi.ExecuteHookResult.Exit =>
+            ExecuteResult.Exit
         }
 
-      case Res.Exception(ex, msg) =>
-        log.error(s"exception in user code (${ex.getMessage})", ex)
-        Execute.error(colors0(), Some(ex), msg)
-
-      case Res.Skip =>
+      case Success(Right(emptyCode)) if emptyCode.trim.isEmpty =>
         ExecuteResult.Success()
 
-      case Res.Exit(_) =>
-        ExecuteResult.Exit
+      case Success(Right(finalCode)) =>
+        ammResult(ammInterp, finalCode, inputManager, outputHandler, storeHistory) match {
+          case Res.Success((_, data)) =>
+            ExecuteResult.Success(data)
+          case Res.Failure(msg) =>
+            interruptedStackTraceOpt0 match {
+              case None =>
+                val err = Execute.error(colors0(), None, msg)
+                outputHandler.foreach(_.stderr(err.message)) // necessary?
+                err
+              case Some(st) =>
+                val cutoff = Set("$main", "evaluatorRunPrinter")
+
+                ExecuteResult.Error(
+                  (
+                    "Interrupted!" +: st
+                      .takeWhile(x => !cutoff(x.getMethodName))
+                      .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
+                  ).mkString(System.lineSeparator())
+                )
+            }
+
+          case Res.Exception(ex, msg) =>
+            log.error(s"exception in user code (${ex.getMessage})", ex)
+            Execute.error(colors0(), Some(ex), msg)
+
+          case Res.Skip =>
+            ExecuteResult.Success()
+
+          case Res.Exit(_) =>
+            ExecuteResult.Exit
+        }
     }
   }
 }

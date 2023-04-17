@@ -115,6 +115,23 @@ final case class ClientStreams(
       }
       .toMap
 
+  def executeErrors: Map[Int, (String, String, List[String])] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+          m.decodeAs[Execute.Reply] match {
+            case Left(_)  => Nil
+            case Right(m) => Seq(m.content)
+          }
+      }
+      .flatten
+      .collect {
+        case e: Execute.Reply.Error =>
+          (e.execution_count, (e.ename, e.evalue, e.traceback))
+      }
+      .toMap
+
   def executeReplyPayloads: Map[Int, Seq[RawJson]] =
     generatedMessages
       .iterator
@@ -176,6 +193,16 @@ final case class ClientStreams(
               }
           }
         case Left((Channel.Publish, m))
+            if m.header.msg_type == "stream" =>
+          m.decodeAs[Execute.Stream] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              if (m.content.name == "stdout")
+                Seq(m.content.text)
+              else
+                Nil
+          }
+        case Left((Channel.Publish, m))
             if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
           m.decodeAs[Execute.DisplayData] match {
             case Left(_)  => Nil
@@ -191,7 +218,7 @@ object ClientStreams {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
 
-  private implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
+  implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
     def stringOrEmpty: String =
       Try(readFromArray[String](rawJson.value)).toOption.getOrElse("")
   }

@@ -120,7 +120,7 @@ final case class Kernel(
 
                   immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
                     case None =>
-                      log.warn(s"Ignoring unhandled message:\n$rawMessage")
+                      log.warn(s"Ignoring unhandled message on $channel:\n$rawMessage")
                       Stream.empty
 
                     case Some(output) =>

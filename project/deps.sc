@@ -57,6 +57,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.3.7"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.9"
+  def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
@@ -103,4 +104,9 @@ object ScalaVersions {
     "2.12.10",
     "2.12.9"
   ).distinct
+
+  def binary(sv: String) =
+    if (sv.startsWith("2.12.")) scala212
+    else if (sv.startsWith("2.13.")) scala213
+    else scala3Compat
 }
