@@ -181,6 +181,7 @@ final class ScalaInterpreter(
     )
   }
 
+  private def nl = System.lineSeparator()
   def kernelInfo() =
     KernelInfo(
       "scala",
@@ -197,7 +198,7 @@ final class ScalaInterpreter(
          |Ammonite ${ammonite.Constants.version}
          |${scala.util.Properties.versionMsg}
          |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin +
-        params.extraBannerOpt.fold("")("\n\n" + _),
+        params.extraBannerOpt.fold("")(nl + nl + _),
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
 
