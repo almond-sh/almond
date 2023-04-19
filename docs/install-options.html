@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="Passing flags, like `--flag`, sets them to true. Use `--flag=false` (note the `=` sign)">
-  <meta name="docsearch:version" content="0.13.7">
+  <meta name="docsearch:version" content="0.13.8">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Options · almond">
   <meta property="og:type" content="website">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.13.7</h3></a>
+     <a href="../versions"><h3>0.13.8</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -249,7 +249,13 @@
 </code></pre> <h4><a class="anchor" aria-hidden="true" id="connection-file"></a><a href="install-options.html#connection-file" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a><code>--connection-file</code></h4> </span>
+            </svg></a><code>--connection-file</code></h4> <h2><a class="anchor" aria-hidden="true" id="other"></a><a href="install-options.html#other" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Other</h2> <h4><a class="anchor" aria-hidden="true" id="toree-magics"></a><a href="install-options.html#toree-magics" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a><code>--toree-magics</code></h4> <p>Enable experimental support for <a href="https://toree.apache.org">Toree</a> magics.</p> <p>Simple line magics such as <code>%AddDeps</code> (always assumed to be transitive as of writing this, <code>--transitive</code> is just ignored), <code>%AddJar</code>, and cell magics such as <code>%%html</code> or <code>%%javascript</code> are supported. Note that <code>%%javascript</code> only works from Jupyter classic, as JupyterLab doesn't allow for random javascript code execution.</p> </span>
         </div>
        </article>
       </div>
@@ -267,6 +273,7 @@
       <li><a href="install-options.html#dependency-related">Dependency-related</a></li>
       <li><a href="install-options.html#internals">Internals</a></li>
       <li><a href="install-options.html#jupyter-related">Jupyter-related</a></li>
+      <li><a href="install-options.html#other">Other</a></li>
      </ul>
     </nav>
    </div>
