@@ -1108,6 +1108,63 @@ object ScalaKernelTests extends TestSuite {
             .mkString("Vector(" + "\n", "", "...")
       )
     }
+
+    test("toree custom cell magic") {
+
+      val predef =
+        """almond.toree.CellMagicHook.addHandler("test") { (_, content) =>
+          |  import almond.api.JupyterApi
+          |  import almond.interpreter.api.DisplayData
+          |
+          |  Left(JupyterApi.ExecuteHookResult.Success(DisplayData.text(content)))
+          |}
+          |
+          |almond.toree.CellMagicHook.addHandler("thing") { (_, content) =>
+          |  import almond.api.JupyterApi
+          |  import almond.interpreter.api.DisplayData
+          |
+          |  val nl = System.lineSeparator()
+          |  Right(s"val thing = {" + nl + content + nl + "}" + nl)
+          |}
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef,
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      kernel.execute(
+        """%%test
+          |foo
+          |a
+          |""".stripMargin,
+        """foo
+          |a
+          |""".stripMargin
+      )
+
+      val nl = System.lineSeparator()
+
+      kernel.execute(
+        """%%thing
+          |println("Hello")
+          |2
+          |""".stripMargin,
+        "thing: Int = 2",
+        stdout =
+          "Hello" + nl +
+            "thing: Int = 2"
+      )
+    }
   }
 
 }
