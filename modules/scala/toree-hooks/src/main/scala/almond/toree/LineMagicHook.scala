@@ -10,6 +10,14 @@ import scala.collection.mutable
 
 object LineMagicHook {
 
+  private var userHandlers = new mutable.HashMap[String, LineMagicHandler]
+
+  def addHandler(name: String)(handler: LineMagicHandler): Unit =
+    userHandlers += name -> handler
+
+  def clearHandlers(): Unit =
+    userHandlers.clear()
+
   private val sep = Pattern.compile("\\s+")
 
   def inspect(code: String): Iterator[Either[(Seq[String], String, String), String]] = {
@@ -47,7 +55,9 @@ object LineMagicHook {
 
             assert(name.startsWith("%"))
 
-            handlers.get(name.toLowerCase(Locale.ROOT).stripPrefix("%")) match {
+            val name0 = name.toLowerCase(Locale.ROOT).stripPrefix("%")
+
+            userHandlers.get(name0).orElse(handlers.get(name0)) match {
               case None =>
                 System.err.println(s"Warning: ignoring unrecognized Toree line magic $name")
               case Some(handler) =>
