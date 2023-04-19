@@ -1152,6 +1152,8 @@ object ScalaKernelTests extends TestSuite {
           |""".stripMargin
       )
 
+      val nl = System.lineSeparator()
+
       kernel.execute(
         """%%thing
           |println("Hello")
@@ -1159,8 +1161,8 @@ object ScalaKernelTests extends TestSuite {
           |""".stripMargin,
         "thing: Int = 2",
         stdout =
-          """Hello
-            |thing: Int = 2""".stripMargin
+          "Hello" + nl +
+            "thing: Int = 2"
       )
     }
   }
