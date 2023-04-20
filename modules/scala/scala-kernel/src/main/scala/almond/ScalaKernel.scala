@@ -76,6 +76,10 @@ object ScalaKernel extends CaseApp[Options] {
     val extraLinks       = options.extraLinks()
     val predefFiles      = options.predefFiles()
 
+    val initialColors =
+      if (options.color) ammonite.util.Colors.Default
+      else ammonite.util.Colors.BlackWhite
+
     if (autoDependencies.nonEmpty)
       log.debug(
         autoDependencies
@@ -113,7 +117,7 @@ object ScalaKernel extends CaseApp[Options] {
         forceMavenProperties = forceProperties,
         mavenProfiles = mavenProfiles,
         codeWrapper = ammonite.compiler.CodeClassWrapper,
-        initialColors = ammonite.util.Colors.Default,
+        initialColors = initialColors,
         initialClassLoader = initialClassLoader,
         metabrowse = options.metabrowse,
         metabrowseHost = "localhost",
