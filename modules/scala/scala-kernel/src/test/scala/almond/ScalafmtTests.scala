@@ -30,7 +30,7 @@ object ScalafmtTests extends TestSuite {
     queueEc.shutdown()
   }
 
-  def logCtx = almond.TestLogging.logCtx
+  def logCtx = almond.testkit.TestLogging.logCtx
 
   private def messages(
     scalafmt: Scalafmt,

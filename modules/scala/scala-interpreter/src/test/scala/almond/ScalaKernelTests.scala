@@ -8,10 +8,11 @@ import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.TestInterpreter.StringBOps
-import almond.kernel.{ClientStreams, Kernel, KernelThreads}
+import almond.kernel.{Kernel, KernelThreads}
 import almond.protocol.{Execute => ProtocolExecute, _}
-import almond.TestLogging.logCtx
-import almond.TestUtil._
+import almond.testkit.{ClientStreams, Dsl}
+import almond.testkit.TestLogging.logCtx
+import almond.TestUtil.{IOOps, KernelOps, SessionId, execute => executeMessage, isScala212}
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
@@ -86,9 +87,9 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute("val n = scala.io.StdIn.readInt()"),
-        execute("val m = new java.util.Scanner(System.in).nextInt()"),
-        execute("""val s = "exit"""")
+        executeMessage("val n = scala.io.StdIn.readInt()"),
+        executeMessage("val m = new java.util.Scanner(System.in).nextInt()"),
+        executeMessage("""val s = "exit"""")
       )
 
       val streams =
@@ -141,9 +142,9 @@ object ScalaKernelTests extends TestSuite {
           )
 
       val input = Stream(
-        execute("""sys.error("foo")"""),
-        execute("val n = 2"),
-        execute("""val s = "other"""", lastMsgId)
+        executeMessage("""sys.error("foo")"""),
+        executeMessage("val n = 2"),
+        executeMessage("""val s = "other"""", lastMsgId)
       )
 
       val streams = ClientStreams.create(input, stopWhen)
@@ -580,9 +581,9 @@ object ScalaKernelTests extends TestSuite {
         // Initial messages from client
 
         val input = Stream(
-          execute("""var n = 2"""),
-          execute("""n = n + 1"""),
-          execute("""n += 2""", lastMsgId)
+          executeMessage("""var n = 2"""),
+          executeMessage("""n = n + 1"""),
+          executeMessage("""n += 2""", lastMsgId)
         )
 
         val streams = ClientStreams.create(input, stopWhen)
@@ -671,9 +672,9 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute("""lazy val n = 2"""),
-        execute("""val a = { n; () }"""),
-        execute("""val b = { n; () }""", lastMsgId)
+        executeMessage("""lazy val n = 2"""),
+        executeMessage("""val a = { n; () }"""),
+        executeMessage("""val b = { n; () }""", lastMsgId)
       )
 
       val streams = ClientStreams.create(input, stopWhen)

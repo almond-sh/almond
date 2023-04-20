@@ -6,8 +6,9 @@ import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.{ExecuteResult, Message}
 import almond.protocol.{Execute => ProtocolExecute, _}
-import almond.kernel.{ClientStreams, Kernel, KernelThreads}
-import almond.TestLogging.logCtx
+import almond.kernel.{Kernel, KernelThreads}
+import almond.testkit.{ClientStreams, Dsl}
+import almond.testkit.TestLogging.logCtx
 import ammonite.util.Colors
 import cats.effect.IO
 import fs2.Stream
@@ -48,6 +49,20 @@ object TestUtil {
   }
 
   final case class SessionId(sessionId: String = UUID.randomUUID().toString)
+
+  final class KernelSession(kernel: Kernel) extends Dsl.Session {
+    def run(streams: ClientStreams): Unit =
+      kernel.run(streams.source, streams.sink)
+        .unsafeRunTimedOrThrow()
+  }
+
+  final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
+    def apply(options: String*): KernelSession =
+      new KernelSession(kernel(options))
+    def withExtraJars(extraJars: os.Path*)(options: String*): KernelSession =
+      if (extraJars.isEmpty) apply(options: _*)
+      else sys.error("Extra startup JARs unsupported in unit tests")
+  }
 
   implicit class KernelOps(private val kernel: Kernel) extends AnyVal {
     def execute(

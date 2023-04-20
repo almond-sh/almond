@@ -104,7 +104,8 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
-      shared.interpreter().test
+      shared.interpreter().test,
+      shared.`test-kit`()
     )
   }
 }
@@ -192,9 +193,23 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         else
           shared.kernel().test
       )
+      val testKit = Seq(
+        if (crossScalaVersion.startsWith("3."))
+          shared.`test-kit`(ScalaVersions.scala3Compat)
+        else
+          shared.`test-kit`()
+      )
+      val testDefs = Seq(
+        if (crossScalaVersion.startsWith("3."))
+          scala.`test-definitions`(ScalaVersions.scala3Compat)
+        else
+          scala.`test-definitions`()
+      )
       super.moduleDeps ++
+        testKit ++
         kernel ++
-        rx
+        rx ++
+        testDefs
     }
   }
 }
@@ -319,6 +334,7 @@ object shared extends Module {
   object interpreter            extends Cross[Interpreter](ScalaVersions.binaries: _*)
   object kernel                 extends Cross[Kernel](ScalaVersions.binaries: _*)
   object test                   extends Cross[Test](ScalaVersions.binaries: _*)
+  object `test-kit`             extends Cross[TestKit](ScalaVersions.all: _*)
 }
 
 // FIXME Can't use 'scala' because of macro hygiene issues in some mill macros
@@ -335,6 +351,37 @@ object scala extends Module {
   object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
+
+  object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
+}
+
+class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
+  def moduleDeps =
+    if (crossScalaVersion.startsWith("3."))
+      Seq(
+        shared.interpreter(ScalaVersions.scala3Compat)
+      )
+    else
+      Seq(
+        shared.interpreter()
+      )
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.expecty,
+    Deps.osLib,
+    Deps.pprint
+  )
+}
+
+class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
+
+  def moduleDeps = super.moduleDeps ++ Seq(
+    shared.`test-kit`()
+  )
+  def ivyDeps = Agg(
+    Deps.coursierApi
+  )
 }
 
 object echo extends Cross[Echo](ScalaVersions.binaries: _*)
