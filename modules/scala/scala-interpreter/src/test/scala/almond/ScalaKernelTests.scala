@@ -34,6 +34,9 @@ object ScalaKernelTests extends TestSuite {
 
   val maybePostImportNewLine = if (TestUtil.isScala2) "" else System.lineSeparator()
 
+  val sp = " "
+  val ls = System.lineSeparator()
+
   override def utestAfterAll() = {
     threads.attemptShutdown()
     if (!attemptShutdownExecutionContext(interpreterEc))
@@ -238,9 +241,6 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: SessionId = SessionId()
 
-      val sp = " "
-      val ls = System.lineSeparator()
-
       kernel.execute(
         "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
         // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
@@ -268,6 +268,8 @@ object ScalaKernelTests extends TestSuite {
 
     test("auto-update Future results in background upon completion") {
 
+      // same as above, except no cell is running when the future completes
+
       val interpreter = new ScalaInterpreter(
         params = ScalaInterpreterParams(
           updateBackgroundVariablesEcOpt = Some(bgVarEc),
@@ -279,45 +281,26 @@ object ScalaKernelTests extends TestSuite {
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .unsafeRunTimedOrThrow()
 
-      // same as above, except no cell is running when the future completes
-
-      // How the pseudo-client behaves
-
       implicit val sessionId: SessionId = SessionId()
 
-      // When the pseudo-client exits
+      kernel.execute(
+        "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
+        // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
+        // but not for the other ones using stripMargin…
+        s"import scala.concurrent.Future;$sp$ls" +
+          s"import scala.concurrent.ExecutionContext.Implicits.global$maybePostImportNewLine"
+      )
 
-      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(m.header.msg_type == "update_display_data")
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute(
-          "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global"
+      kernel.execute(
+        "val f = Future { Thread.sleep(3000L); 2 }",
+        "",
+        displaysText = Seq("f: Future[Int] = [running]"),
+        displaysTextUpdates = Seq(
+          if (TestUtil.isScala212) "f: Future[Int] = Success(2)"
+          else "f: Future[Int] = Success(value = 2)"
         ),
-        execute("val f = Future { Thread.sleep(3000L); 2 }")
+        waitForUpdateDisplay = true
       )
-
-      val streams = ClientStreams.create(input, stopWhen)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "display_data",
-        "execute_reply",
-        "update_display_data" // arrives while no cell is running
-      )
-
-      assert(messageTypes == expectedMessageTypes)
     }
 
     test("auto-update Rx stuff upon change") {
@@ -337,85 +320,35 @@ object ScalaKernelTests extends TestSuite {
 
         implicit val sessionId: SessionId = SessionId()
 
-        // When the pseudo-client exits
-
-        val lastMsgId = UUID.randomUUID().toString
-        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-          (_, m) =>
-            IO.pure(
-              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
-            )
-
-        // Initial messages from client
-
-        val input = Stream(
-          execute("almondrx.setup()"),
-          execute("val a = rx.Var(1)"),
-          execute("a() = 2"),
-          execute("a() = 3", lastMsgId)
+        kernel.execute(
+          "almondrx.setup()",
+          "",
+          ignoreStreams = true
         )
 
-        val streams = ClientStreams.create(input, stopWhen)
-
-        kernel.run(streams.source, streams.sink)
-          .unsafeRunTimedOrThrow()
-
-        val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-        val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
-
-        val expectedRequestsMessageTypes = Seq(
-          "execute_reply",
-          "execute_reply",
-          "execute_reply",
-          "execute_reply"
+        kernel.execute(
+          "val a = rx.Var(1)",
+          "",
+          displaysText = Seq(
+            "a: rx.Var[Int] = 1"
+          )
         )
 
-        val expectedPublishMessageTypes = Seq(
-          "execute_input",
-          "stream",
-          "execute_input",
-          "display_data",
-          "execute_input",
-          "update_display_data",
-          "execute_input",
-          "update_display_data"
+        kernel.execute(
+          "a() = 2",
+          "",
+          displaysTextUpdates = Seq(
+            "a: rx.Var[Int] = 2"
+          )
         )
 
-        assert(requestsMessageTypes == expectedRequestsMessageTypes)
-        assert(publishMessageTypes == expectedPublishMessageTypes)
-
-        val displayData = streams.displayData.map {
-          case (d, b) =>
-            val d0 = d.copy(
-              data = d.data.view.filterKeys(_ == "text/plain").toMap
-            )
-            (d0, b)
-        }
-        val id = {
-          val ids = displayData.flatMap(_._1.transient.display_id).toSet
-          assert(ids.size == 1)
-          ids.head
-        }
-
-        val expectedDisplayData = Seq(
-          ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 1\"".bytes)),
-            Map(),
-            ProtocolExecute.DisplayData.Transient(Some(id))
-          ) -> false,
-          ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 2\"".bytes)),
-            Map(),
-            ProtocolExecute.DisplayData.Transient(Some(id))
-          ) -> true,
-          ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 3\"".bytes)),
-            Map(),
-            ProtocolExecute.DisplayData.Transient(Some(id))
-          ) -> true
+        kernel.execute(
+          "a() = 3",
+          "",
+          displaysTextUpdates = Seq(
+            "a: rx.Var[Int] = 3"
+          )
         )
-
-        assert(displayData == expectedDisplayData)
       }
     }
 
@@ -452,48 +385,18 @@ object ScalaKernelTests extends TestSuite {
         case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
       }
 
-      // When the pseudo-client exits
-
-      val lastMsgId = UUID.randomUUID().toString
-      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(
-            m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(
-              _.msg_id == lastMsgId
-            )
-          )
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute("val n = scala.io.StdIn.readInt()"),
-        execute("""val s = "ok done"""", msgId = lastMsgId)
+      kernel.execute(
+        "val n = scala.io.StdIn.readInt()",
+        ignoreStreams = true,
+        expectError = true,
+        expectInterrupt = true,
+        handler = interruptOnInput.orElse(ignoreExpectedReplies)
       )
 
-      val streams =
-        ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes        = streams.generatedMessageTypes()
-      val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control))
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "stream",
-        "error",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
+      kernel.execute(
+        """val s = "ok done"""",
+        """s: String = "ok done""""
       )
-
-      val expectedControlMessageTypes = Seq(
-        "interrupt_reply"
-      )
-
-      assert(messageTypes == expectedMessageTypes)
-      assert(controlMessageTypes == expectedControlMessageTypes)
     }
 
     test("start from custom class loader") {
@@ -518,39 +421,19 @@ object ScalaKernelTests extends TestSuite {
         .unsafeRunTimedOrThrow()
 
       implicit val sessionId: SessionId = SessionId()
-      val lastMsgId                     = UUID.randomUUID().toString
 
-      // When the pseudo-client exits
-
-      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(
-            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
-          )
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute("""val url = Thread.currentThread().getContextClassLoader.getResource("foo")"""),
-        execute("""assert(url.toString == "https://google.fr")""", lastMsgId)
+      val tpeName =
+        if (scalaVersion.startsWith("2.")) "java.net.URL"
+        else "URL"
+      kernel.execute(
+        """val url = Thread.currentThread().getContextClassLoader.getResource("foo")""",
+        s"url: $tpeName = https://google.fr"
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
+      kernel.execute(
+        """assert(url.toString == "https://google.fr")""",
+        ""
       )
-
-      assert(messageTypes == expectedMessageTypes)
     }
 
     test("exit") {
@@ -567,39 +450,18 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: SessionId = SessionId()
 
-      // Initial messages from client
-
-      val input = Stream(
-        execute("val n = 2"),
-        execute("exit")
+      kernel.execute(
+        "val n = 2",
+        "n: Int = 2"
       )
 
-      val streams = ClientStreams.create(input)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
-      )
-
-      assert(messageTypes == expectedMessageTypes)
-
-      val payloads = streams.executeReplyPayloads
-
-      val expectedPayloads = Map(
-        2 -> Seq(
-          RawJson("""{"source":"ask_exit","keepkernel":false}""".bytes)
+      kernel.execute(
+        "exit",
+        "",
+        replyPayloads = Seq(
+          """{"source":"ask_exit","keepkernel":false}"""
         )
       )
-
-      assert(payloads == expectedPayloads)
     }
 
     test("trap output") {
@@ -617,36 +479,31 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: SessionId = SessionId()
 
-      // Initial messages from client
-
-      val input = Stream(
-        execute("val n = 2"),
-        execute("""println("Hello")"""),
-        execute("""System.err.println("Bbbb")"""),
-        execute("exit")
+      kernel.execute(
+        "val n = 2",
+        "n: Int = 2"
       )
 
-      val streams = ClientStreams.create(input)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      // no stream messages in particular
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "execute_reply",
-        "execute_input",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
+      kernel.execute(
+        """println("Hello")""",
+        "",
+        stdout = "",
+        stderr = ""
       )
 
-      assert(messageTypes == expectedMessageTypes)
+      kernel.execute(
+        """System.err.println("Bbbb")""",
+        "",
+        stdout = "",
+        stderr = ""
+      )
+
+      kernel.execute(
+        "exit",
+        "",
+        stdout = "",
+        stderr = ""
+      )
     }
 
     test("last exception") {

@@ -3,6 +3,7 @@ package almond
 import java.util.UUID
 
 import almond.channels.Channel
+import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.{ExecuteResult, Message}
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{ClientStreams, Kernel, KernelThreads}
@@ -11,6 +12,8 @@ import ammonite.util.Colors
 import cats.effect.IO
 import fs2.Stream
 import utest._
+
+import java.nio.charset.StandardCharsets
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -51,26 +54,34 @@ object TestUtil {
       code: String,
       reply: String = null,
       expectError: Boolean = false,
+      expectInterrupt: Boolean = false,
       errors: Seq[(String, String, List[String])] = null,
       displaysText: Seq[String] = null,
       displaysHtml: Seq[String] = null,
       displaysTextUpdates: Seq[String] = null,
       displaysHtmlUpdates: Seq[String] = null,
+      replyPayloads: Seq[String] = null,
       ignoreStreams: Boolean = false,
-      stdout: String = null
+      stdout: String = null,
+      stderr: String = null,
+      waitForUpdateDisplay: Boolean = false,
+      handler: MessageHandler = MessageHandler.discard { case _ => }
     )(implicit sessionId: SessionId): Unit = {
 
       val expectError0   = expectError || Option(errors).nonEmpty
-      val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty
+      val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
 
       val input = Stream(
         TestUtil.execute(code, stopOnError = !expectError0)
       )
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) => IO.pure(m.header.msg_type == "execute_reply")
+        if (waitForUpdateDisplay)
+          (_, m) => IO.pure(m.header.msg_type == "update_display_data")
+        else
+          (_, m) => IO.pure(m.header.msg_type == "execute_reply")
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, handler)
 
       kernel.run(streams.source, streams.sink)
         .unsafeRunTimedOrThrow()
@@ -85,6 +96,12 @@ object TestUtil {
         else
           Seq("execute_reply")
       assert(requestsMessageTypes == Seq("execute_reply"))
+
+      if (expectInterrupt) {
+        val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control)).toVector
+        val expectedControlMessageTypes = Seq("interrupt_reply")
+        assert(controlMessageTypes == expectedControlMessageTypes)
+      }
 
       val expectedPublishMessageTypes = {
         val displayDataCount = Seq(
@@ -112,8 +129,23 @@ object TestUtil {
         assert(stdout == stdoutMessages)
       }
 
+      if (stderr != null) {
+        val stderrMessages = streams.errorOutput.mkString
+        assert(stderr == stderrMessages)
+      }
+
       val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
       assert(replies == Option(reply).toVector)
+
+      if (replyPayloads != null) {
+        val gotReplyPayloads = streams.executeReplyPayloads
+          .toVector
+          .sortBy(_._1)
+          .flatMap(_._2)
+          .map(_.value)
+          .map(new String(_, StandardCharsets.UTF_8))
+        assert(replyPayloads == gotReplyPayloads)
+      }
 
       for (expectedTextDisplay <- Option(displaysText)) {
         import ClientStreams.RawJsonOps

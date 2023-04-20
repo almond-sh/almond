@@ -212,6 +212,24 @@ final case class ClientStreams(
       .flatten
       .toList
 
+  def errorOutput: Seq[String] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == "stream" =>
+          m.decodeAs[Execute.Stream] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              if (m.content.name == "stderr")
+                Seq(m.content.text)
+              else
+                Nil
+          }
+      }
+      .flatten
+      .toList
+
 }
 
 object ClientStreams {
