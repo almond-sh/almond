@@ -45,6 +45,20 @@ final case class Connection(
 
 object Connection {
 
+  def fromParams(params: ConnectionParameters): Connection =
+    Connection(
+      params.ip,
+      params.transport,
+      params.stdin_port,
+      params.control_port,
+      params.hb_port,
+      params.shell_port,
+      params.iopub_port,
+      params.key,
+      params.signature_scheme,
+      params.kernel_name
+    )
+
   implicit val codec: JsonValueCodec[Connection] = {
 
     final case class RawConnection(

@@ -356,6 +356,7 @@ object scala extends Module {
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
+  object integration        extends Cross[Integration](ScalaVersions.all: _*)
 }
 
 class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
@@ -385,6 +386,41 @@ class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with
   def ivyDeps = Agg(
     Deps.coursierApi
   )
+}
+
+class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
+  def skipBloop             = testScalaVersion != scalaVersion0
+  private def scalaVersion0 = ScalaVersions.scala213
+  def crossScalaVersion     = scalaVersion0
+  def scalaVersion          = scalaVersion0
+
+  def moduleDeps = super.moduleDeps ++ Seq(
+    shared.`test-kit`(scalaVersion0)
+  )
+  def ivyDeps = Agg(
+    Deps.pprint
+  )
+
+  object test extends Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      scala.`test-definitions`(scalaVersion0)
+    )
+    def ivyDeps = Agg(
+      Deps.osLib,
+      Deps.utest
+    )
+    def testFramework = "utest.runner.Framework"
+    def forkArgs = super.forkArgs() ++ Seq(
+      s"-Dalmond.test.launcher=${scala.`scala-kernel`(testScalaVersion).fastLauncher().path}"
+    )
+    def tmpDirBase = T.persistent {
+      PathRef(T.dest / "working-dir")
+    }
+    def forkEnv = super.forkEnv() ++ Seq(
+      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString,
+      "TEST_SCALA_VERSION"     -> testScalaVersion
+    )
+  }
 }
 
 object echo extends Cross[Echo](ScalaVersions.binaries: _*)
