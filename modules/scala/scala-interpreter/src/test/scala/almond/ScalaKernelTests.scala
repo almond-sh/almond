@@ -19,6 +19,7 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
+import scala.collection.JavaConverters._
 import scala.collection.compat._
 import scala.util.Properties
 
@@ -1027,6 +1028,92 @@ object ScalaKernelTests extends TestSuite {
           ),
           ignoreStreams = true
         )
+    }
+
+    test("toree AddJar file") {
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      val jar = coursierapi.Fetch.create()
+        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+        .fetch()
+        .asScala
+        .head
+        .toURI
+
+      kernel.execute(
+        "import picocli.CommandLine",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
+      )
+
+      kernel.execute(
+        s"%AddJar $jar",
+        "",
+        ignoreStreams = true
+      )
+
+      kernel.execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine
+      )
+    }
+
+    test("toree AddJar URL") {
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: SessionId = SessionId()
+
+      val jar = coursierapi.Fetch.create()
+        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+        .fetchResult()
+        .getArtifacts
+        .asScala
+        .head
+        .getKey
+        .getUrl
+
+      kernel.execute(
+        "import picocli.CommandLine",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
+      )
+
+      kernel.execute(
+        s"%AddJar $jar",
+        "",
+        ignoreStreams = true
+      )
+
+      kernel.execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine
+      )
     }
 
     test("toree Html") {

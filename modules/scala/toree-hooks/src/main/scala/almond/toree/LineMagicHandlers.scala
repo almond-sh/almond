@@ -75,7 +75,13 @@ object LineMagicHandlers {
             System.err.println(s"Warning: ignoring unsupported %AddJar argument --magic")
           if (uri.getScheme == "file") {
             val path = Paths.get(uri)
-            Right(s"import $$cp.`$path`")
+            val q    = "\""
+            Right(s"interp.load.cp(os.Path($q$q$q$path$q$q$q))")
+          }
+          else if (uri.getScheme == "http" || uri.getScheme == "https") {
+            val file = coursierapi.Cache.create().get(coursierapi.Artifact.of(uri.toASCIIString))
+            val q    = "\""
+            Right(s"interp.load.cp(os.Path($q$q$q$file$q$q$q))")
           }
           else {
             System.err.println(
