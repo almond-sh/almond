@@ -1,4 +1,4 @@
-package almond.kernel
+package almond.testkit
 
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
@@ -6,7 +6,6 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
 import almond.protocol.{Execute, MessageType, RawJson}
-import almond.kernel.KernelTests.threads
 import cats.effect.IO
 import fs2.concurrent.Queue
 import fs2.{Pipe, Stream}
@@ -14,6 +13,7 @@ import fs2.{Pipe, Stream}
 import scala.collection.compat.immutable.LazyList
 import scala.collection.mutable
 import scala.util.Try
+import scala.concurrent.ExecutionContext
 
 final case class ClientStreams(
   source: Stream[IO, (Channel, RawMessage)],
@@ -212,6 +212,24 @@ final case class ClientStreams(
       .flatten
       .toList
 
+  def errorOutput: Seq[String] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == "stream" =>
+          m.decodeAs[Execute.Stream] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              if (m.content.name == "stderr")
+                Seq(m.content.text)
+              else
+                Nil
+          }
+      }
+      .flatten
+      .toList
+
 }
 
 object ClientStreams {
@@ -234,7 +252,7 @@ object ClientStreams {
     val poisonPill: (Channel, RawMessage) = null
 
     val q = {
-      implicit val shift = IO.contextShift(threads.queueEc)
+      implicit val shift = IO.contextShift(ExecutionContext.global)
       Queue.bounded[IO, (Channel, RawMessage)](10).unsafeRunSync()
     }
 

@@ -4,7 +4,7 @@ import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.DisplayData
 import almond.interpreter.{Completion, ExecuteResult, Interpreter}
-import almond.TestLogging.logCtx
+import almond.testkit.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
 import ammonite.util.Colors

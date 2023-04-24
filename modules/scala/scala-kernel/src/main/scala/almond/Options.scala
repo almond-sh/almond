@@ -75,7 +75,10 @@ final case class Options(
     tmpOutputDirectory: Option[Boolean] = None,
 
   @HelpMessage("Add experimental support for Toree magics")
-    toreeMagics: Boolean = false
+    toreeMagics: Boolean = false,
+
+  @HelpMessage("Enable or disable color cell output upon startup (enabled by default, pass --color=false to disable)")
+    color: Boolean = true
 ) {
   // format: on
 

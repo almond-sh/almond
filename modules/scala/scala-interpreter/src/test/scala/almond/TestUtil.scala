@@ -3,14 +3,19 @@ package almond
 import java.util.UUID
 
 import almond.channels.Channel
+import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.{ExecuteResult, Message}
 import almond.protocol.{Execute => ProtocolExecute, _}
-import almond.kernel.{ClientStreams, Kernel, KernelThreads}
-import almond.TestLogging.logCtx
+import almond.kernel.{Kernel, KernelThreads}
+import almond.testkit.{ClientStreams, Dsl}
+import almond.testkit.TestLogging.logCtx
+import almond.util.SequentialExecutionContext
 import ammonite.util.Colors
 import cats.effect.IO
+import com.eed3si9n.expecty.Expecty.expect
 import fs2.Stream
-import utest._
+
+import java.nio.charset.StandardCharsets
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -46,31 +51,89 @@ object TestUtil {
 
   final case class SessionId(sessionId: String = UUID.randomUUID().toString)
 
+  final class KernelSession(kernel: Kernel) extends Dsl.Session {
+    def run(streams: ClientStreams): Unit =
+      kernel.run(streams.source, streams.sink)
+        .unsafeRunTimedOrThrow()
+  }
+
+  final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
+    def apply(options: String*): KernelSession =
+      new KernelSession(kernel(options))
+    def withExtraJars(extraJars: os.Path*)(options: String*): KernelSession =
+      if (extraJars.isEmpty) apply(options: _*)
+      else sys.error("Extra startup JARs unsupported in unit tests")
+  }
+
+  private case class Options(
+    predef: String = ""
+  )
+
+  private val optionsParser: caseapp.Parser[Options] = caseapp.Parser.derive
+
+  def kernelRunner[T](
+    threads: KernelThreads,
+    interpreterEc: ExecutionContext,
+    processParams: ScalaInterpreterParams => ScalaInterpreterParams = identity
+  ): KernelRunner = KernelRunner {
+
+    options =>
+
+      val opt = optionsParser.parse(options) match {
+        case Left(e) => throw new Exception(e.toString)
+        case Right((opt, extra)) =>
+          assert(extra.isEmpty, "Unexpected trailing values in kernel arguments")
+          opt
+      }
+
+      val interpreter = new ScalaInterpreter(
+        params = processParams {
+          ScalaInterpreterParams(
+            initialColors = Colors.BlackWhite,
+            updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
+            predefCode = opt.predef
+          )
+        },
+        logCtx = logCtx
+      )
+
+      Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+  }
+
   implicit class KernelOps(private val kernel: Kernel) extends AnyVal {
     def execute(
       code: String,
       reply: String = null,
       expectError: Boolean = false,
+      expectInterrupt: Boolean = false,
       errors: Seq[(String, String, List[String])] = null,
       displaysText: Seq[String] = null,
       displaysHtml: Seq[String] = null,
       displaysTextUpdates: Seq[String] = null,
       displaysHtmlUpdates: Seq[String] = null,
+      replyPayloads: Seq[String] = null,
       ignoreStreams: Boolean = false,
-      stdout: String = null
+      stdout: String = null,
+      stderr: String = null,
+      waitForUpdateDisplay: Boolean = false,
+      handler: MessageHandler = MessageHandler.discard { case _ => }
     )(implicit sessionId: SessionId): Unit = {
 
       val expectError0   = expectError || Option(errors).nonEmpty
-      val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty
+      val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
 
       val input = Stream(
         TestUtil.execute(code, stopOnError = !expectError0)
       )
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) => IO.pure(m.header.msg_type == "execute_reply")
+        if (waitForUpdateDisplay)
+          (_, m) => IO.pure(m.header.msg_type == "update_display_data")
+        else
+          (_, m) => IO.pure(m.header.msg_type == "execute_reply")
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, handler)
 
       kernel.run(streams.source, streams.sink)
         .unsafeRunTimedOrThrow()
@@ -84,7 +147,13 @@ object TestUtil {
           Nil
         else
           Seq("execute_reply")
-      assert(requestsMessageTypes == Seq("execute_reply"))
+      expect(requestsMessageTypes == Seq("execute_reply"))
+
+      if (expectInterrupt) {
+        val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control)).toVector
+        val expectedControlMessageTypes = Seq("interrupt_reply")
+        expect(controlMessageTypes == expectedControlMessageTypes)
+      }
 
       val expectedPublishMessageTypes = {
         val displayDataCount = Seq(
@@ -105,15 +174,30 @@ object TestUtil {
         else
           prefix :+ "execute_result"
       }
-      assert(publishMessageTypes == expectedPublishMessageTypes)
+      expect(publishMessageTypes == expectedPublishMessageTypes)
 
       if (stdout != null) {
         val stdoutMessages = streams.output.mkString
-        assert(stdout == stdoutMessages)
+        expect(stdout == stdoutMessages)
+      }
+
+      if (stderr != null) {
+        val stderrMessages = streams.errorOutput.mkString
+        expect(stderr == stderrMessages)
       }
 
       val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
-      assert(replies == Option(reply).toVector)
+      expect(replies == Option(reply).toVector)
+
+      if (replyPayloads != null) {
+        val gotReplyPayloads = streams.executeReplyPayloads
+          .toVector
+          .sortBy(_._1)
+          .flatMap(_._2)
+          .map(_.value)
+          .map(new String(_, StandardCharsets.UTF_8))
+        expect(replyPayloads == gotReplyPayloads)
+      }
 
       for (expectedTextDisplay <- Option(displaysText)) {
         import ClientStreams.RawJsonOps
@@ -125,11 +209,11 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(textDisplay == expectedTextDisplay)
+        expect(textDisplay == expectedTextDisplay)
       }
 
       val receivedErrors = streams.executeErrors.toVector.sortBy(_._1).map(_._2)
-      assert(errors == null || receivedErrors == errors)
+      expect(errors == null || receivedErrors == errors)
 
       for (expectedHtmlDisplay <- Option(displaysHtml)) {
         import ClientStreams.RawJsonOps
@@ -141,7 +225,7 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(htmlDisplay == expectedHtmlDisplay)
+        expect(htmlDisplay == expectedHtmlDisplay)
       }
 
       for (expectedTextDisplayUpdates <- Option(displaysTextUpdates)) {
@@ -154,7 +238,7 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(textDisplayUpdates == expectedTextDisplayUpdates)
+        expect(textDisplayUpdates == expectedTextDisplayUpdates)
       }
 
       for (expectedHtmlDisplayUpdates <- Option(displaysHtmlUpdates)) {
@@ -167,7 +251,7 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(htmlDisplayUpdates == expectedHtmlDisplayUpdates)
+        expect(htmlDisplayUpdates == expectedHtmlDisplayUpdates)
       }
     }
   }
@@ -207,7 +291,7 @@ object TestUtil {
             m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
           )
 
-      assert(input.nonEmpty)
+      expect(input.nonEmpty)
 
       val input0 = Stream(
         input.init.map(s => execute(s)) :+
@@ -252,8 +336,8 @@ object TestUtil {
       for (k <- expectedReplies.keySet.--(replies0.keySet))
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
 
-      assert(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
-      assert(publish0.map(noCrLf) == publish.map(noCrLf))
+      expect(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
+      expect(publish0.map(noCrLf) == publish.map(noCrLf))
     }
   }
 

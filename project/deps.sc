@@ -3,7 +3,7 @@ import mill.scalalib._
 
 object Versions {
   def ammonite      = "3.0.0-M0-19-62705f47"
-  def caseApp       = "2.0.6"
+  def caseApp       = "2.1.0-M24"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
 }
@@ -47,6 +47,7 @@ object Deps {
   def coursier           = ivy"io.get-coursier::coursier:2.1.2"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.15"
   def directories        = ivy"io.github.soc:directories:12"
+  def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fs2                = ivy"co.fs2::fs2-core:2.5.11"
   def jansi              = ivy"org.fusesource.jansi:jansi:2.4.0"
   def jeromq             = ivy"org.zeromq:jeromq:0.5.3"
@@ -57,6 +58,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.3.7"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.9"
+  def osLib                    = ivy"com.lihaoyi::os-lib:0.9.0"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"

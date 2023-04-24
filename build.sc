@@ -104,7 +104,8 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
-      shared.interpreter().test
+      shared.interpreter().test,
+      shared.`test-kit`()
     )
   }
 }
@@ -192,10 +193,27 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         else
           shared.kernel().test
       )
+      val testKit = Seq(
+        if (crossScalaVersion.startsWith("3."))
+          shared.`test-kit`(ScalaVersions.scala3Compat)
+        else
+          shared.`test-kit`()
+      )
+      val testDefs = Seq(
+        if (crossScalaVersion.startsWith("3."))
+          scala.`test-definitions`(ScalaVersions.scala3Compat)
+        else
+          scala.`test-definitions`()
+      )
       super.moduleDeps ++
+        testKit ++
         kernel ++
-        rx
+        rx ++
+        testDefs
     }
+    def ivyDeps = super.ivyDeps() ++ Seq(
+      Deps.caseApp
+    )
   }
 }
 
@@ -319,6 +337,7 @@ object shared extends Module {
   object interpreter            extends Cross[Interpreter](ScalaVersions.binaries: _*)
   object kernel                 extends Cross[Kernel](ScalaVersions.binaries: _*)
   object test                   extends Cross[Test](ScalaVersions.binaries: _*)
+  object `test-kit`             extends Cross[TestKit](ScalaVersions.all: _*)
 }
 
 // FIXME Can't use 'scala' because of macro hygiene issues in some mill macros
@@ -335,6 +354,73 @@ object scala extends Module {
   object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
+
+  object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
+  object integration        extends Cross[Integration](ScalaVersions.all: _*)
+}
+
+class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
+  def moduleDeps =
+    if (crossScalaVersion.startsWith("3."))
+      Seq(
+        shared.interpreter(ScalaVersions.scala3Compat)
+      )
+    else
+      Seq(
+        shared.interpreter()
+      )
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.expecty,
+    Deps.osLib,
+    Deps.pprint
+  )
+}
+
+class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
+  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
+
+  def moduleDeps = super.moduleDeps ++ Seq(
+    shared.`test-kit`()
+  )
+  def ivyDeps = Agg(
+    Deps.coursierApi
+  )
+}
+
+class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
+  def skipBloop             = testScalaVersion != scalaVersion0
+  private def scalaVersion0 = ScalaVersions.scala213
+  def crossScalaVersion     = scalaVersion0
+  def scalaVersion          = scalaVersion0
+
+  def moduleDeps = super.moduleDeps ++ Seq(
+    shared.`test-kit`(scalaVersion0)
+  )
+  def ivyDeps = Agg(
+    Deps.pprint
+  )
+
+  object test extends Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      scala.`test-definitions`(scalaVersion0)
+    )
+    def ivyDeps = Agg(
+      Deps.osLib,
+      Deps.utest
+    )
+    def testFramework = "utest.runner.Framework"
+    def forkArgs = super.forkArgs() ++ Seq(
+      s"-Dalmond.test.launcher=${scala.`scala-kernel`(testScalaVersion).fastLauncher().path}"
+    )
+    def tmpDirBase = T.persistent {
+      PathRef(T.dest / "working-dir")
+    }
+    def forkEnv = super.forkEnv() ++ Seq(
+      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString,
+      "TEST_SCALA_VERSION"     -> testScalaVersion
+    )
+  }
 }
 
 object echo extends Cross[Echo](ScalaVersions.binaries: _*)

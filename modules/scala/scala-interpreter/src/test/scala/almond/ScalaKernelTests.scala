@@ -8,10 +8,11 @@ import almond.channels.Channel
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.TestInterpreter.StringBOps
-import almond.kernel.{ClientStreams, Kernel, KernelThreads}
+import almond.kernel.{Kernel, KernelThreads}
 import almond.protocol.{Execute => ProtocolExecute, _}
-import almond.TestLogging.logCtx
-import almond.TestUtil._
+import almond.testkit.{ClientStreams, Dsl}
+import almond.testkit.TestLogging.logCtx
+import almond.TestUtil.{IOOps, KernelOps, SessionId, execute => executeMessage, isScala212}
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
@@ -21,7 +22,6 @@ import utest._
 
 import scala.collection.JavaConverters._
 import scala.collection.compat._
-import scala.util.Properties
 
 object ScalaKernelTests extends TestSuite {
 
@@ -32,7 +32,14 @@ object ScalaKernelTests extends TestSuite {
 
   val threads = KernelThreads.create("test")
 
+  implicit def runner: Dsl.Runner = TestUtil.kernelRunner(threads, interpreterEc)
+
   val maybePostImportNewLine = if (TestUtil.isScala2) "" else System.lineSeparator()
+
+  val sp = " "
+  val ls = System.lineSeparator()
+
+  val scalaVersion = ammonite.compiler.CompilerBuilder.scalaVersion
 
   override def utestAfterAll() = {
     threads.attemptShutdown()
@@ -83,9 +90,9 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute("val n = scala.io.StdIn.readInt()"),
-        execute("val m = new java.util.Scanner(System.in).nextInt()"),
-        execute("""val s = "exit"""")
+        executeMessage("val n = scala.io.StdIn.readInt()"),
+        executeMessage("val m = new java.util.Scanner(System.in).nextInt()"),
+        executeMessage("""val s = "exit"""")
       )
 
       val streams =
@@ -138,9 +145,9 @@ object ScalaKernelTests extends TestSuite {
           )
 
       val input = Stream(
-        execute("""sys.error("foo")"""),
-        execute("val n = 2"),
-        execute("""val s = "other"""", lastMsgId)
+        executeMessage("""sys.error("foo")"""),
+        executeMessage("val n = 2"),
+        executeMessage("""val s = "other"""", lastMsgId)
       )
 
       val streams = ClientStreams.create(input, stopWhen)
@@ -171,329 +178,39 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("jvm-repr") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute("""class Bar(val value: String)""", "defined class Bar")
-      kernel.execute(
-        """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))""",
-        ""
-      )
-      kernel.execute(
-        """val b = new Bar("other")""",
-        "",
-        displaysText = Seq("Bar(other)")
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.jvmRepr()
     }
 
     test("updatable display") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        """val handle = Html("<b>foo</b>")""",
-        "",
-        displaysHtml = Seq("<b>foo</b>")
-      )
-
-      kernel.execute(
-        """handle.withContent("<i>bzz</i>").update()""",
-        "",
-        displaysHtmlUpdates = Seq("<i>bzz</i>")
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.updatableDisplay()
     }
 
     test("auto-update Future results upon completion") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      val sp = " "
-      val ls = System.lineSeparator()
-
-      kernel.execute(
-        "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
-        // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
-        // but not for the other ones using stripMargin…
-        s"import scala.concurrent.Future;$sp$ls" +
-          s"import scala.concurrent.ExecutionContext.Implicits.global$maybePostImportNewLine"
-      )
-
-      kernel.execute(
-        "val f = Future { Thread.sleep(3000L); 2 }",
-        "",
-        displaysText = Seq("f: Future[Int] = [running]")
-      )
-
-      kernel.execute(
-        "Thread.sleep(6000L)",
-        "",
-        // the update originates from the previous cell, but arrives while the third one is running
-        displaysTextUpdates = Seq(
-          if (TestUtil.isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
-        )
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      ammonite.compiler.CompilerBuilder.scalaVersion
+      almond.integration.Tests.autoUpdateFutureUponCompletion(scalaVersion)
     }
 
     test("auto-update Future results in background upon completion") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      // same as above, except no cell is running when the future completes
-
-      // How the pseudo-client behaves
-
-      implicit val sessionId: SessionId = SessionId()
-
-      // When the pseudo-client exits
-
-      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(m.header.msg_type == "update_display_data")
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute(
-          "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global"
-        ),
-        execute("val f = Future { Thread.sleep(3000L); 2 }")
-      )
-
-      val streams = ClientStreams.create(input, stopWhen)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "display_data",
-        "execute_reply",
-        "update_display_data" // arrives while no cell is running
-      )
-
-      assert(messageTypes == expectedMessageTypes)
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.autoUpdateFutureInBackgroundUponCompletion(scalaVersion)
     }
 
     test("auto-update Rx stuff upon change") {
-
       if (isScala212) {
-
-        val interpreter = new ScalaInterpreter(
-          params = ScalaInterpreterParams(
-            updateBackgroundVariablesEcOpt = Some(bgVarEc),
-            initialColors = Colors.BlackWhite
-          ),
-          logCtx = logCtx
-        )
-
-        val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-          .unsafeRunTimedOrThrow()
-
-        implicit val sessionId: SessionId = SessionId()
-
-        // When the pseudo-client exits
-
-        val lastMsgId = UUID.randomUUID().toString
-        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-          (_, m) =>
-            IO.pure(
-              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
-            )
-
-        // Initial messages from client
-
-        val input = Stream(
-          execute("almondrx.setup()"),
-          execute("val a = rx.Var(1)"),
-          execute("a() = 2"),
-          execute("a() = 3", lastMsgId)
-        )
-
-        val streams = ClientStreams.create(input, stopWhen)
-
-        kernel.run(streams.source, streams.sink)
-          .unsafeRunTimedOrThrow()
-
-        val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-        val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
-
-        val expectedRequestsMessageTypes = Seq(
-          "execute_reply",
-          "execute_reply",
-          "execute_reply",
-          "execute_reply"
-        )
-
-        val expectedPublishMessageTypes = Seq(
-          "execute_input",
-          "stream",
-          "execute_input",
-          "display_data",
-          "execute_input",
-          "update_display_data",
-          "execute_input",
-          "update_display_data"
-        )
-
-        assert(requestsMessageTypes == expectedRequestsMessageTypes)
-        assert(publishMessageTypes == expectedPublishMessageTypes)
-
-        val displayData = streams.displayData.map {
-          case (d, b) =>
-            val d0 = d.copy(
-              data = d.data.view.filterKeys(_ == "text/plain").toMap
-            )
-            (d0, b)
-        }
-        val id = {
-          val ids = displayData.flatMap(_._1.transient.display_id).toSet
-          assert(ids.size == 1)
-          ids.head
-        }
-
-        val expectedDisplayData = Seq(
-          ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 1\"".bytes)),
-            Map(),
-            ProtocolExecute.DisplayData.Transient(Some(id))
-          ) -> false,
-          ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 2\"".bytes)),
-            Map(),
-            ProtocolExecute.DisplayData.Transient(Some(id))
-          ) -> true,
-          ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"a: rx.Var[Int] = 3\"".bytes)),
-            Map(),
-            ProtocolExecute.DisplayData.Transient(Some(id))
-          ) -> true
-        )
-
-        assert(displayData == expectedDisplayData)
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+        almond.integration.Tests.autoUpdateRxStuffUponChange()
+        ""
       }
+      else
+        "Disabled"
     }
 
     test("handle interrupt messages") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      val interruptOnInput = MessageHandler(Channel.Input, Input.requestType) { msg =>
-        Message(
-          Header(
-            UUID.randomUUID().toString,
-            "test",
-            sessionId.sessionId,
-            Interrupt.requestType.messageType,
-            Some(Protocol.versionStr)
-          ),
-          Interrupt.Request
-        ).streamOn(Channel.Control)
-      }
-
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _)                                                                =>
-        case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
-        case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
-      }
-
-      // When the pseudo-client exits
-
-      val lastMsgId = UUID.randomUUID().toString
-      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(
-            m.header.msg_type == ProtocolExecute.replyType.messageType && m.parent_header.exists(
-              _.msg_id == lastMsgId
-            )
-          )
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute("val n = scala.io.StdIn.readInt()"),
-        execute("""val s = "ok done"""", msgId = lastMsgId)
-      )
-
-      val streams =
-        ClientStreams.create(input, stopWhen, interruptOnInput.orElse(ignoreExpectedReplies))
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes        = streams.generatedMessageTypes()
-      val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control))
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "stream",
-        "error",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
-      )
-
-      val expectedControlMessageTypes = Seq(
-        "interrupt_reply"
-      )
-
-      assert(messageTypes == expectedMessageTypes)
-      assert(controlMessageTypes == expectedControlMessageTypes)
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.handleInterruptMessages()
     }
 
     test("start from custom class loader") {
@@ -518,183 +235,46 @@ object ScalaKernelTests extends TestSuite {
         .unsafeRunTimedOrThrow()
 
       implicit val sessionId: SessionId = SessionId()
-      val lastMsgId                     = UUID.randomUUID().toString
 
-      // When the pseudo-client exits
-
-      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
-        (_, m) =>
-          IO.pure(
-            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
-          )
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute("""val url = Thread.currentThread().getContextClassLoader.getResource("foo")"""),
-        execute("""assert(url.toString == "https://google.fr")""", lastMsgId)
+      val tpeName =
+        if (scalaVersion.startsWith("2.")) "java.net.URL"
+        else "URL"
+      kernel.execute(
+        """val url = Thread.currentThread().getContextClassLoader.getResource("foo")""",
+        s"url: $tpeName = https://google.fr"
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
+      kernel.execute(
+        """assert(url.toString == "https://google.fr")""",
+        ""
       )
-
-      assert(messageTypes == expectedMessageTypes)
     }
 
     test("exit") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute("val n = 2"),
-        execute("exit")
-      )
-
-      val streams = ClientStreams.create(input)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
-      )
-
-      assert(messageTypes == expectedMessageTypes)
-
-      val payloads = streams.executeReplyPayloads
-
-      val expectedPayloads = Map(
-        2 -> Seq(
-          RawJson("""{"source":"ask_exit","keepkernel":false}""".bytes)
-        )
-      )
-
-      assert(payloads == expectedPayloads)
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.exit()
     }
 
     test("trap output") {
 
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          trapOutput = true
-        ),
-        logCtx = logCtx
+      implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+        threads,
+        interpreterEc,
+        processParams = _.copy(trapOutput = true)
       )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      // Initial messages from client
-
-      val input = Stream(
-        execute("val n = 2"),
-        execute("""println("Hello")"""),
-        execute("""System.err.println("Bbbb")"""),
-        execute("exit")
-      )
-
-      val streams = ClientStreams.create(input)
-
-      kernel.run(streams.source, streams.sink)
-        .unsafeRunTimedOrThrow()
-
-      val messageTypes = streams.generatedMessageTypes()
-
-      // no stream messages in particular
-      val expectedMessageTypes = Seq(
-        "execute_input",
-        "execute_result",
-        "execute_reply",
-        "execute_input",
-        "execute_reply",
-        "execute_input",
-        "execute_reply",
-        "execute_input",
-        "execute_reply"
-      )
-
-      assert(messageTypes == expectedMessageTypes)
+      almond.integration.Tests.trapOutput()
     }
 
     test("last exception") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        """val nullBefore = repl.lastException == null""",
-        "nullBefore: Boolean = true"
-      )
-      kernel.execute("""sys.error("foo")""", expectError = true)
-      kernel.execute("""val nullAfter = repl.lastException == null""", "nullAfter: Boolean = false")
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.lastException()
     }
 
     test("history") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        """val before = repl.history.toVector""",
-        """before: Vector[String] = Vector("val before = repl.history.toVector")"""
-      )
-      kernel.execute("val a = 2", "a: Int = 2")
-      kernel.execute("val b = a + 1", "b: Int = 3")
-      kernel.execute(
-        """val after = repl.history.toVector.mkString(",").toString""",
-        """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.history()
     }
 
     test("update vars") {
@@ -723,9 +303,9 @@ object ScalaKernelTests extends TestSuite {
         // Initial messages from client
 
         val input = Stream(
-          execute("""var n = 2"""),
-          execute("""n = n + 1"""),
-          execute("""n += 2""", lastMsgId)
+          executeMessage("""var n = 2"""),
+          executeMessage("""n = n + 1"""),
+          executeMessage("""n += 2""", lastMsgId)
         )
 
         val streams = ClientStreams.create(input, stopWhen)
@@ -814,9 +394,9 @@ object ScalaKernelTests extends TestSuite {
       // Initial messages from client
 
       val input = Stream(
-        execute("""lazy val n = 2"""),
-        execute("""val a = { n; () }"""),
-        execute("""val b = { n; () }""", lastMsgId)
+        executeMessage("""lazy val n = 2"""),
+        executeMessage("""val a = { n; () }"""),
+        executeMessage("""val b = { n; () }""", lastMsgId)
       )
 
       val streams = ClientStreams.create(input, stopWhen)
@@ -985,21 +565,19 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: SessionId = SessionId()
 
-      val sbv = {
-        val sv = Properties.versionNumberString
-        if (sv.startsWith("2.")) sv.split('.').take(2).mkString(".")
-        else sv.takeWhile(_ != '.')
-      }
+      val sbv =
+        if (scalaVersion.startsWith("2.")) scalaVersion.split('.').take(2).mkString(".")
+        else "2.13" // dotty compat
 
       kernel.execute(
-        "import caseapp.CaseApp",
+        "import org.scalacheck.ScalacheckShapeless",
         errors = Seq(
           ("", "Compilation Failed", List("Compilation Failed"))
         ),
         ignoreStreams = true
       )
       kernel.execute(
-        "import caseapp.util._",
+        "import org.scalacheck.Arbitrary",
         errors = Seq(
           ("", "Compilation Failed", List("Compilation Failed"))
         ),
@@ -1007,22 +585,22 @@ object ScalaKernelTests extends TestSuite {
       )
       val suffix = if (transitive) " --transitive" else ""
       kernel.execute(
-        s"%AddDeps     com.github.alexarchambault case-app_$sbv 2.1.0-M24" + suffix,
-        "import $ivy.$                                               " + (" " * sbv.length) + maybePostImportNewLine,
+        s"%AddDeps     com.github.alexarchambault scalacheck-shapeless_1.16_$sbv 1.3.1" + suffix,
+        "import $ivy.$                                                                " + maybePostImportNewLine,
         ignoreStreams = true // ignoring coursier messages (that it prints when downloading things)
       )
       kernel.execute(
-        "import caseapp.CaseApp",
-        "import caseapp.CaseApp" + maybePostImportNewLine
+        "import org.scalacheck.ScalacheckShapeless",
+        "import org.scalacheck.ScalacheckShapeless" + maybePostImportNewLine
       )
       if (transitive)
         kernel.execute(
-          "import caseapp.util._",
-          "import caseapp.util._" + maybePostImportNewLine
+          "import org.scalacheck.Arbitrary",
+          "import org.scalacheck.Arbitrary" + maybePostImportNewLine
         )
       else
         kernel.execute(
-          "import caseapp.util._",
+          "import org.scalacheck.Arbitrary",
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           ),
