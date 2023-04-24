@@ -9,10 +9,11 @@ import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{Kernel, KernelThreads}
 import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
+import almond.util.SequentialExecutionContext
 import ammonite.util.Colors
 import cats.effect.IO
+import com.eed3si9n.expecty.Expecty.expect
 import fs2.Stream
-import utest._
 
 import java.nio.charset.StandardCharsets
 
@@ -64,6 +65,42 @@ object TestUtil {
       else sys.error("Extra startup JARs unsupported in unit tests")
   }
 
+  private case class Options(
+    predef: String = ""
+  )
+
+  private val optionsParser: caseapp.Parser[Options] = caseapp.Parser.derive
+
+  def kernelRunner[T](
+    threads: KernelThreads,
+    interpreterEc: ExecutionContext,
+    processParams: ScalaInterpreterParams => ScalaInterpreterParams = identity
+  ): KernelRunner = KernelRunner {
+
+    options =>
+
+      val opt = optionsParser.parse(options) match {
+        case Left(e) => throw new Exception(e.toString)
+        case Right((opt, extra)) =>
+          assert(extra.isEmpty, "Unexpected trailing values in kernel arguments")
+          opt
+      }
+
+      val interpreter = new ScalaInterpreter(
+        params = processParams {
+          ScalaInterpreterParams(
+            initialColors = Colors.BlackWhite,
+            updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
+            predefCode = opt.predef
+          )
+        },
+        logCtx = logCtx
+      )
+
+      Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+  }
+
   implicit class KernelOps(private val kernel: Kernel) extends AnyVal {
     def execute(
       code: String,
@@ -110,12 +147,12 @@ object TestUtil {
           Nil
         else
           Seq("execute_reply")
-      assert(requestsMessageTypes == Seq("execute_reply"))
+      expect(requestsMessageTypes == Seq("execute_reply"))
 
       if (expectInterrupt) {
         val controlMessageTypes = streams.generatedMessageTypes(Set(Channel.Control)).toVector
         val expectedControlMessageTypes = Seq("interrupt_reply")
-        assert(controlMessageTypes == expectedControlMessageTypes)
+        expect(controlMessageTypes == expectedControlMessageTypes)
       }
 
       val expectedPublishMessageTypes = {
@@ -137,20 +174,20 @@ object TestUtil {
         else
           prefix :+ "execute_result"
       }
-      assert(publishMessageTypes == expectedPublishMessageTypes)
+      expect(publishMessageTypes == expectedPublishMessageTypes)
 
       if (stdout != null) {
         val stdoutMessages = streams.output.mkString
-        assert(stdout == stdoutMessages)
+        expect(stdout == stdoutMessages)
       }
 
       if (stderr != null) {
         val stderrMessages = streams.errorOutput.mkString
-        assert(stderr == stderrMessages)
+        expect(stderr == stderrMessages)
       }
 
       val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
-      assert(replies == Option(reply).toVector)
+      expect(replies == Option(reply).toVector)
 
       if (replyPayloads != null) {
         val gotReplyPayloads = streams.executeReplyPayloads
@@ -159,7 +196,7 @@ object TestUtil {
           .flatMap(_._2)
           .map(_.value)
           .map(new String(_, StandardCharsets.UTF_8))
-        assert(replyPayloads == gotReplyPayloads)
+        expect(replyPayloads == gotReplyPayloads)
       }
 
       for (expectedTextDisplay <- Option(displaysText)) {
@@ -172,11 +209,11 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(textDisplay == expectedTextDisplay)
+        expect(textDisplay == expectedTextDisplay)
       }
 
       val receivedErrors = streams.executeErrors.toVector.sortBy(_._1).map(_._2)
-      assert(errors == null || receivedErrors == errors)
+      expect(errors == null || receivedErrors == errors)
 
       for (expectedHtmlDisplay <- Option(displaysHtml)) {
         import ClientStreams.RawJsonOps
@@ -188,7 +225,7 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(htmlDisplay == expectedHtmlDisplay)
+        expect(htmlDisplay == expectedHtmlDisplay)
       }
 
       for (expectedTextDisplayUpdates <- Option(displaysTextUpdates)) {
@@ -201,7 +238,7 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(textDisplayUpdates == expectedTextDisplayUpdates)
+        expect(textDisplayUpdates == expectedTextDisplayUpdates)
       }
 
       for (expectedHtmlDisplayUpdates <- Option(displaysHtmlUpdates)) {
@@ -214,7 +251,7 @@ object TestUtil {
               .getOrElse("")
         }
 
-        assert(htmlDisplayUpdates == expectedHtmlDisplayUpdates)
+        expect(htmlDisplayUpdates == expectedHtmlDisplayUpdates)
       }
     }
   }
@@ -254,7 +291,7 @@ object TestUtil {
             m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
           )
 
-      assert(input.nonEmpty)
+      expect(input.nonEmpty)
 
       val input0 = Stream(
         input.init.map(s => execute(s)) :+
@@ -299,8 +336,8 @@ object TestUtil {
       for (k <- expectedReplies.keySet.--(replies0.keySet))
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
 
-      assert(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
-      assert(publish0.map(noCrLf) == publish.map(noCrLf))
+      expect(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
+      expect(publish0.map(noCrLf) == publish.map(noCrLf))
     }
   }
 

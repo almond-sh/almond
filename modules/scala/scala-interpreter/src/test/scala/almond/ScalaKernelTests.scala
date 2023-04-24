@@ -22,7 +22,6 @@ import utest._
 
 import scala.collection.JavaConverters._
 import scala.collection.compat._
-import scala.util.Properties
 
 object ScalaKernelTests extends TestSuite {
 
@@ -33,10 +32,14 @@ object ScalaKernelTests extends TestSuite {
 
   val threads = KernelThreads.create("test")
 
+  implicit def runner: Dsl.Runner = TestUtil.kernelRunner(threads, interpreterEc)
+
   val maybePostImportNewLine = if (TestUtil.isScala2) "" else System.lineSeparator()
 
   val sp = " "
   val ls = System.lineSeparator()
+
+  val scalaVersion = ammonite.compiler.CompilerBuilder.scalaVersion
 
   override def utestAfterAll() = {
     threads.attemptShutdown()
@@ -175,229 +178,39 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("jvm-repr") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute("""class Bar(val value: String)""", "defined class Bar")
-      kernel.execute(
-        """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))""",
-        ""
-      )
-      kernel.execute(
-        """val b = new Bar("other")""",
-        "",
-        displaysText = Seq("Bar(other)")
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.jvmRepr()
     }
 
     test("updatable display") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        """val handle = Html("<b>foo</b>")""",
-        "",
-        displaysHtml = Seq("<b>foo</b>")
-      )
-
-      kernel.execute(
-        """handle.withContent("<i>bzz</i>").update()""",
-        "",
-        displaysHtmlUpdates = Seq("<i>bzz</i>")
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.updatableDisplay()
     }
 
     test("auto-update Future results upon completion") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
-        // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
-        // but not for the other ones using stripMargin…
-        s"import scala.concurrent.Future;$sp$ls" +
-          s"import scala.concurrent.ExecutionContext.Implicits.global$maybePostImportNewLine"
-      )
-
-      kernel.execute(
-        "val f = Future { Thread.sleep(3000L); 2 }",
-        "",
-        displaysText = Seq("f: Future[Int] = [running]")
-      )
-
-      kernel.execute(
-        "Thread.sleep(6000L)",
-        "",
-        // the update originates from the previous cell, but arrives while the third one is running
-        displaysTextUpdates = Seq(
-          if (TestUtil.isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
-        )
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      ammonite.compiler.CompilerBuilder.scalaVersion
+      almond.integration.Tests.autoUpdateFutureUponCompletion(scalaVersion)
     }
 
     test("auto-update Future results in background upon completion") {
-
-      // same as above, except no cell is running when the future completes
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
-        // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
-        // but not for the other ones using stripMargin…
-        s"import scala.concurrent.Future;$sp$ls" +
-          s"import scala.concurrent.ExecutionContext.Implicits.global$maybePostImportNewLine"
-      )
-
-      kernel.execute(
-        "val f = Future { Thread.sleep(3000L); 2 }",
-        "",
-        displaysText = Seq("f: Future[Int] = [running]"),
-        displaysTextUpdates = Seq(
-          if (TestUtil.isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
-        ),
-        waitForUpdateDisplay = true
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.autoUpdateFutureInBackgroundUponCompletion(scalaVersion)
     }
 
     test("auto-update Rx stuff upon change") {
-
       if (isScala212) {
-
-        val interpreter = new ScalaInterpreter(
-          params = ScalaInterpreterParams(
-            updateBackgroundVariablesEcOpt = Some(bgVarEc),
-            initialColors = Colors.BlackWhite
-          ),
-          logCtx = logCtx
-        )
-
-        val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-          .unsafeRunTimedOrThrow()
-
-        implicit val sessionId: SessionId = SessionId()
-
-        kernel.execute(
-          "almondrx.setup()",
-          "",
-          ignoreStreams = true
-        )
-
-        kernel.execute(
-          "val a = rx.Var(1)",
-          "",
-          displaysText = Seq(
-            "a: rx.Var[Int] = 1"
-          )
-        )
-
-        kernel.execute(
-          "a() = 2",
-          "",
-          displaysTextUpdates = Seq(
-            "a: rx.Var[Int] = 2"
-          )
-        )
-
-        kernel.execute(
-          "a() = 3",
-          "",
-          displaysTextUpdates = Seq(
-            "a: rx.Var[Int] = 3"
-          )
-        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+        almond.integration.Tests.autoUpdateRxStuffUponChange()
+        ""
       }
+      else
+        "Disabled"
     }
 
     test("handle interrupt messages") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      val interruptOnInput = MessageHandler(Channel.Input, Input.requestType) { msg =>
-        Message(
-          Header(
-            UUID.randomUUID().toString,
-            "test",
-            sessionId.sessionId,
-            Interrupt.requestType.messageType,
-            Some(Protocol.versionStr)
-          ),
-          Interrupt.Request
-        ).streamOn(Channel.Control)
-      }
-
-      val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _)                                                                =>
-        case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
-        case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
-      }
-
-      kernel.execute(
-        "val n = scala.io.StdIn.readInt()",
-        ignoreStreams = true,
-        expectError = true,
-        expectInterrupt = true,
-        handler = interruptOnInput.orElse(ignoreExpectedReplies)
-      )
-
-      kernel.execute(
-        """val s = "ok done"""",
-        """s: String = "ok done""""
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.handleInterruptMessages()
     }
 
     test("start from custom class loader") {
@@ -438,121 +251,30 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("exit") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        "val n = 2",
-        "n: Int = 2"
-      )
-
-      kernel.execute(
-        "exit",
-        "",
-        replyPayloads = Seq(
-          """{"source":"ask_exit","keepkernel":false}"""
-        )
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.exit()
     }
 
     test("trap output") {
 
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          trapOutput = true
-        ),
-        logCtx = logCtx
+      implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+        threads,
+        interpreterEc,
+        processParams = _.copy(trapOutput = true)
       )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        "val n = 2",
-        "n: Int = 2"
-      )
-
-      kernel.execute(
-        """println("Hello")""",
-        "",
-        stdout = "",
-        stderr = ""
-      )
-
-      kernel.execute(
-        """System.err.println("Bbbb")""",
-        "",
-        stdout = "",
-        stderr = ""
-      )
-
-      kernel.execute(
-        "exit",
-        "",
-        stdout = "",
-        stderr = ""
-      )
+      almond.integration.Tests.trapOutput()
     }
 
     test("last exception") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        """val nullBefore = repl.lastException == null""",
-        "nullBefore: Boolean = true"
-      )
-      kernel.execute("""sys.error("foo")""", expectError = true)
-      kernel.execute("""val nullAfter = repl.lastException == null""", "nullAfter: Boolean = false")
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.lastException()
     }
 
     test("history") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      kernel.execute(
-        """val before = repl.history.toVector""",
-        """before: Vector[String] = Vector("val before = repl.history.toVector")"""
-      )
-      kernel.execute("val a = 2", "a: Int = 2")
-      kernel.execute("val b = a + 1", "b: Int = 3")
-      kernel.execute(
-        """val after = repl.history.toVector.mkString(",").toString""",
-        """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.history()
     }
 
     test("update vars") {
@@ -843,11 +565,9 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: SessionId = SessionId()
 
-      val sbv = {
-        val sv = Properties.versionNumberString
-        if (sv.startsWith("2.")) sv.split('.').take(2).mkString(".")
+      val sbv =
+        if (scalaVersion.startsWith("2.")) scalaVersion.split('.').take(2).mkString(".")
         else "2.13" // dotty compat
-      }
 
       kernel.execute(
         "import org.scalacheck.ScalacheckShapeless",

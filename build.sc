@@ -211,6 +211,9 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         rx ++
         testDefs
     }
+    def ivyDeps = super.ivyDeps() ++ Seq(
+      Deps.caseApp
+    )
   }
 }
 
