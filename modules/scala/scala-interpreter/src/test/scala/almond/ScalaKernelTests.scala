@@ -846,18 +846,18 @@ object ScalaKernelTests extends TestSuite {
       val sbv = {
         val sv = Properties.versionNumberString
         if (sv.startsWith("2.")) sv.split('.').take(2).mkString(".")
-        else sv.takeWhile(_ != '.')
+        else "2.13" // dotty compat
       }
 
       kernel.execute(
-        "import caseapp.CaseApp",
+        "import org.scalacheck.ScalacheckShapeless",
         errors = Seq(
           ("", "Compilation Failed", List("Compilation Failed"))
         ),
         ignoreStreams = true
       )
       kernel.execute(
-        "import caseapp.util._",
+        "import org.scalacheck.Arbitrary",
         errors = Seq(
           ("", "Compilation Failed", List("Compilation Failed"))
         ),
@@ -865,22 +865,22 @@ object ScalaKernelTests extends TestSuite {
       )
       val suffix = if (transitive) " --transitive" else ""
       kernel.execute(
-        s"%AddDeps     com.github.alexarchambault case-app_$sbv 2.1.0-M24" + suffix,
-        "import $ivy.$                                               " + (" " * sbv.length) + maybePostImportNewLine,
+        s"%AddDeps     com.github.alexarchambault scalacheck-shapeless_1.16_$sbv 1.3.1" + suffix,
+        "import $ivy.$                                                                " + maybePostImportNewLine,
         ignoreStreams = true // ignoring coursier messages (that it prints when downloading things)
       )
       kernel.execute(
-        "import caseapp.CaseApp",
-        "import caseapp.CaseApp" + maybePostImportNewLine
+        "import org.scalacheck.ScalacheckShapeless",
+        "import org.scalacheck.ScalacheckShapeless" + maybePostImportNewLine
       )
       if (transitive)
         kernel.execute(
-          "import caseapp.util._",
-          "import caseapp.util._" + maybePostImportNewLine
+          "import org.scalacheck.Arbitrary",
+          "import org.scalacheck.Arbitrary" + maybePostImportNewLine
         )
       else
         kernel.execute(
-          "import caseapp.util._",
+          "import org.scalacheck.Arbitrary",
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           ),
