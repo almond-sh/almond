@@ -41,6 +41,13 @@ object KernelTests extends TestSuite {
       }
     }
 
+    test("toree AddJar custom protocol") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.toreeAddJarCustomProtocol(scalaVersion)
+      }
+    }
+
   }
 
 }

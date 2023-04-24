@@ -6,7 +6,11 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.Dsl._
 
+import java.io.File
 import java.util.UUID
+
+import scala.collection.JavaConverters._
+import scala.util.Properties
 
 object Tests {
 
@@ -253,6 +257,111 @@ object Tests {
     execute(
       """val after = repl.history.toVector.mkString(",").toString""",
       """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
+    )
+  }
+
+  private def java17Cmd(): String = {
+    val isAtLeastJava17 =
+      scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)
+    val javaHome =
+      if (isAtLeastJava17) new File(sys.props("java.home"))
+      else coursierapi.JvmManager.create().get("17")
+    val ext = if (Properties.isWin) ".exe" else ""
+    new File(javaHome, "bin/java" + ext).toString
+  }
+
+  private def scalaCliLauncher(): File =
+    coursierapi.Cache.create()
+      .get(coursierapi.Artifact.of(
+        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.0-RC1/scala-cli"
+      ))
+
+  def toreeAddJarCustomProtocol(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val picocliJar = coursierapi.Fetch.create()
+      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .fetch()
+      .asScala
+      .head
+
+    val pkg               = "almond.test.custom"
+    val tmpDir            = os.temp.dir(prefix = "almond.add-jar-test")
+    val destJar           = tmpDir / "library.jar"
+    val escapedPicocliJar = picocliJar.toString.replace("\\", "\\\\")
+    val code =
+      s"""//> using scala "$scalaVersion"
+         |package $pkg.foo
+         |
+         |class Handler extends java.net.URLStreamHandler {
+         |  override def openConnection(url: java.net.URL): java.net.URLConnection =
+         |    new java.net.URLConnection(url) {
+         |      override def connect(): Unit = ()
+         |      override def getInputStream(): java.io.InputStream =
+         |        new java.io.FileInputStream(new java.io.File("$escapedPicocliJar"))
+         |    }
+         |}
+         |""".stripMargin
+    os.write(tmpDir / "FooURLConnection.scala", code)
+
+    os.proc(
+      java17Cmd(),
+      "-jar",
+      scalaCliLauncher().toString,
+      "--power",
+      "package",
+      "--library",
+      ".",
+      "-o",
+      destJar
+    )
+      .call(cwd = tmpDir, stdin = os.Inherit, stdout = os.Inherit)
+
+    val predef =
+      s"""
+         |private def registerPackage(): Unit = {
+         |  val currentOpt = sys.props.get("java.protocol.handler.pkgs")
+         |  val updatedValue = currentOpt.fold("")(_ + "|") + "$pkg"
+         |  sys.props("java.protocol.handler.pkgs") = updatedValue
+         |}
+         |
+         |private def resetHandlers(): Unit =
+         |  try java.net.URL.setURLStreamHandlerFactory(null)
+         |  catch {
+         |    case e: Error => throw e// Ignore
+         |  }
+         |
+         |registerPackage()
+         |resetHandlers()
+         |
+         |interp.load.cp(os.Path("${destJar.toString.replace("\\", "\\\\")}"))
+         |""".stripMargin
+
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    implicit val session: Session =
+      runner.withExtraJars(destJar)("--toree-magics", "--predef", predefPath.toString)
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    execute(
+      """%AddJar foo://thing/a/b
+        |""".stripMargin,
+      ""
+    )
+
+    execute(
+      "import picocli.CommandLine",
+      "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
     )
   }
 
