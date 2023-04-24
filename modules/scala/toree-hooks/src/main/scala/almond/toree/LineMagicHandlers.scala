@@ -5,7 +5,7 @@ import almond.api.JupyterApi
 
 import java.io.{InputStream, OutputStream}
 import java.net.{URI, URL}
-import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
+import java.nio.file.attribute.{FileAttribute, PosixFilePermission, PosixFilePermissions}
 import java.nio.file.{Files, Path, Paths}
 
 import scala.collection.JavaConverters._
@@ -127,16 +127,24 @@ object LineMagicHandlers {
       var os: OutputStream = null
       try {
         is = url.openStream()
-        val perms = Set(
-          PosixFilePermission.OWNER_READ,
-          PosixFilePermission.OWNER_WRITE,
-          PosixFilePermission.OWNER_EXECUTE
-        )
+
+        val perms: Seq[FileAttribute[_]] =
+          if (Properties.isWin) Nil
+          else
+            Seq(
+              PosixFilePermissions.asFileAttribute(
+                Set(
+                  PosixFilePermission.OWNER_READ,
+                  PosixFilePermission.OWNER_WRITE,
+                  PosixFilePermission.OWNER_EXECUTE
+                ).asJava
+              )
+            )
         // FIXME Get suffix from the URL?
         val tmpFile = Files.createTempFile(
           "almond-add-jar",
           ".jar",
-          PosixFilePermissions.asFileAttribute(perms.asJava)
+          perms: _*
         )
         tmpFile.toFile.deleteOnExit()
         os = Files.newOutputStream(tmpFile)
