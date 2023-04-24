@@ -16,7 +16,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
     - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
@@ -39,7 +39,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
     - run: ./mill -i ci.uploadLaunchers
@@ -57,7 +57,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
     - run: scripts/update-docker-images.sh
@@ -75,7 +75,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
         apps: cs

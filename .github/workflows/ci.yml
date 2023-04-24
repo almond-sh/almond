@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
     - run: ./mill -i validateExamples
@@ -65,7 +65,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: ${{ matrix.JDK }}
         apps:
@@ -87,7 +87,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
     - run: ./mill __.mimaReportBinaryIssues
@@ -101,7 +101,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
         apps: cs
@@ -116,7 +116,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: "temurin:17"
         apps: scalafmt:3.0.0
@@ -130,7 +130,7 @@ jobs:
         fetch-depth: 0
         submodules: true
     - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3.0
+    - uses: coursier/setup-action@v1.3.2
       with:
         jvm: 8
         apps:
