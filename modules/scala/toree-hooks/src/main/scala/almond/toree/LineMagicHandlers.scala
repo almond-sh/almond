@@ -69,8 +69,6 @@ object LineMagicHandlers {
         case Seq(url, other @ _*) =>
           val uri    = new URI(url)
           val params = parseParams(other.toList, Params())
-          if (params.force)
-            System.err.println(s"Warning: ignoring unsupported %AddJar argument -f")
           if (params.magic)
             System.err.println(s"Warning: ignoring unsupported %AddJar argument --magic")
           if (uri.getScheme == "file") {
@@ -79,8 +77,12 @@ object LineMagicHandlers {
             Right(s"interp.load.cp(os.Path($q$q$q$path$q$q$q))")
           }
           else if (uri.getScheme == "http" || uri.getScheme == "https") {
-            val file = coursierapi.Cache.create().get(coursierapi.Artifact.of(uri.toASCIIString))
-            val q    = "\""
+            // Mark as "changing" if params.force is true.
+            // This makes the cache check for updates if the download (or last check) is older than the coursier TTL.
+            // So it's not really "forcing" an update for now...
+            val artifact = coursierapi.Artifact.of(uri.toASCIIString, params.force, false)
+            val file     = coursierapi.Cache.create().get(artifact)
+            val q        = "\""
             Right(s"interp.load.cp(os.Path($q$q$q$file$q$q$q))")
           }
           else {
