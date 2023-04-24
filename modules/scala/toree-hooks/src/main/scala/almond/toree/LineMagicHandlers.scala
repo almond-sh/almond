@@ -3,8 +3,13 @@ package almond.toree
 import ammonite.util.Ref
 import almond.api.JupyterApi
 
-import java.net.URI
-import java.nio.file.Paths
+import java.io.{InputStream, OutputStream}
+import java.net.{URI, URL}
+import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
+import java.nio.file.{Files, Path, Paths}
+
+import scala.collection.JavaConverters._
+import scala.util.Properties
 
 object LineMagicHandlers {
 
@@ -69,26 +74,30 @@ object LineMagicHandlers {
         case Seq(url, other @ _*) =>
           val uri    = new URI(url)
           val params = parseParams(other.toList, Params())
-          if (params.force)
-            System.err.println(s"Warning: ignoring unsupported %AddJar argument -f")
           if (params.magic)
             System.err.println(s"Warning: ignoring unsupported %AddJar argument --magic")
-          if (uri.getScheme == "file") {
-            val path = Paths.get(uri)
-            val q    = "\""
-            Right(s"interp.load.cp(os.Path($q$q$q$path$q$q$q))")
-          }
-          else if (uri.getScheme == "http" || uri.getScheme == "https") {
-            val file = coursierapi.Cache.create().get(coursierapi.Artifact.of(uri.toASCIIString))
-            val q    = "\""
-            Right(s"interp.load.cp(os.Path($q$q$q$file$q$q$q))")
-          }
-          else {
-            System.err.println(
-              s"Warning: ignoring %AddJar URL $url (unsupported protocol ${uri.getScheme})"
-            )
-            Right("")
-          }
+
+          val q = "\""
+          val path =
+            if (uri.getScheme == "file")
+              Paths.get(uri).toString
+            else if (uri.getScheme == "http" || uri.getScheme == "https") {
+              // Mark as "changing" if params.force is true.
+              // This makes the cache check for updates if the download (or last check) is older than the coursier TTL.
+              // So it's not really "forcing" an update for now...
+              val artifact = coursierapi.Artifact.of(uri.toASCIIString, params.force, false)
+              val file     = coursierapi.Cache.create().get(artifact)
+              file.toString
+            }
+            else {
+              // Let it fail with MalformedURLException if there's no handler for it, so that users know something's wrong
+              val url  = uri.toURL
+              val file = writeUrlToTmpFile(url)
+              file.toString
+            }
+
+          Right(s"interp.load.cp(os.Path($q$q$q$path$q$q$q))")
+
         case _ =>
           System.err.println(
             s"Warning: ignoring malformed %AddJar Toree magic (expected '%AddJar url [optional-arguments*]')"
@@ -112,6 +121,41 @@ object LineMagicHandlers {
           System.err.println(s"Warning: ignoring unrecognized %AddJar argument '$other'")
           parseParams(t, params)
       }
+
+    private def writeUrlToTmpFile(url: URL): Path = {
+      var is: InputStream  = null
+      var os: OutputStream = null
+      try {
+        is = url.openStream()
+        val perms = Set(
+          PosixFilePermission.OWNER_READ,
+          PosixFilePermission.OWNER_WRITE,
+          PosixFilePermission.OWNER_EXECUTE
+        )
+        // FIXME Get suffix from the URL?
+        val tmpFile = Files.createTempFile(
+          "almond-add-jar",
+          ".jar",
+          PosixFilePermissions.asFileAttribute(perms.asJava)
+        )
+        tmpFile.toFile.deleteOnExit()
+        os = Files.newOutputStream(tmpFile)
+        val buf  = Array.ofDim[Byte](128 * 1024)
+        var read = 0
+        while ({
+          read = is.read(buf)
+          read >= 0
+        })
+          os.write(buf, 0, read)
+        tmpFile
+      }
+      finally {
+        if (os != null)
+          os.close()
+        if (is != null)
+          is.close()
+      }
+    }
   }
 
   class LsMagicHandler extends LineMagicHandler {
