@@ -18,6 +18,4 @@ $ coursier bootstrap --standalone \
 $ ./almond --install
 $ rm -f almond # the generated launcher can be removed after install, it copied itself in the kernel installation directory
 ```
-but that launcher won't work fine until something like https://github.com/lihaoyi/Ammonite/pull/850
-is merged in Ammonite.
 

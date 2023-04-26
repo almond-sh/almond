@@ -100,5 +100,3 @@ val spark = {
     .getOrCreate()
 }
 ```
-
-Local clusters, Mesos, and Kubernetes, aren't supported by *ammonite-spark* yet.
