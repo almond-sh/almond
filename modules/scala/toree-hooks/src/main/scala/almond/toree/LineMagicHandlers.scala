@@ -174,11 +174,14 @@ object LineMagicHandlers {
         )
 
       println("Available line magics:")
-      println(handlerKeys.toVector.sorted.map("%" + _).mkString(" "))
+      val lineKeys = (handlerKeys ++ LineMagicHook.userHandlers.keys).toVector.sorted.distinct
+      println(lineKeys.map("%" + _).mkString(" "))
       println()
 
       println("Available cell magics:")
-      println(CellMagicHandlers.handlerKeys.toVector.sorted.map("%%" + _).mkString(" "))
+      val cellKeys =
+        (CellMagicHandlers.handlerKeys ++ CellMagicHook.userHandlers.keys).toVector.sorted
+      println(cellKeys.map("%%" + _).mkString(" "))
       println()
 
       Right("")

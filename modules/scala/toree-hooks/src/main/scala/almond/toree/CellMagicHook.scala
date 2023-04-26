@@ -9,13 +9,16 @@ import scala.collection.mutable
 
 object CellMagicHook {
 
-  private var userHandlers = new mutable.HashMap[String, CellMagicHandler]
+  private val userHandlers0 = new mutable.HashMap[String, CellMagicHandler]
 
   def addHandler(name: String)(handler: CellMagicHandler): Unit =
-    userHandlers += name -> handler
+    userHandlers0 += name -> handler
 
   def clearHandlers(): Unit =
-    userHandlers.clear()
+    userHandlers0.clear()
+
+  def userHandlers: Map[String, CellMagicHandler] =
+    userHandlers0.toMap
 
   def hook(publish: OutputHandler): JupyterApi.ExecuteHook = {
     val handlers = CellMagicHandlers.handlers(publish)
@@ -27,7 +30,7 @@ object CellMagicHook {
       nameOpt match {
         case Some(name) =>
           val name0 = name.toLowerCase(Locale.ROOT)
-          userHandlers.get(name0).orElse(handlers.get(name0)) match {
+          userHandlers0.get(name0).orElse(handlers.get(name0)) match {
             case Some(handler) =>
               val content = code.linesWithSeparators.drop(1).mkString
               handler.handle(name, content)

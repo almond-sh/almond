@@ -16,6 +16,7 @@ import com.eed3si9n.expecty.Expecty.expect
 import fs2.Stream
 
 import java.nio.charset.StandardCharsets
+import java.nio.file.Paths
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -73,7 +74,8 @@ object TestUtil {
   }
 
   private case class Options(
-    predef: String = ""
+    predef: List[String] = Nil,
+    toreeMagics: Boolean = false
   )
 
   private val optionsParser: caseapp.Parser[Options] = caseapp.Parser.derive
@@ -98,7 +100,8 @@ object TestUtil {
           ScalaInterpreterParams(
             initialColors = Colors.BlackWhite,
             updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
-            predefCode = opt.predef
+            predefFiles = opt.predef.map(Paths.get(_)),
+            toreeMagics = opt.toreeMagics
           )
         },
         logCtx = logCtx
