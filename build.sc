@@ -179,7 +179,6 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
-      Deps.directories,
       Deps.jansi,
       Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
