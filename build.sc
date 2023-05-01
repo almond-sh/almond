@@ -341,6 +341,7 @@ class Echo(val crossScalaVersion: String) extends AlmondModule {
 }
 
 class ToreeHooks(val crossScalaVersion: String) extends AlmondModule {
+  def supports3 = true
   def compileModuleDeps = super.compileModuleDeps ++ Seq(
     scala.`scala-kernel-api`(ScalaVersions.binary(crossScalaVersion))
   )
