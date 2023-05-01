@@ -13,8 +13,8 @@ import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
 import ammonite.util.{Frame => _, _}
+import coursier.cache.shaded.dirs.ProjectDirectories
 import fastparse.Parsed
-import io.github.soc.directories.ProjectDirectories
 
 import scala.util.control.NonFatal
 

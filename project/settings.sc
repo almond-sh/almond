@@ -693,3 +693,16 @@ trait Mima extends com.github.lolgab.mill.mima.Mima {
     )
   }
 }
+
+trait LocalRepo extends Module {
+
+  def stubsModules: Seq[PublishLocalNoFluff]
+  def version: T[String]
+
+  def repoRoot = os.rel / "out" / "repo" / "{VERSION}"
+
+  def localRepo = T {
+    val tasks = stubsModules.map(_.publishLocalNoFluff(repoRoot.toString))
+    define.Target.sequence(tasks)
+  }
+}

@@ -13,9 +13,10 @@ import java.nio.channels.ClosedSelectorException
 import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
+import scala.util.Properties
 
 object KernelLauncher {
 
@@ -66,10 +67,68 @@ object KernelLauncher {
     }
   }
 
-  lazy val launcher = sys.props.getOrElse(
-    "almond.test.launcher",
-    sys.error("almond.test.launcher Java property not set")
+  lazy val localRepoRoot = sys.props.get("almond.test.local-repo")
+    .map(os.Path(_, os.pwd))
+    .getOrElse {
+      sys.error("almond.test.local-repo Java property not set")
+    }
+
+  lazy val launcherVersion = sys.props.getOrElse(
+    "almond.test.launcher-version",
+    sys.error("almond.test.launcher-version Java property not set")
   )
+
+  lazy val launcherScalaVersion = sys.props.getOrElse(
+    "almond.test.launcher-scala-version",
+    sys.error("almond.test.launcher-scala-version Java property not set")
+  )
+
+  lazy val cs = sys.props.getOrElse(
+    "almond.test.cs-launcher",
+    sys.error("almond.test.cs-launcher Java property not set")
+  )
+
+  def generateLauncher(extraOptions: Seq[String] = Nil): (os.Path, os.Path) = {
+    val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
+    val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
+    val (jarDest, runnerDest, extraOpts) =
+      if (Properties.isWin)
+        (tmpDir / "launcher", tmpDir / "launcher.bat", Seq("--bat"))
+      else {
+        val launcher = tmpDir / "launcher.jar"
+        (launcher, launcher, Nil)
+      }
+    val repoArgs = Seq(
+      "--no-default",
+      "-r",
+      s"ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]",
+      "-r",
+      "ivy2Local",
+      "-r",
+      "central",
+      "-r",
+      "jitpack"
+    )
+    os.proc(
+      cs,
+      "bootstrap",
+      "--hybrid",
+      extraOpts,
+      repoArgs,
+      "-o",
+      jarDest,
+      s"sh.almond:::scala-kernel:$launcherVersion",
+      "--shared",
+      "sh.almond:::scala-kernel-api",
+      "--scala",
+      launcherScalaVersion,
+      extraOptions
+    )
+      .call(stdin = os.Inherit, stdout = os.Inherit)
+    (jarDest, runnerDest)
+  }
+
+  lazy val (jarLauncher, launcher) = generateLauncher()
 
   lazy val threads = ZeromqThreads.create("almond-tests")
 
@@ -101,7 +160,7 @@ object KernelLauncher {
           }
         } yield ()
 
-        try t.unsafeRunSync()
+        try Await.result(t.unsafeToFuture(), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
@@ -118,11 +177,17 @@ object KernelLauncher {
       var sessions            = List.empty[Session with AutoCloseable]
 
       def apply(options: String*): Session =
-        runnerSession(options, Nil)
+        runnerSession(options, Nil, Nil)
       def withExtraJars(extraJars: os.Path*)(options: String*): Session =
-        runnerSession(options, extraJars)
+        runnerSession(options, Nil, extraJars)
+      def withLauncherOptions(launcherOptions: String*)(options: String*): Session =
+        runnerSession(options, launcherOptions, Nil)
 
-      private def runnerSession(options: Seq[String], extraJars: Seq[os.Path]): Session = {
+      private def runnerSession(
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraJars: Seq[os.Path]
+      ): Session = {
 
         close()
 
@@ -134,14 +199,20 @@ object KernelLauncher {
 
         os.write(connFile, writeToArray(connDetails))
 
+        val (jarLauncher0, launcher0) =
+          if (launcherOptions.isEmpty)
+            (jarLauncher, launcher)
+          else
+            generateLauncher(launcherOptions)
+
         val baseCmd: os.Shellable =
-          if (extraJars.isEmpty) launcher
+          if (extraJars.isEmpty) launcher0
           else
             Seq[os.Shellable](
               "java",
               "-cp",
-              (extraJars.map(_.toString) :+ launcher).mkString(File.pathSeparator),
-              "coursier.bootstrap.launcher.Launcher"
+              (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
+              "coursier.bootstrap.launcher.ResourcesLauncher"
             )
 
         proc = os.proc(

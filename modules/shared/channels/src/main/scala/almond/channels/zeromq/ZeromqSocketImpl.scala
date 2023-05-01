@@ -164,9 +164,11 @@ final class ZeromqSocketImpl(
       val expectedSignature = hmac(header, parentHeader, metaData, content)
 
       if (expectedSignature == signature || !enableMac) {
-        log.debug(
-          s"Received on $channel message with header ${message.header} and idents ${identsAsStrings(message.idents)})"
-        )
+        log.debug {
+          val headerStr = Try(new String(message.header, UTF_8))
+            .getOrElse(message.header.toString)
+          s"Received on $channel message with header $headerStr and idents ${identsAsStrings(message.idents)})"
+        }
         Some(message)
       }
       else {

@@ -365,4 +365,68 @@ object Tests {
     )
   }
 
+  def toreeCustomCellMagic()(implicit sessionId: SessionId, runner: Runner): Unit = {
+
+    val predef =
+      """almond.toree.CellMagicHook.addHandler("test") { (_, content) =>
+        |  import almond.api.JupyterApi
+        |  import almond.interpreter.api.DisplayData
+        |
+        |  Left(JupyterApi.ExecuteHookResult.Success(DisplayData.text(content)))
+        |}
+        |
+        |almond.toree.CellMagicHook.addHandler("thing") { (_, content) =>
+        |  import almond.api.JupyterApi
+        |  import almond.interpreter.api.DisplayData
+        |
+        |  val nl = System.lineSeparator()
+        |  Right(s"val thing = {" + nl + content + nl + "}" + nl)
+        |}
+        |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.custom-cell-magic-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    implicit val session: Session =
+      runner.withLauncherOptions("--shared", "sh.almond::toree-hooks")(
+        "--toree-magics",
+        "--predef",
+        predefPath.toString
+      )
+
+    execute(
+      """%%test
+        |foo
+        |a
+        |""".stripMargin,
+      """foo
+        |a
+        |""".stripMargin
+    )
+
+    execute(
+      "%LsMagic",
+      "",
+      stdout =
+        "Available line magics:" + ls +
+          "%adddeps %addjar %lsmagic %truncation" + ls +
+          ls +
+          "Available cell magics:" + ls +
+          "%%html %%javascript %%test %%thing" + ls +
+          ls
+    )
+
+    execute(
+      """%%thing
+        |println("Hello")
+        |2
+        |""".stripMargin,
+      "thing: Int = 2",
+      stdout =
+        "Hello" + ls +
+          "thing: Int = 2"
+    )
+  }
+
 }
