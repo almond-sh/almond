@@ -63,6 +63,13 @@ object TestUtil {
     def withExtraJars(extraJars: os.Path*)(options: String*): KernelSession =
       if (extraJars.isEmpty) apply(options: _*)
       else sys.error("Extra startup JARs unsupported in unit tests")
+    def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
+      if (launcherOptions.nonEmpty)
+        System.err.println(
+          s"Warning: ignoring extra launcher options ${launcherOptions.mkString(" ")} in unit test"
+        )
+      apply(options: _*)
+    }
   }
 
   private case class Options(
