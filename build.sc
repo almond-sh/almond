@@ -160,7 +160,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     if (crossScalaVersion.startsWith("3."))
       Seq(
         shared.interpreter(ScalaVersions.scala3Compat),
-        scala.`scala-kernel-api`(),
+        scala.`scala-kernel-api-helper`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
     else
@@ -252,12 +252,16 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
       resolvedRunIvyDeps() ++
       transitiveSourceJars() ++
       externalSources()
-  def launcherSharedClassPath =
-    scala.`scala-kernel-api`().transitiveJars() ++
-      scala.`scala-kernel-api`().unmanagedClasspath() ++
-      scala.`scala-kernel-api`().resolvedRunIvyDeps() ++
-      scala.`scala-kernel-api`().transitiveSourceJars() ++
-      scala.`scala-kernel-api`().externalSources()
+  def launcherSharedClassPath = {
+    val mod: AlmondModule with ExternalSources =
+      if (crossScalaVersion.startsWith("3.")) scala.`scala-kernel-api-helper`()
+      else scala.`scala-kernel-api`()
+    mod.transitiveJars() ++
+      mod.unmanagedClasspath() ++
+      mod.resolvedRunIvyDeps() ++
+      mod.transitiveSourceJars() ++
+      mod.externalSources()
+  }
 
   def manifest = T {
     import java.util.jar.Attributes.Name
@@ -286,6 +290,17 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   def artifactName          = super.artifactName().stripSuffix("-helper")
   def moduleDeps = Seq(
     scala.`scala-kernel`()
+  )
+}
+
+class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule with ExternalSources
+    with Bloop.Module {
+  def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
+  def crossFullScalaVersion = true
+  def supports3             = true
+  def artifactName          = super.artifactName().stripSuffix("-helper")
+  def moduleDeps = Seq(
+    scala.`scala-kernel-api`()
   )
 }
 
@@ -344,8 +359,10 @@ object shared extends Module {
 object scala extends Module {
   implicit def millModuleBasePath: define.BasePath =
     define.BasePath(super.millModuleBasePath.value / os.up / "scala")
-  object `jupyter-api`       extends Cross[JupyterApi](ScalaVersions.binaries: _*)
-  object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.all: _*)
+  object `jupyter-api`      extends Cross[JupyterApi](ScalaVersions.binaries: _*)
+  object `scala-kernel-api` extends Cross[ScalaKernelApi](ScalaVersions.all: _*)
+  object `scala-kernel-api-helper`
+      extends Cross[ScalaKernelApiHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all: _*)
   object `scala-kernel-helper`
