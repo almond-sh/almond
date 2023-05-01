@@ -13,7 +13,7 @@ import java.nio.channels.ClosedSelectorException
 import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
 import scala.util.Properties
@@ -160,7 +160,7 @@ object KernelLauncher {
           }
         } yield ()
 
-        try t.unsafeRunSync()
+        try Await.result(t.unsafeToFuture(), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
