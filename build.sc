@@ -519,13 +519,15 @@ trait Examples extends SbtModule {
   def scalaVersion                 = ScalaVersions.scala3Latest
   object test extends Tests {
     def testFramework = "munit.Framework"
-    def ivyDeps = super.ivyDeps() ++ Agg(
-      Deps.expecty,
-      Deps.munit,
-      Deps.osLib,
-      Deps.pprint,
-      Deps.upickle
-    )
+    def ivyDeps = T {
+      super.ivyDeps() ++ Agg(
+        Deps.expecty,
+        Deps.munit,
+        Deps.osLib,
+        Deps.pprint,
+        Deps.upickle
+      )
+    }
     def forkArgs = T {
       scala.`almond-scalapy`(ScalaVersions.scala212)
         .publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
@@ -564,9 +566,12 @@ class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with
   def moduleDeps = super.moduleDeps ++ Seq(
     shared.`test-kit`()
   )
-  def ivyDeps = Agg(
-    Deps.coursierApi
-  )
+  def ivyDeps = T {
+    Agg(
+      Deps.coursierApi,
+      Deps.upickleCompat(scalaVersion())
+    )
+  }
 }
 
 class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {

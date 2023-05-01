@@ -361,4 +361,48 @@ object Dsl {
       Inspect.Request(code, pos, if (detailed) 1 else 0)
     ).on(Channel.Requests)
 
+  def complete(
+    code: String,
+    pos: Int = -1
+  )(implicit
+    sessionId: SessionId,
+    session: Session
+  ): Seq[Complete.Reply] = {
+
+    val (code0, pos0) =
+      if (pos >= 0) (code, pos)
+      else {
+        val cursor = "#"
+        val idx    = code.indexOf(cursor)
+        assert(idx >= 0, "Expected a # character in code to complete, at the cursor position")
+        (code.take(idx) + code.drop(idx + cursor.length), idx)
+      }
+
+    val input = Stream(
+      completeMessage(code0, pos0)
+    )
+
+    val streams = ClientStreams.create(input, stopWhen(Complete.replyType.messageType))
+
+    session.run(streams)
+
+    streams.completeReplies
+  }
+
+  private def completeMessage(
+    code: String,
+    pos: Int,
+    msgId: String = UUID.randomUUID().toString
+  )(implicit sessionId: SessionId) =
+    Message(
+      Header(
+        msgId,
+        "test",
+        sessionId.sessionId,
+        Complete.requestType.messageType,
+        Some(Protocol.versionStr)
+      ),
+      Complete.Request(code, pos)
+    ).on(Channel.Requests)
+
 }

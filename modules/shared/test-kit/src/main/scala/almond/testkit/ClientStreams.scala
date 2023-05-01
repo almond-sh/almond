@@ -5,7 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
-import almond.protocol.{Execute, Inspect, MessageType, RawJson}
+import almond.protocol.{Complete, Execute, Inspect, MessageType, RawJson}
 import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
@@ -261,6 +261,16 @@ final case class ClientStreams(
                 .map(r => readFromArray(r.value)(stringCodec))
                 .toSeq
           }
+      }
+      .flatten
+      .toVector
+
+  def completeReplies: Seq[Complete.Reply] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Complete.replyType.messageType =>
+          m.decodeAs[Complete.Reply].toOption.map(_.content).toSeq
       }
       .flatten
       .toVector
