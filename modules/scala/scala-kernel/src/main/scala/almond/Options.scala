@@ -105,6 +105,10 @@ final case class Options(
           Module.of("me.shadaj", "scalapy*") -> Seq(Dependency.of(
             Module.of("sh.almond", s"almond-scalapy_$sbv"),
             almondScalapyVersion
+          )),
+          Module.of("dev.scalapy", "scalapy*") -> Seq(Dependency.of(
+            Module.of("sh.almond", s"almond-scalapy_$sbv"),
+            almondScalapyVersion
           ))
         )
       else

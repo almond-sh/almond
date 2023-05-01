@@ -48,6 +48,13 @@ object KernelTests extends TestSuite {
       }
     }
 
+    test("toree custom cell magic") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.toreeCustomCellMagic()
+      }
+    }
+
   }
 
 }

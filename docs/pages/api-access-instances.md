@@ -2,7 +2,7 @@
 title: Access API instances
 ---
 
-## From the REPL
+## From the Jupyter cells
 
 These can be accessed directly by their names, like
 ```scala

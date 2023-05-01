@@ -46,7 +46,6 @@ object Deps {
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.9.0"
   def coursier           = ivy"io.get-coursier::coursier:2.1.2"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.15"
-  def directories        = ivy"io.github.soc:directories:12"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fs2                = ivy"co.fs2::fs2-core:2.5.11"
   def jansi              = ivy"org.fusesource.jansi:jansi:2.4.0"

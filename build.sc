@@ -1,4 +1,5 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
+import $ivy.`io.get-coursier.mill::mill-cs::0.1.0`
 import $ivy.`com.github.lolgab::mill-mima::0.0.19`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
@@ -12,6 +13,7 @@ import $file.project.settings, settings.{
   BootstrapLauncher,
   DependencyListResource,
   ExternalSources,
+  LocalRepo,
   Mima,
   PropertyFile,
   Util,
@@ -21,6 +23,7 @@ import $file.project.settings, settings.{
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
+import coursier.mill.MillCs
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
 import mill.contrib.bloop.Bloop
@@ -160,7 +163,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     if (crossScalaVersion.startsWith("3."))
       Seq(
         shared.interpreter(ScalaVersions.scala3Compat),
-        scala.`scala-kernel-api`(),
+        scala.`scala-kernel-api-helper`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
     else
@@ -176,7 +179,6 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
-      Deps.directories,
       Deps.jansi,
       Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
@@ -252,12 +254,16 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
       resolvedRunIvyDeps() ++
       transitiveSourceJars() ++
       externalSources()
-  def launcherSharedClassPath =
-    scala.`scala-kernel-api`().transitiveJars() ++
-      scala.`scala-kernel-api`().unmanagedClasspath() ++
-      scala.`scala-kernel-api`().resolvedRunIvyDeps() ++
-      scala.`scala-kernel-api`().transitiveSourceJars() ++
-      scala.`scala-kernel-api`().externalSources()
+  def launcherSharedClassPath = {
+    val mod: AlmondModule with ExternalSources =
+      if (crossScalaVersion.startsWith("3.")) scala.`scala-kernel-api-helper`()
+      else scala.`scala-kernel-api`()
+    mod.transitiveJars() ++
+      mod.unmanagedClasspath() ++
+      mod.resolvedRunIvyDeps() ++
+      mod.transitiveSourceJars() ++
+      mod.externalSources()
+  }
 
   def manifest = T {
     import java.util.jar.Attributes.Name
@@ -286,6 +292,17 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   def artifactName          = super.artifactName().stripSuffix("-helper")
   def moduleDeps = Seq(
     scala.`scala-kernel`()
+  )
+}
+
+class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule with ExternalSources
+    with Bloop.Module {
+  def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
+  def crossFullScalaVersion = true
+  def supports3             = true
+  def artifactName          = super.artifactName().stripSuffix("-helper")
+  def moduleDeps = Seq(
+    scala.`scala-kernel-api`()
   )
 }
 
@@ -323,6 +340,7 @@ class Echo(val crossScalaVersion: String) extends AlmondModule {
 }
 
 class ToreeHooks(val crossScalaVersion: String) extends AlmondModule {
+  def supports3 = true
   def compileModuleDeps = super.compileModuleDeps ++ Seq(
     scala.`scala-kernel-api`(ScalaVersions.binary(crossScalaVersion))
   )
@@ -344,8 +362,10 @@ object shared extends Module {
 object scala extends Module {
   implicit def millModuleBasePath: define.BasePath =
     define.BasePath(super.millModuleBasePath.value / os.up / "scala")
-  object `jupyter-api`       extends Cross[JupyterApi](ScalaVersions.binaries: _*)
-  object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.all: _*)
+  object `jupyter-api`      extends Cross[JupyterApi](ScalaVersions.binaries: _*)
+  object `scala-kernel-api` extends Cross[ScalaKernelApi](ScalaVersions.all: _*)
+  object `scala-kernel-api-helper`
+      extends Cross[ScalaKernelApiHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all: _*)
   object `scala-kernel-helper`
@@ -356,6 +376,7 @@ object scala extends Module {
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
+  object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
   object integration        extends Cross[Integration](ScalaVersions.all: _*)
 }
 
@@ -388,6 +409,38 @@ class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with
   )
 }
 
+class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
+  def stubsModules = {
+    val extra =
+      if (testScalaVersion.startsWith("2.")) Nil
+      else
+        Seq(
+          scala.`scala-kernel-helper`(testScalaVersion),
+          scala.`scala-kernel-api-helper`(testScalaVersion)
+        )
+    Seq(
+      shared.kernel(ScalaVersions.binary(testScalaVersion)),
+      shared.interpreter(ScalaVersions.binary(testScalaVersion)),
+      shared.`interpreter-api`(ScalaVersions.binary(testScalaVersion)),
+      shared.protocol(ScalaVersions.binary(testScalaVersion)),
+      shared.channels(ScalaVersions.binary(testScalaVersion)),
+      shared.logger(ScalaVersions.binary(testScalaVersion)),
+      shared.`logger-scala2-macros`(ScalaVersions.binary(testScalaVersion)),
+      scala.`scala-kernel`(testScalaVersion),
+      scala.`scala-kernel-api`(testScalaVersion),
+      scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
+      scala.`scala-interpreter`(testScalaVersion),
+      scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion))
+    ) ++ extra
+  }
+  def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
+}
+
+object cs extends MillCs {
+  def csVersion    = "2.1.2"
+  def csArmVersion = csVersion
+}
+
 class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
   def skipBloop             = testScalaVersion != scalaVersion0
   private def scalaVersion0 = ScalaVersions.scala213
@@ -410,9 +463,16 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       Deps.utest
     )
     def testFramework = "utest.runner.Framework"
-    def forkArgs = super.forkArgs() ++ Seq(
-      s"-Dalmond.test.launcher=${scala.`scala-kernel`(testScalaVersion).fastLauncher().path}"
-    )
+    def forkArgs = T {
+      scala.`local-repo`(testScalaVersion).localRepo()
+      val version = scala.`local-repo`(testScalaVersion).version()
+      super.forkArgs() ++ Seq(
+        s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.launcher-version=$version",
+        s"-Dalmond.test.launcher-scala-version=$testScalaVersion",
+        s"-Dalmond.test.cs-launcher=${cs.cs()}"
+      )
+    }
     def tmpDirBase = T.persistent {
       PathRef(T.dest / "working-dir")
     }

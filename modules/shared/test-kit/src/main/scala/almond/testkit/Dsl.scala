@@ -6,6 +6,7 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
 import cats.effect.IO
 import com.eed3si9n.expecty.Expecty.expect
+import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import fs2.Stream
 
 import java.nio.charset.StandardCharsets
@@ -16,6 +17,7 @@ object Dsl {
   trait Runner {
     def apply(options: String*): Session
     def withExtraJars(extraJars: os.Path*)(options: String*): Session
+    def withLauncherOptions(launcherOptions: String*)(options: String*): Session
   }
 
   trait Session {
@@ -53,8 +55,19 @@ object Dsl {
     val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
       if (waitForUpdateDisplay)
         (_, m) => IO.pure(m.header.msg_type == "update_display_data")
-      else
-        (_, m) => IO.pure(m.header.msg_type == "execute_reply")
+      else {
+        var gotExecuteReply = false
+        var gotIdleStatus   = false
+        (c, m) =>
+          gotExecuteReply = gotExecuteReply ||
+            (c == Channel.Requests && m.header.msg_type == "execute_reply")
+          gotIdleStatus = gotIdleStatus || (
+            c == Channel.Publish && m.header.msg_type == "status" && readFromArray(m.content.value)(
+              Status.codec
+            ).execution_state == "idle"
+          )
+          IO.pure(gotExecuteReply && gotIdleStatus)
+      }
 
     val streams = ClientStreams.create(input, stopWhen, handler)
 
