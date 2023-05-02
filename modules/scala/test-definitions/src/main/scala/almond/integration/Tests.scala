@@ -429,4 +429,66 @@ object Tests {
     )
   }
 
+  def compileOnly()(implicit sessionId: SessionId, runner: Runner): Unit = {
+    implicit val session: Session = runner("--compile-only", "--toree-magics")
+
+    execute(
+      """println("Hello from compile-only kernel")""",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      """System.err.println("Hello from compile-only kernel")""",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    execute(
+      """%AddDeps info.picocli picocli 4.7.3 --transitive
+        |""".stripMargin,
+      "",
+      ignoreStreams = true
+    )
+
+    execute(
+      "new ListBuffer[String]",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    execute(
+      "import picocli.CommandLine; import scala.collection.mutable.ListBuffer",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      "new ListBuffer[String]",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      "sys.exit(1)",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+  }
+
 }

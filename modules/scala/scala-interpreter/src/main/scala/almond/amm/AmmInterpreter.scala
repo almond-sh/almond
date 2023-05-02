@@ -6,7 +6,7 @@ import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.logger.LoggerContext
 import ammonite.compiler.iface.{CodeWrapper, Preprocessor}
 import ammonite.compiler.CompilerLifecycleManager
-import ammonite.runtime.{Frame, Storage}
+import ammonite.runtime.{Evaluator, Frame, Storage}
 import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
@@ -74,7 +74,8 @@ object AmmInterpreter {
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
-    outputDir: Either[os.Path, Boolean]
+    outputDir: Either[os.Path, Boolean],
+    compileOnly: Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -147,6 +148,14 @@ object AmmInterpreter {
             outputDir0,
             logCtx
           )
+
+          override val eval: Evaluator = {
+            val baseEval = Evaluator(headFrame) // super.eval basically
+            if (compileOnly)
+              new CompileOnlyEvaluator(() => headFrame, baseEval)
+            else
+              baseEval
+          }
         }
 
       val customPredefs = predefFileInfos ++ {

@@ -112,7 +112,8 @@ final class ScalaInterpreter(
       params.initialClassLoader,
       logCtx,
       jupyterApi.VariableInspector.enabled,
-      outputDir = params.outputDir
+      outputDir = params.outputDir,
+      compileOnly = params.compileOnly
     )
   }
 
