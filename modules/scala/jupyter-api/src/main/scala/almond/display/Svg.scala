@@ -2,7 +2,7 @@ package almond.display
 
 import java.net.URL
 
-final class Svg private(
+final class Svg private (
   val contentOrUrl: Either[URL, String],
   val displayId: String
 ) extends TextDisplay {

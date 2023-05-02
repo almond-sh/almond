@@ -1,4 +1,3 @@
-
 import almond.api.JupyterApi
 import ammonite.repl.api.ReplAPI
 import rx._
@@ -6,7 +5,7 @@ import rx._
 package object almondrx {
 
   def setup(
-   ownerCtx: Ctx.Owner = Ctx.Owner.Unsafe.Unsafe
+    ownerCtx: Ctx.Owner = Ctx.Owner.Unsafe.Unsafe
   )(implicit
     replApi: ReplAPI,
     jupyterApi: JupyterApi

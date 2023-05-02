@@ -60,9 +60,8 @@ final class CancellableFuturePool(
     def result0(): T = {
       completionThreadOpt = Some(Thread.currentThread())
       try result
-      finally {
+      finally
         completionThreadOpt = None
-      }
     }
 
     def cancel(): Unit =

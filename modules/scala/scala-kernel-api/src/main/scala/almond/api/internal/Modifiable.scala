@@ -1,7 +1,6 @@
 package almond.api.internal
 
-/**
-  * Wraps a var, allowing to notify some listeners upon change.
+/** Wraps a var, allowing to notify some listeners upon change.
   *
   * Used by the auto-updated var-s mechanism in particular.
   *

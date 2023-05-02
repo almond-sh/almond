@@ -19,9 +19,8 @@ trait ZeromqSocket {
 
 object ZeromqSocket {
 
-  /**
-    *
-    * @param ec: [[ExecutionContext]] to run I/O operations on - *should be single threaded*
+  /** @param ec:
+    *   [[ExecutionContext]] to run I/O operations on - *should be single threaded*
     */
   def apply(
     ec: ExecutionContext,

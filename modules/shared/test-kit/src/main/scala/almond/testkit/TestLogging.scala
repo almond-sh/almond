@@ -1,4 +1,4 @@
-package almond
+package almond.testkit
 
 import almond.logger.{Level, LoggerContext}
 

@@ -14,9 +14,8 @@ object Connect {
     hb_port: Int
   )
 
-
   def requestType = MessageType[Request.type]("connect_request")
-  def replyType = MessageType[Reply]("connect_reply")
+  def replyType   = MessageType[Reply]("connect_reply")
 
   implicit val requestCodec: JsonValueCodec[Request.type] =
     JsonCodecMaker.make[Request.type]

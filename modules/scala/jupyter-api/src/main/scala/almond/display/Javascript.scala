@@ -2,7 +2,7 @@ package almond.display
 
 import java.net.URL
 
-final class Javascript private(
+final class Javascript private (
   val contentOrUrl: Either[URL, String],
   val displayId: String
 ) extends TextDisplay {

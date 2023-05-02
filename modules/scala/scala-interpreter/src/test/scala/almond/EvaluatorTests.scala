@@ -10,7 +10,7 @@ import utest._
 object EvaluatorTests extends TestSuite {
 
   val interpreterEc = singleThreadedExecutionContext("test-interpreter")
-  val bgVarEc = new SequentialExecutionContext
+  val bgVarEc       = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
 
@@ -30,16 +30,15 @@ object EvaluatorTests extends TestSuite {
     if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) ""
     else s
 
-
   val tests = Tests {
 
-    "from Ammonite" - {
+    test("from Ammonite") {
 
       // These sessions were copy-pasted from ammonite.session.EvaluatorTests
       // Running them here to test our custom preprocessor.
 
-      "multistatement" - {
-        val sv = scala.util.Properties.versionNumberString
+      test("multistatement") {
+        val sv         = scala.util.Properties.versionNumberString
         val isScala212 = sv.startsWith("2.12.")
         runner.run(
           Seq(
@@ -62,39 +61,39 @@ object EvaluatorTests extends TestSuite {
         )
       }
 
-      "lazy vals" - {
+      test("lazy vals") {
         runner.run(
           Seq(
-            "lazy val x = 'h'" -> (if (TestUtil.isScala2) "" else "x: Char = <lazy>"),
-            "x" -> "res1: Char = 'h'",
-            "var w = 'l'" -> ifNotVarUpdates("w: Char = 'l'"),
+            "lazy val x = 'h'"            -> (if (TestUtil.isScala2) "" else "x: Char = <lazy>"),
+            "x"                           -> "res1: Char = 'h'",
+            "var w = 'l'"                 -> ifNotVarUpdates("w: Char = 'l'"),
             "lazy val y = {w = 'a'; 'A'}" -> (if (TestUtil.isScala2) "" else "y: Char = <lazy>"),
             "lazy val z = {w = 'b'; 'B'}" -> (if (TestUtil.isScala2) "" else "z: Char = <lazy>"),
-            "z" -> "res5: Char = 'B'",
-            "y" -> "res6: Char = 'A'",
-            "w" -> "res7: Char = 'a'"
+            "z"                           -> "res5: Char = 'B'",
+            "y"                           -> "res6: Char = 'A'",
+            "w"                           -> "res7: Char = 'a'"
           ),
           Seq(
-            (if (TestUtil.isScala2) "x: Char = [lazy]" else ""),
-            (if (TestUtil.isScala2) "x: Char = 'h'" else ""),
+            if (TestUtil.isScala2) "x: Char = [lazy]" else "",
+            if (TestUtil.isScala2) "x: Char = 'h'" else "",
             ifVarUpdates("w: Char = 'l'"),
-            (if (TestUtil.isScala2) "y: Char = [lazy]" else ""),
-            (if (TestUtil.isScala2) "z: Char = [lazy]" else ""),
+            if (TestUtil.isScala2) "y: Char = [lazy]" else "",
+            if (TestUtil.isScala2) "z: Char = [lazy]" else "",
             ifVarUpdates("w: Char = 'b'"),
-            (if (TestUtil.isScala2) "z: Char = 'B'" else ""),
+            if (TestUtil.isScala2) "z: Char = 'B'" else "",
             ifVarUpdates("w: Char = 'a'"),
-            (if (TestUtil.isScala2) "y: Char = 'A'" else "")
+            if (TestUtil.isScala2) "y: Char = 'A'" else ""
           ).filter(_.nonEmpty)
         )
       }
 
-      "vars" - {
+      test("vars") {
         runner.run(
           Seq(
             "var x: Int = 10" -> ifNotVarUpdates("x: Int = 10"),
-            "x" -> "res1: Int = 10",
-            "x = 1" -> "",
-            "x" -> "res3: Int = 1"
+            "x"               -> "res1: Int = 10",
+            "x = 1"           -> "",
+            "x"               -> "res3: Int = 1"
           ),
           Seq(
             ifVarUpdates("x: Int = 10"),
@@ -104,12 +103,12 @@ object EvaluatorTests extends TestSuite {
       }
     }
 
-    "type annotation" - {
+    test("type annotation") {
       if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2)
         runner.run(
           Seq(
             "var x: Any = 2" -> "",
-            "x = 'a'" -> ""
+            "x = 'a'"        -> ""
           ),
           Seq(
             "x: Any = 2",
@@ -118,14 +117,14 @@ object EvaluatorTests extends TestSuite {
         )
     }
 
-    "pattern match still compile" - {
+    test("pattern match still compile") {
       // no updates for var-s defined via pattern matching
       runner.run(
         Seq(
           "var (a, b) = (1, 'a')" ->
             """a: Int = 1
               |b: Char = 'a'""".stripMargin,
-          "a = 2" -> "",
+          "a = 2"   -> "",
           "b = 'c'" -> ""
         )
       )

@@ -35,10 +35,10 @@ final case class Message(
     obj match {
       case other: Message =>
         idents == other.idents &&
-          ju.Arrays.equals(header, other.header) &&
-          ju.Arrays.equals(parentHeader, other.parentHeader) &&
-          ju.Arrays.equals(metadata, other.metadata) &&
-          ju.Arrays.equals(content, other.content)
+        ju.Arrays.equals(header, other.header) &&
+        ju.Arrays.equals(parentHeader, other.parentHeader) &&
+        ju.Arrays.equals(metadata, other.metadata) &&
+        ju.Arrays.equals(content, other.content)
       case _ => false
     }
 

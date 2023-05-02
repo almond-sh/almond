@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-    - master
+    - main
     tags:
     - "v*"
   pull_request:
@@ -32,8 +32,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r examples/requirements.txt --no-dependencies
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
       with:
         jvm: 8
     - run: ./mill -i validateExamples
@@ -46,14 +46,14 @@ jobs:
       matrix:
         OS: [ubuntu-latest]
         JDK: [8]
-        SCALA: [2.12.15, 2.12.16, 2.13.7, 2.13.8, 3.1.2, 3.1.3]
+        SCALA: [2.12.16, 2.12.17, 2.13.9, 2.13.10, 3.2.1, 3.2.2]
         include:
           - OS: windows-latest
             JDK: 8
-            SCALA: 2.13.8
+            SCALA: 2.13.10
           - OS: ubuntu-latest
-            JDK: 11
-            SCALA: 2.12.16
+            JDK: 17
+            SCALA: 2.12.17
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'
@@ -64,8 +64,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
       with:
         jvm: ${{ matrix.JDK }}
         apps:
@@ -86,8 +86,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
       with:
         jvm: 8
     - run: ./mill __.mimaReportBinaryIssues
@@ -100,13 +100,27 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
       with:
         jvm: 8
         apps: cs
     - run: ./mill docs.generate
       shell: bash
+
+  format:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/setup-action@v1.3
+      with:
+        jvm: "temurin:17"
+        apps: scalafmt:3.0.0
+    - run: scalafmt --check
 
   publishLocal:
     runs-on: ubuntu-latest
@@ -115,8 +129,8 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
       with:
         jvm: 8
         apps:
@@ -131,96 +145,3 @@ jobs:
     steps:
     - run: true
       shell: bash
-
-  release:
-    needs: all-tests
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
-      with:
-        jvm: 8
-    - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
-      shell: bash
-      env:
-        PGP_SECRET: ${{ secrets.PGP_SECRET }}
-    - run: ./mill publishSonatype __.publishArtifacts
-      shell: bash
-      env:
-        PGP_PASSWORD: ${{ secrets.PGP_PASSPHRASE }}
-        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-
-  upload-launcher:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
-      with:
-        jvm: 8
-    - run: ./mill -i ci.uploadLaunchers
-      if: startsWith(github.ref, 'refs/tags/v')
-      shell: bash
-      env:
-        UPLOAD_GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
-  update-docker-images:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
-      with:
-        jvm: 8
-    - run: scripts/update-docker-images.sh
-      shell: bash
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-
-  update-website:
-    needs: [upload-launcher, update-docker-images]
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        submodules: true
-    - uses: coursier/cache-action@v6.3
-    - uses: coursier/setup-action@v1.2.1
-      with:
-        jvm: 8
-        apps: cs
-    - run: |
-        ./mill docs.generate --npm-install --yarn-run-build
-        scripts/website0/versioned-docs.sh --update
-      if: startsWith(github.ref, 'refs/tags/v')
-      shell: bash
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        WEBSITE_DIR: docs/website
-        VERSIONED_DOCS_REPO: almond-sh/versioned-docs
-    - run: |
-        scripts/website0/versioned-docs.sh
-        ./mill docs.generate --npm-install --yarn-run-build --relativize
-        scripts/website0/push-website.sh
-      shell: bash
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        WEBSITE_DIR: docs/website
-        REPO: almond-sh/almond
-        VERSIONED_DOCS_REPO: almond-sh/versioned-docs

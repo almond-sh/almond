@@ -9,6 +9,7 @@ import almond.interpreter.api.CommHandler
 import ammonite.util.Ref
 import pprint.{TPrint, TPrintColors}
 
+import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
@@ -35,12 +36,20 @@ final class JupyterApiImpl(
     tcolors: TPrintColors,
     classTagT: ClassTag[T]
   ): Iterator[String] =
-    replApi.printSpecial(value, ident, custom, onChange, onChangeOrError, replApi.pprinter, Some(updatableResults))(tprint, tcolors, classTagT).getOrElse {
+    replApi.printSpecial(
+      value,
+      ident,
+      custom,
+      onChange,
+      onChangeOrError,
+      replApi.pprinter,
+      Some(updatableResults)
+    )(tprint, tcolors, classTagT).getOrElse {
       replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
     }
 
   override def silent(s: Boolean): Unit = silent0.update(s)
-  override def silent: Boolean = silent0.apply()
+  override def silent: Boolean          = silent0.apply()
 
   protected def ansiTextToHtml(text: String): String = {
     val baos = new ByteArrayOutputStream
@@ -61,4 +70,20 @@ final class JupyterApiImpl(
 
   protected def updatableResults0: JupyterApi.UpdatableResults =
     execute.updatableResults
+
+  private val executeHooks0 = new mutable.ListBuffer[JupyterApi.ExecuteHook]
+  def executeHooks: Seq[JupyterApi.ExecuteHook] =
+    executeHooks0.toList
+  def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean =
+    !executeHooks0.contains(hook) && {
+      executeHooks0.append(hook)
+      true
+    }
+  def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean = {
+    val idx = executeHooks0.indexOf(hook)
+    idx >= 0 && {
+      executeHooks0.remove(idx)
+      true
+    }
+  }
 }

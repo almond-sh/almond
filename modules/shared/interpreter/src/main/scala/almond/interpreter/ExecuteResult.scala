@@ -7,27 +7,27 @@ sealed abstract class ExecuteResult(val success: Boolean) extends Product with S
   def asSuccess: Option[ExecuteResult.Success] =
     this match {
       case s: ExecuteResult.Success => Some(s)
-      case _ => None
+      case _                        => None
     }
 
   def asError: Option[ExecuteResult.Error] =
     this match {
       case err: ExecuteResult.Error => Some(err)
-      case _ => None
+      case _                        => None
     }
 }
 
 object ExecuteResult {
 
-  /**
-    * [[ExecuteResult]], if execution was successful.
+  /** [[ExecuteResult]], if execution was successful.
     *
-    * @param data: output data for the code that was run
+    * @param data:
+    *   output data for the code that was run
     */
-  final case class Success(data: DisplayData = DisplayData.empty) extends ExecuteResult(success = true)
+  final case class Success(data: DisplayData = DisplayData.empty)
+      extends ExecuteResult(success = true)
 
-  /**
-    * [[ExecuteResult]], if execution failed.
+  /** [[ExecuteResult]], if execution failed.
     *
     * @param name
     * @param message
@@ -44,14 +44,11 @@ object ExecuteResult {
       Error("", msg, Nil)
   }
 
-  /**
-    * [[ExecuteResult]], if execution was aborted.
+  /** [[ExecuteResult]], if execution was aborted.
     */
   case object Abort extends ExecuteResult(success = false)
 
-
-  /**
-    * [[ExecuteResult]], if execution was exited
+  /** [[ExecuteResult]], if execution was exited
     */
   case object Exit extends ExecuteResult(success = true)
 }

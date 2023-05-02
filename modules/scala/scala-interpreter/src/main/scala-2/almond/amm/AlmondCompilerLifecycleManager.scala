@@ -15,14 +15,16 @@ class AlmondCompilerLifecycleManager(
   autoUpdateLazyVals: Boolean,
   autoUpdateVars: Boolean,
   variableInspectorEnabled: () => Boolean,
+  outputDir: Option[Path],
   logCtx: LoggerContext
 ) extends CompilerLifecycleManager(
-  rtCacheDir,
-  headFrame,
-  dependencyCompleteOpt,
-  classPathWhitelist,
-  initialClassLoader
-) {
+      rtCacheDir,
+      headFrame,
+      dependencyCompleteOpt,
+      classPathWhitelist,
+      initialClassLoader,
+      outputDir
+    ) {
   override def preprocess(fileName: String): Preprocessor =
     synchronized {
       if (compiler == null) init(force = true)

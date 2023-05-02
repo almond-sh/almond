@@ -12,7 +12,7 @@ object LoggerTests extends TestSuite {
 
   val tests = Tests {
 
-    "nop" - {
+    test("nop") {
 
       val log = Logger.nop
 
@@ -22,11 +22,11 @@ object LoggerTests extends TestSuite {
       log.error(sys.error("not called"))
     }
 
-    "PrintStream" - {
+    test("PrintStream") {
 
-      "nop" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+      test("nop") {
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.None, ps, colored = false)
 
         log.debug(sys.error("not called"))
@@ -40,9 +40,9 @@ object LoggerTests extends TestSuite {
         assert(res.isEmpty)
       }
 
-      "warn" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+      test("warn") {
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.Warning, ps, colored = false)
 
         log.debug(sys.error("not called"))
@@ -61,9 +61,9 @@ object LoggerTests extends TestSuite {
         assert(noCrLf(res) == noCrLf(expectedRes))
       }
 
-      "debug" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+      test("debug") {
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.Debug, ps, colored = false)
 
         val n = 2
@@ -86,15 +86,15 @@ object LoggerTests extends TestSuite {
         assert(noCrLf(res) == noCrLf(expectedRes))
       }
 
-      "with exceptions" - {
-        val b = new ByteArrayOutputStream
-        val ps = new PrintStream(b)
+      test("with exceptions") {
+        val b   = new ByteArrayOutputStream
+        val ps  = new PrintStream(b)
         val log = Logger.printStream(Level.Error, ps, colored = false)
 
         val n = 2
 
         val ex0 = new Exception("first")
-        val ex = new Exception("nope", ex0)
+        val ex  = new Exception("nope", ex0)
 
         log.error("/o\\ Errr", ex)
 
@@ -123,7 +123,10 @@ object LoggerTests extends TestSuite {
           .linesIterator
           .flatMap { s =>
             if (s.startsWith("  almond."))
-              Iterator(s.replaceFirst(Pattern.quote("LoggerTests$") + ".*" + Pattern.quote("("), "LoggerTests("))
+              Iterator(s.replaceFirst(
+                Pattern.quote("LoggerTests$") + ".*" + Pattern.quote("("),
+                "LoggerTests("
+              ))
             else if (s.startsWith("  "))
               Iterator.empty
             else

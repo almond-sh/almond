@@ -19,7 +19,8 @@ final class NopCapture extends Capture {
           System.setErr(err)
 
           block
-        } finally {
+        }
+        finally {
           System.setOut(oldOut)
           System.setErr(oldErr)
         }

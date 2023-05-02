@@ -8,12 +8,13 @@ import almond.interpreter.input.InputManager
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
+import almond.toree.{CellMagicHook, LineMagicHook}
 import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
 import ammonite.util.{Frame => _, _}
+import coursier.cache.shaded.dirs.ProjectDirectories
 import fastparse.Parsed
-import io.github.soc.directories.ProjectDirectories
 
 import scala.util.control.NonFatal
 
@@ -48,7 +49,9 @@ final class ScalaInterpreter(
     if (params.disableCache)
       Storage.InMemory()
     else
-      new Storage.Folder(os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite")
+      new Storage.Folder(
+        os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite"
+      )
 
   private val execute0 = new Execute(
     params.trapOutput,
@@ -56,31 +59,36 @@ final class ScalaInterpreter(
     logCtx,
     params.updateBackgroundVariablesEcOpt,
     commHandlerOpt,
-    silent0
+    silent0,
+    params.useThreadInterrupt
   )
 
+  val sessApi = new SessionApiImpl(frames0)
+
+  val replApi =
+    new ReplApiImpl(
+      execute0,
+      storage,
+      colors0,
+      ammInterp,
+      sessApi
+    )
+
+  val jupyterApi =
+    new JupyterApiImpl(
+      execute0,
+      commHandlerOpt,
+      replApi,
+      silent0,
+      params.allowVariableInspector
+    )
+
+  if (params.toreeMagics) {
+    jupyterApi.addExecuteHook(LineMagicHook.hook(replApi.pprinter))
+    jupyterApi.addExecuteHook(CellMagicHook.hook(jupyterApi.publish))
+  }
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
-
-    val sessApi = new SessionApiImpl(frames0)
-
-    val replApi =
-      new ReplApiImpl(
-        execute0,
-        storage,
-        colors0,
-        ammInterp,
-        sessApi
-      )
-
-    val jupyterApi =
-      new JupyterApiImpl(
-        execute0,
-        commHandlerOpt,
-        replApi,
-        silent0,
-        params.allowVariableInspector
-      )
 
     for (ec <- params.updateBackgroundVariablesEcOpt)
       UpdatableFuture.setup(replApi, jupyterApi, ec)
@@ -103,7 +111,8 @@ final class ScalaInterpreter(
       params.autoUpdateVars,
       params.initialClassLoader,
       logCtx,
-      jupyterApi.VariableInspector.enabled
+      jupyterApi.VariableInspector.enabled,
+      outputDir = params.outputDir
     )
   }
 
@@ -126,7 +135,15 @@ final class ScalaInterpreter(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult =
-    execute0(ammInterp, code, inputManager, outputHandler, colors0, storeHistory)
+    execute0(
+      ammInterp,
+      code,
+      inputManager,
+      outputHandler,
+      colors0,
+      storeHistory,
+      jupyterApi.executeHooks
+    )
 
   def currentLine(): Int =
     execute0.currentLine

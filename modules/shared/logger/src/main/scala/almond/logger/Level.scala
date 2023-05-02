@@ -27,11 +27,11 @@ sealed abstract class Level(
 
 object Level {
 
-  case object None extends Level(0, "NONE")
-  case object Error extends Level(1, "ERROR", Console.RED + "ERROR" + Console.RESET)
+  case object None    extends Level(0, "NONE")
+  case object Error   extends Level(1, "ERROR", Console.RED + "ERROR" + Console.RESET)
   case object Warning extends Level(2, "WARN", Console.YELLOW + "WARN" + Console.RESET)
-  case object Info extends Level(3, "INFO", Console.BLUE + "INFO" + Console.RESET)
-  case object Debug extends Level(4, "DEBUG", Console.MAGENTA + "DEBUG" + Console.RESET)
+  case object Info    extends Level(3, "INFO", Console.BLUE + "INFO" + Console.RESET)
+  case object Debug   extends Level(4, "DEBUG", Console.MAGENTA + "DEBUG" + Console.RESET)
 
   def fromString(s: String): Either[String, Level] =
     s.toLowerCase(Locale.ROOT) match {

@@ -25,7 +25,7 @@ trait IOInterpreter {
 
   def shutdown: IO[Unit]
 
-  def supportComm: Boolean = false
+  def supportComm: Boolean                           = false
   def setCommHandler(commHandler: CommHandler): Unit = {}
 
   def isComplete(code: String): IO[Option[IsCompleteResult]] =

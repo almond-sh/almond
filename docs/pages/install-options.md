@@ -125,6 +125,9 @@ Sets the kernel log level. Can be any of
 
 #### `--special-loader`
 
+#### `--use-thread-interrupt`
+
+Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel.
 
 ## Jupyter-related
 
@@ -154,3 +157,12 @@ Add entries to the Help menu (Jupyter classic). Use like
 
 #### `--connection-file`
 
+## Other
+
+#### `--toree-magics`
+
+Enable experimental support for [Toree](https://toree.apache.org) magics.
+
+Simple line magics such as `%AddDeps` (always assumed to be transitive as of writing this, `--transitive` is just ignored),
+`%AddJar`, and cell magics such as `%%html` or `%%javascript` are supported. Note that `%%javascript` only works from Jupyter
+classic, as JupyterLab doesn't allow for random javascript code execution.

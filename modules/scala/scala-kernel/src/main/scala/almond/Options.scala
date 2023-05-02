@@ -14,11 +14,12 @@ import coursier.parse.{DependencyParser, ModuleParser}
 import scala.collection.compat._
 import scala.jdk.CollectionConverters._
 
+// format: off
 @ProgName("almond")
 final case class Options(
   install: Boolean = false,
   @Recurse
-    installOptions: InstallOptions = InstallOptions(),
+  installOptions: InstallOptions = InstallOptions(),
   extraRepository: List[String] = Nil,
   banner: Option[String] = None,
   link: List[String] = Nil,
@@ -28,45 +29,87 @@ final case class Options(
   autoVersion: List[String] = Nil,
   defaultAutoDependencies: Boolean = true,
   defaultAutoVersions: Boolean = true,
+  @HelpMessage("Default almond-spark version to load when Spark is loaded as a library")
+  defaultAlmondSparkVersion: Option[String] = None,
+  @HelpMessage("Default almond-scalapy version to load when ScalaPy is loaded as a library")
+  defaultAlmondScalapyVersion: Option[String] = None,
   @HelpMessage("Force Maven properties during dependency resolution")
-    forceProperty: List[String] = Nil,
+  forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
-    profile: List[String] = Nil,
+  profile: List[String] = Nil,
   @HelpMessage("Log level (one of none, error, warn, info, debug)")
-    log: String = "warn",
+  log: String = "warn",
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
-    logTo: Option[String],
+  logTo: Option[String],
   connectionFile: Option[String] = None,
   // For class loader isolation, the user code is loaded from the classloader of the api module.
   // If the right -i / -I options are passed to coursier bootstrap when generating a launcher, that loader
   // only sees the api module and its dependencies, rather than the full classpath of almond.
   @HelpMessage("Use class loader that loaded the api module rather than the context class loader")
-    specificLoader: Boolean = true,
-  @HelpMessage("Start a metabrowse server for go to source navigation (linked from Jupyter inspections, server is started upon first inspection)")
-    metabrowse: Boolean = true,
+  specificLoader: Boolean = true,
+  @HelpMessage(
+    "Start a metabrowse server for go to source navigation (linked from Jupyter inspections, server is started upon first inspection)"
+  )
+  metabrowse: Boolean = true,
   @HelpMessage("Trap what user code sends to stdout and stderr")
-    trapOutput: Boolean = false,
+  trapOutput: Boolean = false,
   @HelpMessage("Disable ammonite compilation cache")
-    disableCache: Boolean = false,
+  disableCache: Boolean = false,
   @HelpMessage("Whether to automatically update lazy val-s upon computation")
-    autoUpdateLazyVals: Boolean = true,
+  autoUpdateLazyVals: Boolean = true,
   @HelpMessage("Whether to automatically update var-s upon change")
-    autoUpdateVars: Boolean = true,
+  autoUpdateVars: Boolean = true,
   @HelpMessage("Whether to enable variable inspector")
-    variableInspector: Option[Boolean] = None,
+  variableInspector: Option[Boolean] = None,
   @HelpMessage("Whether to process format requests with scalafmt")
-    scalafmt: Boolean = true
+  scalafmt: Boolean = true,
+  @HelpMessage(
+    "Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel."
+  )
+  useThreadInterrupt: Boolean = false,
+
+  @ExtraName("outputDir")
+    outputDirectory: Option[String] = None,
+  @ExtraName("tmpOutputDir")
+    tmpOutputDirectory: Option[Boolean] = None,
+
+  @HelpMessage("Add experimental support for Toree magics")
+    toreeMagics: Boolean = false,
+
+  @HelpMessage("Enable or disable color cell output upon startup (enabled by default, pass --color=false to disable)")
+    color: Boolean = true
 ) {
+  // format: on
 
   private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+
+  private lazy val ammSparkVersion = defaultAlmondSparkVersion
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .getOrElse(Properties.ammoniteSparkVersion)
+  private lazy val almondScalapyVersion = defaultAlmondScalapyVersion
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .getOrElse(Properties.version)
 
   def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
 
     val default =
       if (defaultAutoDependencies)
         Map(
-          Module.of("org.apache.spark", "*") -> Seq(Dependency.of(Module.of("sh.almond", s"almond-spark_$sbv"), Properties.version))
+          Module.of("org.apache.spark", "*") -> Seq(Dependency.of(
+            Module.of("sh.almond", s"almond-spark_$sbv"),
+            ammSparkVersion
+          )),
+          Module.of("me.shadaj", "scalapy*") -> Seq(Dependency.of(
+            Module.of("sh.almond", s"almond-scalapy_$sbv"),
+            almondScalapyVersion
+          )),
+          Module.of("dev.scalapy", "scalapy*") -> Seq(Dependency.of(
+            Module.of("sh.almond", s"almond-scalapy_$sbv"),
+            almondScalapyVersion
+          ))
         )
       else
         Map.empty[Module, Seq[Dependency]]
@@ -112,7 +155,7 @@ final case class Options(
     val default =
       if (defaultAutoVersions)
         Map(
-          Module.of("sh.almond", s"almond-spark_$sbv") -> Properties.version,
+          Module.of("sh.almond", s"almond-spark_$sbv")   -> Properties.ammoniteSparkVersion,
           Module.of("sh.almond", s"ammonite-spark_$sbv") -> Properties.ammoniteSparkVersion
         )
       else
@@ -127,7 +170,7 @@ final case class Options(
           sys.error(s"Malformed --auto-version argument '$s'")
         else {
           val before = s.substring(0, idx)
-          val ver = s.substring(idx + 1)
+          val ver    = s.substring(idx + 1)
           val mod = ModuleParser.javaOrScalaModule(before) match {
             case Left(err) =>
               sys.error(s"Malformed module '$before' in --auto-version argument '$s': $err")

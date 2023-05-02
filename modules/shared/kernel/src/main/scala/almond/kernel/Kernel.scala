@@ -9,7 +9,11 @@ import almond.channels.{Channel, ConnectionParameters, Message => RawMessage}
 import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterpreter, Message}
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
-import almond.interpreter.messagehandlers.{CommMessageHandlers, InterpreterMessageHandlers, MessageHandler}
+import almond.interpreter.messagehandlers.{
+  CommMessageHandlers,
+  InterpreterMessageHandlers,
+  MessageHandler
+}
 import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import cats.effect.IO
@@ -110,15 +114,13 @@ final case class Kernel(
         val streams: Stream[IO, Stream[IO, (Channel, RawMessage)]] =
           requests0.map {
             case (channel, rawMessage) =>
-
               interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
                 case None =>
-
                   // interpreter message handler passes, try with the other handlers
 
                   immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
                     case None =>
-                      log.warn(s"Ignoring unhandled message:\n$rawMessage")
+                      log.warn(s"Ignoring unhandled message on $channel:\n$rawMessage")
                       Stream.empty
 
                     case Some(output) =>
@@ -292,17 +294,15 @@ object Kernel {
       inputHandler <- IO {
         new InputHandler(kernelThreads.futureEc, logCtx)
       }
-    } yield {
-      Kernel(
-        interpreter,
-        backgroundMessagesQueue,
-        mainQueue,
-        backgroundCommHandlerOpt,
-        inputHandler,
-        kernelThreads,
-        logCtx,
-        extraHandler
-      )
-    }
+    } yield Kernel(
+      interpreter,
+      backgroundMessagesQueue,
+      mainQueue,
+      backgroundCommHandlerOpt,
+      inputHandler,
+      kernelThreads,
+      logCtx,
+      extraHandler
+    )
 
 }

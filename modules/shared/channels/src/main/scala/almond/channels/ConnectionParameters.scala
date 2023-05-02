@@ -24,9 +24,9 @@ final case class ConnectionParameters(
 
     val port = channel match {
       case Channel.Requests => shell_port
-      case Channel.Control => control_port
-      case Channel.Publish => iopub_port
-      case Channel.Input => stdin_port
+      case Channel.Control  => control_port
+      case Channel.Publish  => iopub_port
+      case Channel.Input    => stdin_port
     }
 
     s"$transport://$ip:$port"
@@ -48,7 +48,7 @@ final case class ConnectionParameters(
 object ConnectionParameters {
 
   def randomPort(): Int = {
-    val s = new ServerSocket(0)
+    val s    = new ServerSocket(0)
     val port = s.getLocalPort
     s.close()
     port

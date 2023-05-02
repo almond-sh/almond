@@ -11,9 +11,8 @@ import fs2.concurrent.{Signal, SignallingRef}
 
 import scala.concurrent.ExecutionContext
 
-/**
-  *
-  * @param interpreterEc: [[ExecutionContext]] to compile and run user code on - should be single-threaded
+/** @param interpreterEc:
+  *   [[ExecutionContext]] to compile and run user code on - should be single-threaded
   */
 final class InterpreterToIOInterpreter(
   interpreter: Interpreter,
@@ -29,24 +28,26 @@ final class InterpreterToIOInterpreter(
     interpreter.setCommHandler(commHandler0)
 
   private val cancelledSignal0 = {
-    implicit val shift = IO.contextShift(interpreterEc) // maybe not the right ec, but that one shouldn't be used yet at that point
+    implicit val shift =
+      // maybe not the right ec, but that one shouldn't be used yet at that point
+      IO.contextShift(interpreterEc)
     SignallingRef[IO, Boolean](false).unsafeRunSync()
   }
   def cancelledSignal: SignallingRef[IO, Boolean] =
     cancelledSignal0
 
-  /**
-    * Check whether an [[IO]] should be cancelled because of stop-or-error prior to running it.
+  /** Check whether an [[IO]] should be cancelled because of stop-or-error prior to running it.
     *
-    * The passed function is called immediately prior to evaluating the [[IO]] it returns. If stop-on-error
-    * was triggered while this [[IO]] was queued for execution, the boolean given to the passed function is
-    * true, and the returned [[IO]] can take it into account, typically returning an empty result.
+    * The passed function is called immediately prior to evaluating the [[IO]] it returns. If
+    * stop-on-error was triggered while this [[IO]] was queued for execution, the boolean given to
+    * the passed function is true, and the returned [[IO]] can take it into account, typically
+    * returning an empty result.
     */
   private def cancellable[T](io: Boolean => IO[T]): IO[T] =
     for {
       cancelled <- cancelledSignal.get
-      _ <- IO.shift(interpreterEc)
-      res <- io(cancelled)
+      _         <- IO.shift(interpreterEc)
+      res       <- io(cancelled)
     } yield res
 
   override def init: IO[Unit] =
@@ -90,7 +91,6 @@ final class InterpreterToIOInterpreter(
 
   val kernelInfo: IO[KernelInfo] =
     IO(interpreter.kernelInfo())
-
 
   private val completionCheckCancellable = new Cancellable[String, Option[IsCompleteResult]](
     {

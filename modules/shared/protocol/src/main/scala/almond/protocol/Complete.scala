@@ -36,9 +36,8 @@ object Complete {
 
   }
 
-
   def requestType = MessageType[Request]("complete_request")
-  def replyType = MessageType[Reply]("complete_reply")
+  def replyType   = MessageType[Reply]("complete_reply")
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make

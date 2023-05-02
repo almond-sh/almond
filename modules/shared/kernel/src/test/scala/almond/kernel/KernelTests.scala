@@ -9,6 +9,7 @@ import almond.interpreter.{Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
 import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shutdown}
+import almond.testkit.ClientStreams
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import cats.effect.IO
 import fs2.Stream
@@ -30,11 +31,9 @@ object KernelTests extends TestSuite {
       println(s"Don't know how to shutdown $interpreterEc")
   }
 
-
-
   val tests = Tests {
 
-    "stdin" - {
+    test("stdin") {
 
       // These describe how the pseudo-client reacts to incoming messages - it answers input_request, and
       // ignores stuff on the publish channel
@@ -51,7 +50,7 @@ object KernelTests extends TestSuite {
       }
 
       val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
+        case (Channel.Publish, _)                                          =>
         case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
       }
 
@@ -69,8 +68,8 @@ object KernelTests extends TestSuite {
           Execute.Request("input:foo")
         ).streamOn(Channel.Requests)
 
-
-      val streams = ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
+      val streams =
+        ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
@@ -78,7 +77,7 @@ object KernelTests extends TestSuite {
       val res = t.unsafeRunTimed(2.seconds)
       assert(res.nonEmpty)
 
-      val inputReply = streams.singleRequest(Channel.Input, Input.replyType)
+      val inputReply   = streams.singleRequest(Channel.Input, Input.replyType)
       val inputRequest = streams.singleReply(Channel.Input, Input.requestType)
 
       assert(inputRequest.content.prompt == "foo")
@@ -86,11 +85,14 @@ object KernelTests extends TestSuite {
       assert(inputReply.content.value == "> foo")
     }
 
-    "client comm" - {
+    test("client comm") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && new String(m.content.value, StandardCharsets.UTF_8).contains("exit"))
+          IO.pure(m.header.msg_type == "execute_reply" && new String(
+            m.content.value,
+            StandardCharsets.UTF_8
+          ).contains("exit"))
 
       val sessionId = UUID.randomUUID().toString
       val input = Stream(
@@ -111,7 +113,6 @@ object KernelTests extends TestSuite {
           Execute.Request("echo:exit")
         ).on(Channel.Requests)
       )
-
 
       val streams = ClientStreams.create(input, stopWhen)
 
@@ -140,13 +141,14 @@ object KernelTests extends TestSuite {
       )
 
       val (commMsgTypes, stdMsgTypes) = msgTypes.partition(_.startsWith("comm_"))
-      val (expectedCommMsgTypes, expectedStdMsgTypes) = expectedMsgTypes.partition(_.startsWith("comm_"))
+      val (expectedCommMsgTypes, expectedStdMsgTypes) =
+        expectedMsgTypes.partition(_.startsWith("comm_"))
 
       assert(commMsgTypes == expectedCommMsgTypes)
       assert(stdMsgTypes == expectedStdMsgTypes)
     }
 
-    "history request" - {
+    test("history request") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) => IO.pure(m.header.msg_type == "history_reply")
@@ -175,7 +177,7 @@ object KernelTests extends TestSuite {
       assert(msgTypes == expectedMsgTypes)
     }
 
-    "shutdown request" - {
+    test("shutdown request") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, _) =>
@@ -207,11 +209,11 @@ object KernelTests extends TestSuite {
       assert(msgTypes == expectedMsgTypes)
     }
 
-    "completion metadata" - {
+    test("completion metadata") {
 
       val ignoreExpectedReplies = MessageHandler.discard {
-        case (Channel.Publish, _) =>
-        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
+        case (Channel.Publish, _)                                           =>
+        case (Channel.Requests, m) if m.header.msg_type == "execute_reply"  =>
         case (Channel.Requests, m) if m.header.msg_type == "complete_reply" =>
       }
 
@@ -235,7 +237,6 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-
       val streams = ClientStreams.create(input, stopWhen, ignoreExpectedReplies)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
@@ -254,8 +255,8 @@ object KernelTests extends TestSuite {
 
       assert(msgTypes == expectedMsgTypes)
 
-      val completeReply = streams.singleReply(Channel.Requests, Complete.replyType)
-      val metadata = completeReply.content.metadata
+      val completeReply    = streams.singleReply(Channel.Requests, Complete.replyType)
+      val metadata         = completeReply.content.metadata
       val expectedMetadata = RawJson(rawMetadata.bytes)
 
       assert(metadata == expectedMetadata)
