@@ -36,9 +36,8 @@ final class ScalaInterpreterInspections(
 
     val baseSourcePath = ScalaInterpreterInspections.baseSourcePath(
       frames
-        .last
-        .classloader
-        .getParent,
+        .head
+        .classloader,
       log
     )
 
