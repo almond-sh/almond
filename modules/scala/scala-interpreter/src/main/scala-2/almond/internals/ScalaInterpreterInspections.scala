@@ -32,43 +32,45 @@ final class ScalaInterpreterInspections(
 
   private val log = logCtx(getClass)
 
-  private val baseSourcePath: List[Path] = ScalaInterpreterInspections.baseSourcePath(
-    frames
-      .last
-      .classloader
-      .getParent,
-    log
-  )
+  private lazy val docs: Docstrings = {
 
-  private val sourcePaths: List[Path] = {
+    val baseSourcePath = ScalaInterpreterInspections.baseSourcePath(
+      frames
+        .last
+        .classloader
+        .getParent,
+      log
+    )
 
-    val sessionJars = frames
-      .flatMap(_.classpath)
-      .collect {
-        // FIXME We're ignoring jars-in-jars of standalone bootstraps of coursier in particular
-        case p if p.getProtocol == "file" =>
-          Paths.get(p.toURI)
-      }
+    val sourcePaths: List[Path] = {
 
-    val sources = sessionJars.filter(_.getFileName.toString.endsWith("-sources.jar"))
+      val sources = frames
+        .flatMap(_.classpath)
+        .collect {
+          // FIXME We're ignoring jars-in-jars of standalone bootstraps of coursier in particular
+          case p if p.getProtocol == "file" =>
+            Paths.get(p.toURI)
+        }
+        .filter(_.getFileName.toString.endsWith("-sources.jar"))
 
-    sources ::: baseSourcePath
+      sources ::: baseSourcePath
+    }
+
+    val symbolIndex = {
+      val dialect =
+        if (compilerManager.scalaVersion.startsWith("3."))
+          dialects.Scala3
+        else if (compilerManager.scalaVersion.startsWith("2.13."))
+          dialects.Scala213
+        else
+          dialects.Scala212
+      val index = OnDemandSymbolIndex.empty()
+      sourcePaths.foreach(p => index.addSourceJar(AbsolutePath(p), dialect))
+      index
+    }
+
+    new Docstrings(symbolIndex)
   }
-
-  private val symbolIndex = {
-    val dialect =
-      if (compilerManager.scalaVersion.startsWith("3."))
-        dialects.Scala3
-      else if (compilerManager.scalaVersion.startsWith("2.13."))
-        dialects.Scala213
-      else
-        dialects.Scala212
-    val index = OnDemandSymbolIndex.empty()
-    sourcePaths.foreach(p => index.addSourceJar(AbsolutePath(p), dialect))
-    index
-  }
-
-  private val docs = new Docstrings(symbolIndex)
 
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
     val pressy0 = compilerManager.pressy.compiler
@@ -206,10 +208,7 @@ object ScalaInterpreterInspections {
         "\n"
     )
 
-    val (baseSources, baseOther) = baseJars
-      .partition(_.getFileName.toString.endsWith("-sources.jar"))
-
-    baseSources
+    baseJars.filter(_.getFileName.toString.endsWith("-sources.jar"))
   }
 
   // from https://github.com/scalameta/metals/blob/cec8b98cba23110d5b2919d9879c78d3b0146ab2/metaserver/src/main/scala/scala/meta/languageserver/providers/HoverProvider.scala#L34-L51
