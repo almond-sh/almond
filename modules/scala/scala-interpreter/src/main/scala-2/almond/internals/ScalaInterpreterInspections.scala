@@ -26,9 +26,6 @@ import scala.util.Random
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,
-  metabrowse: Boolean,
-  metabrowseHost: String,
-  metabrowsePort: Int,
   compilerManager: => ammonite.compiler.CompilerLifecycleManager,
   frames: => List[Frame]
 ) {

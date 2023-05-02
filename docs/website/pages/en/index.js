@@ -156,20 +156,6 @@ class Index extends React.Component {
               <GridBlock
                 contents={[
                   {
-                    content: 'Almond already supports code navigation in dependencies via <a href="https://github.com/scalameta/metabrowse">metabrowse</a>, paving the way for more IDE-like features and a closer integration with the <a href="https://github.com/scalameta">scalameta</a> ecosystem.',
-                    imageAlign: 'right',
-                    image: `${siteConfig.baseUrl}frontpage/metabrowse.gif`,
-                    imageAlt: 'Metabrowse',
-                    title: 'IDE-like features',
-                  },
-                ]}
-                layout="twoColumn"
-              />
-            </Container>
-	    <Container padding={['bottom', 'top']}>
-              <GridBlock
-                contents={[
-                  {
                     content: 'Write Jupyter kernels for the language of your choice, in Scala, by relying on the exact same libraries as Almond.',
                     imageAlign: 'left',
                     image: `${siteConfig.baseUrl}frontpage/echo.gif`,

@@ -30,9 +30,6 @@ final class ScalaInterpreter(
 
   private val inspections = new ScalaInterpreterInspections(
     logCtx,
-    params.metabrowse,
-    params.metabrowseHost,
-    params.metabrowsePort,
     ammInterp
       .compilerManager
       .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],

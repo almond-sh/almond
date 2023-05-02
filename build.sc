@@ -172,19 +172,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         scala.`scala-kernel-api`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
-  def ivyDeps = T {
-    val metabrowse =
-      if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
-      else Agg.empty
-    metabrowse ++ Agg(
-      Deps.coursier.withDottyCompat(crossScalaVersion),
-      Deps.coursierApi,
-      Deps.mtags,
-      Deps.jansi,
-      Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
-      Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
-    )
-  }
+  def ivyDeps = Agg(
+    Deps.coursier.withDottyCompat(crossScalaVersion),
+    Deps.coursierApi,
+    Deps.mtags,
+    Deps.jansi,
+    Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
+    Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
+  )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = {
       val rx =
