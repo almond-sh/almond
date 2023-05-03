@@ -206,14 +206,13 @@ object KernelLauncher {
             generateLauncher(launcherOptions)
 
         val baseCmd: os.Shellable =
-          if (extraJars.isEmpty) launcher0
-          else
-            Seq[os.Shellable](
-              "java",
-              "-cp",
-              (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
-              "coursier.bootstrap.launcher.ResourcesLauncher"
-            )
+          Seq[os.Shellable](
+            "java",
+            "-Xmx1g",
+            "-cp",
+            (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
+            "coursier.bootstrap.launcher.ResourcesLauncher"
+          )
 
         proc = os.proc(
           baseCmd,
