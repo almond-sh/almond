@@ -610,12 +610,22 @@ object ScalaKernelTests extends TestSuite {
 
     test("toree AddJar file") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-      almond.integration.Tests.toreeAddJarFile(scalaVersion)
+      almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = false)
+    }
+
+    test("toree AddJar file same cell") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = true)
     }
 
     test("toree AddJar URL") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-      almond.integration.Tests.toreeAddJarURL(scalaVersion)
+      almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = false)
+    }
+
+    test("toree AddJar URL same cell") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = true)
     }
 
     test("toree Html") {

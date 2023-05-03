@@ -260,7 +260,10 @@ object Tests {
     )
   }
 
-  def toreeAddJarFile(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
+  def toreeAddJarFile(scalaVersion: String, sameCell: Boolean)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
 
     implicit val session: Session = runner("--toree-magics")
 
@@ -269,7 +272,7 @@ object Tests {
       .fetch()
       .asScala
       .head
-      .toURI
+    val jarUri = jar.toURI
 
     execute(
       "import picocli.CommandLine",
@@ -279,19 +282,31 @@ object Tests {
       ignoreStreams = true
     )
 
-    execute(
-      s"%AddJar $jar",
-      "",
-      ignoreStreams = true
-    )
+    if (sameCell)
+      execute(
+        s"%AddJar $jarUri" + ls +
+          "import picocli.CommandLine" + ls,
+        "import $cp.$ " + (" " * jar.toString.length) + ls + ls +
+          "import picocli.CommandLine" + ls,
+        ignoreStreams = true
+      )
+    else {
+      execute(
+        s"%AddJar $jarUri",
+        "import $cp.$ " + (" " * jar.toString.length) + maybePostImportNewLine(
+          scalaVersion.startsWith("2.")
+        ),
+        ignoreStreams = true
+      )
 
-    execute(
-      "import picocli.CommandLine",
-      "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
-    )
+      execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+      )
+    }
   }
 
-  def toreeAddJarURL(scalaVersion: String)(implicit
+  def toreeAddJarURL(scalaVersion: String, sameCell: Boolean)(implicit
     sessionId: SessionId,
     runner: Runner
   ): Unit = {
@@ -315,17 +330,28 @@ object Tests {
       ignoreStreams = true
     )
 
-    execute(
-      s"%AddJar $jar",
-      "",
-      ignoreStreams = true,
-      trimReplyLines = true
-    )
+    if (sameCell)
+      execute(
+        s"%AddJar $jar" + ls +
+          "import picocli.CommandLine" + ls,
+        "import $cp.$" + ls + ls +
+          "import picocli.CommandLine" + ls,
+        ignoreStreams = true,
+        trimReplyLines = true
+      )
+    else {
+      execute(
+        s"%AddJar $jar",
+        "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+        ignoreStreams = true,
+        trimReplyLines = true
+      )
 
-    execute(
-      "import picocli.CommandLine",
-      "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
-    )
+      execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+      )
+    }
   }
 
   private def java17Cmd(): String = {
@@ -422,9 +448,9 @@ object Tests {
     )
 
     execute(
-      """%AddJar foo://thing/a/b
-        |""".stripMargin,
-      ""
+      "%AddJar foo://thing/a/b" + ls,
+      "import $cp.$" + ls,
+      trimReplyLines = true
     )
 
     execute(
