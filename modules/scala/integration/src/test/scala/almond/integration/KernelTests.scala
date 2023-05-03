@@ -55,6 +55,13 @@ object KernelTests extends TestSuite {
       }
     }
 
+    test("compile only") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.compileOnly()
+      }
+    }
+
   }
 
 }

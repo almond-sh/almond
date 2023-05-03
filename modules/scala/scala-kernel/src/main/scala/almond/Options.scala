@@ -78,7 +78,10 @@ final case class Options(
     toreeMagics: Boolean = false,
 
   @HelpMessage("Enable or disable color cell output upon startup (enabled by default, pass --color=false to disable)")
-    color: Boolean = true
+    color: Boolean = true,
+
+  @HelpMessage("Enable compile-only mode")
+    compileOnly: Boolean = false
 ) {
   // format: on
 
