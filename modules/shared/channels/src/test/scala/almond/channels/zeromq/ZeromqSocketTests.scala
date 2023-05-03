@@ -18,6 +18,13 @@ object ZeromqSocketTests extends TestSuite {
   override def utestAfterAll() =
     ctx.term()
 
+  private def randomPort(): Int = {
+    val s    = new java.net.ServerSocket(0)
+    val port = s.getLocalPort
+    s.close()
+    port
+  }
+
   val tests = Tests {
 
     test("simple") {
@@ -28,7 +35,7 @@ object ZeromqSocketTests extends TestSuite {
       val reqEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = ConnectionParameters.randomPort()
+      val port = randomPort()
 
       val key = Secret.randomUuid()
 
@@ -91,7 +98,7 @@ object ZeromqSocketTests extends TestSuite {
       val reqEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = ConnectionParameters.randomPort()
+      val port = randomPort()
 
       val key = Secret("") // having no key disables signature checking
 
