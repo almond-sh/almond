@@ -8,16 +8,16 @@ for several Scala versions, or to test newer / former almond versions.
 To install several version of the kernel side-by-side, just ensure the different installed versions
 have different ids (required) and display names (recommended).
 
-For example, let's install almond for the scala `2.13.0` version,
+For example, let's install almond for the scala `2.13.10` version,
 ```bash
-$ cs launch almond --scala 2.13.0 -- --install
+$ cs launch almond --scala 2.13.10 -- --install
 ```
 
 This installs almond with the default kernel id, `scala`, and default display name, "Scala".
 
-Now let's *also* install almond for scala `2.12.9`,
+Now let's *also* install almond for scala `2.12.17`,
 ```bash
-$ cs launch almond:@VERSION@ --scala 2.12.9 \
+$ cs launch almond:@VERSION@ --scala 2.12.17 \
       -- --install --id scala212 --display-name "Scala (2.12)"
 ```
 
