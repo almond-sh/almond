@@ -467,6 +467,7 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       scala.`local-repo`(testScalaVersion).localRepo()
       val version = scala.`local-repo`(testScalaVersion).version()
       super.forkArgs() ++ Seq(
+        "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.launcher-version=$version",
         s"-Dalmond.test.launcher-scala-version=$testScalaVersion",
