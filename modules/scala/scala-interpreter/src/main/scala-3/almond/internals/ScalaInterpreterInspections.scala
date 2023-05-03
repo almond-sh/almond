@@ -9,6 +9,7 @@ final class ScalaInterpreterInspections(
   metabrowse: Boolean,
   metabrowseHost: String,
   metabrowsePort: Int,
+  scalaVersion: String,
   compilerManager: => ammonite.compiler.CompilerLifecycleManager,
   frames: => List[Frame]
 ) {

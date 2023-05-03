@@ -36,6 +36,7 @@ final class ScalaInterpreter(
     params.metabrowse,
     params.metabrowseHost,
     params.metabrowsePort,
+    ammonite.compiler.CompilerBuilder.scalaVersion,
     ammInterp
       .compilerManager
       .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
