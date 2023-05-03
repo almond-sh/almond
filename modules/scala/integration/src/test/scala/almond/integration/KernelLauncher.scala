@@ -113,6 +113,8 @@ object KernelLauncher {
       cs,
       "bootstrap",
       "--hybrid",
+      "--default=true",
+      "--sources",
       extraOpts,
       repoArgs,
       "-o",

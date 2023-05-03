@@ -5,6 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.Dsl._
+import com.eed3si9n.expecty.Expecty.expect
 
 import java.io.File
 import java.util.UUID
@@ -623,6 +624,38 @@ object Tests {
       s"""val kernelCheck = kernel.kernelClassLoader.loadClass(HNil.getClass.getName).getProtectionDomain.getCodeSource.getLocation.toExternalForm.stripSuffix("/").stripSuffix("!").endsWith("-$kernelShapelessVersion.jar")""",
       "kernelCheck: Boolean = true"
     )
+  }
+
+  def inspections(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
+
+    def sbv = scalaVersion.split('.').take(2).mkString(".")
+
+    val isJava8 = sys.props.get("java.version")
+      .exists(v => v == "1.8" || v.startsWith("1.8."))
+    val extraJars =
+      if (isJava8)
+        // Adding these to workaround issues indexing the kernel launcher in Java 8
+        coursierapi.Fetch.create()
+          .addDependencies(coursierapi.Dependency.of("com.lihaoyi", "os-lib_" + sbv, "0.9.0"))
+          .addClassifiers("_", "sources")
+          .fetch()
+          .asScala
+          .toList
+      else
+        Nil
+
+    implicit val session: Session =
+      runner("--extra-class-path", extraJars.mkString(File.pathSeparator))
+
+    val code   = "os.read"
+    val result = inspect(code, code.length - 3, detailed = true)
+    val expected = Seq(
+      """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
+        |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
+        |also select a different `charSet` to use, and provide an `offset`/`count` to
+        |read from if the source supports seeking.</pre></div>""".stripMargin
+    )
+    expect(result == expected)
   }
 
 }

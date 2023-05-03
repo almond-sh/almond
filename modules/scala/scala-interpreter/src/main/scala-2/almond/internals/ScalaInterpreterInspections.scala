@@ -1,11 +1,24 @@
 package almond.internals
 
+import java.nio.file.{Path, Paths}
+
 import almond.interpreter._
 import almond.interpreter.api.DisplayData
 import almond.logger.{Logger, LoggerContext}
 import ammonite.runtime.Frame
 import ammonite.util.Util.newLine
+import scala.meta.dialects
+import scala.meta.internal.metals.Docstrings
+import scala.meta.internal.mtags.MtagsEnrichments._
+import scala.meta.internal.mtags.{IndexingExceptions, OnDemandSymbolIndex}
+import scala.meta.internal.semanticdb.scalac.SemanticdbOps
+import scala.meta.io.AbsolutePath
+import scala.meta.pc.SymbolDocumentation
 
+import java.util.Optional
+
+import scala.collection.JavaConverters._
+import scala.collection.compat._
 import scala.tools.nsc.interactive.{Global => Interactive}
 
 final class ScalaInterpreterInspections(
@@ -29,8 +42,43 @@ final class ScalaInterpreterInspections(
 
   private val log = logCtx(getClass)
 
+  private lazy val docs: Docstrings = {
+
+    val sourcePaths = AlmondMetabrowseServer.sourcePath(frames, log).sources
+
+    val symbolIndex = {
+      // FIXME In 2.13 and 3, the actual dialect might be one or the other,
+      // when reading JARs from the other version via TASTy compatibility
+      val dialect =
+        if (scalaVersion.startsWith("3."))
+          dialects.Scala3
+        else if (scalaVersion.startsWith("2.13."))
+          dialects.Scala213
+        else
+          dialects.Scala212
+      val index = OnDemandSymbolIndex.empty()
+      for (p <- sourcePaths)
+        try index.addSourceJar(AbsolutePath(p), dialect)
+        catch {
+          case e: IndexingExceptions.PathIndexingException =>
+            log.warn(s"Ignoring exception while indexing $p", e)
+          case e: IndexingExceptions.InvalidJarException =>
+            log.warn(s"Ignoring exception while indexing $p", e)
+          case e: IndexingExceptions.InvalidSymbolException =>
+            log.warn(s"Ignoring exception while indexing $p", e)
+        }
+      index
+    }
+
+    new Docstrings(symbolIndex)
+  }
+
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
     val pressy = compilerManager.pressy.compiler
+
+    class AlmondSemanticDbOps(val global: pressy.type) extends SemanticdbOps
+    val semanticdbOps = new AlmondSemanticDbOps(pressy)
+    import semanticdbOps._
 
     val prefix  = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
     val suffix  = newLine + "}"
@@ -78,6 +126,36 @@ final class ScalaInterpreterInspections(
               )
               .getOrElse(tree.toString)
 
+            val docstringsOpt = {
+              val symbol = tree.symbol
+              if (symbol == null)
+                None
+              else {
+                val sym = {
+                  if (!symbol.isJava && symbol.isPrimaryConstructor) symbol.owner
+                  else symbol
+                }.toSemantic
+                log.debug(s"Symbol for '${code.take(pos)}|${code.drop(pos)}' is $sym")
+
+                val documentation =
+                  try
+                    docs.documentation(
+                      sym,
+                      () => symbol.allOverriddenSymbols.map(_.toSemantic).toList.asJava
+                    )
+                  catch {
+                    case e: IndexingExceptions.InvalidSymbolException =>
+                      log.warn(s"Ignoring exception when trying to get scaladoc of $sym", e)
+                      Optional.empty[SymbolDocumentation]()
+                  }
+
+                if (documentation.isPresent) Some(documentation.get().docstring)
+                else None
+              }
+            }
+
+            log.debug(s"Docstring for '${code.take(pos)}|${code.drop(pos)}' is $docstringsOpt")
+
             import scalatags.Text.all._
 
             val typeHtml0 = pre(typeStr)
@@ -86,8 +164,13 @@ final class ScalaInterpreterInspections(
                 a(href := url, target := metabrowseWindowId, typeHtml0)
             }
 
+            val wholeHtml = div(
+              typeHtml,
+              docstringsOpt.fold[Frag](Seq.empty[Frag])(pre(_))
+            )
+
             val res = Inspection.fromDisplayData(
-              DisplayData.html(typeHtml.toString)
+              DisplayData.html(wholeHtml.toString)
             )
 
             Some(res)

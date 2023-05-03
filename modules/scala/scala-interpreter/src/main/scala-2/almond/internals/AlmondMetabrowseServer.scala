@@ -2,7 +2,8 @@ package almond.internals
 
 import java.io.File
 import java.net.URI
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
+import java.util.zip.ZipFile
 
 import almond.channels.ConnectionParameters
 import almond.interpreter._
@@ -10,9 +11,11 @@ import almond.logger.{Logger, LoggerContext}
 import ammonite.runtime.Frame
 import ammonite.util.Util.newLine
 import metabrowse.server.{MetabrowseServer, Sourcepath}
-import scala.meta.dialects
 
+import scala.collection.JavaConverters._
 import scala.collection.compat._
+import scala.collection.mutable
+import scala.meta.dialects
 import scala.tools.nsc.interactive.{Global => Interactive}
 import scala.util.Random
 
@@ -161,7 +164,11 @@ object AlmondMetabrowseServer {
       else {
         val cp = cl match {
           case u: java.net.URLClassLoader => u.getURLs.to(immutable.LazyList)
-          case _                          => immutable.LazyList()
+          case cl0 if cl0.toString.startsWith("jdk.internal.loader.ClassLoaders$AppClassLoader") =>
+            Option(sys.props("java.class.path"))
+              .map(_.split(File.pathSeparator).map(Paths.get(_).toUri.toURL).to(immutable.LazyList))
+              .getOrElse(immutable.LazyList())
+          case _ => immutable.LazyList()
         }
 
         cp #::: classpath(cl.getParent)
@@ -180,10 +187,12 @@ object AlmondMetabrowseServer {
         "\n"
     )
 
-    val (baseSources, baseOther) = baseJars
-      .partition(_.getFileName.toString.endsWith("-sources.jar"))
-
-    Sourcepath(baseOther, baseSources)
+    // When using a "hybrid" launcher, and users decided to end its name with ".jar",
+    // we still want to use it as a source JAR too. So we check if it contains sources here.
+    val checkForSources =
+      baseJars.exists(_.getFileName.toString.endsWith(".jar")) &&
+      !baseJars.exists(_.getFileName.toString.endsWith("-sources.jar"))
+    sourcePathFromJars(baseJars, checkForSources = checkForSources)
   }
 
   private implicit class SourcepathOps(private val p: Sourcepath) extends AnyVal {
@@ -208,10 +217,45 @@ object AlmondMetabrowseServer {
           Paths.get(p.toURI)
       }
 
-    val (sources, other) = sessionJars
-      .partition(_.getFileName.toString.endsWith("-sources.jar"))
+    sourcePathFromJars(sessionJars) :: baseSourcepath
+  }
 
-    Sourcepath(other, sources) :: baseSourcepath
+  private def sourcePathFromJars(jars: Seq[Path], checkForSources: Boolean = false): Sourcepath = {
+
+    val sources = new mutable.ListBuffer[Path]
+    val other   = new mutable.ListBuffer[Path]
+
+    for (jar <- jars) {
+      val name = jar.getFileName.toString
+      if (name.endsWith("-sources.jar"))
+        sources += jar
+      else if (name.endsWith(".jar")) {
+        other += jar
+        if (checkForSources) {
+          val foundSources = {
+            var zf: ZipFile = null
+            try {
+              zf = new ZipFile(jar.toFile)
+              zf.entries().asScala.exists { ent =>
+                val name = ent.getName
+                name.endsWith(".scala") || name.endsWith(".java")
+              }
+            }
+            finally
+              if (zf != null)
+                zf.close()
+          }
+          if (foundSources)
+            sources += jar
+        }
+      }
+      else {
+        sources += jar
+        other += jar
+      }
+    }
+
+    Sourcepath(other.toList, sources.toList)
   }
 
 }

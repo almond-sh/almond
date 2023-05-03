@@ -127,7 +127,7 @@ trait PublishLocalNoFluff extends PublishModule {
 
     publisher.publish(
       jar = jar().path,
-      sourcesJar = emptyZip().path,
+      sourcesJar = sourceJar().path,
       docJar = emptyZip().path,
       pom = pom().path,
       ivy = ivy().path,

@@ -226,4 +226,57 @@ object Dsl {
       ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
     ).on(Channel.Requests)
 
+  def inspect(
+    code: String,
+    pos: Int,
+    detailed: Boolean
+  )(implicit
+    sessionId: SessionId,
+    session: Session
+  ): Seq[String] = {
+
+    val input = Stream(
+      inspectMessage(code, pos, detailed)
+    )
+
+    val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = {
+      var gotInspectReply = false
+      var gotIdleStatus   = false
+      (c, m) =>
+        gotInspectReply = gotInspectReply ||
+          (c == Channel.Requests && m.header.msg_type == Inspect.replyType.messageType)
+        gotIdleStatus = gotIdleStatus || (
+          c == Channel.Publish && m.header.msg_type == Status.messageType.messageType && readFromArray(
+            m.content.value
+          )(
+            Status.codec
+          ).execution_state == Status.idle.execution_state
+        )
+        IO.pure(gotInspectReply && gotIdleStatus)
+    }
+
+    val streams = ClientStreams.create(input, stopWhen)
+
+    session.run(streams)
+
+    streams.inspectRepliesHtml
+  }
+
+  private def inspectMessage(
+    code: String,
+    pos: Int,
+    detailed: Boolean,
+    msgId: String = UUID.randomUUID().toString
+  )(implicit sessionId: SessionId) =
+    Message(
+      Header(
+        msgId,
+        "test",
+        sessionId.sessionId,
+        Inspect.requestType.messageType,
+        Some(Protocol.versionStr)
+      ),
+      Inspect.Request(code, pos, if (detailed) 1 else 0)
+    ).on(Channel.Requests)
+
 }
