@@ -259,7 +259,7 @@ object KernelLauncher {
 
     try {
       runner0 = runner()
-      f(runner())
+      f(runner0)
     }
     finally
       runner0.close()
