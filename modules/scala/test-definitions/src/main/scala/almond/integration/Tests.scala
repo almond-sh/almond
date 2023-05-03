@@ -291,6 +291,43 @@ object Tests {
     )
   }
 
+  def toreeAddJarURL(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    implicit val session: Session = runner("--toree-magics")
+
+    val jar = coursierapi.Fetch.create()
+      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .fetchResult()
+      .getArtifacts
+      .asScala
+      .head
+      .getKey
+      .getUrl
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    execute(
+      s"%AddJar $jar",
+      "",
+      ignoreStreams = true,
+      trimReplyLines = true
+    )
+
+    execute(
+      "import picocli.CommandLine",
+      "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+    )
+  }
+
   private def java17Cmd(): String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)

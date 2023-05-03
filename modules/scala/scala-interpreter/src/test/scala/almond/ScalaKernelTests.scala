@@ -614,47 +614,8 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("toree AddJar URL") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          toreeMagics = true
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      val jar = coursierapi.Fetch.create()
-        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
-        .fetchResult()
-        .getArtifacts
-        .asScala
-        .head
-        .getKey
-        .getUrl
-
-      kernel.execute(
-        "import picocli.CommandLine",
-        errors = Seq(
-          ("", "Compilation Failed", List("Compilation Failed"))
-        ),
-        ignoreStreams = true
-      )
-
-      kernel.execute(
-        s"%AddJar $jar",
-        "",
-        ignoreStreams = true
-      )
-
-      kernel.execute(
-        "import picocli.CommandLine",
-        "import picocli.CommandLine" + maybePostImportNewLine
-      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarURL(scalaVersion)
     }
 
     test("toree Html") {
