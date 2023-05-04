@@ -28,6 +28,9 @@ final class ScalaInterpreter(
 
   private val frames0: Ref[List[Frame]] = Ref(List(Frame.createInitial(params.initialClassLoader)))
 
+  if (params.extraClassPath.nonEmpty)
+    frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
+
   private val inspections = new ScalaInterpreterInspections(
     logCtx,
     params.metabrowse,

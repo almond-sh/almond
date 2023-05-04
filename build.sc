@@ -236,6 +236,7 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
       )
   def ivyDeps = Agg(
     Deps.caseApp.withDottyCompat(crossScalaVersion),
+    Deps.classPathUtil,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
   object test extends Tests with AlmondTestModule {

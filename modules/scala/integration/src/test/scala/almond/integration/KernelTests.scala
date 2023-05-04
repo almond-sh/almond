@@ -87,4 +87,12 @@ class KernelTests extends munit.FunSuite {
     }
   }
 
+  if (scalaVersion.startsWith("2."))
+    test("extra class path") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.extraCp(scalaVersion)
+      }
+    }
+
 }
