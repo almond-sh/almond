@@ -1,7 +1,7 @@
 import $file.deps, deps.{Deps, ScalaVersions}
 import $file.mima, mima.binaryCompatibilityVersions
 
-import $ivy.`io.get-coursier::coursier-launcher:2.0.12`
+import $ivy.`io.get-coursier::coursier-launcher:2.1.2`
 
 import java.io.File
 import java.nio.file.{Files, Path}

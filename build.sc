@@ -1,5 +1,5 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
-import $ivy.`io.get-coursier.mill::mill-cs::0.1.0`
+import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.0.19`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
@@ -23,7 +23,7 @@ import $file.project.settings, settings.{
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
-import coursier.mill.MillCs
+import coursier.getcs.GetCs
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
 import mill.contrib.bloop.Bloop
@@ -436,11 +436,6 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
 
-object cs extends MillCs {
-  def csVersion    = "2.1.2"
-  def csArmVersion = csVersion
-}
-
 class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
   def skipBloop             = testScalaVersion != scalaVersion0
   private def scalaVersion0 = ScalaVersions.scala213
@@ -467,10 +462,11 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       scala.`local-repo`(testScalaVersion).localRepo()
       val version = scala.`local-repo`(testScalaVersion).version()
       super.forkArgs() ++ Seq(
+        "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.launcher-version=$version",
         s"-Dalmond.test.launcher-scala-version=$testScalaVersion",
-        s"-Dalmond.test.cs-launcher=${cs.cs()}"
+        s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
       )
     }
     def tmpDirBase = T.persistent {

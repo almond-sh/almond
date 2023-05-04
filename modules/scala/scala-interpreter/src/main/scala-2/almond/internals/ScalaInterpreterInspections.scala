@@ -46,6 +46,13 @@ final class ScalaInterpreterInspections(
     else
       None
 
+  private def randomPort(): Int = {
+    val s    = new java.net.ServerSocket(0)
+    val port = s.getLocalPort
+    s.close()
+    port
+  }
+
   private def createMetabrowseServer() = {
 
     if (
@@ -61,7 +68,7 @@ final class ScalaInterpreterInspections(
       if (metabrowsePort > 0)
         metabrowsePort
       else
-        ConnectionParameters.randomPort()
+        randomPort()
 
     val dialect =
       if (compilerManager.scalaVersion.startsWith("3."))

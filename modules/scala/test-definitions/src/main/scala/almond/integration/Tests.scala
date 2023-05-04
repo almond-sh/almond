@@ -260,6 +260,100 @@ object Tests {
     )
   }
 
+  def toreeAddJarFile(scalaVersion: String, sameCell: Boolean)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    implicit val session: Session = runner("--toree-magics")
+
+    val jar = coursierapi.Fetch.create()
+      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .fetch()
+      .asScala
+      .head
+    val jarUri = jar.toURI
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    if (sameCell)
+      execute(
+        s"%AddJar $jarUri" + ls +
+          "import picocli.CommandLine" + ls,
+        "import $cp.$ " + (" " * jar.toString.length) + ls + ls +
+          "import picocli.CommandLine" + ls,
+        ignoreStreams = true
+      )
+    else {
+      execute(
+        s"%AddJar $jarUri",
+        "import $cp.$ " + (" " * jar.toString.length) + maybePostImportNewLine(
+          scalaVersion.startsWith("2.")
+        ),
+        ignoreStreams = true
+      )
+
+      execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+      )
+    }
+  }
+
+  def toreeAddJarURL(scalaVersion: String, sameCell: Boolean)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    implicit val session: Session = runner("--toree-magics")
+
+    val jar = coursierapi.Fetch.create()
+      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .fetchResult()
+      .getArtifacts
+      .asScala
+      .head
+      .getKey
+      .getUrl
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    if (sameCell)
+      execute(
+        s"%AddJar $jar" + ls +
+          "import picocli.CommandLine" + ls,
+        "import $cp.$" + ls + ls +
+          "import picocli.CommandLine" + ls,
+        ignoreStreams = true,
+        trimReplyLines = true
+      )
+    else {
+      execute(
+        s"%AddJar $jar",
+        "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+        ignoreStreams = true,
+        trimReplyLines = true
+      )
+
+      execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+      )
+    }
+  }
+
   private def java17Cmd(): String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)
@@ -354,9 +448,9 @@ object Tests {
     )
 
     execute(
-      """%AddJar foo://thing/a/b
-        |""".stripMargin,
-      ""
+      "%AddJar foo://thing/a/b" + ls,
+      "import $cp.$" + ls,
+      trimReplyLines = true
     )
 
     execute(

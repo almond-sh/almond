@@ -47,24 +47,38 @@ final case class ConnectionParameters(
 
 object ConnectionParameters {
 
-  def randomPort(): Int = {
-    val s    = new ServerSocket(0)
-    val port = s.getLocalPort
-    s.close()
-    port
+  def randomPorts(): (Int, Int, Int, Int, Int) = {
+    val s0    = new ServerSocket(0)
+    val s1    = new ServerSocket(0)
+    val s2    = new ServerSocket(0)
+    val s3    = new ServerSocket(0)
+    val s4    = new ServerSocket(0)
+    val port0 = s0.getLocalPort
+    val port1 = s1.getLocalPort
+    val port2 = s2.getLocalPort
+    val port3 = s3.getLocalPort
+    val port4 = s4.getLocalPort
+    s0.close()
+    s1.close()
+    s2.close()
+    s3.close()
+    s4.close()
+    (port0, port1, port2, port3, port4)
   }
 
-  def randomLocal(): ConnectionParameters =
+  def randomLocal(): ConnectionParameters = {
+    val (stdin, control, hb, shell, iopub) = randomPorts()
     ConnectionParameters(
       "localhost",
       "tcp",
-      randomPort(),
-      randomPort(),
-      randomPort(),
-      randomPort(),
-      randomPort(),
+      stdin,
+      control,
+      hb,
+      shell,
+      iopub,
       Secret.randomUuid(),
       Some("hmac-sha256")
     )
+  }
 
 }

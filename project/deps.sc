@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-19-62705f47"
+  def ammonite      = "3.0.0-M0-23-f664d7ef"
   def caseApp       = "2.1.0-M24"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
@@ -44,7 +44,7 @@ object Deps {
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.9.0"
-  def coursier           = ivy"io.get-coursier::coursier:2.1.2"
+  def coursier           = ivy"io.get-coursier::coursier:2.1.3"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.15"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fs2                = ivy"co.fs2::fs2-core:2.5.11"

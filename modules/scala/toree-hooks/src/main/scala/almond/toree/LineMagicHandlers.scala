@@ -96,7 +96,7 @@ object LineMagicHandlers {
               file.toString
             }
 
-          Right(s"interp.load.cp(os.Path($q$q$q$path$q$q$q))")
+          Right(s"import $$cp.`$path`")
 
         case _ =>
           System.err.println(

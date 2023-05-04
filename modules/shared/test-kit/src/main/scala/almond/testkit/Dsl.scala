@@ -24,6 +24,19 @@ object Dsl {
     def run(streams: ClientStreams): Unit
   }
 
+  private implicit class CustomStringOps(private val str: String) extends AnyVal {
+    def trimLines: String =
+      str.linesIterator
+        .zip(str.linesWithSeparators)
+        .map {
+          case (l, lSep) =>
+            val trimmed = l.trim
+            if (l == trimmed) lSep
+            else trimmed + lSep.drop(l.length)
+        }
+        .mkString
+  }
+
   def execute(
     code: String,
     reply: String = null,
@@ -39,7 +52,8 @@ object Dsl {
     stdout: String = null,
     stderr: String = null,
     waitForUpdateDisplay: Boolean = false,
-    handler: MessageHandler = MessageHandler.discard { case _ => }
+    handler: MessageHandler = MessageHandler.discard { case _ => },
+    trimReplyLines: Boolean = false
   )(implicit
     sessionId: SessionId,
     session: Session
@@ -121,7 +135,11 @@ object Dsl {
       expect(stderr == stderrMessages)
     }
 
-    val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
+    val replies = streams.executeReplies
+      .toVector
+      .sortBy(_._1)
+      .map(_._2)
+      .map(s => if (trimReplyLines) s.trimLines else s)
     expect(replies == Option(reply).toVector)
 
     if (replyPayloads != null) {

@@ -41,6 +41,34 @@ object KernelTests extends TestSuite {
       }
     }
 
+    test("toree AddJar file") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = false)
+      }
+    }
+
+    test("toree AddJar file same cell") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = true)
+      }
+    }
+
+    test("toree AddJar URL") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = false)
+      }
+    }
+
+    test("toree AddJar URL same cell") {
+      KernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = true)
+      }
+    }
+
     test("toree AddJar custom protocol") {
       KernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
