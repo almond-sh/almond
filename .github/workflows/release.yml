@@ -23,7 +23,10 @@ jobs:
       shell: bash
       env:
         PGP_SECRET: ${{ secrets.PUBLISH_SECRET_KEY }}
-    - run: ./mill publishSonatype __.publishArtifacts
+    - run: |
+        mv .mill-jvm-opts .mill-jvm-opts.bak
+        cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts
+        ./mill -i publishSonatype __.publishArtifacts
       shell: bash
       env:
         PGP_PASSWORD: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
