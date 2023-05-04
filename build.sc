@@ -454,10 +454,10 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       scala.`test-definitions`(scalaVersion0)
     )
     def ivyDeps = Agg(
-      Deps.osLib,
-      Deps.utest
+      Deps.munit,
+      Deps.osLib
     )
-    def testFramework = "utest.runner.Framework"
+    def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(testScalaVersion).localRepo()
       val version = scala.`local-repo`(testScalaVersion).version()
