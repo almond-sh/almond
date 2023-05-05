@@ -87,7 +87,8 @@ final class ScalaInterpreter(
       commHandlerOpt,
       replApi,
       silent0,
-      params.allowVariableInspector
+      params.allowVariableInspector,
+      kernelClassLoader = Thread.currentThread().getContextClassLoader
     )
 
   if (params.toreeMagics) {

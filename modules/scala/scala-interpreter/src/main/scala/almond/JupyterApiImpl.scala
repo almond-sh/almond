@@ -20,7 +20,8 @@ final class JupyterApiImpl(
   commHandlerOpt: => Option[CommHandler],
   replApi: ReplApiImpl,
   silent0: Ref[Boolean],
-  protected val allowVariableInspector: Option[Boolean]
+  protected val allowVariableInspector: Option[Boolean],
+  val kernelClassLoader: ClassLoader
 ) extends FullJupyterApi with VariableInspectorApiImpl {
 
   protected def variableInspectorImplPPrinter() = replApi.pprinter()
