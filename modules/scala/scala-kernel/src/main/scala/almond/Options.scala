@@ -51,7 +51,7 @@ final case class Options(
   @HelpMessage(
     "Start a metabrowse server for go to source navigation (linked from Jupyter inspections, server is started upon first inspection)"
   )
-  metabrowse: Boolean = true,
+  metabrowse: Boolean = false,
   @HelpMessage("Trap what user code sends to stdout and stderr")
   trapOutput: Boolean = false,
   @HelpMessage("Disable ammonite compilation cache")
