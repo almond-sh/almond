@@ -81,7 +81,12 @@ final case class Options(
     color: Boolean = true,
 
   @HelpMessage("Enable compile-only mode")
-    compileOnly: Boolean = false
+    compileOnly: Boolean = false,
+
+  @HelpMessage("Extra class path to add upfront in the session - should accept the same format as 'java -cp', see https://github.com/coursier/class-path-util for more details")
+  @ExtraName("extraCp")
+  @ExtraName("extraClasspath")
+    extraClassPath: List[String] = Nil
 ) {
   // format: on
 

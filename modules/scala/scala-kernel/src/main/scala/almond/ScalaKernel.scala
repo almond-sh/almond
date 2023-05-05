@@ -10,6 +10,7 @@ import almond.kernel.install.Install
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
+import coursier.cputil.ClassPathUtil
 
 import scala.language.reflectiveCalls
 import scala.concurrent.ExecutionContext
@@ -137,7 +138,13 @@ object ScalaKernel extends CaseApp[Options] {
               .getOrElse(true) // Create tmp output dir by default
           },
         toreeMagics = options.toreeMagics,
-        compileOnly = options.compileOnly
+        compileOnly = options.compileOnly,
+        extraClassPath = options.extraClassPath
+          .filter(_.trim.nonEmpty)
+          .flatMap { input =>
+            ClassPathUtil.classPath(input)
+              .map(os.Path(_, os.pwd))
+          }
       ),
       logCtx = logCtx
     )

@@ -585,4 +585,44 @@ object Tests {
     )
   }
 
+  def extraCp(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
+
+    val sbv = scalaVersion.split('.').take(2).mkString(".")
+
+    val kernelShapelessVersion = "2.3.10" // might need to be updated when bumping case-app
+    val testShapelessVersion   = "2.3.3"  // no need to bump that one
+
+    assert(kernelShapelessVersion != testShapelessVersion)
+
+    val shapelessJar = coursierapi.Fetch.create()
+      .addDependencies(
+        coursierapi.Dependency.of("com.chuusai", "shapeless_" + sbv, testShapelessVersion)
+          .withTransitive(false)
+      )
+      .fetch()
+      .asScala
+      .toList
+    assert(shapelessJar.length == 1)
+
+    implicit val session: Session =
+      runner("--extra-class-path", shapelessJar.mkString(File.pathSeparator))
+
+    execute(
+      "import shapeless._" + ls +
+        """val l = 1 :: "aa" :: true :: HNil""",
+      "import shapeless._" + ls + ls +
+        """l: Int :: String :: Boolean :: HNil = 1 :: "aa" :: true :: HNil"""
+    )
+
+    execute(
+      s"""val check = HNil.getClass.getProtectionDomain.getCodeSource.getLocation.toExternalForm.endsWith("-$testShapelessVersion.jar")""",
+      "check: Boolean = true"
+    )
+
+    execute(
+      s"""val kernelCheck = kernel.kernelClassLoader.loadClass(HNil.getClass.getName).getProtectionDomain.getCodeSource.getLocation.toExternalForm.stripSuffix("/").stripSuffix("!").endsWith("-$kernelShapelessVersion.jar")""",
+      "kernelCheck: Boolean = true"
+    )
+  }
+
 }
