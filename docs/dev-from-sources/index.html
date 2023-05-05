@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="## Prerequisites">
-  <meta name="docsearch:version" content="0.13.11">
+  <meta name="docsearch:version" content="0.13.13">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Installing from sources · almond">
   <meta property="og:type" content="website">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href="../.."><img class="logo" src="../../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../../versions"><h3>0.13.11</h3></a>
+     <a href="../../versions"><h3>0.13.13</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -237,7 +237,15 @@ $ ./mill -i jupyter 2.12.13 --ip=192.168.0.1
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a>Validate the example notebooks</h2> <p>Example notebooks live under <code>examples/</code>. These are run on the CI using nbconvert, and the resulting outputs are compared to the committed ones. Any difference results in the examples job on the CI to fail.</p> <p>To validate the examples locally, run</p> <pre><code class="hljs css language-text">$ ./mill -i validateExamples
 </code></pre> <p>Optionally, you can pass a glob to filter notebook names:</p> <pre><code class="hljs css language-text">$ ./mill -i validateExamples 'scalapy*'
-</code></pre> </span>
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="generate-metals-configuration-files-1"></a><a href="index.html#generate-metals-configuration-files-1" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Generate Metals configuration files</h3> <p>It is recommended to generate Metals configuration files manually, rather than letting Metals load the project itself. In order to do that, run</p> <pre><code class="hljs css language-text">$ ./mill mill.contrib.Bloop/install
+</code></pre> <p>If you're using Metals from VSCode, you can then run the "Metals: Connect to build server" command to take into account the newly generated files.</p> <p>If the command above takes too long to run, comment out Scala versions in <code>deps.sc</code>. If no 2.12 versions are left, also comment out the few 2.12-specific projects in <code>build.sc</code> (look for <code>212</code> to find them). Same if no 2.13 versions are left (look for <code>213</code> to spot 2.13-specific projects).</p> <h3><a class="anchor" aria-hidden="true" id="generate-intellij-idea-configuration-files-1"></a><a href="index.html#generate-intellij-idea-configuration-files-1" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Generate IntelliJ IDEA configuration files</h3> <p>It is recommended to <a href="https://com-lihaoyi.github.io/mill/mill/Intro_to_Mill.html#_intellij_support_legacy">manually generate IntelliJ configuration files</a>, rather than letting IntelliJ load the project itself. In order to do that, run</p> <pre><code class="hljs css language-text">$ ./mill mill.scalalib.GenIdea/idea
+</code></pre> <p>You can then open the project in IntelliJ. IntelliJ should also automatically pick those files when they are overwritten.</p> <p>Just like for Metals above, you may benefit from disabling all but one Scala version (see above for more details).</p> </span>
         </div>
        </article>
       </div>
@@ -267,7 +275,11 @@ $ ./mill -i jupyter 2.12.13 --ip=192.168.0.1
         <li><a href="index.html#generate-metals-configuration-files">Generate Metals configuration files</a></li>
         <li><a href="index.html#generate-intellij-idea-configuration-files">Generate IntelliJ IDEA configuration files</a></li>
        </ul></li>
-      <li><a href="index.html#validate-the-example-notebooks">Validate the example notebooks</a></li>
+      <li><a href="index.html#validate-the-example-notebooks">Validate the example notebooks</a>
+       <ul class="toc-headings">
+        <li><a href="index.html#generate-metals-configuration-files-1">Generate Metals configuration files</a></li>
+        <li><a href="index.html#generate-intellij-idea-configuration-files-1">Generate IntelliJ IDEA configuration files</a></li>
+       </ul></li>
      </ul>
     </nav>
    </div>
