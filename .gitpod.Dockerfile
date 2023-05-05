@@ -11,7 +11,7 @@ RUN curl -fLo cs https://git.io/coursier-cli-linux &&\
       bloop \
       cs \
       sbt-launcher \
-      scala:2.13.2 \
+      scala:2.13.10 \
       scalafmt:2.5.3 &&\
     ./cs fetch org.scalameta::metals:0.9.0 >/dev/null &&\
     ./cs fetch org.scala-sbt:sbt:1.3.13 >/dev/null &&\

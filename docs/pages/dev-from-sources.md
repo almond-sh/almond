@@ -182,3 +182,34 @@ Optionally, you can pass a glob to filter notebook names:
 ```text
 $ ./mill -i validateExamples 'scalapy*'
 ```
+
+### Generate Metals configuration files
+
+It is recommended to generate Metals configuration files manually, rather
+than letting Metals load the project itself. In order to do that, run
+```text
+$ ./mill mill.contrib.Bloop/install
+```
+
+If you're using Metals from VSCode, you can then run the
+"Metals: Connect to build server" command to take into account the newly
+generated files.
+
+If the command above takes too long to run, comment out Scala versions in
+`deps.sc`. If no 2.12 versions are left, also comment out the few 2.12-specific
+projects in `build.sc` (look for `212` to find them). Same if no 2.13 versions
+are left (look for `213` to spot 2.13-specific projects).
+
+### Generate IntelliJ IDEA configuration files
+
+It is recommended to [manually generate IntelliJ configuration files](https://com-lihaoyi.github.io/mill/mill/Intro_to_Mill.html#_intellij_support_legacy),
+rather than letting IntelliJ load the project itself. In order to do that, run
+```text
+$ ./mill mill.scalalib.GenIdea/idea
+```
+
+You can then open the project in IntelliJ.
+IntelliJ should also automatically pick those files when they are overwritten.
+
+Just like for Metals above, you may benefit from disabling all but one Scala
+version (see above for more details).
