@@ -5,7 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
-import almond.protocol.{Execute, MessageType, RawJson}
+import almond.protocol.{Execute, Inspect, MessageType, RawJson}
 import cats.effect.IO
 import fs2.concurrent.Queue
 import fs2.{Pipe, Stream}
@@ -229,6 +229,23 @@ final case class ClientStreams(
       }
       .flatten
       .toList
+
+  def inspectRepliesHtml: Seq[String] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Inspect.replyType.messageType =>
+          m.decodeAs[Inspect.Reply] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              m.content.data
+                .get("text/html")
+                .map(r => readFromArray(r.value)(stringCodec))
+                .toSeq
+          }
+      }
+      .flatten
+      .toVector
 
 }
 

@@ -109,10 +109,12 @@ object KernelLauncher {
       "-r",
       "jitpack"
     )
-    os.proc(
+    val res = os.proc(
       cs,
       "bootstrap",
       "--hybrid",
+      "--default=true",
+      "--sources",
       extraOpts,
       repoArgs,
       "-o",
@@ -124,7 +126,20 @@ object KernelLauncher {
       launcherScalaVersion,
       extraOptions
     )
-      .call(stdin = os.Inherit, stdout = os.Inherit)
+      .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
+    if (res.exitCode != 0)
+      sys.error(
+        s"""Error generating an Almond $launcherVersion launcher for Scala $launcherScalaVersion
+           |
+           |If that error is unexpected, you might want to:
+           |- remove out/repo
+           |    rm -rf out/repo
+           |- remove cached version computation in the build:
+           |    find out -name "*publishVersion*" -print0 | xargs -0 rm -f
+           |
+           |Then try again.
+           |""".stripMargin
+      )
     (jarDest, runnerDest)
   }
 
