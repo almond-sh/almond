@@ -26,6 +26,11 @@ jobs:
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
         cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts
+        for SV in $(./mill scalaVersions); do
+          ./mill -i '__['"$SV"'].compile'
+          ./mill -i '__['"$SV"'].docJar'
+          ./mill -i '__['"$SV"'].publishLocal'
+        done
         ./mill -i __.publishLocal
         ./mill -i publishSonatype __.publishArtifacts
       shell: bash
