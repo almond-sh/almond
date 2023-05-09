@@ -174,8 +174,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       )
   def ivyDeps = T {
     val metabrowse =
-      if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
-      else Agg.empty
+      if (crossScalaVersion.startsWith("2."))
+        Agg(
+          Deps.metabrowseServer
+            // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
+            .exclude(("org.slf4j", "slf4j-api"))
+        )
+      else
+        Agg.empty
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
