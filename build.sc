@@ -251,6 +251,25 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
     )
   }
 
+  def resolvedIvyDeps = T {
+    // Ensure we stay on slf4j 1.x
+    val value = super.resolvedIvyDeps()
+    val jarNames = value
+      .map(_.path.last)
+      .filter(_.endsWith(".jar"))
+      .map(_.stripSuffix(".jar"))
+    val slf4jJars = jarNames.filter(_.startsWith("slf4j-"))
+    assert(slf4jJars.nonEmpty, "No slf4j JARs found")
+    val wrongSlf4jVersionJars = slf4jJars.filter { name =>
+      val version = name.split('-').dropWhile(_.head.isLetter).mkString("-")
+      !version.startsWith("1.")
+    }
+    if (wrongSlf4jVersionJars.nonEmpty)
+      sys.error(s"Found some slf4j non-1.x JARs: ${wrongSlf4jVersionJars.mkString(", ")}")
+
+    value
+  }
+
   def runClasspath =
     super.runClasspath() ++
       transitiveSources() ++
