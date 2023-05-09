@@ -46,7 +46,7 @@ object Deps {
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.2"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.9.0"
   def coursier           = ivy"io.get-coursier::coursier:2.1.3"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.15"
+  def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fs2                = ivy"co.fs2::fs2-core:2.5.11"
   def jansi              = ivy"org.fusesource.jansi:jansi:2.4.0"
@@ -66,7 +66,7 @@ object Deps {
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
-  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.7"
+  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def utest                    = ivy"com.lihaoyi::utest:0.8.1"
 }
 

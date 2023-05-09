@@ -144,10 +144,28 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
         scala.`jupyter-api`()
       )
   def ivyDeps = Agg(
-    Deps.ammoniteCompiler(crossScalaVersion),
-    Deps.ammoniteReplApi(crossScalaVersion),
+    Deps.ammoniteCompiler(crossScalaVersion)
+      .exclude(("org.slf4j", "slf4j-api")),
+    Deps.ammoniteReplApi(crossScalaVersion)
+      .exclude(("org.slf4j", "slf4j-api")),
     Deps.jvmRepr
   )
+
+  def resolvedIvyDeps = T {
+    // Ensure we don't depend on slf4j-api
+    // As no logger implem would be loaded alongside it by default, slf4j would fail to initialize,
+    // complain in stderr, and default to NOP logging.
+    val value = super.resolvedIvyDeps()
+    val jarNames = value
+      .map(_.path.last)
+      .filter(_.endsWith(".jar"))
+      .map(_.stripSuffix(".jar"))
+    val slf4jJars = jarNames.filter(_.startsWith("slf4j-"))
+    if (slf4jJars.nonEmpty)
+      sys.error(s"Found slf4j JARs: ${slf4jJars.mkString(", ")}")
+    value
+  }
+
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Seq(
     "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version,
@@ -174,8 +192,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       )
   def ivyDeps = T {
     val metabrowse =
-      if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
-      else Agg.empty
+      if (crossScalaVersion.startsWith("2."))
+        Agg(
+          Deps.metabrowseServer
+            // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
+            .exclude(("org.slf4j", "slf4j-api"))
+        )
+      else
+        Agg.empty
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
@@ -243,6 +267,27 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
     def moduleDeps = super.moduleDeps ++ Seq(
       scala.`scala-interpreter`().test
     )
+  }
+
+  def resolvedIvyDeps = T {
+    // Ensure we stay on slf4j 1.x
+    // Kind of unnecessary now that scala-kernel-api doesn't bring slf4j-api any more,
+    // but keeping that just in case…
+    val value = super.resolvedIvyDeps()
+    val jarNames = value
+      .map(_.path.last)
+      .filter(_.endsWith(".jar"))
+      .map(_.stripSuffix(".jar"))
+    val slf4jJars = jarNames.filter(_.startsWith("slf4j-"))
+    assert(slf4jJars.nonEmpty, "No slf4j JARs found")
+    val wrongSlf4jVersionJars = slf4jJars.filter { name =>
+      val version = name.split('-').dropWhile(_.head.isLetter).mkString("-")
+      !version.startsWith("1.")
+    }
+    if (wrongSlf4jVersionJars.nonEmpty)
+      sys.error(s"Found some slf4j non-1.x JARs: ${wrongSlf4jVersionJars.mkString(", ")}")
+
+    value
   }
 
   def runClasspath =
