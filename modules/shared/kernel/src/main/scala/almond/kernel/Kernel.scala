@@ -27,6 +27,7 @@ final case class Kernel(
   interpreter: IOInterpreter,
   backgroundMessagesQueue: Queue[IO, (Channel, RawMessage)],
   mainQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
+  otherQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
   backgroundCommHandlerOpt: Option[DefaultCommHandler],
   inputHandler: InputHandler,
   kernelThreads: KernelThreads,
@@ -106,8 +107,8 @@ final case class Kernel(
         val requests0 = requests.interruptWhen(exitSignal0)
 
         // For each incoming message, an IO that processes it, and gives the response messages
-        val streams: Stream[IO, Stream[IO, (Channel, RawMessage)]] =
-          requests0.parEvalMap(20) {
+        val scatterMessages: Stream[IO, Unit] =
+          requests0.evalMap {
             case (channel, rawMessage) =>
               interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
                 case None =>
@@ -116,37 +117,38 @@ final case class Kernel(
                   immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
                     case None =>
                       log.warn(s"Ignoring unhandled message on $channel:\n$rawMessage")
-                      IO.pure(Stream.empty)
+                      IO.unit
 
                     case Some(output) =>
                       // process stdin messages and send response back straightaway
-                      IO.pure(output)
+                      otherQueue.offer(Some(output))
                   }
 
                 case Some(output) =>
                   // enqueue stream that processes the incoming message, so that the main messages are
                   // still processed and answered in order
-                  mainQueue.offer(Some(output)).map(_ => Stream.empty)
+                  mainQueue.offer(Some(output))
               }
           }
 
-        // Try to process messages eagerly, to e.g. process comm messages even while an execute_request is
-        // being processed.
-        // Order of the main messages and their answers is still preserved via mainQueue, see also comments above.
-        val mergedStreams = streams.parJoinUnbounded
-
-        // Put poison pill (null) at the end of mainQueue when all input messages have been processed
-        val s1 = Stream.bracket(IO.unit)(_ => mainQueue.offer(None))
-          .flatMap(_ => mergedStreams)
+        // Put poison pill (null) at the end of mainQueue when all input messages have been scattered
+        val s1: Stream[IO, Nothing] =
+          Stream.bracket(IO.unit)(_ => mainQueue.offer(None).flatMap(_ => otherQueue.offer(None)))
+            .flatMap(_ => Stream.exec(scatterMessages.compile.drain))
 
         // Reponses for the main messages
         val s2 = Stream.repeatEval(mainQueue.take)
           .takeWhile(_.nonEmpty)
           .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
 
-        // Merge s1 (messages answered straightaway and enqueuing of the main messages) and s2 (responses of main
-        // messages, that are processed sequentially via mainQueue)
-        s1.merge(s2)
+        // Reponses for the other messages
+        val s3 = Stream.repeatEval(otherQueue.take)
+          .takeWhile(_.nonEmpty)
+          .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
+
+        // Merge s1 (messages scattered straightaway), s2 (responses of main messages, that are processed sequentially
+        // via mainQueue), and s3 (responses of other messages, that are processed in parallel)
+        s1.merge(s2).merge(s3)
       }
 
       // Put poison pill (null) at the end of backgroundMessagesQueue when all input messages have been processed
@@ -259,7 +261,8 @@ object Kernel {
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
-      mainQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+      mainQueue  <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+      otherQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {
@@ -277,6 +280,7 @@ object Kernel {
       interpreter,
       backgroundMessagesQueue,
       mainQueue,
+      otherQueue,
       backgroundCommHandlerOpt,
       inputHandler,
       kernelThreads,
