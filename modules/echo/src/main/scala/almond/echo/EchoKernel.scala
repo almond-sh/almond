@@ -6,6 +6,7 @@ import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads}
 import almond.logger.{Level, LoggerContext}
 import caseapp._
+import cats.effect.unsafe.IORuntime
 
 object EchoKernel extends CaseApp[Options] {
 
@@ -52,6 +53,6 @@ object EchoKernel extends CaseApp[Options] {
     log.debug("Running kernel")
     Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, logCtx)
       .flatMap(_.runOnConnectionFile(connectionFile, "echo", zeromqThreads))
-      .unsafeRunSync()
+      .unsafeRunSync()(IORuntime.global)
   }
 }

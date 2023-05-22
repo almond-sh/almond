@@ -53,6 +53,7 @@ final class Cancellable[A, B](
                 cb(Left(e))
             }
           }
+          IO.none
         }
     }
   }

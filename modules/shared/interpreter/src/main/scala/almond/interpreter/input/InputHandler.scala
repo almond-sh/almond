@@ -9,6 +9,7 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.logger.LoggerContext
 import almond.protocol.Input
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import fs2.Stream
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -59,7 +60,7 @@ final class InputHandler(
           {
             implicit val ec = futureEc
             for {
-              _ <- send(Channel.Input, msg).unsafeToFuture()
+              _ <- send(Channel.Input, msg).unsafeToFuture()(IORuntime.global)
               s <- p.future
             } yield s
           }
@@ -70,12 +71,12 @@ final class InputHandler(
     MessageHandler(Channel.Input, Input.replyType) { msg =>
 
       def resp(id: String, p: Promise[String]) =
-        Stream.eval_(
+        Stream.eval(
           IO {
             ongoing.remove(id)
             p.complete(Success(msg.content.value))
           }
-        )
+        ).drain
 
       msg.parent_header match {
         case None =>
