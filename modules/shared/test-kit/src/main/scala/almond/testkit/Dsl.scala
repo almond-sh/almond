@@ -24,6 +24,19 @@ object Dsl {
     def run(streams: ClientStreams): Unit
   }
 
+  private implicit class CustomStringOps(private val str: String) extends AnyVal {
+    def trimLines: String =
+      str.linesIterator
+        .zip(str.linesWithSeparators)
+        .map {
+          case (l, lSep) =>
+            val trimmed = l.trim
+            if (l == trimmed) lSep
+            else trimmed + lSep.drop(l.length)
+        }
+        .mkString
+  }
+
   def execute(
     code: String,
     reply: String = null,
@@ -39,7 +52,8 @@ object Dsl {
     stdout: String = null,
     stderr: String = null,
     waitForUpdateDisplay: Boolean = false,
-    handler: MessageHandler = MessageHandler.discard { case _ => }
+    handler: MessageHandler = MessageHandler.discard { case _ => },
+    trimReplyLines: Boolean = false
   )(implicit
     sessionId: SessionId,
     session: Session
@@ -121,7 +135,11 @@ object Dsl {
       expect(stderr == stderrMessages)
     }
 
-    val replies = streams.executeReplies.toVector.sortBy(_._1).map(_._2)
+    val replies = streams.executeReplies
+      .toVector
+      .sortBy(_._1)
+      .map(_._2)
+      .map(s => if (trimReplyLines) s.trimLines else s)
     expect(replies == Option(reply).toVector)
 
     if (replyPayloads != null) {
@@ -206,6 +224,59 @@ object Dsl {
         Some(Protocol.versionStr)
       ),
       ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
+    ).on(Channel.Requests)
+
+  def inspect(
+    code: String,
+    pos: Int,
+    detailed: Boolean
+  )(implicit
+    sessionId: SessionId,
+    session: Session
+  ): Seq[String] = {
+
+    val input = Stream(
+      inspectMessage(code, pos, detailed)
+    )
+
+    val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = {
+      var gotInspectReply = false
+      var gotIdleStatus   = false
+      (c, m) =>
+        gotInspectReply = gotInspectReply ||
+          (c == Channel.Requests && m.header.msg_type == Inspect.replyType.messageType)
+        gotIdleStatus = gotIdleStatus || (
+          c == Channel.Publish && m.header.msg_type == Status.messageType.messageType && readFromArray(
+            m.content.value
+          )(
+            Status.codec
+          ).execution_state == Status.idle.execution_state
+        )
+        IO.pure(gotInspectReply && gotIdleStatus)
+    }
+
+    val streams = ClientStreams.create(input, stopWhen)
+
+    session.run(streams)
+
+    streams.inspectRepliesHtml
+  }
+
+  private def inspectMessage(
+    code: String,
+    pos: Int,
+    detailed: Boolean,
+    msgId: String = UUID.randomUUID().toString
+  )(implicit sessionId: SessionId) =
+    Message(
+      Header(
+        msgId,
+        "test",
+        sessionId.sessionId,
+        Inspect.requestType.messageType,
+        Some(Protocol.versionStr)
+      ),
+      Inspect.Request(code, pos, if (detailed) 1 else 0)
     ).on(Channel.Requests)
 
 }

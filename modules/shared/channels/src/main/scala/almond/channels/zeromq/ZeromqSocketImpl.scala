@@ -88,9 +88,7 @@ final class ZeromqSocketImpl(
     }
 
     delayedCondition(!closed, "Channel is closed")(
-      IO.shift(ec)
-        .flatMap(_ => t)
-        .flatMap(t0 => t0)
+      t.evalOn(ec).flatMap(t0 => t0)
     )
   }
 
@@ -103,7 +101,7 @@ final class ZeromqSocketImpl(
 
   def send(message: Message): IO[Unit] =
     delayedCondition(!closed && opened, "Channel is not opened in send")(
-      IO.shift(ec) *> IO {
+      IO {
 
         ensureOpened()
 
@@ -136,14 +134,14 @@ final class ZeromqSocketImpl(
         channel.send(message.content)
 
         ()
-      }
+      }.evalOn(ec)
     )
 
   val read: IO[Option[Message]] = delayedCondition(
     !closed && opened,
     "Channel is not opened in read"
   )(
-    IO.shift(ec) *> IO {
+    IO {
 
       val idents =
         Iterator.continually(channel.recv())
@@ -175,7 +173,7 @@ final class ZeromqSocketImpl(
         log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
         None
       }
-    }
+    }.evalOn(ec)
   )
 
   val close: IO[Unit] = {
@@ -187,7 +185,7 @@ final class ZeromqSocketImpl(
       }
     }
 
-    delayedCondition(opened, "Channel is not opened in close")(IO.shift(ec) *> t)
+    delayedCondition(opened, "Channel is not opened in close")(t.evalOn(ec))
   }
 
   private def ensureOnlyOpened(): Unit = {

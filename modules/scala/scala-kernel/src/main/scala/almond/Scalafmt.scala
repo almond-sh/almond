@@ -54,7 +54,7 @@ final class Scalafmt(
         val sendResponses = msg.content.cells.toVector.traverse {
           case (key, code) =>
             for {
-              formatted <- IO.shift(fmtPool) *> IO(format(code))
+              formatted <- IO(format(code)).evalOn(fmtPool)
               _ <- msg
                 .publish(
                   Format.responseType,

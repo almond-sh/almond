@@ -5,6 +5,7 @@ import java.util.concurrent.Executors
 import almond.channels.{ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.util.Secret
+import cats.effect.unsafe.IORuntime
 import org.zeromq.{SocketType, ZMQ}
 import utest._
 
@@ -18,6 +19,13 @@ object ZeromqSocketTests extends TestSuite {
   override def utestAfterAll() =
     ctx.term()
 
+  private def randomPort(): Int = {
+    val s    = new java.net.ServerSocket(0)
+    val port = s.getLocalPort
+    s.close()
+    port
+  }
+
   val tests = Tests {
 
     test("simple") {
@@ -28,7 +36,7 @@ object ZeromqSocketTests extends TestSuite {
       val reqEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = ConnectionParameters.randomPort()
+      val port = randomPort()
 
       val key = Secret.randomUuid()
 
@@ -80,7 +88,7 @@ object ZeromqSocketTests extends TestSuite {
           _ <- rep.close
         } yield ()
 
-      t.unsafeRunSync()
+      t.unsafeRunSync()(IORuntime.global)
     }
 
     test("simpleWithNoKey") {
@@ -91,7 +99,7 @@ object ZeromqSocketTests extends TestSuite {
       val reqEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = ConnectionParameters.randomPort()
+      val port = randomPort()
 
       val key = Secret("") // having no key disables signature checking
 
@@ -143,7 +151,7 @@ object ZeromqSocketTests extends TestSuite {
           _ <- rep.close
         } yield ()
 
-      t.unsafeRunSync()
+      t.unsafeRunSync()(IORuntime.global)
     }
 
   }

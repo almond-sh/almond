@@ -13,7 +13,7 @@ import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
 import ammonite.util.{Frame => _, _}
-import coursier.cache.shaded.dirs.ProjectDirectories
+import coursier.cache.shaded.dirs.{GetWinDirs, ProjectDirectories}
 import fastparse.Parsed
 
 import scala.util.control.NonFatal
@@ -28,11 +28,15 @@ final class ScalaInterpreter(
 
   private val frames0: Ref[List[Frame]] = Ref(List(Frame.createInitial(params.initialClassLoader)))
 
+  if (params.extraClassPath.nonEmpty)
+    frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
+
   private val inspections = new ScalaInterpreterInspections(
     logCtx,
     params.metabrowse,
     params.metabrowseHost,
     params.metabrowsePort,
+    ammonite.compiler.CompilerBuilder.scalaVersion,
     ammInterp
       .compilerManager
       .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
@@ -48,10 +52,17 @@ final class ScalaInterpreter(
   private val storage =
     if (params.disableCache)
       Storage.InMemory()
-    else
+    else {
+      val getWinDirs: GetWinDirs =
+        if (coursier.paths.Util.useJni())
+          new JniGetWinDirs
+        else
+          GetWinDirs.powerShellBased
+      val projDirs = ProjectDirectories.from(null, null, "Almond", getWinDirs)
       new Storage.Folder(
-        os.Path(ProjectDirectories.from(null, null, "Almond").cacheDir) / "ammonite"
+        os.Path(projDirs.cacheDir) / "ammonite"
       )
+    }
 
   private val execute0 = new Execute(
     params.trapOutput,
@@ -80,7 +91,8 @@ final class ScalaInterpreter(
       commHandlerOpt,
       replApi,
       silent0,
-      params.allowVariableInspector
+      params.allowVariableInspector,
+      kernelClassLoader = Thread.currentThread().getContextClassLoader
     )
 
   if (params.toreeMagics) {
@@ -112,7 +124,8 @@ final class ScalaInterpreter(
       params.initialClassLoader,
       logCtx,
       jupyterApi.VariableInspector.enabled,
-      outputDir = params.outputDir
+      outputDir = params.outputDir,
+      compileOnly = params.compileOnly
     )
   }
 

@@ -5,6 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.Dsl._
+import com.eed3si9n.expecty.Expecty.expect
 
 import java.io.File
 import java.util.UUID
@@ -260,6 +261,100 @@ object Tests {
     )
   }
 
+  def toreeAddJarFile(scalaVersion: String, sameCell: Boolean)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    implicit val session: Session = runner("--toree-magics")
+
+    val jar = coursierapi.Fetch.create()
+      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .fetch()
+      .asScala
+      .head
+    val jarUri = jar.toURI
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    if (sameCell)
+      execute(
+        s"%AddJar $jarUri" + ls +
+          "import picocli.CommandLine" + ls,
+        "import $cp.$ " + (" " * jar.toString.length) + ls + ls +
+          "import picocli.CommandLine" + ls,
+        ignoreStreams = true
+      )
+    else {
+      execute(
+        s"%AddJar $jarUri",
+        "import $cp.$ " + (" " * jar.toString.length) + maybePostImportNewLine(
+          scalaVersion.startsWith("2.")
+        ),
+        ignoreStreams = true
+      )
+
+      execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+      )
+    }
+  }
+
+  def toreeAddJarURL(scalaVersion: String, sameCell: Boolean)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    implicit val session: Session = runner("--toree-magics")
+
+    val jar = coursierapi.Fetch.create()
+      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .fetchResult()
+      .getArtifacts
+      .asScala
+      .head
+      .getKey
+      .getUrl
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    if (sameCell)
+      execute(
+        s"%AddJar $jar" + ls +
+          "import picocli.CommandLine" + ls,
+        "import $cp.$" + ls + ls +
+          "import picocli.CommandLine" + ls,
+        ignoreStreams = true,
+        trimReplyLines = true
+      )
+    else {
+      execute(
+        s"%AddJar $jar",
+        "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+        ignoreStreams = true,
+        trimReplyLines = true
+      )
+
+      execute(
+        "import picocli.CommandLine",
+        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+      )
+    }
+  }
+
   private def java17Cmd(): String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)
@@ -354,9 +449,9 @@ object Tests {
     )
 
     execute(
-      """%AddJar foo://thing/a/b
-        |""".stripMargin,
-      ""
+      "%AddJar foo://thing/a/b" + ls,
+      "import $cp.$" + ls,
+      trimReplyLines = true
     )
 
     execute(
@@ -427,6 +522,140 @@ object Tests {
         "Hello" + ls +
           "thing: Int = 2"
     )
+  }
+
+  def compileOnly()(implicit sessionId: SessionId, runner: Runner): Unit = {
+    implicit val session: Session = runner("--compile-only", "--toree-magics")
+
+    execute(
+      """println("Hello from compile-only kernel")""",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      """System.err.println("Hello from compile-only kernel")""",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      "import picocli.CommandLine",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    execute(
+      """%AddDeps info.picocli picocli 4.7.3 --transitive
+        |""".stripMargin,
+      "",
+      ignoreStreams = true
+    )
+
+    execute(
+      "new ListBuffer[String]",
+      errors = Seq(
+        ("", "Compilation Failed", List("Compilation Failed"))
+      ),
+      ignoreStreams = true
+    )
+
+    execute(
+      "import picocli.CommandLine; import scala.collection.mutable.ListBuffer",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      "new ListBuffer[String]",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+
+    execute(
+      "sys.exit(1)",
+      "",
+      stdout = "",
+      stderr = ""
+    )
+  }
+
+  def extraCp(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
+
+    val sbv = scalaVersion.split('.').take(2).mkString(".")
+
+    val kernelShapelessVersion = "2.3.10" // might need to be updated when bumping case-app
+    val testShapelessVersion   = "2.3.3"  // no need to bump that one
+
+    assert(kernelShapelessVersion != testShapelessVersion)
+
+    val shapelessJar = coursierapi.Fetch.create()
+      .addDependencies(
+        coursierapi.Dependency.of("com.chuusai", "shapeless_" + sbv, testShapelessVersion)
+          .withTransitive(false)
+      )
+      .fetch()
+      .asScala
+      .toList
+    assert(shapelessJar.length == 1)
+
+    implicit val session: Session =
+      runner("--extra-class-path", shapelessJar.mkString(File.pathSeparator))
+
+    execute(
+      "import shapeless._" + ls +
+        """val l = 1 :: "aa" :: true :: HNil""",
+      "import shapeless._" + ls + ls +
+        """l: Int :: String :: Boolean :: HNil = 1 :: "aa" :: true :: HNil"""
+    )
+
+    execute(
+      s"""val check = HNil.getClass.getProtectionDomain.getCodeSource.getLocation.toExternalForm.endsWith("-$testShapelessVersion.jar")""",
+      "check: Boolean = true"
+    )
+
+    execute(
+      s"""val kernelCheck = kernel.kernelClassLoader.loadClass(HNil.getClass.getName).getProtectionDomain.getCodeSource.getLocation.toExternalForm.stripSuffix("/").stripSuffix("!").endsWith("-$kernelShapelessVersion.jar")""",
+      "kernelCheck: Boolean = true"
+    )
+  }
+
+  def inspections(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
+
+    def sbv = scalaVersion.split('.').take(2).mkString(".")
+
+    val isJava8 = sys.props.get("java.version")
+      .exists(v => v == "1.8" || v.startsWith("1.8."))
+    val extraJars =
+      if (isJava8)
+        // Adding these to workaround issues indexing the kernel launcher in Java 8
+        coursierapi.Fetch.create()
+          .addDependencies(coursierapi.Dependency.of("com.lihaoyi", "os-lib_" + sbv, "0.9.0"))
+          .addClassifiers("_", "sources")
+          .fetch()
+          .asScala
+          .toList
+      else
+        Nil
+
+    implicit val session: Session =
+      runner("--extra-class-path", extraJars.mkString(File.pathSeparator))
+
+    val code   = "os.read"
+    val result = inspect(code, code.length - 3, detailed = true)
+    val expected = Seq(
+      """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
+        |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
+        |also select a different `charSet` to use, and provide an `offset`/`count` to
+        |read from if the source supports seeking.</pre></div>""".stripMargin
+    )
+    expect(result == expected)
   }
 
 }

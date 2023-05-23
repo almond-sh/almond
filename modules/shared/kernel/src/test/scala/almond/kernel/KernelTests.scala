@@ -12,6 +12,7 @@ import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shut
 import almond.testkit.ClientStreams
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import utest._
 
@@ -74,7 +75,7 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
-      val res = t.unsafeRunTimed(2.seconds)
+      val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
       assert(res.nonEmpty)
 
       val inputReply   = streams.singleRequest(Channel.Input, Input.replyType)
@@ -119,7 +120,7 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
-      val res = t.unsafeRunTimed(10.seconds)
+      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes()
@@ -167,7 +168,7 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
-      val res = t.unsafeRunTimed(10.seconds)
+      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes()
@@ -197,7 +198,7 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
-      val res = t.unsafeRunTimed(10.seconds)
+      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
       assert(res.nonEmpty)
 
       assert(interpreter.shutdownCalled())
@@ -242,7 +243,7 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink))
 
-      val res = t.unsafeRunTimed(2.seconds)
+      val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toSet

@@ -51,7 +51,7 @@ final case class Options(
   @HelpMessage(
     "Start a metabrowse server for go to source navigation (linked from Jupyter inspections, server is started upon first inspection)"
   )
-  metabrowse: Boolean = true,
+  metabrowse: Boolean = false,
   @HelpMessage("Trap what user code sends to stdout and stderr")
   trapOutput: Boolean = false,
   @HelpMessage("Disable ammonite compilation cache")
@@ -78,7 +78,15 @@ final case class Options(
     toreeMagics: Boolean = false,
 
   @HelpMessage("Enable or disable color cell output upon startup (enabled by default, pass --color=false to disable)")
-    color: Boolean = true
+    color: Boolean = true,
+
+  @HelpMessage("Enable compile-only mode")
+    compileOnly: Boolean = false,
+
+  @HelpMessage("Extra class path to add upfront in the session - should accept the same format as 'java -cp', see https://github.com/coursier/class-path-util for more details")
+  @ExtraName("extraCp")
+  @ExtraName("extraClasspath")
+    extraClassPath: List[String] = Nil
 ) {
   // format: on
 

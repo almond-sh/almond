@@ -64,4 +64,6 @@ trait FullJupyterApi extends JupyterApi { self =>
     ): Unit =
       self.declareVariable(name, value, Option(strValueOrNull))
   }
+
+  def kernelClassLoader: ClassLoader
 }

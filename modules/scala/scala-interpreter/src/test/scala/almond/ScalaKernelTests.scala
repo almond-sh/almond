@@ -609,89 +609,23 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("toree AddJar file") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = false)
+    }
 
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          toreeMagics = true
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      val jar = coursierapi.Fetch.create()
-        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
-        .fetch()
-        .asScala
-        .head
-        .toURI
-
-      kernel.execute(
-        "import picocli.CommandLine",
-        errors = Seq(
-          ("", "Compilation Failed", List("Compilation Failed"))
-        ),
-        ignoreStreams = true
-      )
-
-      kernel.execute(
-        s"%AddJar $jar",
-        "",
-        ignoreStreams = true
-      )
-
-      kernel.execute(
-        "import picocli.CommandLine",
-        "import picocli.CommandLine" + maybePostImportNewLine
-      )
+    test("toree AddJar file same cell") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = true)
     }
 
     test("toree AddJar URL") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = false)
+    }
 
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          toreeMagics = true
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
-      implicit val sessionId: SessionId = SessionId()
-
-      val jar = coursierapi.Fetch.create()
-        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
-        .fetchResult()
-        .getArtifacts
-        .asScala
-        .head
-        .getKey
-        .getUrl
-
-      kernel.execute(
-        "import picocli.CommandLine",
-        errors = Seq(
-          ("", "Compilation Failed", List("Compilation Failed"))
-        ),
-        ignoreStreams = true
-      )
-
-      kernel.execute(
-        s"%AddJar $jar",
-        "",
-        ignoreStreams = true
-      )
-
-      kernel.execute(
-        "import picocli.CommandLine",
-        "import picocli.CommandLine" + maybePostImportNewLine
-      )
+    test("toree AddJar URL same cell") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = true)
     }
 
     test("toree Html") {

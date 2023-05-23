@@ -6,6 +6,7 @@ import almond.interpreter.util.Cancellable
 import almond.logger.LoggerContext
 import almond.protocol.KernelInfo
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.apply._
 import fs2.concurrent.{Signal, SignallingRef}
 
@@ -27,12 +28,9 @@ final class InterpreterToIOInterpreter(
   override def setCommHandler(commHandler0: CommHandler): Unit =
     interpreter.setCommHandler(commHandler0)
 
-  private val cancelledSignal0 = {
-    implicit val shift =
-      // maybe not the right ec, but that one shouldn't be used yet at that point
-      IO.contextShift(interpreterEc)
-    SignallingRef[IO, Boolean](false).unsafeRunSync()
-  }
+  private val cancelledSignal0 =
+    // maybe not the right IORuntime, but that one shouldn't be used yet at that point
+    SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
   def cancelledSignal: SignallingRef[IO, Boolean] =
     cancelledSignal0
 
@@ -46,13 +44,11 @@ final class InterpreterToIOInterpreter(
   private def cancellable[T](io: Boolean => IO[T]): IO[T] =
     for {
       cancelled <- cancelledSignal.get
-      _         <- IO.shift(interpreterEc)
-      res       <- io(cancelled)
+      res       <- io(cancelled).evalOn(interpreterEc)
     } yield res
 
   override def init: IO[Unit] =
-    IO.shift(interpreterEc) *>
-      IO(interpreter.init())
+    IO(interpreter.init()).evalOn(interpreterEc)
 
   def execute(
     line: String,

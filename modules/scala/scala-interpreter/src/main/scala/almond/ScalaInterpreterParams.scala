@@ -35,5 +35,7 @@ final case class ScalaInterpreterParams(
   allowVariableInspector: Option[Boolean] = None,
   useThreadInterrupt: Boolean = false,
   outputDir: Either[os.Path, Boolean] = Right(true),
-  toreeMagics: Boolean = false
+  toreeMagics: Boolean = false,
+  compileOnly: Boolean = false,
+  extraClassPath: List[os.Path] = Nil
 )

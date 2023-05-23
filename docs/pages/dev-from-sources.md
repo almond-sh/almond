@@ -154,10 +154,10 @@ are left (look for `213` to spot 2.13-specific projects).
 
 ### Generate IntelliJ IDEA configuration files
 
-It is recommended to [manually generate IntelliJ configuration files](https://com-lihaoyi.github.io/mill/mill/Intro_to_Mill.html#_intellij_support_legacy),
+It is recommended to [manually generate IntelliJ configuration files](https://com-lihaoyi.github.io/mill/mill/Installation_IDE_Support.html#_intellij_idea_support),
 rather than letting IntelliJ load the project itself. In order to do that, run
 ```text
-$ ./mill.scalalib.GenIdea/idea
+$ ./mill mill.scalalib.GenIdea/idea
 ```
 
 You can then open the project in IntelliJ.

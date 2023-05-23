@@ -10,6 +10,8 @@ import almond.kernel.install.Install
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
+import cats.effect.unsafe.IORuntime
+import coursier.cputil.ClassPathUtil
 
 import scala.language.reflectiveCalls
 import scala.concurrent.ExecutionContext
@@ -136,7 +138,14 @@ object ScalaKernel extends CaseApp[Options] {
             options.tmpOutputDirectory
               .getOrElse(true) // Create tmp output dir by default
           },
-        toreeMagics = options.toreeMagics
+        toreeMagics = options.toreeMagics,
+        compileOnly = options.compileOnly,
+        extraClassPath = options.extraClassPath
+          .filter(_.trim.nonEmpty)
+          .flatMap { input =>
+            ClassPathUtil.classPath(input)
+              .map(os.Path(_, os.pwd))
+          }
       ),
       logCtx = logCtx
     )
@@ -177,7 +186,7 @@ object ScalaKernel extends CaseApp[Options] {
     try
       Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx, fmtMessageHandler)
         .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
-        .unsafeRunSync()
+        .unsafeRunSync()(IORuntime.global)
     finally
       interpreter.shutdown()
   }

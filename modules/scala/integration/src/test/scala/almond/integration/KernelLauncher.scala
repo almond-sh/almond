@@ -5,6 +5,7 @@ import almond.channels.{Channel, Connection, ConnectionParameters, Message => Ra
 import almond.testkit.Dsl._
 import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 import fs2.concurrent.SignallingRef
 
@@ -109,10 +110,12 @@ object KernelLauncher {
       "-r",
       "jitpack"
     )
-    os.proc(
+    val res = os.proc(
       cs,
       "bootstrap",
       "--hybrid",
+      "--default=true",
+      "--sources",
       extraOpts,
       repoArgs,
       "-o",
@@ -124,7 +127,20 @@ object KernelLauncher {
       launcherScalaVersion,
       extraOptions
     )
-      .call(stdin = os.Inherit, stdout = os.Inherit)
+      .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
+    if (res.exitCode != 0)
+      sys.error(
+        s"""Error generating an Almond $launcherVersion launcher for Scala $launcherScalaVersion
+           |
+           |If that error is unexpected, you might want to:
+           |- remove out/repo
+           |    rm -rf out/repo
+           |- remove cached version computation in the build:
+           |    find out -name "*publishVersion*" -print0 | xargs -0 rm -f
+           |
+           |Then try again.
+           |""".stripMargin
+      )
     (jarDest, runnerDest)
   }
 
@@ -138,13 +154,8 @@ object KernelLauncher {
 
         val poisonPill: (Channel, RawMessage) = null
 
-        val s = {
-          implicit val shift = IO.contextShift(ExecutionContext.global)
-          SignallingRef[IO, Boolean](false).unsafeRunSync()
-        }
+        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
 
-        implicit val contextShift =
-          IO.contextShift(ExecutionContext.global) // hope that EC will do the job…
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
           fib2 <- streams.sink(conn.stream().interruptWhen(s)).compile.drain.start
@@ -160,14 +171,14 @@ object KernelLauncher {
           }
         } yield ()
 
-        try Await.result(t.unsafeToFuture(), 1.minute)
+        try Await.result(t.unsafeToFuture()(IORuntime.global), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
       }
 
       def close(): Unit =
-        conn.close.unsafeRunSync()
+        conn.close.unsafeRunSync()(IORuntime.global)
     }
 
   def runner(): Runner with AutoCloseable =
@@ -206,14 +217,13 @@ object KernelLauncher {
             generateLauncher(launcherOptions)
 
         val baseCmd: os.Shellable =
-          if (extraJars.isEmpty) launcher0
-          else
-            Seq[os.Shellable](
-              "java",
-              "-cp",
-              (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
-              "coursier.bootstrap.launcher.ResourcesLauncher"
-            )
+          Seq[os.Shellable](
+            "java",
+            "-Xmx1g",
+            "-cp",
+            (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
+            "coursier.bootstrap.launcher.ResourcesLauncher"
+          )
 
         proc = os.proc(
           baseCmd,
@@ -229,9 +239,9 @@ object KernelLauncher {
           bind = false,
           threads,
           TestLogging.logCtx
-        ).unsafeRunSync()
+        ).unsafeRunSync()(IORuntime.global)
 
-        conn.open.unsafeRunSync()
+        conn.open.unsafeRunSync()(IORuntime.global)
 
         val sess = session(conn)
         sessions = sess :: sessions
@@ -259,7 +269,7 @@ object KernelLauncher {
 
     try {
       runner0 = runner()
-      f(runner())
+      f(runner0)
     }
     finally
       runner0.close()

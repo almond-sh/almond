@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-19-62705f47"
+  def ammonite      = "3.0.0-M0-23-f664d7ef"
   def caseApp       = "2.1.0-M24"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
@@ -43,19 +43,22 @@ object Deps {
   def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.13.9"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
+  def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.10.0"
-  def coursier           = ivy"io.get-coursier::coursier:2.1.2"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.15"
+  def coursier           = ivy"io.get-coursier::coursier:2.1.3"
+  def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
-  def fs2                = ivy"co.fs2::fs2-core:2.5.11"
-  def jansi              = ivy"org.fusesource.jansi:jansi:2.4.0"
-  def jeromq             = ivy"org.zeromq:jeromq:0.5.3"
+  def fs2(sv: String) =
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.6.1" else ivy"co.fs2:fs2-core_2.13:3.6.1"
+  def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
+  def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.3.7"
+  def munit                    = ivy"org.scalameta::munit:0.7.29"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.9"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
@@ -64,7 +67,7 @@ object Deps {
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
-  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.7"
+  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def utest                    = ivy"com.lihaoyi::utest:0.8.1"
 }
 

@@ -134,7 +134,17 @@ jobs:
       with:
         jvm: 8
         apps:
-    - run: ./mill '__.publishLocal'
+    - run: |
+        mv .mill-jvm-opts .mill-jvm-opts.bak
+        echo "-Xmx2g" > .mill-jvm-opts
+        cat .mill-jvm-opts.bak | grep -v Xmx >> .mill-jvm-opts
+        # sometimes running into memory issues when attempting __.publishLocal upfront
+        for SV in $(./mill scalaVersions); do
+          ./mill -i '__['"$SV"'].compile'
+          ./mill -i '__['"$SV"'].docJar'
+          ./mill -i '__['"$SV"'].publishLocal'
+        done
+        ./mill -i __.publishLocal
       shell: bash
 
   # job whose name doesn't change when we bump Scala versions, add OSes, …

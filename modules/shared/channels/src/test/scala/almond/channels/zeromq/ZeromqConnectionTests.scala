@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 import almond.channels.{Channel, ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import utest._
 
 import scala.concurrent.duration.DurationInt
@@ -46,7 +47,7 @@ object ZeromqConnectionTests extends TestSuite {
           _ <- server.close
         } yield ()
 
-      t.unsafeRunSync()
+      t.unsafeRunSync()(IORuntime.global)
     }
 
   }

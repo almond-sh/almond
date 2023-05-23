@@ -1,5 +1,5 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
-import $ivy.`io.get-coursier.mill::mill-cs::0.1.0`
+import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.0.19`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
@@ -23,7 +23,7 @@ import $file.project.settings, settings.{
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
-import coursier.mill.MillCs
+import coursier.getcs.GetCs
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
 import mill.contrib.bloop.Bloop
@@ -61,7 +61,7 @@ class Channels(val crossScalaVersion: String) extends AlmondModule with Mima {
     shared.logger()
   )
   def ivyDeps = Agg(
-    Deps.fs2,
+    Deps.fs2(crossScalaVersion),
     Deps.jeromq
   )
   object test extends Tests with AlmondTestModule
@@ -103,7 +103,7 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   def ivyDeps = Agg(
     Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,
-    Deps.fs2
+    Deps.fs2(crossScalaVersion)
   )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
@@ -144,10 +144,28 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
         scala.`jupyter-api`()
       )
   def ivyDeps = Agg(
-    Deps.ammoniteCompiler(crossScalaVersion),
-    Deps.ammoniteReplApi(crossScalaVersion),
+    Deps.ammoniteCompiler(crossScalaVersion)
+      .exclude(("org.slf4j", "slf4j-api")),
+    Deps.ammoniteReplApi(crossScalaVersion)
+      .exclude(("org.slf4j", "slf4j-api")),
     Deps.jvmRepr
   )
+
+  def resolvedIvyDeps = T {
+    // Ensure we don't depend on slf4j-api
+    // As no logger implem would be loaded alongside it by default, slf4j would fail to initialize,
+    // complain in stderr, and default to NOP logging.
+    val value = super.resolvedIvyDeps()
+    val jarNames = value
+      .map(_.path.last)
+      .filter(_.endsWith(".jar"))
+      .map(_.stripSuffix(".jar"))
+    val slf4jJars = jarNames.filter(_.startsWith("slf4j-"))
+    if (slf4jJars.nonEmpty)
+      sys.error(s"Found slf4j JARs: ${slf4jJars.mkString(", ")}")
+    value
+  }
+
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Seq(
     "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version,
@@ -174,8 +192,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       )
   def ivyDeps = T {
     val metabrowse =
-      if (crossScalaVersion.startsWith("2.")) Agg(Deps.metabrowseServer)
-      else Agg.empty
+      if (crossScalaVersion.startsWith("2."))
+        Agg(
+          Deps.metabrowseServer
+            // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
+            .exclude(("org.slf4j", "slf4j-api"))
+        )
+      else
+        Agg.empty
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
@@ -236,12 +260,34 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
       )
   def ivyDeps = Agg(
     Deps.caseApp.withDottyCompat(crossScalaVersion),
+    Deps.classPathUtil,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
   object test extends Tests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       scala.`scala-interpreter`().test
     )
+  }
+
+  def resolvedIvyDeps = T {
+    // Ensure we stay on slf4j 1.x
+    // Kind of unnecessary now that scala-kernel-api doesn't bring slf4j-api any more,
+    // but keeping that just in case…
+    val value = super.resolvedIvyDeps()
+    val jarNames = value
+      .map(_.path.last)
+      .filter(_.endsWith(".jar"))
+      .map(_.stripSuffix(".jar"))
+    val slf4jJars = jarNames.filter(_.startsWith("slf4j-"))
+    assert(slf4jJars.nonEmpty, "No slf4j JARs found")
+    val wrongSlf4jVersionJars = slf4jJars.filter { name =>
+      val version = name.split('-').dropWhile(_.head.isLetter).mkString("-")
+      !version.startsWith("1.")
+    }
+    if (wrongSlf4jVersionJars.nonEmpty)
+      sys.error(s"Found some slf4j non-1.x JARs: ${wrongSlf4jVersionJars.mkString(", ")}")
+
+    value
   }
 
   def runClasspath =
@@ -436,11 +482,6 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
 
-object cs extends MillCs {
-  def csVersion    = "2.1.2"
-  def csArmVersion = csVersion
-}
-
 class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
   def skipBloop             = testScalaVersion != scalaVersion0
   private def scalaVersion0 = ScalaVersions.scala213
@@ -459,18 +500,19 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       scala.`test-definitions`(scalaVersion0)
     )
     def ivyDeps = Agg(
-      Deps.osLib,
-      Deps.utest
+      Deps.munit,
+      Deps.osLib
     )
-    def testFramework = "utest.runner.Framework"
+    def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(testScalaVersion).localRepo()
       val version = scala.`local-repo`(testScalaVersion).version()
       super.forkArgs() ++ Seq(
+        "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.launcher-version=$version",
         s"-Dalmond.test.launcher-scala-version=$testScalaVersion",
-        s"-Dalmond.test.cs-launcher=${cs.cs()}"
+        s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
       )
     }
     def tmpDirBase = T.persistent {

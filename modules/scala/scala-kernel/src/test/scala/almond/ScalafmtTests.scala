@@ -9,6 +9,7 @@ import almond.protocol.{Header, RawJson}
 import almond.protocol.custom.Format
 import almond.util.ThreadUtil.daemonThreadFactory
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import utest._
 
@@ -47,7 +48,7 @@ object ScalafmtTests extends TestSuite {
         stream
           .compile
           .toVector
-          .unsafeRunSync()
+          .unsafeRunSync()(IORuntime.global)
           .map {
             case (c, m) =>
               val decoded = Message.parse[RawJson](m) match {
