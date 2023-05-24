@@ -102,6 +102,11 @@ final case class Message[T](
   ): IO[Unit] =
     queue.offer(channel -> asRawMessage)
 
+  def enqueueOn0(channel: Channel, queue: Queue[IO, Either[Throwable, (Channel, RawMessage)]])(
+    implicit encoder: JsonValueCodec[T]
+  ): IO[Unit] =
+    queue.offer(Right(channel -> asRawMessage))
+
   def clearParentHeader: Message[T] =
     copy(parent_header = None)
   def clearMetadata: Message[T] =

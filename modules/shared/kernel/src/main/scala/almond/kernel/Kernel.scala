@@ -5,11 +5,12 @@ import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
 import almond.channels.zeromq.ZeromqThreads
-import almond.channels.{Channel, ConnectionParameters, Message => RawMessage}
+import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
 import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterpreter, Message}
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{
+  CloseExecutionException,
   CommMessageHandlers,
   InterpreterMessageHandlers,
   MessageHandler
@@ -26,7 +27,10 @@ import scala.concurrent.ExecutionContext
 final case class Kernel(
   interpreter: IOInterpreter,
   backgroundMessagesQueue: Queue[IO, (Channel, RawMessage)],
-  executeQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
+  executeQueue: Queue[IO, Option[(
+    Option[(Channel, RawMessage)],
+    Stream[IO, (Channel, RawMessage)]
+  )]],
   otherQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
   backgroundCommHandlerOpt: Option[DefaultCommHandler],
   inputHandler: InputHandler,
@@ -50,7 +54,7 @@ final case class Kernel(
         Some(inputHandler),
         kernelThreads.queueEc,
         logCtx,
-        io => executeQueue.offer(Some(Stream.exec(io))),
+        io => executeQueue.offer(Some(None -> Stream.exec(io))),
         exitSignal0,
         noExecuteInputFor
       )
@@ -132,7 +136,7 @@ final case class Kernel(
                 case Some(output) =>
                   // enqueue stream that processes the incoming message, so that the main messages are
                   // still processed and answered in order
-                  executeQueue.offer(Some(output))
+                  executeQueue.offer(Some(Some((channel, rawMessage)), output))
               }
           }
 
@@ -147,7 +151,7 @@ final case class Kernel(
         // Responses for the main messages
         val executeReplies = Stream.repeatEval(executeQueue.take)
           .takeWhile(_.nonEmpty)
-          .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
+          .flatMap(s => s.map(_._2).getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
 
         // Responses for the other messages
         val otherReplies = Stream.repeatEval(otherQueue.take)
@@ -184,22 +188,67 @@ final case class Kernel(
     leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
     for {
+      t <- runOnConnectionAllowClose0(connection, kernelId, zeromqThreads, leftoverMessages)
+      (run, _) = t
+      _ <- run
+    } yield ()
+
+  private def runOnConnectionAllowClose0(
+    connection: ConnectionParameters,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
+  ): IO[(IO[Unit], Connection)] =
+    for {
       c <- connection.channels(
         bind = true,
         zeromqThreads,
         logCtx,
         identityOpt = Some(kernelId)
       )
-      _ <- c.open
-      _ <- run(c.stream(), c.autoCloseSink, leftoverMessages)
-    } yield ()
+    } yield {
+      val run0 =
+        for {
+          _ <- c.open
+          _ <- run(c.stream(), c.autoCloseSink, leftoverMessages)
+        } yield ()
+      (run0, c)
+    }
 
-  def runOnConnectionFile(
+  private def drainExecuteMessages: IO[Seq[(Channel, RawMessage)]] =
+    Stream.repeatEval(executeQueue.take)
+      .takeWhile(_.nonEmpty)
+      .flatMap(s => Stream(s.flatMap(_._1).toSeq: _*))
+      .compile
+      .toVector
+
+  def runOnConnectionAllowClose(
+    connection: ConnectionParameters,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
+  ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
+    runOnConnectionAllowClose0(connection, kernelId, zeromqThreads, leftoverMessages).map {
+      case (run, conn) =>
+        val run0 = run.attempt.flatMap {
+          case Left(e: CloseExecutionException) =>
+            drainExecuteMessages.map { messages =>
+              e.messages ++ messages
+            }
+          case Left(e) =>
+            IO.raiseError(e)
+          case Right(()) =>
+            IO.pure(Nil)
+        }
+        (run0, conn)
+    }
+
+  def runOnConnectionFileAllowClose(
     connectionPath: Path,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)]
-  ): IO[Unit] =
+  ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     for {
       _ <- {
         if (Files.exists(connectionPath))
@@ -214,12 +263,24 @@ final case class Kernel(
           IO.raiseError(new Exception(s"Connection file $connectionPath not a regular file"))
       }
       connection <- JsonConnection.fromPath(connectionPath)
-      _ <- runOnConnection(
+      value <- runOnConnectionAllowClose(
         connection.connectionParameters,
         kernelId,
         zeromqThreads,
         leftoverMessages
       )
+    } yield value
+
+  def runOnConnectionFile(
+    connectionPath: Path,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
+  ): IO[Unit] =
+    for {
+      t <- runOnConnectionFileAllowClose(connectionPath, kernelId, zeromqThreads, leftoverMessages)
+      (run, _) = t
+      _ <- run
     } yield ()
 
   def runOnConnectionFile(
@@ -228,7 +289,19 @@ final case class Kernel(
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
-    runOnConnectionFile(
+    for {
+      t <- runOnConnectionFileAllowClose(connectionPath, kernelId, zeromqThreads, leftoverMessages)
+      (run, _) = t
+      _ <- run
+    } yield ()
+
+  def runOnConnectionFileAllowClose(
+    connectionPath: String,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
+  ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
+    runOnConnectionFileAllowClose(
       Paths.get(connectionPath),
       kernelId,
       zeromqThreads,
@@ -279,8 +352,12 @@ object Kernel {
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
-      executeQueue <-
-        Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+      executeQueue            <-
+        // FIXME Sizing
+        Queue.bounded[IO, Option[(
+          Option[(Channel, RawMessage)],
+          Stream[IO, (Channel, RawMessage)]
+        )]](50)
       otherQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
