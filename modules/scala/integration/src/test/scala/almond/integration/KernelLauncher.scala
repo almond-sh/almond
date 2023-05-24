@@ -74,14 +74,14 @@ object KernelLauncher {
       sys.error("almond.test.local-repo Java property not set")
     }
 
-  lazy val launcherVersion = sys.props.getOrElse(
-    "almond.test.launcher-version",
-    sys.error("almond.test.launcher-version Java property not set")
+  lazy val almondVersion = sys.props.getOrElse(
+    "almond.test.version",
+    sys.error("almond.test.version Java property not set")
   )
 
-  lazy val launcherScalaVersion = sys.props.getOrElse(
-    "almond.test.launcher-scala-version",
-    sys.error("almond.test.launcher-scala-version Java property not set")
+  lazy val testScalaVersion = sys.props.getOrElse(
+    "almond.test.scala-version",
+    sys.error("almond.test.scala-version Java property not set")
   )
 
   lazy val cs = sys.props.getOrElse(
@@ -120,17 +120,17 @@ object KernelLauncher {
       repoArgs,
       "-o",
       jarDest,
-      s"sh.almond:::scala-kernel:$launcherVersion",
+      s"sh.almond:::scala-kernel:$almondVersion",
       "--shared",
       "sh.almond:::scala-kernel-api",
       "--scala",
-      launcherScalaVersion,
+      testScalaVersion,
       extraOptions
     )
       .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
     if (res.exitCode != 0)
       sys.error(
-        s"""Error generating an Almond $launcherVersion launcher for Scala $launcherScalaVersion
+        s"""Error generating an Almond $almondVersion launcher for Scala $testScalaVersion
            |
            |If that error is unexpected, you might want to:
            |- remove out/repo

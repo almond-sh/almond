@@ -510,8 +510,8 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       super.forkArgs() ++ Seq(
         "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
-        s"-Dalmond.test.launcher-version=$version",
-        s"-Dalmond.test.launcher-scala-version=$testScalaVersion",
+        s"-Dalmond.test.version=$version",
+        s"-Dalmond.test.scala-version=$testScalaVersion",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
       )
     }
