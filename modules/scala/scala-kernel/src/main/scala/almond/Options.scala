@@ -44,7 +44,7 @@ final case class Options(
   log: String = "warn",
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
-  logTo: Option[String],
+  logTo: Option[String] = None,
   connectionFile: Option[String] = None,
   // For class loader isolation, the user code is loaded from the classloader of the api module.
   // If the right -i / -I options are passed to coursier bootstrap when generating a launcher, that loader
