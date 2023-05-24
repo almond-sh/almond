@@ -151,7 +151,9 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
       .exclude(("org.slf4j", "slf4j-api")),
     Deps.ammoniteReplApi(crossScalaVersion)
       .exclude(("org.slf4j", "slf4j-api")),
-    Deps.jvmRepr
+    Deps.jvmRepr,
+    Deps.coursierApi.exclude(("org.slf4j", "slf4j-api")),
+    Deps.collectionCompat
   )
 
   def resolvedIvyDeps = T {
