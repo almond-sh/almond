@@ -133,6 +133,16 @@ final case class InterpreterMessageHandlers(
       } yield ()
     }
 
+  def otherHandlers: MessageHandler =
+    kernelInfoHandler.orElse(
+      completeHandler,
+      interruptHandler,
+      shutdownHandler,
+      isCompleteHandler,
+      inspectHandler,
+      historyHandler
+    )
+
   def isCompleteHandler: MessageHandler =
     blocking(Channel.Requests, IsComplete.requestType, queueEc, logCtx) { (message, queue) =>
 
@@ -190,20 +200,6 @@ final case class InterpreterMessageHandlers(
           .enqueueOn(Channel.Requests, queue)
       } yield ()
     }
-
-  def handler: MessageHandler =
-    kernelInfoHandler.orElse(
-      executeHandler,
-      isCompleteHandler,
-      inspectHandler,
-      historyHandler
-    )
-
-  def immediateNoOrderHandler: MessageHandler =
-    completeHandler.orElse(
-      interruptHandler,
-      shutdownHandler
-    )
 
   def shutdownHandler: MessageHandler =
     // v5.3 spec states "The request can be sent on either the control or shell channels.".

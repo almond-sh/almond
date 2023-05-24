@@ -26,7 +26,7 @@ import scala.concurrent.ExecutionContext
 final case class Kernel(
   interpreter: IOInterpreter,
   backgroundMessagesQueue: Queue[IO, (Channel, RawMessage)],
-  mainQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
+  executeQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
   otherQueue: Queue[IO, Option[Stream[IO, (Channel, RawMessage)]]],
   backgroundCommHandlerOpt: Option[DefaultCommHandler],
   inputHandler: InputHandler,
@@ -49,7 +49,7 @@ final case class Kernel(
         Some(inputHandler),
         kernelThreads.queueEc,
         logCtx,
-        io => mainQueue.offer(Some(Stream.exec(io))),
+        io => executeQueue.offer(Some(Stream.exec(io))),
         exitSignal0
       )
 
@@ -63,7 +63,7 @@ final case class Kernel(
 
       // handlers whose messages are processed straightaway (no queueing to enforce sequential processing)
       val immediateHandlers = inputHandler.messageHandler
-        .orElse(interpreterMessageHandler.immediateNoOrderHandler)
+        .orElse(interpreterMessageHandler.otherHandlers)
         .orElse(commMessageHandler)
         .orElse(extraHandler)
 
@@ -108,7 +108,12 @@ final case class Kernel(
         val scatterMessages: Stream[IO, Unit] =
           requests0.evalMap {
             case (channel, rawMessage) =>
-              interpreterMessageHandler.handler.handleOrLogError(channel, rawMessage, log) match {
+              val outputOpt = interpreterMessageHandler.executeHandler.handleOrLogError(
+                channel,
+                rawMessage,
+                log
+              )
+              outputOpt match {
                 case None =>
                   // interpreter message handler passes, try with the other handlers
 
@@ -125,28 +130,31 @@ final case class Kernel(
                 case Some(output) =>
                   // enqueue stream that processes the incoming message, so that the main messages are
                   // still processed and answered in order
-                  mainQueue.offer(Some(output))
+                  executeQueue.offer(Some(output))
               }
           }
 
-        // Put poison pill (null) at the end of mainQueue when all input messages have been scattered
-        val s1: Stream[IO, Nothing] =
-          Stream.bracket(IO.unit)(_ => mainQueue.offer(None).flatMap(_ => otherQueue.offer(None)))
-            .flatMap(_ => Stream.exec(scatterMessages.compile.drain))
+        // Put poison pill (null) at the end of executeQueue when all input messages have been scattered
+        val scatterMessages0: Stream[IO, Nothing] = {
+          val bracket = Stream.bracket(IO.unit) { _ =>
+            executeQueue.offer(None).flatMap(_ => otherQueue.offer(None))
+          }
+          bracket.flatMap(_ => Stream.exec(scatterMessages.compile.drain))
+        }
 
-        // Reponses for the main messages
-        val s2 = Stream.repeatEval(mainQueue.take)
+        // Responses for the main messages
+        val executeReplies = Stream.repeatEval(executeQueue.take)
           .takeWhile(_.nonEmpty)
           .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
 
-        // Reponses for the other messages
-        val s3 = Stream.repeatEval(otherQueue.take)
+        // Responses for the other messages
+        val otherReplies = Stream.repeatEval(otherQueue.take)
           .takeWhile(_.nonEmpty)
           .flatMap(s => s.getOrElse[Stream[IO, (Channel, RawMessage)]](Stream.empty))
 
-        // Merge s1 (messages scattered straightaway), s2 (responses of main messages, that are processed sequentially
-        // via mainQueue), and s3 (responses of other messages, that are processed in parallel)
-        s1.merge(s2).merge(s3)
+        // Merge scatterMessages0 (messages scattered straightaway), executeReplies (responses of execute messages, that are processed sequentially
+        // via executeQueue), and otherReplies (responses of other messages, that are processed in parallel)
+        scatterMessages0.merge(executeReplies).merge(otherReplies)
       }
 
       // Put poison pill (null) at the end of backgroundMessagesQueue when all input messages have been processed
@@ -259,7 +267,8 @@ object Kernel {
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
-      mainQueue  <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+      executeQueue <-
+        Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       otherQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
@@ -277,7 +286,7 @@ object Kernel {
     } yield Kernel(
       interpreter,
       backgroundMessagesQueue,
-      mainQueue,
+      executeQueue,
       otherQueue,
       backgroundCommHandlerOpt,
       inputHandler,
