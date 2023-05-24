@@ -189,15 +189,15 @@ object KernelLauncher {
 
       def apply(options: String*): Session =
         runnerSession(options, Nil, Nil)
-      def withExtraJars(extraJars: os.Path*)(options: String*): Session =
-        runnerSession(options, Nil, extraJars)
+      def withExtraClassPath(extraClassPath: String*)(options: String*): Session =
+        runnerSession(options, Nil, extraClassPath)
       def withLauncherOptions(launcherOptions: String*)(options: String*): Session =
         runnerSession(options, launcherOptions, Nil)
 
       private def runnerSession(
         options: Seq[String],
         launcherOptions: Seq[String],
-        extraJars: Seq[os.Path]
+        extraClassPath: Seq[String]
       ): Session = {
 
         close()
@@ -221,7 +221,7 @@ object KernelLauncher {
             "java",
             "-Xmx1g",
             "-cp",
-            (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
+            (extraClassPath :+ jarLauncher0).mkString(File.pathSeparator),
             "coursier.bootstrap.launcher.ResourcesLauncher"
           )
 

@@ -16,7 +16,7 @@ object Dsl {
 
   trait Runner {
     def apply(options: String*): Session
-    def withExtraJars(extraJars: os.Path*)(options: String*): Session
+    def withExtraClassPath(extraClassPath: String*)(options: String*): Session
     def withLauncherOptions(launcherOptions: String*)(options: String*): Session
   }
 

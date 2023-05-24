@@ -438,7 +438,7 @@ object Tests {
     os.write(predefPath, predef)
 
     implicit val session: Session =
-      runner.withExtraJars(destJar)("--toree-magics", "--predef", predefPath.toString)
+      runner.withExtraClassPath(destJar.toString)("--toree-magics", "--predef", predefPath.toString)
 
     execute(
       "import picocli.CommandLine",

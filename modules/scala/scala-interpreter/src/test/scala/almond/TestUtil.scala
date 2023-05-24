@@ -68,8 +68,8 @@ object TestUtil {
   final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
     def apply(options: String*): KernelSession =
       new KernelSession(kernel(options))
-    def withExtraJars(extraJars: os.Path*)(options: String*): KernelSession =
-      if (extraJars.isEmpty) apply(options: _*)
+    def withExtraClassPath(extraClassPath: String*)(options: String*): KernelSession =
+      if (extraClassPath.isEmpty) apply(options: _*)
       else sys.error("Extra startup JARs unsupported in unit tests")
     def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
       if (launcherOptions.nonEmpty)
