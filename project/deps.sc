@@ -40,7 +40,7 @@ object Deps {
     if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else
       ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
-  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.13.9"
+  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.13.12"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
