@@ -114,7 +114,7 @@ object KernelLauncher {
     val res = os.proc(
       cs,
       "bootstrap",
-      "--hybrid",
+      "--embed-files=false",
       "--default=true",
       "--sources",
       extraOpts,
@@ -223,7 +223,7 @@ object KernelLauncher {
             "-Xmx1g",
             "-cp",
             (extraClassPath :+ jarLauncher0).mkString(File.pathSeparator),
-            "coursier.bootstrap.launcher.ResourcesLauncher"
+            "coursier.bootstrap.launcher.Launcher"
           )
 
         proc = os.proc(

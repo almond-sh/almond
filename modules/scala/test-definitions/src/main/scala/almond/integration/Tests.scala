@@ -384,7 +384,6 @@ object Tests {
 
     val pkg               = "almond.test.custom"
     val tmpDir            = os.temp.dir(prefix = "almond.add-jar-test")
-    val destJar           = tmpDir / "library.jar"
     val escapedPicocliJar = picocliJar.toString.replace("\\", "\\\\")
     val code =
       s"""//> using scala "$scalaVersion"
@@ -401,18 +400,17 @@ object Tests {
          |""".stripMargin
     os.write(tmpDir / "FooURLConnection.scala", code)
 
-    os.proc(
+    val extraCp = os.proc(
       java17Cmd(),
       "-jar",
       scalaCliLauncher().toString,
       "--power",
-      "package",
-      "--library",
-      ".",
-      "-o",
-      destJar
+      "compile",
+      "--print-class-path",
+      "."
     )
-      .call(cwd = tmpDir, stdin = os.Inherit, stdout = os.Inherit)
+      .call(cwd = tmpDir, stdin = os.Inherit)
+      .out.trim()
 
     val predef =
       s"""
@@ -430,15 +428,13 @@ object Tests {
          |
          |registerPackage()
          |resetHandlers()
-         |
-         |interp.load.cp(os.Path("${destJar.toString.replace("\\", "\\\\")}"))
          |""".stripMargin
 
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
     implicit val session: Session =
-      runner.withExtraClassPath(destJar.toString)("--toree-magics", "--predef", predefPath.toString)
+      runner.withExtraClassPath(extraCp)("--toree-magics", "--predef", predefPath.toString)
 
     execute(
       "import picocli.CommandLine",
