@@ -199,6 +199,12 @@ final case class InterpreterMessageHandlers(
       historyHandler
     )
 
+  def immediateNoOrderHandler: MessageHandler =
+    completeHandler.orElse(
+      interruptHandler,
+      shutdownHandler
+    )
+
   def shutdownHandler: MessageHandler =
     // v5.3 spec states "The request can be sent on either the control or shell channels.".
     MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) {

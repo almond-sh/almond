@@ -63,10 +63,8 @@ final case class Kernel(
 
       // handlers whose messages are processed straightaway (no queueing to enforce sequential processing)
       val immediateHandlers = inputHandler.messageHandler
-        .orElse(interpreterMessageHandler.completeHandler)
+        .orElse(interpreterMessageHandler.immediateNoOrderHandler)
         .orElse(commMessageHandler)
-        .orElse(interpreterMessageHandler.interruptHandler)
-        .orElse(interpreterMessageHandler.shutdownHandler)
         .orElse(extraHandler)
 
       // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
