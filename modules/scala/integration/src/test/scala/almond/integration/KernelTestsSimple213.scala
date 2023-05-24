@@ -1,3 +1,3 @@
 package almond.integration
 
-class KernelTestsSimple213 extends KernelTestsDefinitions("2.13.10")
+class KernelTestsSimple213 extends KernelTestsDefinitions("2.13.10", isTwoStepStartup = false)

@@ -1,17 +1,18 @@
 import java.nio.file._
 
-def kernelId = "scala-debug"
+def kernelId        = "scala-debug"
+def specialKernelId = "scala-special-debug"
 
-def writeKernelJson(launcher: Path, jupyterDir: Path): Unit = {
+def writeKernelJson(launcher: Path, jupyterDir: Path, kernelId: String, name: String): Unit = {
   val launcherPath = launcher.toAbsolutePath.toString
   val dir          = jupyterDir.resolve(s"kernels/$kernelId")
   Files.createDirectories(dir)
   val kernelJson = s"""{
     "language": "scala",
-    "display_name": "Scala (sources)",
+    "display_name": "$name",
     "argv": [
       "$launcherPath",
-      "--log", "info",
+      "--log", "debug",
       "--connection-file", "{connection_file}",
       "--variable-inspector",
       "--toree-magics"
@@ -21,9 +22,15 @@ def writeKernelJson(launcher: Path, jupyterDir: Path): Unit = {
   System.err.println(s"JUPYTER_PATH=$jupyterDir")
 }
 
-def jupyterServer(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
+def jupyterServer(
+  launcher: Path,
+  specialLauncher: Path,
+  jupyterDir: Path,
+  args: Seq[String]
+): Unit = {
 
-  writeKernelJson(launcher, jupyterDir)
+  writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
+  writeKernelJson(specialLauncher, jupyterDir, specialKernelId, "Scala (special, sources)")
 
   os.makeDir.all(os.pwd / "notebooks")
   val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
@@ -43,9 +50,15 @@ def jupyterServer(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
     System.err.println(s"Jupyter command exited with code $retCode")
 }
 
-def jupyterConsole(launcher: Path, jupyterDir: Path, args: Seq[String]): Unit = {
+def jupyterConsole(
+  launcher: Path,
+  specialLauncher: Path,
+  jupyterDir: Path,
+  args: Seq[String]
+): Unit = {
 
-  writeKernelJson(launcher, jupyterDir)
+  writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
+  writeKernelJson(specialLauncher, jupyterDir, specialKernelId, "Scala (special, sources)")
 
   val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
   val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()

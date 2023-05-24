@@ -4,6 +4,7 @@ import mill.scalalib._
 object Versions {
   def ammonite      = "3.0.0-M0-28-239e82a8"
   def caseApp       = "2.1.0-M24"
+  def coursier      = "2.1.4"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
 }
@@ -45,9 +46,12 @@ object Deps {
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.10.0"
-  def coursier           = ivy"io.get-coursier::coursier:2.1.4"
+  def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
+  def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
+  def directiveHandler   = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.0"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
+  def fansi              = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
     if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.7.0" else ivy"co.fs2:fs2-core_2.13:3.6.1"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
@@ -63,6 +67,7 @@ object Deps {
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
+  def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"

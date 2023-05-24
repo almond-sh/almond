@@ -86,7 +86,7 @@ object KernelLauncher {
   }
 }
 
-class KernelLauncher(testScalaVersion: String) {
+class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
   import KernelLauncher._
 
@@ -111,6 +111,17 @@ class KernelLauncher(testScalaVersion: String) {
       "-r",
       "jitpack"
     )
+    val launcherArgs =
+      if (isTwoStepStartup)
+        Seq(s"sh.almond:launcher_3:$almondVersion")
+      else
+        Seq(
+          s"sh.almond:::scala-kernel:$almondVersion",
+          "--shared",
+          "sh.almond:::scala-kernel-api",
+          "--scala",
+          defaultScalaVersion
+        )
     val res = os.proc(
       cs,
       "bootstrap",
@@ -121,17 +132,13 @@ class KernelLauncher(testScalaVersion: String) {
       repoArgs,
       "-o",
       jarDest,
-      s"sh.almond:::scala-kernel:$almondVersion",
-      "--shared",
-      "sh.almond:::scala-kernel-api",
-      "--scala",
-      testScalaVersion,
+      launcherArgs,
       extraOptions
     )
       .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
     if (res.exitCode != 0)
       sys.error(
-        s"""Error generating an Almond $almondVersion launcher for Scala $testScalaVersion
+        s"""Error generating an Almond $almondVersion launcher for Scala $defaultScalaVersion
            |
            |If that error is unexpected, you might want to:
            |- remove out/repo
@@ -184,6 +191,8 @@ class KernelLauncher(testScalaVersion: String) {
 
   def runner(): Runner with AutoCloseable =
     new Runner with AutoCloseable {
+
+      override def differedStartUp = isTwoStepStartup
 
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
@@ -252,29 +261,65 @@ class KernelLauncher(testScalaVersion: String) {
         os.write(connFile, writeToArray(connDetails))
 
         val (jarLauncher0, launcher0) =
-          if (launcherOptions.isEmpty)
+          if (isTwoStepStartup || launcherOptions.isEmpty)
             (jarLauncher, launcher)
           else
             generateLauncher(launcherOptions)
 
+        val baseCp =
+          if (isTwoStepStartup)
+            jarLauncher0.toString
+          else
+            (extraClassPath :+ jarLauncher0.toString)
+              .filter(_.nonEmpty)
+              .mkString(File.pathSeparator)
         val baseCmd: os.Shellable =
           Seq[os.Shellable](
             "java",
-            "-Xmx512m",
+            "-Xmx1g",
             "-cp",
-            (extraClassPath :+ jarLauncher0.toString).mkString(File.pathSeparator),
+            baseCp,
             "coursier.bootstrap.launcher.Launcher"
           )
 
-        proc = os.proc(
+        val extraStartupClassPathOpts =
+          if (isTwoStepStartup)
+            extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem)) ++
+              launcherOptions ++
+              Seq("--scala", defaultScalaVersion)
+          else
+            Nil
+
+        val proc0 = os.proc(
           baseCmd,
           "--log",
           "debug",
           "--color=false",
           "--connection-file",
           connFile,
+          extraStartupClassPathOpts,
           options
-        ).spawn(cwd = dir, stdin = os.Inherit, stdout = os.Inherit)
+        )
+        System.err.println(s"Running ${proc0.command.flatMap(_.value).mkString(" ")}")
+        val extraEnv =
+          if (isTwoStepStartup) {
+            val baseRepos = sys.env.getOrElse(
+              "COURSIER_REPOSITORIES",
+              "ivy2Local|central"
+            )
+            Map(
+              "COURSIER_REPOSITORIES" ->
+                s"$baseRepos|ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]"
+            )
+          }
+          else
+            Map.empty[String, String]
+        proc = proc0.spawn(
+          cwd = dir,
+          env = extraEnv,
+          stdin = os.Inherit,
+          stdout = os.Inherit
+        )
 
         val conn = params.channels(
           bind = false,

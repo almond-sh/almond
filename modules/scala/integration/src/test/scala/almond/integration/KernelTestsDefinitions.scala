@@ -2,9 +2,12 @@ package almond.integration
 
 import almond.testkit.Dsl._
 
-abstract class KernelTestsDefinitions(scalaVersion: String) extends munit.FunSuite {
+abstract class KernelTestsDefinitions(
+  scalaVersion: String,
+  isTwoStepStartup: Boolean
+) extends munit.FunSuite {
 
-  val kernelLauncher = new KernelLauncher(scalaVersion)
+  val kernelLauncher = new KernelLauncher(isTwoStepStartup = isTwoStepStartup, scalaVersion)
 
   test("jvm-repr") {
     kernelLauncher.withKernel { implicit runner =>

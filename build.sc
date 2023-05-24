@@ -9,6 +9,7 @@ import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{
   AlmondModule,
   AlmondRepositories,
+  AlmondSimpleModule,
   AlmondTestModule,
   BootstrapLauncher,
   DependencyListResource,
@@ -348,6 +349,35 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   )
 }
 
+trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
+    with Bloop.Module {
+  def supports3    = true
+  private def sv   = ScalaVersions.scala3Latest
+  def scalaVersion = sv
+  def moduleDeps = Seq(
+    shared.kernel(ScalaVersions.scala3Compat)
+  )
+  def ivyDeps = Agg(
+    Deps.caseApp,
+    Deps.coursierApi,
+    Deps.coursierLauncher,
+    Deps.directiveHandler,
+    Deps.fansi,
+    Deps.scalaparse
+  )
+
+  def propertyFilePath = "almond/launcher/launcher.properties"
+  def propertyExtra = T {
+    val mainClass = scala.`scala-kernel`(ScalaVersions.scala3Latest).mainClass().getOrElse {
+      sys.error("No main class found")
+    }
+    Seq(
+      "kernel-main-class"     -> mainClass,
+      "default-scala-version" -> ScalaVersions.scala3Latest
+    )
+  }
+}
+
 class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule with ExternalSources
     with Bloop.Module {
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
@@ -423,6 +453,7 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all: _*)
   object `scala-kernel-helper`
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
+  object launcher         extends Launcher
   object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
   object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
@@ -483,7 +514,15 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
       scala.`scala-kernel-api`(testScalaVersion),
       scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
       scala.`scala-interpreter`(testScalaVersion),
-      scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion))
+      scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
+      scala.launcher,
+      shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.`interpreter-api`(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.protocol(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.channels(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.logger(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.`logger-scala2-macros`(ScalaVersions.binary(ScalaVersions.scala3Latest))
     ) ++ extra
   }
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
@@ -749,13 +788,17 @@ def jupyter0(args: Seq[String], fast: Boolean, console: Boolean = false) = {
   val launcher =
     if (fast) scala.`scala-kernel`(sv).fastLauncher
     else scala.`scala-kernel`(sv).launcher
+  val specialLauncher =
+    if (fast) scala.launcher.fastLauncher
+    else scala.launcher.launcher
   T.command {
-    val jupyterDir = T.ctx().dest / "jupyter"
-    val launcher0  = launcher().path.toNIO
+    val jupyterDir       = T.ctx().dest / "jupyter"
+    val launcher0        = launcher().path.toNIO
+    val specialLauncher0 = specialLauncher().path.toNIO
     if (console)
-      jupyterConsole0(launcher0, jupyterDir.toNIO, args0)
+      jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
     else
-      jupyterServer(launcher0, jupyterDir.toNIO, args0)
+      jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
   }
 }
 
@@ -803,6 +846,11 @@ def scalaVersions() = T.command {
 
 def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.`scala-kernel`(scalaVersion).launcher().path.toNIO
+  println(launcher)
+}
+
+def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
+  val launcher = scala.launcher.launcher().path.toNIO
   println(launcher)
 }
 
@@ -929,6 +977,11 @@ def validateExamples(matcher: String = "") = {
 
 def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
+  println(launcher)
+}
+
+def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
+  val launcher = scala.launcher.fastLauncher().path.toNIO
   println(launcher)
 }
 

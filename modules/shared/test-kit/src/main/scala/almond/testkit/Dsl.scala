@@ -23,6 +23,8 @@ object Dsl {
     def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T): T
     def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
       : T
+
+    def differedStartUp: Boolean = false
   }
 
   trait Session {
