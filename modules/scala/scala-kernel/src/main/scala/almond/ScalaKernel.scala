@@ -193,7 +193,12 @@ object ScalaKernel extends CaseApp[Options] {
         fmtMessageHandler,
         options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet
       )
-        .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
+        .flatMap(_.runOnConnectionFile(
+          connectionFile,
+          "scala",
+          zeromqThreads,
+          options.leftoverMessages0()
+        ))
         .unsafeRunSync()(IORuntime.global)
     finally
       interpreter.shutdown()

@@ -100,6 +100,9 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   def moduleDeps = Seq(
     shared.interpreter()
   )
+  def compileIvyDeps = Agg(
+    Deps.jsoniterScalaMacros
+  )
   def ivyDeps = Agg(
     Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,

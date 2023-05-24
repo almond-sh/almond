@@ -4,10 +4,13 @@ import java.nio.file.{Files, Path, Paths}
 import java.util.regex.Pattern
 
 import almond.api.Properties
-import almond.protocol.KernelInfo
+import almond.channels.{Channel, Message => RawMessage}
+import almond.kernel.MessageFile
 import almond.kernel.install.{Options => InstallOptions}
+import almond.protocol.KernelInfo
 import caseapp._
 import caseapp.core.help.Help
+import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
 import coursier.parse.{DependencyParser, ModuleParser}
 
@@ -87,6 +90,10 @@ final case class Options(
   @ExtraName("extraCp")
   @ExtraName("extraClasspath")
     extraClassPath: List[String] = Nil,
+
+  @HelpMessage("JSON file containing messages to handle before those originating from the ZeroMQ sockets")
+  @Hidden
+    leftoverMessages: Option[String] = None,
 
   @HelpMessage("Number of cells run before starting this kernel")
   @Hidden
@@ -248,6 +255,14 @@ final case class Options(
         sys.exit(1)
       }
       path
+    }
+
+  def leftoverMessages0(): Seq[(Channel, RawMessage)] =
+    leftoverMessages.toSeq.flatMap { strPath =>
+      val path    = os.Path(strPath, os.pwd)
+      val bytes   = os.read.bytes(path)
+      val msgFile = readFromArray(bytes)(MessageFile.codec)
+      msgFile.parsedMessages
     }
 
 }

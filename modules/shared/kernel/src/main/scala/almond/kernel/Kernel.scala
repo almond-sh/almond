@@ -172,14 +172,16 @@ final case class Kernel(
 
   def run(
     stream: Stream[IO, (Channel, RawMessage)],
-    sink: Pipe[IO, (Channel, RawMessage), Unit]
+    sink: Pipe[IO, (Channel, RawMessage), Unit],
+    leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
-    sink(replies(stream)).compile.drain
+    sink(replies(Stream(leftoverMessages: _*) ++ stream)).compile.drain
 
   def runOnConnection(
     connection: ConnectionParameters,
     kernelId: String,
-    zeromqThreads: ZeromqThreads
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
     for {
       c <- connection.channels(
@@ -189,13 +191,14 @@ final case class Kernel(
         identityOpt = Some(kernelId)
       )
       _ <- c.open
-      _ <- run(c.stream(), c.autoCloseSink)
+      _ <- run(c.stream(), c.autoCloseSink, leftoverMessages)
     } yield ()
 
   def runOnConnectionFile(
     connectionPath: Path,
     kernelId: String,
-    zeromqThreads: ZeromqThreads
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
     for {
       _ <- {
@@ -214,19 +217,22 @@ final case class Kernel(
       _ <- runOnConnection(
         connection.connectionParameters,
         kernelId,
-        zeromqThreads
+        zeromqThreads,
+        leftoverMessages
       )
     } yield ()
 
   def runOnConnectionFile(
     connectionPath: String,
     kernelId: String,
-    zeromqThreads: ZeromqThreads
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
     runOnConnectionFile(
       Paths.get(connectionPath),
       kernelId,
-      zeromqThreads
+      zeromqThreads,
+      leftoverMessages
     )
 
 }

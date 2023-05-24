@@ -61,7 +61,7 @@ object TestUtil {
 
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
     def run(streams: ClientStreams): Unit =
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
   }
 
@@ -152,7 +152,7 @@ object TestUtil {
 
       val streams = ClientStreams.create(input, stopWhen, handler)
 
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
@@ -326,7 +326,7 @@ object TestUtil {
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       t.unsafeRunTimedOrThrow()
 
