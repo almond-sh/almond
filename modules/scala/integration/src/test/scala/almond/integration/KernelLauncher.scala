@@ -188,12 +188,52 @@ object KernelLauncher {
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
 
+      def withSession[T](options: String*)(f: Session => T): T =
+        withRunnerSession(options, Nil, Nil)(f)
+      def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)
+        : T =
+        withRunnerSession(options, Nil, extraClassPath)(f)
+      def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
+        : T =
+        withRunnerSession(options, launcherOptions, Nil)(f)
+
       def apply(options: String*): Session =
         runnerSession(options, Nil, Nil)
       def withExtraClassPath(extraClassPath: String*)(options: String*): Session =
         runnerSession(options, Nil, extraClassPath)
       def withLauncherOptions(launcherOptions: String*)(options: String*): Session =
         runnerSession(options, launcherOptions, Nil)
+
+      def withRunnerSession[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String]
+      )(f: Session => T): T = {
+        val sess    = runnerSession(options, launcherOptions, extraClassPath)
+        var running = true
+
+        val currentThread = Thread.currentThread()
+
+        val t: Thread =
+          new Thread("watch-kernel-proc") {
+            setDaemon(true)
+            override def run(): Unit = {
+              var done = false
+              while (running && !done)
+                done = proc.waitFor(100L)
+              if (running && done) {
+                val retCode = proc.exitCode()
+                System.err.println(s"Kernel process exited with code $retCode, interrupting test")
+                currentThread.interrupt()
+              }
+            }
+          }
+
+        t.start()
+        try f(sess)
+        finally
+          running = false
+      }
 
       private def runnerSession(
         options: Seq[String],
