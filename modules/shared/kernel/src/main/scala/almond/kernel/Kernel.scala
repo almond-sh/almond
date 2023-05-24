@@ -32,7 +32,8 @@ final case class Kernel(
   inputHandler: InputHandler,
   kernelThreads: KernelThreads,
   logCtx: LoggerContext,
-  extraHandler: MessageHandler
+  extraHandler: MessageHandler,
+  noExecuteInputFor: Set[String]
 ) {
 
   private lazy val log = logCtx(getClass)
@@ -50,7 +51,8 @@ final case class Kernel(
         kernelThreads.queueEc,
         logCtx,
         io => executeQueue.offer(Some(Stream.exec(io))),
-        exitSignal0
+        exitSignal0,
+        noExecuteInputFor
       )
 
       val commMessageHandler = backgroundCommHandlerOpt match {
@@ -236,13 +238,15 @@ object Kernel {
     interpreterEc: ExecutionContext,
     kernelThreads: KernelThreads,
     logCtx: LoggerContext,
-    extraHandler: MessageHandler
+    extraHandler: MessageHandler,
+    noExecuteInputFor: Set[String]
   ): IO[Kernel] =
     create(
       new InterpreterToIOInterpreter(interpreter, interpreterEc, logCtx),
       kernelThreads,
       logCtx,
-      extraHandler
+      extraHandler,
+      noExecuteInputFor
     )
 
   def create(
@@ -256,14 +260,16 @@ object Kernel {
       interpreterEc,
       kernelThreads,
       logCtx,
-      MessageHandler.empty
+      MessageHandler.empty,
+      Set.empty
     )
 
   def create(
     interpreter: IOInterpreter,
     kernelThreads: KernelThreads,
     logCtx: LoggerContext,
-    extraHandler: MessageHandler
+    extraHandler: MessageHandler,
+    noExecuteInputFor: Set[String]
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
@@ -292,7 +298,8 @@ object Kernel {
       inputHandler,
       kernelThreads,
       logCtx,
-      extraHandler
+      extraHandler,
+      noExecuteInputFor
     )
 
 }

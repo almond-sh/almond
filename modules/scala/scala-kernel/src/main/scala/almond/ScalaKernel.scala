@@ -185,7 +185,14 @@ object ScalaKernel extends CaseApp[Options] {
 
     log.debug("Running kernel")
     try
-      Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx, fmtMessageHandler)
+      Kernel.create(
+        interpreter,
+        interpreterEc,
+        kernelThreads,
+        logCtx,
+        fmtMessageHandler,
+        options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet
+      )
         .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
         .unsafeRunSync()(IORuntime.global)
     finally

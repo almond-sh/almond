@@ -90,7 +90,11 @@ final case class Options(
 
   @HelpMessage("Number of cells run before starting this kernel")
   @Hidden
-    initialCellCount: Option[Int] = None
+    initialCellCount: Option[Int] = None,
+
+  @HelpMessage("Do not send execute_input message for incoming messages with the passed ids")
+  @Hidden
+    noExecuteInputFor: List[String] = Nil
 ) {
   // format: on
 

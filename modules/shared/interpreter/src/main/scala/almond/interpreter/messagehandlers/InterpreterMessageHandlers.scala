@@ -25,7 +25,8 @@ final case class InterpreterMessageHandlers(
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
   runAfterQueued: IO[Unit] => IO[Unit],
-  exitSignal: SignallingRef[IO, Boolean]
+  exitSignal: SignallingRef[IO, Boolean],
+  noExecuteInputFor: Set[String]
 ) {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -50,9 +51,14 @@ final case class InterpreterMessageHandlers(
           execution_count = countBefore + 1,
           code = message.content.code
         )
-        _ <- message
-          .publish(Execute.inputType, inputMessage)
-          .enqueueOn(Channel.Publish, queue)
+        _ <- {
+          if (noExecuteInputFor.contains(message.header.msg_id))
+            IO.unit
+          else
+            message
+              .publish(Execute.inputType, inputMessage)
+              .enqueueOn(Channel.Publish, queue)
+        }
         res <- interpreter.execute(
           message.content.code,
           message.content.store_history.getOrElse(true),
