@@ -462,7 +462,7 @@ trait BootstrapLauncher extends CrossSbtModule {
 trait PropertyFile extends AlmondPublishModule {
 
   def propertyFilePath: String
-  def propertyExtra: Seq[(String, String)] = Nil
+  def propertyExtra: T[Seq[(String, String)]] = T(Seq.empty[(String, String)])
 
   def propResourcesDir = T.persistent {
     import sys.process._
@@ -480,7 +480,7 @@ trait PropertyFile extends AlmondPublishModule {
          |version=$ver
          |ammonite-spark-version=$ammSparkVer
          |""".stripMargin +
-        propertyExtra
+        propertyExtra()
           .map {
             case (k, v) =>
               s"""$k=$v
