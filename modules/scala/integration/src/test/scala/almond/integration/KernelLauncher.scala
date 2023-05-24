@@ -12,6 +12,7 @@ import fs2.concurrent.SignallingRef
 import java.io.{File, IOException}
 import java.nio.channels.ClosedSelectorException
 import java.security.SecureRandom
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.{Await, ExecutionContext}
@@ -238,7 +239,8 @@ object KernelLauncher {
         val conn = params.channels(
           bind = false,
           threads,
-          TestLogging.logCtx
+          TestLogging.logCtx,
+          identityOpt = Some(UUID.randomUUID().toString)
         ).unsafeRunSync()(IORuntime.global)
 
         conn.open.unsafeRunSync()(IORuntime.global)
