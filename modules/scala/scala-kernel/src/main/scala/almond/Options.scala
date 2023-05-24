@@ -86,7 +86,11 @@ final case class Options(
   @HelpMessage("Extra class path to add upfront in the session - should accept the same format as 'java -cp', see https://github.com/coursier/class-path-util for more details")
   @ExtraName("extraCp")
   @ExtraName("extraClasspath")
-    extraClassPath: List[String] = Nil
+    extraClassPath: List[String] = Nil,
+
+  @HelpMessage("Number of cells run before starting this kernel")
+  @Hidden
+    initialCellCount: Option[Int] = None
 ) {
   // format: on
 

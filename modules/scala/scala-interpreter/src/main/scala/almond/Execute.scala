@@ -38,7 +38,8 @@ final class Execute(
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
   commHandlerOpt: => Option[CommHandler],
   silent: Ref[Boolean],
-  useThreadInterrupt: Boolean
+  useThreadInterrupt: Boolean,
+  initialCellCount: Int
 ) {
 
   private val log = logCtx(getClass)
@@ -97,7 +98,7 @@ final class Execute(
   private val resultStream =
     new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
-  private var currentLine0          = 0
+  private var currentLine0          = initialCellCount
   private var currentNoHistoryLine0 = Int.MaxValue / 2
 
   private val printer0 = Printer(

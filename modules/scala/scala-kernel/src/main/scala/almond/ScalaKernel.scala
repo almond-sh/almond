@@ -145,7 +145,8 @@ object ScalaKernel extends CaseApp[Options] {
           .flatMap { input =>
             ClassPathUtil.classPath(input)
               .map(os.Path(_, os.pwd))
-          }
+          },
+        initialCellCount = options.initialCellCount.getOrElse(0)
       ),
       logCtx = logCtx
     )
