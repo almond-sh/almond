@@ -49,7 +49,7 @@ object Deps {
   def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fs2(sv: String) =
-    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.6.1" else ivy"co.fs2:fs2-core_2.13:3.6.1"
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.7.0" else ivy"co.fs2:fs2-core_2.13:3.6.1"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
   def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
