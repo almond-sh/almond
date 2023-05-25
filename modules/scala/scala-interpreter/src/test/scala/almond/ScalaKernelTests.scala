@@ -98,7 +98,7 @@ object ScalaKernelTests extends TestSuite {
       val streams =
         ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
 
       val replies = streams.executeReplies
@@ -152,7 +152,7 @@ object ScalaKernelTests extends TestSuite {
 
       val streams = ClientStreams.create(input, stopWhen)
 
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
 
       val messageTypes = streams.generatedMessageTypes()
@@ -310,7 +310,7 @@ object ScalaKernelTests extends TestSuite {
 
         val streams = ClientStreams.create(input, stopWhen)
 
-        kernel.run(streams.source, streams.sink)
+        kernel.run(streams.source, streams.sink, Nil)
           .unsafeRunTimedOrThrow()
 
         val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
@@ -401,7 +401,7 @@ object ScalaKernelTests extends TestSuite {
 
       val streams = ClientStreams.create(input, stopWhen)
 
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector

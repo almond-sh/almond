@@ -61,15 +61,15 @@ object TestUtil {
 
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
     def run(streams: ClientStreams): Unit =
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
   }
 
   final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
     def apply(options: String*): KernelSession =
       new KernelSession(kernel(options))
-    def withExtraJars(extraJars: os.Path*)(options: String*): KernelSession =
-      if (extraJars.isEmpty) apply(options: _*)
+    def withExtraClassPath(extraClassPath: String*)(options: String*): KernelSession =
+      if (extraClassPath.isEmpty) apply(options: _*)
       else sys.error("Extra startup JARs unsupported in unit tests")
     def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
       if (launcherOptions.nonEmpty)
@@ -77,6 +77,22 @@ object TestUtil {
           s"Warning: ignoring extra launcher options ${launcherOptions.mkString(" ")} in unit test"
         )
       apply(options: _*)
+    }
+
+    def withSession[T](options: String*)(f: Dsl.Session => T): T = {
+      val sess = apply(options: _*)
+      f(sess)
+    }
+    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Dsl.Session => T)
+      : T = {
+      val sess = withExtraClassPath(extraClassPath: _*)(options: _*)
+      f(sess)
+    }
+    def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(
+      f: Dsl.Session => T
+    ): T = {
+      val sess = withLauncherOptions(launcherOptions: _*)(options: _*)
+      f(sess)
     }
   }
 
@@ -152,7 +168,7 @@ object TestUtil {
 
       val streams = ClientStreams.create(input, stopWhen, handler)
 
-      kernel.run(streams.source, streams.sink)
+      kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow()
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
@@ -326,7 +342,7 @@ object TestUtil {
       )
 
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       t.unsafeRunTimedOrThrow()
 

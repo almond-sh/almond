@@ -51,4 +51,9 @@ object ExecuteResult {
   /** [[ExecuteResult]], if execution was exited
     */
   case object Exit extends ExecuteResult(success = true)
+
+  /** Special [[ExecuteResult]], to exit the current message processing (used by the two step
+    * launcher)
+    */
+  case object Close extends ExecuteResult(success = false)
 }

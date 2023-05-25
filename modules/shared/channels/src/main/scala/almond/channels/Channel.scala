@@ -9,4 +9,6 @@ object Channel {
   case object Input    extends Channel("stdin")
 
   val channels = Seq(Publish, Requests, Control, Input)
+
+  val map = channels.map(c => c.name -> c).toMap
 }

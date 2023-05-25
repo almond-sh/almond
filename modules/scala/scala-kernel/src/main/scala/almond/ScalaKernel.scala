@@ -145,7 +145,8 @@ object ScalaKernel extends CaseApp[Options] {
           .flatMap { input =>
             ClassPathUtil.classPath(input)
               .map(os.Path(_, os.pwd))
-          }
+          },
+        initialCellCount = options.initialCellCount.getOrElse(0)
       ),
       logCtx = logCtx
     )
@@ -184,8 +185,20 @@ object ScalaKernel extends CaseApp[Options] {
 
     log.debug("Running kernel")
     try
-      Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx, fmtMessageHandler)
-        .flatMap(_.runOnConnectionFile(connectionFile, "scala", zeromqThreads))
+      Kernel.create(
+        interpreter,
+        interpreterEc,
+        kernelThreads,
+        logCtx,
+        fmtMessageHandler,
+        options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet
+      )
+        .flatMap(_.runOnConnectionFile(
+          connectionFile,
+          "scala",
+          zeromqThreads,
+          options.leftoverMessages0()
+        ))
         .unsafeRunSync()(IORuntime.global)
     finally
       interpreter.shutdown()

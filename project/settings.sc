@@ -80,7 +80,7 @@ trait ExternalSources extends CrossSbtModule {
   }
 }
 
-trait TransitiveSources extends CrossSbtModule {
+trait TransitiveSources extends SbtModule {
   def transitiveJars: T[Seq[PathRef]] = T {
     Seq(jar()) ++ T.traverse(moduleDeps) {
       case mod: TransitiveSources => mod.transitiveJars
@@ -139,7 +139,7 @@ trait PublishLocalNoFluff extends PublishModule {
   }
 }
 
-trait AlmondArtifactName extends CrossSbtModule {
+trait AlmondArtifactName extends SbtModule {
   def artifactName =
     millModuleSegments
       .parts
@@ -172,6 +172,24 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
   }
 }
 
+trait AlmondScalacOptions extends ScalaModule {
+  def scalacOptions = T {
+    // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
+    val sv = scalaVersion()
+    val scala2Options =
+      if (sv.startsWith("2.")) Seq("-explaintypes")
+      else Nil
+    super.scalacOptions() ++ scala2Options ++ Seq(
+      "-deprecation",
+      "-feature",
+      "-encoding",
+      "utf-8",
+      "-language:higherKinds",
+      "-unchecked"
+    )
+  }
+}
+
 trait AlmondModule
     extends CrossSbtModule
     with AlmondRepositories
@@ -179,7 +197,8 @@ trait AlmondModule
     with TransitiveSources
     with AlmondArtifactName
     with AlmondScala2Or3Module
-    with PublishLocalNoFluff {
+    with PublishLocalNoFluff
+    with AlmondScalacOptions {
 
   // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
   // pin scala3-library suffix, so that 2.13 modules can have us as moduleDep fine
@@ -231,28 +250,13 @@ trait AlmondModule
       else dep
     }
   }
-
-  def scalacOptions = T {
-    // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
-    val sv = scalaVersion()
-    val scala2Options =
-      if (sv.startsWith("2.")) Seq("-explaintypes")
-      else Nil
-    super.scalacOptions() ++ scala2Options ++ Seq(
-      "-deprecation",
-      "-feature",
-      "-encoding",
-      "utf-8",
-      "-language:higherKinds",
-      "-unchecked"
-    )
-  }
 }
 
 trait AlmondTestModule
     extends ScalaModule
     with TestModule
-    with AlmondRepositories {
+    with AlmondRepositories
+    with AlmondScalacOptions {
   // with AlmondScala2Or3Module {
 
   def ivyDeps       = Agg(Deps.utest)
@@ -307,22 +311,6 @@ trait AlmondTestModule
         dep.copy(force = false)
       else dep
     }
-  }
-
-  def scalacOptions = T {
-    // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
-    val sv = scalaVersion()
-    val scala2Options =
-      if (sv.startsWith("2.")) Seq("-explaintypes")
-      else Nil
-    super.scalacOptions() ++ scala2Options ++ Seq(
-      "-deprecation",
-      "-feature",
-      "-encoding",
-      "utf-8",
-      "-language:higherKinds",
-      "-unchecked"
-    )
   }
 
   def sources = T.sources {
@@ -474,7 +462,7 @@ trait BootstrapLauncher extends CrossSbtModule {
 trait PropertyFile extends AlmondPublishModule {
 
   def propertyFilePath: String
-  def propertyExtra: Seq[(String, String)] = Nil
+  def propertyExtra: T[Seq[(String, String)]] = T(Seq.empty[(String, String)])
 
   def propResourcesDir = T.persistent {
     import sys.process._
@@ -492,7 +480,7 @@ trait PropertyFile extends AlmondPublishModule {
          |version=$ver
          |ammonite-spark-version=$ammSparkVer
          |""".stripMargin +
-        propertyExtra
+        propertyExtra()
           .map {
             case (k, v) =>
               s"""$k=$v

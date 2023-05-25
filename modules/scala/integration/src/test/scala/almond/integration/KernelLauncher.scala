@@ -12,6 +12,7 @@ import fs2.concurrent.SignallingRef
 import java.io.{File, IOException}
 import java.nio.channels.ClosedSelectorException
 import java.security.SecureRandom
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.{Await, ExecutionContext}
@@ -74,14 +75,14 @@ object KernelLauncher {
       sys.error("almond.test.local-repo Java property not set")
     }
 
-  lazy val launcherVersion = sys.props.getOrElse(
-    "almond.test.launcher-version",
-    sys.error("almond.test.launcher-version Java property not set")
+  lazy val almondVersion = sys.props.getOrElse(
+    "almond.test.version",
+    sys.error("almond.test.version Java property not set")
   )
 
-  lazy val launcherScalaVersion = sys.props.getOrElse(
-    "almond.test.launcher-scala-version",
-    sys.error("almond.test.launcher-scala-version Java property not set")
+  lazy val testScalaVersion = sys.props.getOrElse(
+    "almond.test.scala-version",
+    sys.error("almond.test.scala-version Java property not set")
   )
 
   lazy val cs = sys.props.getOrElse(
@@ -113,24 +114,24 @@ object KernelLauncher {
     val res = os.proc(
       cs,
       "bootstrap",
-      "--hybrid",
+      "--embed-files=false",
       "--default=true",
       "--sources",
       extraOpts,
       repoArgs,
       "-o",
       jarDest,
-      s"sh.almond:::scala-kernel:$launcherVersion",
+      s"sh.almond:::scala-kernel:$almondVersion",
       "--shared",
       "sh.almond:::scala-kernel-api",
       "--scala",
-      launcherScalaVersion,
+      testScalaVersion,
       extraOptions
     )
       .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
     if (res.exitCode != 0)
       sys.error(
-        s"""Error generating an Almond $launcherVersion launcher for Scala $launcherScalaVersion
+        s"""Error generating an Almond $almondVersion launcher for Scala $testScalaVersion
            |
            |If that error is unexpected, you might want to:
            |- remove out/repo
@@ -187,17 +188,57 @@ object KernelLauncher {
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
 
+      def withSession[T](options: String*)(f: Session => T): T =
+        withRunnerSession(options, Nil, Nil)(f)
+      def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)
+        : T =
+        withRunnerSession(options, Nil, extraClassPath)(f)
+      def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
+        : T =
+        withRunnerSession(options, launcherOptions, Nil)(f)
+
       def apply(options: String*): Session =
         runnerSession(options, Nil, Nil)
-      def withExtraJars(extraJars: os.Path*)(options: String*): Session =
-        runnerSession(options, Nil, extraJars)
+      def withExtraClassPath(extraClassPath: String*)(options: String*): Session =
+        runnerSession(options, Nil, extraClassPath)
       def withLauncherOptions(launcherOptions: String*)(options: String*): Session =
         runnerSession(options, launcherOptions, Nil)
+
+      def withRunnerSession[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String]
+      )(f: Session => T): T = {
+        val sess    = runnerSession(options, launcherOptions, extraClassPath)
+        var running = true
+
+        val currentThread = Thread.currentThread()
+
+        val t: Thread =
+          new Thread("watch-kernel-proc") {
+            setDaemon(true)
+            override def run(): Unit = {
+              var done = false
+              while (running && !done)
+                done = proc.waitFor(100L)
+              if (running && done) {
+                val retCode = proc.exitCode()
+                System.err.println(s"Kernel process exited with code $retCode, interrupting test")
+                currentThread.interrupt()
+              }
+            }
+          }
+
+        t.start()
+        try f(sess)
+        finally
+          running = false
+      }
 
       private def runnerSession(
         options: Seq[String],
         launcherOptions: Seq[String],
-        extraJars: Seq[os.Path]
+        extraClassPath: Seq[String]
       ): Session = {
 
         close()
@@ -221,8 +262,8 @@ object KernelLauncher {
             "java",
             "-Xmx1g",
             "-cp",
-            (extraJars.map(_.toString) :+ jarLauncher0).mkString(File.pathSeparator),
-            "coursier.bootstrap.launcher.ResourcesLauncher"
+            (extraClassPath :+ jarLauncher0).mkString(File.pathSeparator),
+            "coursier.bootstrap.launcher.Launcher"
           )
 
         proc = os.proc(
@@ -238,7 +279,8 @@ object KernelLauncher {
         val conn = params.channels(
           bind = false,
           threads,
-          TestLogging.logCtx
+          TestLogging.logCtx,
+          identityOpt = Some(UUID.randomUUID().toString)
         ).unsafeRunSync()(IORuntime.global)
 
         conn.open.unsafeRunSync()(IORuntime.global)
