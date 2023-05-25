@@ -44,7 +44,7 @@ object Deps {
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
-  def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.9.0"
+  def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.10.0"
   def coursier           = ivy"io.get-coursier::coursier:2.1.4"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
