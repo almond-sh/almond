@@ -73,7 +73,7 @@ object KernelTests extends TestSuite {
         ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
       assert(res.nonEmpty)
@@ -118,7 +118,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
       assert(res.nonEmpty)
@@ -166,7 +166,7 @@ object KernelTests extends TestSuite {
 
       val interpreter = new TestInterpreter
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
       assert(res.nonEmpty)
@@ -196,7 +196,7 @@ object KernelTests extends TestSuite {
 
       val interpreter = new TestInterpreter
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
       assert(res.nonEmpty)
@@ -241,7 +241,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ignoreExpectedReplies)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
-        .flatMap(_.run(streams.source, streams.sink))
+        .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
       assert(res.nonEmpty)

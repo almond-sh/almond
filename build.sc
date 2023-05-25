@@ -1,6 +1,6 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`io.get-coursier.util::get-cs:0.1.1`
-import $ivy.`com.github.lolgab::mill-mima::0.0.19`
+import $ivy.`com.github.lolgab::mill-mima::0.0.20`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
@@ -100,6 +100,9 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   def moduleDeps = Seq(
     shared.interpreter()
   )
+  def compileIvyDeps = Agg(
+    Deps.jsoniterScalaMacros
+  )
   def ivyDeps = Agg(
     Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,
@@ -148,7 +151,9 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
       .exclude(("org.slf4j", "slf4j-api")),
     Deps.ammoniteReplApi(crossScalaVersion)
       .exclude(("org.slf4j", "slf4j-api")),
-    Deps.jvmRepr
+    Deps.jvmRepr,
+    Deps.coursierApi.exclude(("org.slf4j", "slf4j-api")),
+    Deps.collectionCompat
   )
 
   def resolvedIvyDeps = T {
@@ -167,10 +172,12 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
   }
 
   def propertyFilePath = "almond/almond.properties"
-  def propertyExtra = Seq(
-    "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version,
-    "scala-version"            -> crossScalaVersion
-  )
+  def propertyExtra = T {
+    Seq(
+      "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version,
+      "scala-version"            -> crossScalaVersion
+    )
+  }
 }
 
 class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with Bloop.Module {
@@ -510,8 +517,8 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       super.forkArgs() ++ Seq(
         "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
-        s"-Dalmond.test.launcher-version=$version",
-        s"-Dalmond.test.launcher-scala-version=$testScalaVersion",
+        s"-Dalmond.test.version=$version",
+        s"-Dalmond.test.scala-version=$testScalaVersion",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
       )
     }

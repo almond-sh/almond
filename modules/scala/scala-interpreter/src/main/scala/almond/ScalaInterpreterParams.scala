@@ -37,5 +37,6 @@ final case class ScalaInterpreterParams(
   outputDir: Either[os.Path, Boolean] = Right(true),
   toreeMagics: Boolean = false,
   compileOnly: Boolean = false,
-  extraClassPath: List[os.Path] = Nil
+  extraClassPath: List[os.Path] = Nil,
+  initialCellCount: Int = 0
 )

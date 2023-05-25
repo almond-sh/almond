@@ -3,7 +3,7 @@ package almond.interpreter.messagehandlers
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputHandler
-import almond.interpreter.messagehandlers.MessageHandler.blocking
+import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0}
 import almond.interpreter.util.DisplayDataOps._
 import almond.interpreter.{ExecuteResult, IOInterpreter, Message}
 import almond.logger.LoggerContext
@@ -25,95 +25,115 @@ final case class InterpreterMessageHandlers(
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
   runAfterQueued: IO[Unit] => IO[Unit],
-  exitSignal: SignallingRef[IO, Boolean]
+  exitSignal: SignallingRef[IO, Boolean],
+  noExecuteInputFor: Set[String]
 ) {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
   import InterpreterMessageHandlers._
 
   def executeHandler: MessageHandler =
-    blocking(Channel.Requests, Execute.requestType, queueEc, logCtx) { (message, queue) =>
+    blocking0(Channel.Requests, Execute.requestType, queueEc, logCtx) {
+      (rawMessage, message, queue) =>
 
-      val handler = new QueueOutputHandler(message, queue, commHandlerOpt)
+        val handler = new QueueOutputHandler(message, queue, commHandlerOpt)
 
-      lazy val inputManagerOpt = inputHandlerOpt.map { h =>
-        h.inputManager(message, (c, m) => queue.offer((c, m)))
-      }
+        lazy val inputManagerOpt = inputHandlerOpt.map { h =>
+          h.inputManager(message, (c, m) => queue.offer(Right((c, m))))
+        }
 
-      // TODO Take message.content.silent into account
+        // TODO Take message.content.silent into account
 
-      // TODO Decode and take into account message.content.user_expressions?
+        // TODO Decode and take into account message.content.user_expressions?
 
-      for {
-        countBefore <- interpreter.executionCount
-        inputMessage = Execute.Input(
-          execution_count = countBefore + 1,
-          code = message.content.code
-        )
-        _ <- message
-          .publish(Execute.inputType, inputMessage)
-          .enqueueOn(Channel.Publish, queue)
-        res <- interpreter.execute(
-          message.content.code,
-          message.content.store_history.getOrElse(true),
-          if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
-          Some(handler)
-        )
-        countAfter <- interpreter.executionCount
-        _ <- res match {
-          case v: ExecuteResult.Success if v.data.isEmpty =>
-            IO.unit
-          case v: ExecuteResult.Success =>
-            val result = Execute.Result(
-              countAfter,
-              v.data.jsonData,
-              Map.empty,
-              transient = Execute.DisplayData.Transient(v.data.idOpt)
-            )
-            message
-              .publish(Execute.resultType, result)
-              .enqueueOn(Channel.Publish, queue)
-          case e: ExecuteResult.Error =>
-            val extra =
-              if (message.content.stop_on_error.getOrElse(false))
-                interpreter.cancelledSignal.set(true) *> runAfterQueued(
-                  interpreter.cancelledSignal.set(false)
-                )
-              else
-                IO.unit
-            val error = Execute.Error("", "", List(e.message))
-            extra *>
+        for {
+          countBefore <- interpreter.executionCount
+          inputMessage = Execute.Input(
+            execution_count = countBefore + 1,
+            code = message.content.code
+          )
+          _ <- {
+            if (noExecuteInputFor.contains(message.header.msg_id))
+              IO.unit
+            else
               message
-                .publish(Execute.errorType, error)
-                .enqueueOn(Channel.Publish, queue)
-          case ExecuteResult.Abort =>
-            IO.unit
-          case ExecuteResult.Exit =>
-            exitSignal.set(true)
-        }
-        resp = res match {
-          case v: ExecuteResult.Success =>
-            Execute.Reply.Success(countAfter, v.data.jsonData)
-          case ex: ExecuteResult.Error =>
-            val traceBack = Seq(ex.name, ex.message).filter(_.nonEmpty).mkString(
-              ": "
-            ) :: ex.stackTrace.map("    " + _)
-            Execute.Reply.Error(
-              ex.name,
-              ex.message,
-              traceBack /* or just stackTrace? */,
-              countAfter
-            )
-          case ExecuteResult.Abort =>
-            Execute.Reply.Abort()
-          case ExecuteResult.Exit =>
-            val payload = Execute.Reply.Success.AskExitPayload("ask_exit", false)
-            Execute.Reply.Success(countAfter, Map(), List(RawJson(writeToArray(payload))))
-        }
-        _ <- message
-          .reply(Execute.replyType, resp)
-          .enqueueOn(Channel.Requests, queue)
-      } yield ()
+                .publish(Execute.inputType, inputMessage)
+                .enqueueOn0(Channel.Publish, queue)
+          }
+          res <- interpreter.execute(
+            message.content.code,
+            message.content.store_history.getOrElse(true),
+            if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
+            Some(handler)
+          )
+          countAfter <- interpreter.executionCount
+          _ <- res match {
+            case v: ExecuteResult.Success if v.data.isEmpty =>
+              IO.unit
+            case v: ExecuteResult.Success =>
+              val result = Execute.Result(
+                countAfter,
+                v.data.jsonData,
+                Map.empty,
+                transient = Execute.DisplayData.Transient(v.data.idOpt)
+              )
+              message
+                .publish(Execute.resultType, result)
+                .enqueueOn0(Channel.Publish, queue)
+            case e: ExecuteResult.Error =>
+              val extra =
+                if (message.content.stop_on_error.getOrElse(false))
+                  interpreter.cancelledSignal.set(true) *>
+                    runAfterQueued(interpreter.cancelledSignal.set(false))
+                else
+                  IO.unit
+              val error = Execute.Error("", "", List(e.message))
+              extra *>
+                message
+                  .publish(Execute.errorType, error)
+                  .enqueueOn0(Channel.Publish, queue)
+            case ExecuteResult.Abort =>
+              IO.unit
+            case ExecuteResult.Exit =>
+              exitSignal.set(true)
+            case ExecuteResult.Close =>
+              IO.unit
+          }
+          respOpt = res match {
+            case v: ExecuteResult.Success =>
+              Right(Execute.Reply.Success(countAfter, v.data.jsonData))
+            case ex: ExecuteResult.Error =>
+              val traceBack =
+                Seq(ex.name, ex.message)
+                  .filter(_.nonEmpty)
+                  .mkString(": ") ::
+                  ex.stackTrace.map("    " + _)
+              val r = Execute.Reply.Error(
+                ex.name,
+                ex.message,
+                traceBack /* or just stackTrace? */,
+                countAfter
+              )
+              Right(r)
+            case ExecuteResult.Abort =>
+              Right(Execute.Reply.Abort())
+            case ExecuteResult.Exit =>
+              val payload = Execute.Reply.Success.AskExitPayload("ask_exit", false)
+              Right(Execute.Reply.Success(countAfter, Map(), List(RawJson(writeToArray(payload)))))
+            case ExecuteResult.Close =>
+              Left(new CloseExecutionException(Seq((Channel.Requests, rawMessage))))
+          }
+          _ <- {
+            respOpt match {
+              case Right(resp) =>
+                message
+                  .reply(Execute.replyType, resp)
+                  .enqueueOn0(Channel.Requests, queue)
+              case Left(e) =>
+                queue.offer(Left(e))
+            }
+          }
+        } yield ()
     }
 
   def completeHandler: MessageHandler =
@@ -132,6 +152,16 @@ final case class InterpreterMessageHandlers(
           .enqueueOn(Channel.Requests, queue)
       } yield ()
     }
+
+  def otherHandlers: MessageHandler =
+    kernelInfoHandler.orElse(
+      completeHandler,
+      interruptHandler,
+      shutdownHandler,
+      isCompleteHandler,
+      inspectHandler,
+      historyHandler
+    )
 
   def isCompleteHandler: MessageHandler =
     blocking(Channel.Requests, IsComplete.requestType, queueEc, logCtx) { (message, queue) =>
@@ -191,14 +221,6 @@ final case class InterpreterMessageHandlers(
       } yield ()
     }
 
-  def handler: MessageHandler =
-    kernelInfoHandler.orElse(
-      executeHandler,
-      isCompleteHandler,
-      inspectHandler,
-      historyHandler
-    )
-
   def shutdownHandler: MessageHandler =
     // v5.3 spec states "The request can be sent on either the control or shell channels.".
     MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) {
@@ -233,14 +255,14 @@ object InterpreterMessageHandlers {
 
   private final class QueueOutputHandler(
     message: Message[_],
-    queue: Queue[IO, (Channel, RawMessage)],
+    queue: Queue[IO, Either[Throwable, (Channel, RawMessage)]],
     commHandlerOpt: Option[CommHandler]
   ) extends OutputHandler {
 
     private def print(on: String, s: String): Unit =
       message
         .publish(Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
-        .enqueueOn(Channel.Publish, queue)
+        .enqueueOn0(Channel.Publish, queue)
         .unsafeRunSync()(IORuntime.global)
 
     def stdout(s: String): Unit =
@@ -258,7 +280,7 @@ object InterpreterMessageHandlers {
 
       message
         .publish(Execute.displayDataType, content)
-        .enqueueOn(Channel.Publish, queue)
+        .enqueueOn0(Channel.Publish, queue)
         .unsafeRunSync()(IORuntime.global)
     }
 

@@ -165,7 +165,16 @@ final class ZeromqSocketImpl(
         log.debug {
           val headerStr = Try(new String(message.header, UTF_8))
             .getOrElse(message.header.toString)
-          s"Received on $channel message with header $headerStr and idents ${identsAsStrings(message.idents)})"
+          s"Received on $uri:\n" +
+            "  header: " +
+            headerStr +
+            "\n" +
+            "  content: " +
+            Try(new String(message.content, "UTF-8"))
+              .toOption
+              .getOrElse(message.content.toString) +
+            "\n" +
+            "  idents: " + identsAsStrings(message.idents)
         }
         Some(message)
       }

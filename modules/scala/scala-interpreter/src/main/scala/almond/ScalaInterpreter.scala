@@ -71,7 +71,8 @@ final class ScalaInterpreter(
     params.updateBackgroundVariablesEcOpt,
     commHandlerOpt,
     silent0,
-    params.useThreadInterrupt
+    params.useThreadInterrupt,
+    params.initialCellCount
   )
 
   val sessApi = new SessionApiImpl(frames0)

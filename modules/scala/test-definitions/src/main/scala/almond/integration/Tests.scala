@@ -21,34 +21,34 @@ object Tests {
   private def maybePostImportNewLine(isScala2: Boolean) =
     if (isScala2) "" else System.lineSeparator()
 
-  def jvmRepr()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
-    execute("""class Bar(val value: String)""", "defined class Bar")
-    execute(
-      """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))""",
-      ""
-    )
-    execute(
-      """val b = new Bar("other")""",
-      "",
-      displaysText = Seq("Bar(other)")
-    )
-  }
+  def jvmRepr()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute("""class Bar(val value: String)""", "defined class Bar")
+      execute(
+        """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))""",
+        ""
+      )
+      execute(
+        """val b = new Bar("other")""",
+        "",
+        displaysText = Seq("Bar(other)")
+      )
+    }
 
-  def updatableDisplay()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
-    execute(
-      """val handle = Html("<b>foo</b>")""",
-      "",
-      displaysHtml = Seq("<b>foo</b>")
-    )
+  def updatableDisplay()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """val handle = Html("<b>foo</b>")""",
+        "",
+        displaysHtml = Seq("<b>foo</b>")
+      )
 
-    execute(
-      """handle.withContent("<i>bzz</i>").update()""",
-      "",
-      displaysHtmlUpdates = Seq("<i>bzz</i>")
-    )
-  }
+      execute(
+        """handle.withContent("<i>bzz</i>").update()""",
+        "",
+        displaysHtmlUpdates = Seq("<i>bzz</i>")
+      )
+    }
 
   def autoUpdateFutureUponCompletion(scalaVersion: String)(implicit
     sessionId: SessionId,
@@ -58,31 +58,32 @@ object Tests {
     val isScala2   = scalaVersion.startsWith("2.")
     val isScala212 = scalaVersion.startsWith("2.12.")
 
-    implicit val session: Session = runner()
+    runner.withSession() { implicit session =>
 
-    execute(
-      "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
-      // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
-      // but not for the other ones using stripMargin…
-      s"import scala.concurrent.Future;$sp$ls" +
-        s"import scala.concurrent.ExecutionContext.Implicits.global${maybePostImportNewLine(isScala2)}"
-    )
-
-    execute(
-      "val f = Future { Thread.sleep(3000L); 2 }",
-      "",
-      displaysText = Seq("f: Future[Int] = [running]")
-    )
-
-    execute(
-      "Thread.sleep(6000L)",
-      "",
-      // the update originates from the previous cell, but arrives while the third one is running
-      displaysTextUpdates = Seq(
-        if (isScala212) "f: Future[Int] = Success(2)"
-        else "f: Future[Int] = Success(value = 2)"
+      execute(
+        "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
+        // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
+        // but not for the other ones using stripMargin…
+        s"import scala.concurrent.Future;$sp$ls" +
+          s"import scala.concurrent.ExecutionContext.Implicits.global${maybePostImportNewLine(isScala2)}"
       )
-    )
+
+      execute(
+        "val f = Future { Thread.sleep(3000L); 2 }",
+        "",
+        displaysText = Seq("f: Future[Int] = [running]")
+      )
+
+      execute(
+        "Thread.sleep(6000L)",
+        "",
+        // the update originates from the previous cell, but arrives while the third one is running
+        displaysTextUpdates = Seq(
+          if (isScala212) "f: Future[Int] = Success(2)"
+          else "f: Future[Int] = Success(value = 2)"
+        )
+      )
+    }
   }
 
   def autoUpdateFutureInBackgroundUponCompletion(scalaVersion: String)(implicit
@@ -95,61 +96,60 @@ object Tests {
     val isScala2   = scalaVersion.startsWith("2.")
     val isScala212 = scalaVersion.startsWith("2.12.")
 
-    implicit val session: Session = runner()
+    runner.withSession() { implicit session =>
+      execute(
+        "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
+        // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
+        // but not for the other ones using stripMargin…
+        s"import scala.concurrent.Future;$sp$ls" +
+          s"import scala.concurrent.ExecutionContext.Implicits.global${maybePostImportNewLine(isScala2)}"
+      )
 
-    execute(
-      "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
-      // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
-      // but not for the other ones using stripMargin…
-      s"import scala.concurrent.Future;$sp$ls" +
-        s"import scala.concurrent.ExecutionContext.Implicits.global${maybePostImportNewLine(isScala2)}"
-    )
-
-    execute(
-      "val f = Future { Thread.sleep(3000L); 2 }",
-      "",
-      displaysText = Seq("f: Future[Int] = [running]"),
-      displaysTextUpdates = Seq(
-        if (isScala212) "f: Future[Int] = Success(2)"
-        else "f: Future[Int] = Success(value = 2)"
-      ),
-      waitForUpdateDisplay = true
-    )
+      execute(
+        "val f = Future { Thread.sleep(3000L); 2 }",
+        "",
+        displaysText = Seq("f: Future[Int] = [running]"),
+        displaysTextUpdates = Seq(
+          if (isScala212) "f: Future[Int] = Success(2)"
+          else "f: Future[Int] = Success(value = 2)"
+        ),
+        waitForUpdateDisplay = true
+      )
+    }
   }
 
-  def autoUpdateRxStuffUponChange()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
-
-    execute(
-      "almondrx.setup()",
-      "",
-      ignoreStreams = true
-    )
-
-    execute(
-      "val a = rx.Var(1)",
-      "",
-      displaysText = Seq(
-        "a: rx.Var[Int] = 1"
+  def autoUpdateRxStuffUponChange()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        "almondrx.setup()",
+        "",
+        ignoreStreams = true
       )
-    )
 
-    execute(
-      "a() = 2",
-      "",
-      displaysTextUpdates = Seq(
-        "a: rx.Var[Int] = 2"
+      execute(
+        "val a = rx.Var(1)",
+        "",
+        displaysText = Seq(
+          "a: rx.Var[Int] = 1"
+        )
       )
-    )
 
-    execute(
-      "a() = 3",
-      "",
-      displaysTextUpdates = Seq(
-        "a: rx.Var[Int] = 3"
+      execute(
+        "a() = 2",
+        "",
+        displaysTextUpdates = Seq(
+          "a: rx.Var[Int] = 2"
+        )
       )
-    )
-  }
+
+      execute(
+        "a() = 3",
+        "",
+        displaysTextUpdates = Seq(
+          "a: rx.Var[Int] = 3"
+        )
+      )
+    }
 
   def handleInterruptMessages()(implicit sessionId: SessionId, runner: Runner): Unit = {
 
@@ -172,188 +172,182 @@ object Tests {
       case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
     }
 
-    implicit val session: Session = runner()
-
-    execute(
-      "val n = scala.io.StdIn.readInt()",
-      ignoreStreams = true,
-      expectError = true,
-      expectInterrupt = true,
-      handler = interruptOnInput.orElse(ignoreExpectedReplies)
-    )
-
-    execute(
-      """val s = "ok done"""",
-      """s: String = "ok done""""
-    )
-  }
-
-  def exit()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
-
-    execute(
-      "val n = 2",
-      "n: Int = 2"
-    )
-
-    execute(
-      "exit",
-      "",
-      replyPayloads = Seq(
-        """{"source":"ask_exit","keepkernel":false}"""
+    runner.withSession() { implicit session =>
+      execute(
+        "val n = scala.io.StdIn.readInt()",
+        ignoreStreams = true,
+        expectError = true,
+        expectInterrupt = true,
+        handler = interruptOnInput.orElse(ignoreExpectedReplies)
       )
-    )
+
+      execute(
+        """val s = "ok done"""",
+        """s: String = "ok done""""
+      )
+    }
   }
 
-  def trapOutput()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
+  def exit()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        "val n = 2",
+        "n: Int = 2"
+      )
 
-    execute(
-      "val n = 2",
-      "n: Int = 2"
-    )
+      execute(
+        "exit",
+        "",
+        replyPayloads = Seq(
+          """{"source":"ask_exit","keepkernel":false}"""
+        )
+      )
+    }
 
-    execute(
-      """println("Hello")""",
-      "",
-      stdout = "",
-      stderr = ""
-    )
+  def trapOutput()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        "val n = 2",
+        "n: Int = 2"
+      )
 
-    execute(
-      """System.err.println("Bbbb")""",
-      "",
-      stdout = "",
-      stderr = ""
-    )
+      execute(
+        """println("Hello")""",
+        "",
+        stdout = "",
+        stderr = ""
+      )
 
-    execute(
-      "exit",
-      "",
-      stdout = "",
-      stderr = ""
-    )
-  }
+      execute(
+        """System.err.println("Bbbb")""",
+        "",
+        stdout = "",
+        stderr = ""
+      )
 
-  def lastException()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
+      execute(
+        "exit",
+        "",
+        stdout = "",
+        stderr = ""
+      )
+    }
 
-    execute(
-      """val nullBefore = repl.lastException == null""",
-      "nullBefore: Boolean = true"
-    )
-    execute("""sys.error("foo")""", expectError = true)
-    execute("""val nullAfter = repl.lastException == null""", "nullAfter: Boolean = false")
-  }
+  def lastException()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """val nullBefore = repl.lastException == null""",
+        "nullBefore: Boolean = true"
+      )
+      execute("""sys.error("foo")""", expectError = true)
+      execute("""val nullAfter = repl.lastException == null""", "nullAfter: Boolean = false")
+    }
 
-  def history()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner()
-
-    execute(
-      """val before = repl.history.toVector""",
-      """before: Vector[String] = Vector("val before = repl.history.toVector")"""
-    )
-    execute("val a = 2", "a: Int = 2")
-    execute("val b = a + 1", "b: Int = 3")
-    execute(
-      """val after = repl.history.toVector.mkString(",").toString""",
-      """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
-    )
-  }
+  def history()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """val before = repl.history.toVector""",
+        """before: Vector[String] = Vector("val before = repl.history.toVector")"""
+      )
+      execute("val a = 2", "a: Int = 2")
+      execute("val b = a + 1", "b: Int = 3")
+      execute(
+        """val after = repl.history.toVector.mkString(",").toString""",
+        """after: String = "val before = repl.history.toVector,val a = 2,val b = a + 1,val after = repl.history.toVector.mkString(\",\").toString""""
+      )
+    }
 
   def toreeAddJarFile(scalaVersion: String, sameCell: Boolean)(implicit
     sessionId: SessionId,
     runner: Runner
-  ): Unit = {
+  ): Unit =
+    runner.withSession("--toree-magics") { implicit session =>
 
-    implicit val session: Session = runner("--toree-magics")
+      val jar = coursierapi.Fetch.create()
+        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+        .fetch()
+        .asScala
+        .head
+      val jarUri = jar.toURI
 
-    val jar = coursierapi.Fetch.create()
-      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
-      .fetch()
-      .asScala
-      .head
-    val jarUri = jar.toURI
-
-    execute(
-      "import picocli.CommandLine",
-      errors = Seq(
-        ("", "Compilation Failed", List("Compilation Failed"))
-      ),
-      ignoreStreams = true
-    )
-
-    if (sameCell)
       execute(
-        s"%AddJar $jarUri" + ls +
-          "import picocli.CommandLine" + ls,
-        "import $cp.$ " + (" " * jar.toString.length) + ls + ls +
-          "import picocli.CommandLine" + ls,
-        ignoreStreams = true
-      )
-    else {
-      execute(
-        s"%AddJar $jarUri",
-        "import $cp.$ " + (" " * jar.toString.length) + maybePostImportNewLine(
-          scalaVersion.startsWith("2.")
+        "import picocli.CommandLine",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
         ),
         ignoreStreams = true
       )
 
-      execute(
-        "import picocli.CommandLine",
-        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
-      )
+      if (sameCell)
+        execute(
+          s"%AddJar $jarUri" + ls +
+            "import picocli.CommandLine" + ls,
+          "import $cp.$ " + (" " * jar.toString.length) + ls + ls +
+            "import picocli.CommandLine" + ls,
+          ignoreStreams = true
+        )
+      else {
+        execute(
+          s"%AddJar $jarUri",
+          "import $cp.$ " + (" " * jar.toString.length) + maybePostImportNewLine(
+            scalaVersion.startsWith("2.")
+          ),
+          ignoreStreams = true
+        )
+
+        execute(
+          "import picocli.CommandLine",
+          "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+        )
+      }
     }
-  }
 
   def toreeAddJarURL(scalaVersion: String, sameCell: Boolean)(implicit
     sessionId: SessionId,
     runner: Runner
-  ): Unit = {
+  ): Unit =
+    runner.withSession("--toree-magics") { implicit session =>
 
-    implicit val session: Session = runner("--toree-magics")
-
-    val jar = coursierapi.Fetch.create()
-      .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
-      .fetchResult()
-      .getArtifacts
-      .asScala
-      .head
-      .getKey
-      .getUrl
-
-    execute(
-      "import picocli.CommandLine",
-      errors = Seq(
-        ("", "Compilation Failed", List("Compilation Failed"))
-      ),
-      ignoreStreams = true
-    )
-
-    if (sameCell)
-      execute(
-        s"%AddJar $jar" + ls +
-          "import picocli.CommandLine" + ls,
-        "import $cp.$" + ls + ls +
-          "import picocli.CommandLine" + ls,
-        ignoreStreams = true,
-        trimReplyLines = true
-      )
-    else {
-      execute(
-        s"%AddJar $jar",
-        "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
-        ignoreStreams = true,
-        trimReplyLines = true
-      )
+      val jar = coursierapi.Fetch.create()
+        .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+        .fetchResult()
+        .getArtifacts
+        .asScala
+        .head
+        .getKey
+        .getUrl
 
       execute(
         "import picocli.CommandLine",
-        "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
       )
+
+      if (sameCell)
+        execute(
+          s"%AddJar $jar" + ls +
+            "import picocli.CommandLine" + ls,
+          "import $cp.$" + ls + ls +
+            "import picocli.CommandLine" + ls,
+          ignoreStreams = true,
+          trimReplyLines = true
+        )
+      else {
+        execute(
+          s"%AddJar $jar",
+          "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+          ignoreStreams = true,
+          trimReplyLines = true
+        )
+
+        execute(
+          "import picocli.CommandLine",
+          "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+        )
+      }
     }
-  }
 
   private def java17Cmd(): String = {
     val isAtLeastJava17 =
@@ -384,7 +378,6 @@ object Tests {
 
     val pkg               = "almond.test.custom"
     val tmpDir            = os.temp.dir(prefix = "almond.add-jar-test")
-    val destJar           = tmpDir / "library.jar"
     val escapedPicocliJar = picocliJar.toString.replace("\\", "\\\\")
     val code =
       s"""//> using scala "$scalaVersion"
@@ -401,18 +394,17 @@ object Tests {
          |""".stripMargin
     os.write(tmpDir / "FooURLConnection.scala", code)
 
-    os.proc(
+    val extraCp = os.proc(
       java17Cmd(),
       "-jar",
       scalaCliLauncher().toString,
       "--power",
-      "package",
-      "--library",
-      ".",
-      "-o",
-      destJar
+      "compile",
+      "--print-class-path",
+      "."
     )
-      .call(cwd = tmpDir, stdin = os.Inherit, stdout = os.Inherit)
+      .call(cwd = tmpDir, stdin = os.Inherit)
+      .out.trim()
 
     val predef =
       s"""
@@ -430,34 +422,32 @@ object Tests {
          |
          |registerPackage()
          |resetHandlers()
-         |
-         |interp.load.cp(os.Path("${destJar.toString.replace("\\", "\\\\")}"))
          |""".stripMargin
 
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
-    implicit val session: Session =
-      runner.withExtraJars(destJar)("--toree-magics", "--predef", predefPath.toString)
+    runner.withExtraClassPathSession(extraCp)("--toree-magics", "--predef", predefPath.toString) {
+      implicit session =>
+        execute(
+          "import picocli.CommandLine",
+          errors = Seq(
+            ("", "Compilation Failed", List("Compilation Failed"))
+          ),
+          ignoreStreams = true
+        )
 
-    execute(
-      "import picocli.CommandLine",
-      errors = Seq(
-        ("", "Compilation Failed", List("Compilation Failed"))
-      ),
-      ignoreStreams = true
-    )
+        execute(
+          "%AddJar foo://thing/a/b" + ls,
+          "import $cp.$" + ls,
+          trimReplyLines = true
+        )
 
-    execute(
-      "%AddJar foo://thing/a/b" + ls,
-      "import $cp.$" + ls,
-      trimReplyLines = true
-    )
-
-    execute(
-      "import picocli.CommandLine",
-      "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
-    )
+        execute(
+          "import picocli.CommandLine",
+          "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+        )
+    }
   }
 
   def toreeCustomCellMagic()(implicit sessionId: SessionId, runner: Runner): Unit = {
@@ -483,108 +473,106 @@ object Tests {
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
-    implicit val session: Session =
-      runner.withLauncherOptions("--shared", "sh.almond::toree-hooks")(
-        "--toree-magics",
-        "--predef",
-        predefPath.toString
+    runner.withLauncherOptionsSession("--shared", s"sh.almond::toree-hooks")(
+      "--toree-magics",
+      "--predef",
+      predefPath.toString
+    ) { implicit session =>
+      execute(
+        """%%test
+          |foo
+          |a
+          |""".stripMargin,
+        """foo
+          |a
+          |""".stripMargin
       )
 
-    execute(
-      """%%test
-        |foo
-        |a
-        |""".stripMargin,
-      """foo
-        |a
-        |""".stripMargin
-    )
+      execute(
+        "%LsMagic",
+        "",
+        stdout =
+          "Available line magics:" + ls +
+            "%adddeps %addjar %lsmagic %truncation" + ls +
+            ls +
+            "Available cell magics:" + ls +
+            "%%html %%javascript %%test %%thing" + ls +
+            ls
+      )
 
-    execute(
-      "%LsMagic",
-      "",
-      stdout =
-        "Available line magics:" + ls +
-          "%adddeps %addjar %lsmagic %truncation" + ls +
-          ls +
-          "Available cell magics:" + ls +
-          "%%html %%javascript %%test %%thing" + ls +
-          ls
-    )
-
-    execute(
-      """%%thing
-        |println("Hello")
-        |2
-        |""".stripMargin,
-      "thing: Int = 2",
-      stdout =
-        "Hello" + ls +
-          "thing: Int = 2"
-    )
+      execute(
+        """%%thing
+          |println("Hello")
+          |2
+          |""".stripMargin,
+        "thing: Int = 2",
+        stdout =
+          "Hello" + ls +
+            "thing: Int = 2"
+      )
+    }
   }
 
-  def compileOnly()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    implicit val session: Session = runner("--compile-only", "--toree-magics")
+  def compileOnly()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession("--compile-only", "--toree-magics") { implicit session =>
+      execute(
+        """println("Hello from compile-only kernel")""",
+        "",
+        stdout = "",
+        stderr = ""
+      )
 
-    execute(
-      """println("Hello from compile-only kernel")""",
-      "",
-      stdout = "",
-      stderr = ""
-    )
+      execute(
+        """System.err.println("Hello from compile-only kernel")""",
+        "",
+        stdout = "",
+        stderr = ""
+      )
 
-    execute(
-      """System.err.println("Hello from compile-only kernel")""",
-      "",
-      stdout = "",
-      stderr = ""
-    )
+      execute(
+        "import picocli.CommandLine",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
+      )
 
-    execute(
-      "import picocli.CommandLine",
-      errors = Seq(
-        ("", "Compilation Failed", List("Compilation Failed"))
-      ),
-      ignoreStreams = true
-    )
+      execute(
+        """%AddDeps info.picocli picocli 4.7.3 --transitive
+          |""".stripMargin,
+        "",
+        ignoreStreams = true
+      )
 
-    execute(
-      """%AddDeps info.picocli picocli 4.7.3 --transitive
-        |""".stripMargin,
-      "",
-      ignoreStreams = true
-    )
+      execute(
+        "new ListBuffer[String]",
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        ),
+        ignoreStreams = true
+      )
 
-    execute(
-      "new ListBuffer[String]",
-      errors = Seq(
-        ("", "Compilation Failed", List("Compilation Failed"))
-      ),
-      ignoreStreams = true
-    )
+      execute(
+        "import picocli.CommandLine; import scala.collection.mutable.ListBuffer",
+        "",
+        stdout = "",
+        stderr = ""
+      )
 
-    execute(
-      "import picocli.CommandLine; import scala.collection.mutable.ListBuffer",
-      "",
-      stdout = "",
-      stderr = ""
-    )
+      execute(
+        "new ListBuffer[String]",
+        "",
+        stdout = "",
+        stderr = ""
+      )
 
-    execute(
-      "new ListBuffer[String]",
-      "",
-      stdout = "",
-      stderr = ""
-    )
-
-    execute(
-      "sys.exit(1)",
-      "",
-      stdout = "",
-      stderr = ""
-    )
-  }
+      execute(
+        "sys.exit(1)",
+        "",
+        stdout = "",
+        stderr = ""
+      )
+    }
 
   def extraCp(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
 
@@ -605,25 +593,25 @@ object Tests {
       .toList
     assert(shapelessJar.length == 1)
 
-    implicit val session: Session =
-      runner("--extra-class-path", shapelessJar.mkString(File.pathSeparator))
+    runner.withSession("--extra-class-path", shapelessJar.mkString(File.pathSeparator)) {
+      implicit session =>
+        execute(
+          "import shapeless._" + ls +
+            """val l = 1 :: "aa" :: true :: HNil""",
+          "import shapeless._" + ls + ls +
+            """l: Int :: String :: Boolean :: HNil = 1 :: "aa" :: true :: HNil"""
+        )
 
-    execute(
-      "import shapeless._" + ls +
-        """val l = 1 :: "aa" :: true :: HNil""",
-      "import shapeless._" + ls + ls +
-        """l: Int :: String :: Boolean :: HNil = 1 :: "aa" :: true :: HNil"""
-    )
+        execute(
+          s"""val check = HNil.getClass.getProtectionDomain.getCodeSource.getLocation.toExternalForm.endsWith("-$testShapelessVersion.jar")""",
+          "check: Boolean = true"
+        )
 
-    execute(
-      s"""val check = HNil.getClass.getProtectionDomain.getCodeSource.getLocation.toExternalForm.endsWith("-$testShapelessVersion.jar")""",
-      "check: Boolean = true"
-    )
-
-    execute(
-      s"""val kernelCheck = kernel.kernelClassLoader.loadClass(HNil.getClass.getName).getProtectionDomain.getCodeSource.getLocation.toExternalForm.stripSuffix("/").stripSuffix("!").endsWith("-$kernelShapelessVersion.jar")""",
-      "kernelCheck: Boolean = true"
-    )
+        execute(
+          s"""val kernelCheck = kernel.kernelClassLoader.loadClass(HNil.getClass.getName).getProtectionDomain.getCodeSource.getLocation.toExternalForm.stripSuffix("/").stripSuffix("!").endsWith("-$kernelShapelessVersion.jar")""",
+          "kernelCheck: Boolean = true"
+        )
+    }
   }
 
   def inspections(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
@@ -644,18 +632,18 @@ object Tests {
       else
         Nil
 
-    implicit val session: Session =
-      runner("--extra-class-path", extraJars.mkString(File.pathSeparator))
-
-    val code   = "os.read"
-    val result = inspect(code, code.length - 3, detailed = true)
-    val expected = Seq(
-      """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
-        |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
-        |also select a different `charSet` to use, and provide an `offset`/`count` to
-        |read from if the source supports seeking.</pre></div>""".stripMargin
-    )
-    expect(result == expected)
+    runner.withSession("--extra-class-path", extraJars.mkString(File.pathSeparator)) {
+      implicit session =>
+        val code   = "os.read"
+        val result = inspect(code, code.length - 3, detailed = true)
+        val expected = Seq(
+          """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
+            |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
+            |also select a different `charSet` to use, and provide an `offset`/`count` to
+            |read from if the source supports seeking.</pre></div>""".stripMargin
+        )
+        expect(result == expected)
+    }
   }
 
 }
