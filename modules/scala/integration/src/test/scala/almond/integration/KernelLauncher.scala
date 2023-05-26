@@ -260,7 +260,7 @@ class KernelLauncher(testScalaVersion: String) {
         val baseCmd: os.Shellable =
           Seq[os.Shellable](
             "java",
-            "-Xmx1g",
+            "-Xmx512m",
             "-cp",
             (extraClassPath :+ jarLauncher0.toString).mkString(File.pathSeparator),
             "coursier.bootstrap.launcher.Launcher"

@@ -516,7 +516,7 @@ trait Integration extends SbtModule {
       scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
       val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
       super.forkArgs() ++ Seq(
-        "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
+        "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
