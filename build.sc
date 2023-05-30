@@ -430,7 +430,7 @@ object scala extends Module {
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
   object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
-  object integration        extends Cross[Integration](ScalaVersions.all: _*)
+  object integration        extends Integration
 }
 
 class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
@@ -489,8 +489,7 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
 
-class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
-  def skipBloop             = testScalaVersion != scalaVersion0
+trait Integration extends SbtModule {
   private def scalaVersion0 = ScalaVersions.scala213
   def crossScalaVersion     = scalaVersion0
   def scalaVersion          = scalaVersion0
@@ -512,13 +511,14 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
     )
     def testFramework = "munit.Framework"
     def forkArgs = T {
-      scala.`local-repo`(testScalaVersion).localRepo()
-      val version = scala.`local-repo`(testScalaVersion).version()
+      scala.`local-repo`(ScalaVersions.scala212).localRepo()
+      scala.`local-repo`(ScalaVersions.scala213).localRepo()
+      scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
+      val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
       super.forkArgs() ++ Seq(
         "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
-        s"-Dalmond.test.scala-version=$testScalaVersion",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
       )
     }
@@ -526,8 +526,7 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       PathRef(T.dest / "working-dir")
     }
     def forkEnv = super.forkEnv() ++ Seq(
-      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString,
-      "TEST_SCALA_VERSION"     -> testScalaVersion
+      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
     )
   }
 }

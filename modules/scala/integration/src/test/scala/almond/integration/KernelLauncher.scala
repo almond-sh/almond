@@ -22,6 +22,22 @@ import scala.util.Properties
 
 object KernelLauncher {
 
+  lazy val localRepoRoot = sys.props.get("almond.test.local-repo")
+    .map(os.Path(_, os.pwd))
+    .getOrElse {
+      sys.error("almond.test.local-repo Java property not set")
+    }
+
+  lazy val almondVersion = sys.props.getOrElse(
+    "almond.test.version",
+    sys.error("almond.test.version Java property not set")
+  )
+
+  lazy val cs = sys.props.getOrElse(
+    "almond.test.cs-launcher",
+    sys.error("almond.test.cs-launcher Java property not set")
+  )
+
   object TmpDir {
 
     private lazy val baseTmpDir = {
@@ -68,27 +84,11 @@ object KernelLauncher {
       os.Path(tmpDir.toIO.getCanonicalFile)
     }
   }
+}
 
-  lazy val localRepoRoot = sys.props.get("almond.test.local-repo")
-    .map(os.Path(_, os.pwd))
-    .getOrElse {
-      sys.error("almond.test.local-repo Java property not set")
-    }
+class KernelLauncher(testScalaVersion: String) {
 
-  lazy val almondVersion = sys.props.getOrElse(
-    "almond.test.version",
-    sys.error("almond.test.version Java property not set")
-  )
-
-  lazy val testScalaVersion = sys.props.getOrElse(
-    "almond.test.scala-version",
-    sys.error("almond.test.scala-version Java property not set")
-  )
-
-  lazy val cs = sys.props.getOrElse(
-    "almond.test.cs-launcher",
-    sys.error("almond.test.cs-launcher Java property not set")
-  )
+  import KernelLauncher._
 
   def generateLauncher(extraOptions: Seq[String] = Nil): (os.Path, os.Path) = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
@@ -262,7 +262,7 @@ object KernelLauncher {
             "java",
             "-Xmx1g",
             "-cp",
-            (extraClassPath :+ jarLauncher0).mkString(File.pathSeparator),
+            (extraClassPath :+ jarLauncher0.toString).mkString(File.pathSeparator),
             "coursier.bootstrap.launcher.Launcher"
           )
 

@@ -473,7 +473,7 @@ object Tests {
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
-    runner.withLauncherOptionsSession("--shared", s"sh.almond::toree-hooks")(
+    runner.withLauncherOptionsSession("--shared", "sh.almond::toree-hooks")(
       "--toree-magics",
       "--predef",
       predefPath.toString
