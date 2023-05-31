@@ -93,7 +93,7 @@ jobs:
         apps:
     - run: ./mill -i scala.integration.test
 
-  windows-tests:
+  windows-integration-tests:
     runs-on: windows-latest
     steps:
     - name: Don't convert LF to CRLF during checkout
@@ -189,7 +189,7 @@ jobs:
   # job whose name doesn't change when we bump Scala versions, add OSes, …
   # We require this job for auto-merge.
   all-tests:
-    needs: [examples, bincompat, test, integration-tests, windows-tests, website, publishLocal]
+    needs: [examples, bincompat, test, integration-tests, windows-integration-tests, website, publishLocal]
     runs-on: ubuntu-latest
     steps:
     - run: true

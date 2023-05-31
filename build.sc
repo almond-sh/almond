@@ -569,11 +569,10 @@ trait Integration extends SbtModule {
     )
 
     // based on https://github.com/com-lihaoyi/mill/blob/cfbafb806351c3e1664de4e2001d3d1ddda045da/scalalib/src/TestModule.scala#L98-L164
-    def testCommand: T[Map[String, Seq[String]]] =
-      T.task {
+    def testCommand(args: String*) =
+      T.command {
         import mill.testrunner.TestRunner
 
-        val args          = Nil
         val globSelectors = Nil
         val outputPath    = os.pwd / "test-output.json"
         val useArgsFile   = testUseArgsFile()
