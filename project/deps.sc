@@ -5,7 +5,7 @@ object Versions {
   def ammonite      = "3.0.0-M0-28-239e82a8"
   def caseApp       = "2.1.0-M24"
   def jsoniterScala = "2.13.5"
-  def scalafmt      = "2.7.5"
+  def scalafmt      = "3.7.4"
 }
 
 implicit class DepOps(private val dep: Dep) {
