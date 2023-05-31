@@ -240,8 +240,10 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
         t.start()
         try f(sess)
-        finally
+        finally {
           running = false
+          close()
+        }
       }
 
       private def runnerSession(
