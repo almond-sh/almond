@@ -72,7 +72,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest = "3.2.2"
+  def scala3Latest = "3.3.0"
   def scala3Compat = "3.2.0"
   def cross2_3Version(sv: String) =
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
