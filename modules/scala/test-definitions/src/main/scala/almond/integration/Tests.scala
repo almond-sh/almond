@@ -282,17 +282,17 @@ object Tests {
         execute(
           s"%AddJar $jarUri" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$ " + (" " * jar.toString.length) + ls + ls +
+          "import $cp.$" + ls + ls +
             "import picocli.CommandLine" + ls,
-          ignoreStreams = true
+          ignoreStreams = true,
+          trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jarUri",
-          "import $cp.$ " + (" " * jar.toString.length) + maybePostImportNewLine(
-            scalaVersion.startsWith("2.")
-          ),
-          ignoreStreams = true
+          "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+          ignoreStreams = true,
+          trimReplyLines = true
         )
 
         execute(
