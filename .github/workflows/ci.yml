@@ -74,6 +74,45 @@ jobs:
       env:
         SCALA: ${{ matrix.SCALA }}
 
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Don't convert LF to CRLF during checkout
+      if: runner.os == 'Windows'
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
+      with:
+        jvm: 8
+        apps:
+    - run: ./mill -i scala.integration.test
+
+  windows-tests:
+    runs-on: windows-latest
+    steps:
+    - name: Don't convert LF to CRLF during checkout
+      if: runner.os == 'Windows'
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
+      with:
+        jvm: 8
+        apps: scala-cli
+    - run: .github/scripts/run/run-its-windows.sh
+      shell: bash
+
   bincompat:
     runs-on: ubuntu-latest
     steps:
@@ -150,7 +189,7 @@ jobs:
   # job whose name doesn't change when we bump Scala versions, add OSes, …
   # We require this job for auto-merge.
   all-tests:
-    needs: [examples, bincompat, test, website, publishLocal]
+    needs: [examples, bincompat, test, integration-tests, windows-tests, website, publishLocal]
     runs-on: ubuntu-latest
     steps:
     - run: true

@@ -430,7 +430,7 @@ object scala extends Module {
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
   object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
-  object integration        extends Cross[Integration](ScalaVersions.all: _*)
+  object integration        extends Integration
 }
 
 class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
@@ -489,8 +489,7 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
 
-class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
-  def skipBloop             = testScalaVersion != scalaVersion0
+trait Integration extends SbtModule {
   private def scalaVersion0 = ScalaVersions.scala213
   def crossScalaVersion     = scalaVersion0
   def scalaVersion          = scalaVersion0
@@ -512,13 +511,14 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
     )
     def testFramework = "munit.Framework"
     def forkArgs = T {
-      scala.`local-repo`(testScalaVersion).localRepo()
-      val version = scala.`local-repo`(testScalaVersion).version()
+      scala.`local-repo`(ScalaVersions.scala212).localRepo()
+      scala.`local-repo`(ScalaVersions.scala213).localRepo()
+      scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
+      val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
       super.forkArgs() ++ Seq(
-        "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
+        "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
+        s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
-        s"-Dalmond.test.scala-version=$testScalaVersion",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
       )
     }
@@ -526,9 +526,113 @@ class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloo
       PathRef(T.dest / "working-dir")
     }
     def forkEnv = super.forkEnv() ++ Seq(
-      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString,
-      "TEST_SCALA_VERSION"     -> testScalaVersion
+      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
     )
+
+    // based on https://github.com/com-lihaoyi/mill/blob/cfbafb806351c3e1664de4e2001d3d1ddda045da/scalalib/src/TestModule.scala#L98-L164
+    def testCommand: T[Map[String, Seq[String]]] =
+      T.task {
+        import mill.testrunner.TestRunner
+
+        val args          = Nil
+        val globSelectors = Nil
+        val outputPath    = os.pwd / "test-output.json"
+        val useArgsFile   = testUseArgsFile()
+
+        val (jvmArgs, props: Map[String, String]) =
+          if (useArgsFile) {
+            val (props, jvmArgs) = forkArgs().partition(_.startsWith("-D"))
+            val sysProps =
+              props
+                .map(_.drop(2).split("[=]", 2))
+                .map {
+                  case Array(k, v) => k -> v
+                  case Array(k)    => k -> ""
+                }
+                .toMap
+
+            jvmArgs -> sysProps
+          }
+          else
+            forkArgs() -> Map()
+
+        val testArgs = TestRunner.TestArgs(
+          framework = testFramework(),
+          classpath = runClasspath().map(_.path.toString()),
+          arguments = args,
+          sysProps = props,
+          outputPath = outputPath.toString(),
+          colored = T.log.colored,
+          testCp = compile().classes.path.toString(),
+          homeStr = T.home.toString(),
+          globSelectors = globSelectors
+        )
+
+        val mainArgs =
+          if (useArgsFile) {
+            val argsFile = T.dest / "testargs"
+            Seq(testArgs.writeArgsFile(argsFile))
+          }
+          else
+            testArgs.toArgsSeq
+
+        val envArgs    = forkEnv()
+        val workingDir = forkWorkingDir()
+
+        val args0 = jvmSubprocessCommand(
+          mainClass = "mill.testrunner.TestRunner",
+          classPath = zincWorker.scalalibClasspath().map(_.path),
+          jvmArgs = jvmArgs,
+          envArgs = envArgs,
+          mainArgs = mainArgs,
+          workingDir = workingDir,
+          useCpPassingJar = useArgsFile
+        )
+
+        val env = envArgs.toVector.map { case (k, v) => s"$k=$v" }.toSet
+          .--(sys.env.toVector.map { case (k, v) => s"$k=$v" })
+          .toVector
+          .sorted
+
+        Map(
+          "args" -> args0,
+          "cwd"  -> Seq(workingDir.toString),
+          "env"  -> env
+        )
+      }
+
+    def jvmSubprocessCommand(
+      mainClass: String,
+      classPath: Agg[os.Path],
+      jvmArgs: Seq[String] = Seq.empty,
+      envArgs: Map[String, String] = Map.empty,
+      mainArgs: Seq[String] = Seq.empty,
+      workingDir: os.Path = null,
+      background: Boolean = false,
+      useCpPassingJar: Boolean = false
+    )(implicit ctx: mill.api.Ctx): Seq[String] = {
+
+      import mill.modules.Jvm
+
+      val cp =
+        if (useCpPassingJar && !classPath.iterator.isEmpty) {
+          val passingJar = os.temp(prefix = "run-", suffix = ".jar", deleteOnExit = false)
+          ctx.log.debug(
+            s"Creating classpath passing jar '$passingJar' with Class-Path: ${classPath.iterator.map(
+                _.toNIO.toUri().toURL().toExternalForm()
+              ).mkString(" ")}"
+          )
+          Jvm.createClasspathPassingJar(passingJar, classPath)
+          Agg(passingJar)
+        }
+        else
+          classPath
+
+      Vector(Jvm.javaExe) ++
+        jvmArgs ++
+        Vector("-cp", cp.iterator.mkString(java.io.File.pathSeparator), mainClass) ++
+        mainArgs
+    }
   }
 }
 

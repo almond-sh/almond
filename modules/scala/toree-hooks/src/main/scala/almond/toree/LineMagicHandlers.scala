@@ -2,6 +2,7 @@ package almond.toree
 
 import ammonite.util.Ref
 import almond.api.JupyterApi
+import almond.toree.internals.IsScala2
 
 import java.io.{InputStream, OutputStream}
 import java.net.{URI, URL}
@@ -96,7 +97,11 @@ object LineMagicHandlers {
               file.toString
             }
 
-          Right(s"import $$cp.`$path`")
+          val maybeEscapedPath =
+            // seems the handling of backslash between backticks changed in Scala 3…
+            if (IsScala2.isScala2) path
+            else path.replace("\\", "\\\\")
+          Right(s"import $$cp.`$maybeEscapedPath`")
 
         case _ =>
           System.err.println(
