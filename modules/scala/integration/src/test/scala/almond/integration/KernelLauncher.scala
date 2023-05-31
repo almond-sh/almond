@@ -343,8 +343,7 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
         if (proc != null) {
           if (proc.isAlive()) {
             proc.close()
-            proc.waitFor(3.seconds.toMillis)
-            if (proc.isAlive())
+            if (!proc.waitFor(3.seconds.toMillis))
               proc.destroyForcibly()
           }
           proc = null
