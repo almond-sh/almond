@@ -57,8 +57,6 @@ object TestUtil {
       }
   }
 
-  final case class SessionId(sessionId: String = UUID.randomUUID().toString)
-
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
     def run(streams: ClientStreams): Unit =
       kernel.run(streams.source, streams.sink, Nil)
@@ -79,18 +77,21 @@ object TestUtil {
       apply(options: _*)
     }
 
-    def withSession[T](options: String*)(f: Dsl.Session => T): T = {
+    def withSession[T](options: String*)(f: Dsl.Session => T)(implicit
+      sessionId: Dsl.SessionId
+    ): T = {
       val sess = apply(options: _*)
       f(sess)
     }
-    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Dsl.Session => T)
-      : T = {
+    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(
+      f: Dsl.Session => T
+    )(implicit sessionId: Dsl.SessionId): T = {
       val sess = withExtraClassPath(extraClassPath: _*)(options: _*)
       f(sess)
     }
     def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(
       f: Dsl.Session => T
-    ): T = {
+    )(implicit sessionId: Dsl.SessionId): T = {
       val sess = withLauncherOptions(launcherOptions: _*)(options: _*)
       f(sess)
     }
@@ -151,7 +152,7 @@ object TestUtil {
       stderr: String = null,
       waitForUpdateDisplay: Boolean = false,
       handler: MessageHandler = MessageHandler.discard { case _ => }
-    )(implicit sessionId: SessionId): Unit = {
+    )(implicit sessionId: Dsl.SessionId): Unit = {
 
       val expectError0   = expectError || Option(errors).nonEmpty
       val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
@@ -293,7 +294,7 @@ object TestUtil {
     code: String,
     msgId: String = UUID.randomUUID().toString,
     stopOnError: Boolean = true
-  )(implicit sessionId: SessionId) =
+  )(implicit sessionId: Dsl.SessionId) =
     Message(
       Header(
         msgId,
@@ -315,8 +316,8 @@ object TestUtil {
 
       val (input, replies) = inputs.unzip
 
-      implicit val sessionId: SessionId = SessionId()
-      val lastMsgId                     = UUID.randomUUID().toString
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      val lastMsgId                         = UUID.randomUUID().toString
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
@@ -373,5 +374,14 @@ object TestUtil {
       expect(publish0.map(noCrLf) == publish.map(noCrLf))
     }
   }
+
+  def comparePublishMessageTypes(expected: Seq[Set[String]], got: Seq[String]): Boolean =
+    expected.map(_.size).sum == got.length && {
+      val it = got.iterator
+      expected.forall { expectedGroup =>
+        val got0 = it.take(expectedGroup.size).toSet
+        expectedGroup == got0
+      }
+    }
 
 }

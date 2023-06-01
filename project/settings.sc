@@ -190,6 +190,15 @@ trait AlmondScalacOptions extends ScalaModule {
   }
 }
 
+trait AlmondSimpleModule
+    extends SbtModule
+    with AlmondRepositories
+    with AlmondPublishModule
+    with TransitiveSources
+    with AlmondArtifactName
+    with PublishLocalNoFluff
+    with AlmondScalacOptions
+
 trait AlmondModule
     extends CrossSbtModule
     with AlmondRepositories
@@ -322,7 +331,7 @@ trait AlmondTestModule
   }
 }
 
-trait BootstrapLauncher extends CrossSbtModule {
+trait BootstrapLauncher extends SbtModule {
 
   def launcherClassPath       = T(runClasspath())
   def launcherSharedClassPath = T(Seq.empty[PathRef])

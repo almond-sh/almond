@@ -86,7 +86,7 @@ object KernelLauncher {
   }
 }
 
-class KernelLauncher(testScalaVersion: String) {
+class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
   import KernelLauncher._
 
@@ -111,6 +111,17 @@ class KernelLauncher(testScalaVersion: String) {
       "-r",
       "jitpack"
     )
+    val launcherArgs =
+      if (isTwoStepStartup)
+        Seq(s"sh.almond:launcher_3:$almondVersion")
+      else
+        Seq(
+          s"sh.almond:::scala-kernel:$almondVersion",
+          "--shared",
+          "sh.almond:::scala-kernel-api",
+          "--scala",
+          defaultScalaVersion
+        )
     val res = os.proc(
       cs,
       "bootstrap",
@@ -121,17 +132,13 @@ class KernelLauncher(testScalaVersion: String) {
       repoArgs,
       "-o",
       jarDest,
-      s"sh.almond:::scala-kernel:$almondVersion",
-      "--shared",
-      "sh.almond:::scala-kernel-api",
-      "--scala",
-      testScalaVersion,
+      launcherArgs,
       extraOptions
     )
       .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
     if (res.exitCode != 0)
       sys.error(
-        s"""Error generating an Almond $almondVersion launcher for Scala $testScalaVersion
+        s"""Error generating an Almond $almondVersion launcher for Scala $defaultScalaVersion
            |
            |If that error is unexpected, you might want to:
            |- remove out/repo
@@ -185,16 +192,20 @@ class KernelLauncher(testScalaVersion: String) {
   def runner(): Runner with AutoCloseable =
     new Runner with AutoCloseable {
 
+      override def differedStartUp = isTwoStepStartup
+
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
 
-      def withSession[T](options: String*)(f: Session => T): T =
+      def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T =
         withRunnerSession(options, Nil, Nil)(f)
-      def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)
-        : T =
+      def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)(
+        implicit sessionId: SessionId
+      ): T =
         withRunnerSession(options, Nil, extraClassPath)(f)
-      def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
-        : T =
+      def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(
+        f: Session => T
+      )(implicit sessionId: SessionId): T =
         withRunnerSession(options, launcherOptions, Nil)(f)
 
       def apply(options: String*): Session =
@@ -208,9 +219,9 @@ class KernelLauncher(testScalaVersion: String) {
         options: Seq[String],
         launcherOptions: Seq[String],
         extraClassPath: Seq[String]
-      )(f: Session => T): T = {
-        val sess    = runnerSession(options, launcherOptions, extraClassPath)
-        var running = true
+      )(f: Session => T)(implicit sessionId: SessionId): T = {
+        implicit val sess = runnerSession(options, launcherOptions, extraClassPath)
+        var running       = true
 
         val currentThread = Thread.currentThread()
 
@@ -230,9 +241,20 @@ class KernelLauncher(testScalaVersion: String) {
           }
 
         t.start()
-        try f(sess)
-        finally
+        try {
+          val t = f(sess)
+          if (Properties.isWin)
+            // On Windows, exit the kernel manually from the inside, so that all involved processes
+            // exit cleanly. A call to Process#destroy would only destroy the first kernel process,
+            // not any of its sub-processes (which would stay around, and such processes would end up
+            // filling up memory on Windows).
+            exit()
+          t
+        }
+        finally {
           running = false
+          close()
+        }
       }
 
       private def runnerSession(
@@ -252,29 +274,65 @@ class KernelLauncher(testScalaVersion: String) {
         os.write(connFile, writeToArray(connDetails))
 
         val (jarLauncher0, launcher0) =
-          if (launcherOptions.isEmpty)
+          if (isTwoStepStartup || launcherOptions.isEmpty)
             (jarLauncher, launcher)
           else
             generateLauncher(launcherOptions)
 
+        val baseCp =
+          if (isTwoStepStartup)
+            jarLauncher0.toString
+          else
+            (extraClassPath :+ jarLauncher0.toString)
+              .filter(_.nonEmpty)
+              .mkString(File.pathSeparator)
         val baseCmd: os.Shellable =
           Seq[os.Shellable](
             "java",
-            "-Xmx512m",
+            "-Xmx1g",
             "-cp",
-            (extraClassPath :+ jarLauncher0.toString).mkString(File.pathSeparator),
+            baseCp,
             "coursier.bootstrap.launcher.Launcher"
           )
 
-        proc = os.proc(
+        val extraStartupClassPathOpts =
+          if (isTwoStepStartup)
+            extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem)) ++
+              launcherOptions ++
+              Seq("--scala", defaultScalaVersion)
+          else
+            Nil
+
+        val proc0 = os.proc(
           baseCmd,
           "--log",
           "debug",
           "--color=false",
           "--connection-file",
           connFile,
+          extraStartupClassPathOpts,
           options
-        ).spawn(cwd = dir, stdin = os.Inherit, stdout = os.Inherit)
+        )
+        System.err.println(s"Running ${proc0.command.flatMap(_.value).mkString(" ")}")
+        val extraEnv =
+          if (isTwoStepStartup) {
+            val baseRepos = sys.env.getOrElse(
+              "COURSIER_REPOSITORIES",
+              "ivy2Local|central"
+            )
+            Map(
+              "COURSIER_REPOSITORIES" ->
+                s"$baseRepos|ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]"
+            )
+          }
+          else
+            Map.empty[String, String]
+        proc = proc0.spawn(
+          cwd = dir,
+          env = extraEnv,
+          stdin = os.Inherit,
+          stdout = os.Inherit
+        )
 
         val conn = params.channels(
           bind = false,
@@ -296,9 +354,13 @@ class KernelLauncher(testScalaVersion: String) {
         if (proc != null) {
           if (proc.isAlive()) {
             proc.close()
-            proc.waitFor(3.seconds.toMillis)
-            if (proc.isAlive())
+            val timeout = 3.seconds
+            if (!proc.waitFor(timeout.toMillis)) {
+              System.err.println(
+                s"Test kernel still running after $timeout, destroying it forcibly"
+              )
               proc.destroyForcibly()
+            }
           }
           proc = null
         }

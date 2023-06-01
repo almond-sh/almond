@@ -9,13 +9,28 @@ if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "MINGW" ]; then
   RUN_APP="$RUN_APP.exe"
 fi
 
+checkResults() {
+  RESULTS="$(jq -r '.[1] | map(.status) | join("\n")' < test-output.json | sort -u)"
+  if [ "$RESULTS" != "Success" ]; then
+    exit 1
+  fi
+}
+
 "$SCALA_CLI" --power package .github/scripts/run --native-image -o "$RUN_APP"
 
-./mill -i show "scala.integration.test.testCommand" > test-args.json
-cat test-args.json
-"$RUN_APP" test-args.json
+trap "jps -mlv" EXIT
 
-RESULTS="$(jq -r '.[1] | map(.status) | join("\n")' < test-output.json | sort -u)"
-if [ "$RESULTS" != "Success" ]; then
-  exit 1
-fi
+./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup212.*" > test-args-212.json
+cat test-args-212.json
+"$RUN_APP" test-args-212.json
+checkResults
+
+./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup213.*" > test-args-213.json
+cat test-args-213.json
+"$RUN_APP" test-args-213.json
+checkResults
+
+./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup3.*" > test-args-3.json
+cat test-args-3.json
+"$RUN_APP" test-args-3.json
+checkResults
