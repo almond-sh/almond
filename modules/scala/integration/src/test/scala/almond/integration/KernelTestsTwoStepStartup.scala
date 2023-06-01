@@ -99,4 +99,17 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
     }
   }
 
+  test("Java option on command-line") {
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession("--java-opt", "-Dfoo=thing") { implicit session =>
+        execute(
+          """//> using scala "3.2.2"
+            |val foo = sys.props("foo")""".stripMargin,
+          """foo: String = "thing""""
+        )
+      }
+    }
+  }
+
 }

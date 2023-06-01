@@ -21,7 +21,8 @@ final case class LauncherOptions(
   predef: List[String] = Nil,
   extraStartupClassPath: List[String] = Nil,
   sharedDependencies: List[String] = Nil,
-  compileOnly: Option[Boolean] = None
+  compileOnly: Option[Boolean] = None,
+  javaOpt: List[String] = Nil
 ) {
   // format: on
 
