@@ -343,8 +343,13 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
         if (proc != null) {
           if (proc.isAlive()) {
             proc.close()
-            if (!proc.waitFor(3.seconds.toMillis))
+            val timeout = 3.seconds
+            if (!proc.waitFor(timeout.toMillis)) {
+              System.err.println(
+                s"Test kernel still running after $timeout, destroying it forcibly"
+              )
               proc.destroyForcibly()
+            }
           }
           proc = null
         }
