@@ -375,4 +375,13 @@ object TestUtil {
     }
   }
 
+  def comparePublishMessageTypes(expected: Seq[Set[String]], got: Seq[String]): Boolean =
+    expected.map(_.size).sum == got.length && {
+      val it = got.iterator
+      expected.forall { expectedGroup =>
+        val got0 = it.take(expectedGroup.size).toSet
+        expectedGroup == got0
+      }
+    }
+
 }
