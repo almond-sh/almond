@@ -530,7 +530,6 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
 
 trait Integration extends SbtModule {
   private def scalaVersion0 = ScalaVersions.scala213
-  def crossScalaVersion     = scalaVersion0
   def scalaVersion          = scalaVersion0
 
   def moduleDeps = super.moduleDeps ++ Seq(
