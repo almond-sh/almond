@@ -44,6 +44,20 @@ object Dsl {
         .mkString
   }
 
+  private def stopWhen(replyType: String): (Channel, Message[RawJson]) => IO[Boolean] = {
+    var gotExpectedReply = false
+    var gotIdleStatus    = false
+    (c, m) =>
+      gotExpectedReply =
+        gotExpectedReply || (c == Channel.Requests && m.header.msg_type == replyType)
+      gotIdleStatus = gotIdleStatus || (
+        c == Channel.Publish &&
+        m.header.msg_type == Status.messageType.messageType &&
+        readFromArray(m.content.value)(Status.codec).execution_state == Status.idle.execution_state
+      )
+      IO.pure(gotExpectedReply && gotIdleStatus)
+  }
+
   def execute(
     code: String,
     reply: String = null,
@@ -73,24 +87,13 @@ object Dsl {
       executeMessage(code, stopOnError = !expectError0)
     )
 
-    val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+    val stopWhen0: (Channel, Message[RawJson]) => IO[Boolean] =
       if (waitForUpdateDisplay)
         (_, m) => IO.pure(m.header.msg_type == "update_display_data")
-      else {
-        var gotExecuteReply = false
-        var gotIdleStatus   = false
-        (c, m) =>
-          gotExecuteReply = gotExecuteReply ||
-            (c == Channel.Requests && m.header.msg_type == "execute_reply")
-          gotIdleStatus = gotIdleStatus || (
-            c == Channel.Publish && m.header.msg_type == "status" && readFromArray(m.content.value)(
-              Status.codec
-            ).execution_state == "idle"
-          )
-          IO.pure(gotExecuteReply && gotIdleStatus)
-      }
+      else
+        stopWhen(ProtocolExecute.replyType.messageType)
 
-    val streams = ClientStreams.create(input, stopWhen, handler)
+    val streams = ClientStreams.create(input, stopWhen0, handler)
 
     session.run(streams)
 
@@ -246,23 +249,7 @@ object Dsl {
       inspectMessage(code, pos, detailed)
     )
 
-    val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = {
-      var gotInspectReply = false
-      var gotIdleStatus   = false
-      (c, m) =>
-        gotInspectReply = gotInspectReply ||
-          (c == Channel.Requests && m.header.msg_type == Inspect.replyType.messageType)
-        gotIdleStatus = gotIdleStatus || (
-          c == Channel.Publish && m.header.msg_type == Status.messageType.messageType && readFromArray(
-            m.content.value
-          )(
-            Status.codec
-          ).execution_state == Status.idle.execution_state
-        )
-        IO.pure(gotInspectReply && gotIdleStatus)
-    }
-
-    val streams = ClientStreams.create(input, stopWhen)
+    val streams = ClientStreams.create(input, stopWhen(Inspect.replyType.messageType))
 
     session.run(streams)
 
