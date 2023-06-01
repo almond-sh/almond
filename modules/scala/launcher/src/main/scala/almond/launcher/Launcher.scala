@@ -131,14 +131,16 @@ object Launcher extends CaseApp[LauncherOptions] {
         "java"
     }
 
+    val javaOptions = options.javaOpt ++ params0.javaOptions
+
     val memOptions =
-      if (params0.javaOptions.exists(_.startsWith("-Xmx"))) Nil
+      if (javaOptions.exists(_.startsWith("-Xmx"))) Nil
       else Seq("-Xmx512m")
 
     val proc = os.proc(
       javaCommand,
       memOptions,
-      params0.javaOptions,
+      javaOptions,
       "-cp",
       (options.extraStartupClassPath :+ launcher.toString)
         .filter(_.nonEmpty)
