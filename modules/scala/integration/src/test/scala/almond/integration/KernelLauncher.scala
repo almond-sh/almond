@@ -84,11 +84,28 @@ object KernelLauncher {
       os.Path(tmpDir.toIO.getCanonicalFile)
     }
   }
+
+  sealed abstract class LauncherType extends Product with Serializable {
+    def isTwoStepStartup: Boolean
+  }
+  object LauncherType {
+    case object Legacy extends LauncherType {
+      def isTwoStepStartup = false
+    }
+    case object Jvm extends LauncherType {
+      def isTwoStepStartup = true
+    }
+  }
 }
 
-class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
+class KernelLauncher(
+  val launcherType: KernelLauncher.LauncherType,
+  val defaultScalaVersion: String
+) {
 
   import KernelLauncher._
+
+  def isTwoStepStartup = launcherType.isTwoStepStartup
 
   private def generateLauncher(extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
@@ -273,27 +290,32 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
         os.write(connFile, writeToArray(connDetails))
 
-        val jarLauncher0 =
-          if (isTwoStepStartup || launcherOptions.isEmpty)
-            jarLauncher
-          else
-            generateLauncher(launcherOptions)
-
-        val baseCp =
-          if (isTwoStepStartup)
-            jarLauncher0.toString
-          else
-            (extraClassPath :+ jarLauncher0.toString)
+        val baseCmd: os.Shellable = launcherType match {
+          case LauncherType.Legacy =>
+            val jarLauncher0 =
+              if (launcherOptions.isEmpty)
+                jarLauncher
+              else
+                generateLauncher(launcherOptions)
+            val baseCp = (extraClassPath :+ jarLauncher0.toString)
               .filter(_.nonEmpty)
               .mkString(File.pathSeparator)
-        val baseCmd: os.Shellable =
-          Seq[os.Shellable](
-            "java",
-            "-Xmx1g",
-            "-cp",
-            baseCp,
-            "coursier.bootstrap.launcher.Launcher"
-          )
+            Seq[os.Shellable](
+              "java",
+              "-Xmx1g",
+              "-cp",
+              baseCp,
+              "coursier.bootstrap.launcher.Launcher"
+            )
+          case LauncherType.Jvm =>
+            Seq[os.Shellable](
+              "java",
+              "-Xmx1g",
+              "-cp",
+              jarLauncher,
+              "coursier.bootstrap.launcher.Launcher"
+            )
+        }
 
         val extraStartupClassPathOpts =
           if (isTwoStepStartup)

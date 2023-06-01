@@ -533,20 +533,16 @@ trait Integration extends SbtModule {
   def scalaVersion          = scalaVersion0
 
   def moduleDeps = super.moduleDeps ++ Seq(
-    shared.`test-kit`(scalaVersion0)
+    shared.`test-kit`(scalaVersion0),
+    scala.`test-definitions`(scalaVersion0)
   )
-  def ivyDeps = Agg(
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.munit,
+    Deps.osLib,
     Deps.pprint
   )
 
   object test extends Tests {
-    def moduleDeps = super.moduleDeps ++ Seq(
-      scala.`test-definitions`(scalaVersion0)
-    )
-    def ivyDeps = Agg(
-      Deps.munit,
-      Deps.osLib
-    )
     def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()
