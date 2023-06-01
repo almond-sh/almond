@@ -57,8 +57,6 @@ object TestUtil {
       }
   }
 
-  final case class SessionId(sessionId: String = UUID.randomUUID().toString)
-
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
     def run(streams: ClientStreams): Unit =
       kernel.run(streams.source, streams.sink, Nil)
@@ -151,7 +149,7 @@ object TestUtil {
       stderr: String = null,
       waitForUpdateDisplay: Boolean = false,
       handler: MessageHandler = MessageHandler.discard { case _ => }
-    )(implicit sessionId: SessionId): Unit = {
+    )(implicit sessionId: Dsl.SessionId): Unit = {
 
       val expectError0   = expectError || Option(errors).nonEmpty
       val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
@@ -293,7 +291,7 @@ object TestUtil {
     code: String,
     msgId: String = UUID.randomUUID().toString,
     stopOnError: Boolean = true
-  )(implicit sessionId: SessionId) =
+  )(implicit sessionId: Dsl.SessionId) =
     Message(
       Header(
         msgId,
@@ -315,8 +313,8 @@ object TestUtil {
 
       val (input, replies) = inputs.unzip
 
-      implicit val sessionId: SessionId = SessionId()
-      val lastMsgId                     = UUID.randomUUID().toString
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      val lastMsgId                         = UUID.randomUUID().toString
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
