@@ -90,15 +90,15 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
   import KernelLauncher._
 
-  def generateLauncher(extraOptions: Seq[String] = Nil): (os.Path, os.Path) = {
+  def generateLauncher(extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
     val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
-    val (jarDest, runnerDest, extraOpts) =
+    val (jarDest, extraOpts) =
       if (Properties.isWin)
-        (tmpDir / "launcher", tmpDir / "launcher.bat", Seq("--bat"))
+        (tmpDir / "launcher", Seq("--bat"))
       else {
         val launcher = tmpDir / "launcher.jar"
-        (launcher, launcher, Nil)
+        (launcher, Nil)
       }
     val repoArgs = Seq(
       "--no-default",
@@ -149,10 +149,10 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
            |Then try again.
            |""".stripMargin
       )
-    (jarDest, runnerDest)
+    jarDest
   }
 
-  lazy val (jarLauncher, launcher) = generateLauncher()
+  lazy val jarLauncher = generateLauncher()
 
   lazy val threads = ZeromqThreads.create("almond-tests")
 
@@ -273,9 +273,9 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
         os.write(connFile, writeToArray(connDetails))
 
-        val (jarLauncher0, launcher0) =
+        val jarLauncher0 =
           if (isTwoStepStartup || launcherOptions.isEmpty)
-            (jarLauncher, launcher)
+            jarLauncher
           else
             generateLauncher(launcherOptions)
 
