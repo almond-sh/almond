@@ -1,7 +1,7 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.0.21`
-import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
+import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.24`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
