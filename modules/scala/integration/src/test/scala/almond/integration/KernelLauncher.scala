@@ -197,13 +197,15 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
 
-      def withSession[T](options: String*)(f: Session => T): T =
+      def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T =
         withRunnerSession(options, Nil, Nil)(f)
-      def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)
-        : T =
+      def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)(
+        implicit sessionId: SessionId
+      ): T =
         withRunnerSession(options, Nil, extraClassPath)(f)
-      def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
-        : T =
+      def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(
+        f: Session => T
+      )(implicit sessionId: SessionId): T =
         withRunnerSession(options, launcherOptions, Nil)(f)
 
       def apply(options: String*): Session =
@@ -217,9 +219,9 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
         options: Seq[String],
         launcherOptions: Seq[String],
         extraClassPath: Seq[String]
-      )(f: Session => T): T = {
-        val sess    = runnerSession(options, launcherOptions, extraClassPath)
-        var running = true
+      )(f: Session => T)(implicit sessionId: SessionId): T = {
+        implicit val sess = runnerSession(options, launcherOptions, extraClassPath)
+        var running       = true
 
         val currentThread = Thread.currentThread()
 
@@ -239,7 +241,16 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
           }
 
         t.start()
-        try f(sess)
+        try {
+          val t = f(sess)
+          if (Properties.isWin)
+            // On Windows, exit the kernel manually from the inside, so that all involved processes
+            // exit cleanly. A call to Process#destroy would only destroy the first kernel process,
+            // not any of its sub-processes (which would stay around, and such processes would end up
+            // filling up memory on Windows).
+            exit()
+          t
+        }
         finally {
           running = false
           close()

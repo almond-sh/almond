@@ -72,7 +72,8 @@ final class ScalaInterpreter(
     commHandlerOpt,
     silent0,
     params.useThreadInterrupt,
-    params.initialCellCount
+    params.initialCellCount,
+    enableExitHack = params.compileOnly
   )
 
   val sessApi = new SessionApiImpl(frames0)

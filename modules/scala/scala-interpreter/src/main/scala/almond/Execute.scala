@@ -39,7 +39,8 @@ final class Execute(
   commHandlerOpt: => Option[CommHandler],
   silent: Ref[Boolean],
   useThreadInterrupt: Boolean,
-  initialCellCount: Int
+  initialCellCount: Int,
+  enableExitHack: Boolean
 ) {
 
   private val log = logCtx(getClass)
@@ -342,6 +343,11 @@ final class Execute(
     storeHistory: Boolean,
     executeHooks: Seq[JupyterApi.ExecuteHook]
   ): ExecuteResult = {
+
+    if (enableExitHack && code.endsWith("// ALMOND FORCE EXIT")) {
+      log.debug("Exit hack enabled and code ends with force-exit comment, exiting")
+      sys.exit(0)
+    }
 
     if (storeHistory) {
       storage.fullHistory() = storage.fullHistory() :+ code

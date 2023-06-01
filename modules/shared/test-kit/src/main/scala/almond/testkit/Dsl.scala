@@ -19,10 +19,13 @@ object Dsl {
     def withExtraClassPath(extraClassPath: String*)(options: String*): Session
     def withLauncherOptions(launcherOptions: String*)(options: String*): Session
 
-    def withSession[T](options: String*)(f: Session => T): T
-    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T): T
-    def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
-      : T
+    def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T
+    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)(
+      implicit sessionId: SessionId
+    ): T
+    def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)(
+      implicit sessionId: SessionId
+    ): T
 
     def differedStartUp: Boolean = false
   }
@@ -216,6 +219,32 @@ object Dsl {
 
       expect(htmlDisplayUpdates == expectedHtmlDisplayUpdates)
     }
+  }
+
+  def exit()(implicit
+    sessionId: SessionId,
+    session: Session
+  ): Unit = {
+
+    val input = Stream(
+      // the comment makes the kernel exit in compile-only mode
+      executeMessage("sys.exit(0) // ALMOND FORCE EXIT")
+    )
+
+    val streams = ClientStreams.create(input, stopWhen(ProtocolExecute.replyType.messageType))
+
+    val interrupted =
+      try {
+        session.run(streams)
+        false
+      }
+      catch {
+        case _: InterruptedException =>
+          true
+      }
+
+    if (!interrupted)
+      sys.error("Expected to be interrupted")
   }
 
   final case class SessionId(sessionId: String = UUID.randomUUID().toString)

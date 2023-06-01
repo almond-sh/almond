@@ -77,18 +77,21 @@ object TestUtil {
       apply(options: _*)
     }
 
-    def withSession[T](options: String*)(f: Dsl.Session => T): T = {
+    def withSession[T](options: String*)(f: Dsl.Session => T)(implicit
+      sessionId: Dsl.SessionId
+    ): T = {
       val sess = apply(options: _*)
       f(sess)
     }
-    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Dsl.Session => T)
-      : T = {
+    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(
+      f: Dsl.Session => T
+    )(implicit sessionId: Dsl.SessionId): T = {
       val sess = withExtraClassPath(extraClassPath: _*)(options: _*)
       f(sess)
     }
     def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(
       f: Dsl.Session => T
-    ): T = {
+    )(implicit sessionId: Dsl.SessionId): T = {
       val sess = withLauncherOptions(launcherOptions: _*)(options: _*)
       f(sess)
     }
