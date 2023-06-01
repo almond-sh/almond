@@ -8,9 +8,11 @@ import java.util.zip.ZipFile
 
 import almond.kernel.util.JupyterPath
 import almond.protocol.KernelSpec
+import org.graalvm.nativeimage.ProcessProperties
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
+import scala.util.Properties
 
 object Install {
 
@@ -101,7 +103,10 @@ object Install {
               s"Can't copy launcher, launcher argument in command ${spec.argv.mkString(" ")} cannot be found"
             )
           case Some((launcher0, pos)) =>
-            val dest   = dir.resolve("launcher.jar")
+            val launcherName =
+              if (isGraalvmNativeImage) "launcher"
+              else "launcher.jar"
+            val dest   = dir.resolve(launcherName)
             val source = Paths.get(launcher0)
             if (!Files.exists(source))
               throw new Exception(s"Launcher $launcher0 in kernel spec command not found")
@@ -118,6 +123,8 @@ object Install {
             catch {
               case _: IOException =>
                 Files.copy(Paths.get(launcher0), dest, StandardCopyOption.REPLACE_EXISTING)
+                if (!Properties.isWin && isGraalvmNativeImage)
+                  dest.toFile.setExecutable(true)
             }
             spec.copy(
               argv = spec.argv.updated(pos, spec.argv(pos).replace(launcher0, dest.toString))
@@ -155,26 +162,30 @@ object Install {
     *   arguments to filter-out
     */
   def currentAppCommand(
+    allArgs: Seq[String],
     extraStartupClassPath: Seq[String],
     filterOutArgs: Set[String] = Set.empty
   ): Option[List[String]] =
-    for {
-      mainJar <- sys.props.get("coursier.mainJar")
-      mainJar0 =
-        if (mainJar.startsWith("/"))
-          // Paths.get throws if given paths like "C:\\foo" on Windows, without
-          // this URI stuff
-          Paths.get(new URI("file://" + mainJar)).toString
-        else
-          mainJar // that case shouldn't happen
-      mainArgs = Iterator.from(0)
-        .map(i => s"coursier.main.arg-$i")
-        .map(sys.props.get)
-        .takeWhile(_.nonEmpty)
-        .collect { case Some(arg) if !filterOutArgs(arg) => arg }
-        .toList
-      cp = (extraStartupClassPath :+ mainJar0).mkString(File.pathSeparator)
-    } yield "java" :: "-cp" :: cp :: mainClass(mainJar0) :: mainArgs
+    if (isGraalvmNativeImage)
+      Some(ProcessProperties.getExecutableName :: allArgs.filterNot(filterOutArgs).toList)
+    else
+      for {
+        mainJar <- sys.props.get("coursier.mainJar")
+        mainJar0 =
+          if (mainJar.startsWith("/"))
+            // Paths.get throws if given paths like "C:\\foo" on Windows, without
+            // this URI stuff
+            Paths.get(new URI("file://" + mainJar)).toString
+          else
+            mainJar // that case shouldn't happen
+        mainArgs = Iterator.from(0)
+          .map(i => s"coursier.main.arg-$i")
+          .map(sys.props.get)
+          .takeWhile(_.nonEmpty)
+          .collect { case Some(arg) if !filterOutArgs(arg) => arg }
+          .toList
+        cp = (extraStartupClassPath :+ mainJar0).mkString(File.pathSeparator)
+      } yield "java" :: "-cp" :: cp :: mainClass(mainJar0) :: mainArgs
 
   /** Gets the command that launched the current application if possible.
     *
@@ -220,6 +231,9 @@ object Install {
           }
 
         helper(t.zipWithIndex)
+      case h :: t if isGraalvmNativeImage =>
+        if (Files.exists(Paths.get(h))) Some((h, 0))
+        else None
       case _ =>
         None
     }
@@ -232,6 +246,7 @@ object Install {
     defaultDisplayName: String,
     language: String,
     options: Options,
+    allArgs: Seq[String],
     extraStartupClassPath: Seq[String] = Nil,
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = defaultConnectionFileArgs,
@@ -246,8 +261,12 @@ object Install {
       connectionFileArgs,
       interruptMode,
       Map.empty,
+      allArgs,
       extraStartupClassPath
     )
+
+  private def isGraalvmNativeImage: Boolean =
+    sys.props.contains("org.graalvm.nativeimage.imagecode")
 
   def install(
     defaultId: String,
@@ -258,6 +277,7 @@ object Install {
     connectionFileArgs: Seq[String],
     interruptMode: Option[String],
     env: Map[String, String],
+    allArgs: Seq[String],
     extraStartupClassPath: Seq[String]
   ): Path = {
 
@@ -282,6 +302,7 @@ object Install {
         case None =>
           if (options.arg.isEmpty)
             Install.currentAppCommand(
+              allArgs,
               extraStartupClassPath,
               Set("--install", "--force", "--global").flatMap(s =>
                 Seq(s, s"$s=true")
@@ -324,6 +345,7 @@ object Install {
     defaultDisplayName: String,
     language: String,
     options: Options,
+    allArgs: Seq[String],
     extraStartupClassPath: Seq[String],
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = defaultConnectionFileArgs,
@@ -338,6 +360,7 @@ object Install {
       connectionFileArgs,
       interruptMode,
       Map.empty,
+      allArgs,
       extraStartupClassPath
     )
 
@@ -350,6 +373,7 @@ object Install {
     connectionFileArgs: Seq[String],
     interruptMode: Option[String],
     env: Map[String, String],
+    allArgs: Seq[String],
     extraStartupClassPath: Seq[String]
   ): Either[InstallException, Path] =
     try {
@@ -362,6 +386,7 @@ object Install {
         connectionFileArgs,
         interruptMode,
         env,
+        allArgs,
         extraStartupClassPath
       )
       Right(dir)
