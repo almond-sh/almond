@@ -8,7 +8,7 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
   val kernelLauncher = new KernelLauncher(isTwoStepStartup = true, "2.13.10")
 
   test("Directives and code in first cell 3") {
-    kernelLauncher.withKernel { implicit runner =>
+    kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
@@ -24,7 +24,7 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
   }
 
   test("Directives and code in first cell 213") {
-    kernelLauncher.withKernel { implicit runner =>
+    kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
@@ -38,7 +38,7 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
   }
 
   test("Directives and code in first cell 212") {
-    kernelLauncher.withKernel { implicit runner =>
+    kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
@@ -52,7 +52,7 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
   }
 
   test("Directives and code in first cell short 213") {
-    kernelLauncher.withKernel { implicit runner =>
+    kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
@@ -66,7 +66,7 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
   }
 
   test("Directives and code in first cell short 212") {
-    kernelLauncher.withKernel { implicit runner =>
+    kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
@@ -80,7 +80,7 @@ class KernelTestsTwoStepStartup extends munit.FunSuite {
   }
 
   test("Several directives and comments") {
-    kernelLauncher.withKernel { implicit runner =>
+    kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
