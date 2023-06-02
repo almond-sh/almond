@@ -2,6 +2,7 @@ package almond.launcher
 
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
+import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.RawJson
@@ -208,6 +209,36 @@ object Launcher extends CaseApp[LauncherOptions] {
             LoggerContext.printStream(level, new PrintStream(new FileOutputStream(new File(f))))
         }
     }
+
+    val log = logCtx(getClass)
+
+    if (options.install)
+      Install.installOrError(
+        defaultId = "scala",
+        defaultDisplayName = "Scala",
+        language = "scala",
+        options = options.installOptions,
+        defaultLogoOpt = Option(
+          Thread.currentThread()
+            .getContextClassLoader
+            .getResource("almond/scala-logo-64x64.png")
+        ),
+        connectionFileArgs = Install.defaultConnectionFileArgs,
+        interruptMode =
+          if (options.installOptions.interruptViaMessage)
+            Some("message")
+          else
+            None,
+        env = options.installOptions.envMap()
+      ) match {
+        case Left(e) =>
+          log.debug("Cannot install kernel", e)
+          Console.err.println(s"Error: ${e.getMessage}")
+          sys.exit(1)
+        case Right(dir) =>
+          println(s"Installed scala kernel under $dir")
+          sys.exit(0)
+      }
 
     val connectionFile = options.connectionFile.getOrElse {
       Console.err.println(
