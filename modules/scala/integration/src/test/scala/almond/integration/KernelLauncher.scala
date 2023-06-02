@@ -318,9 +318,11 @@ class KernelLauncher(
         }
 
         val extraStartupClassPathOpts =
+          extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem))
+
+        val twoStepStartupOpts =
           if (isTwoStepStartup)
-            extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem)) ++
-              launcherOptions ++
+            launcherOptions ++
               Seq("--scala", defaultScalaVersion)
           else
             Nil
@@ -333,6 +335,7 @@ class KernelLauncher(
           "--connection-file",
           connFile,
           extraStartupClassPathOpts,
+          twoStepStartupOpts,
           options
         )
         System.err.println(s"Running ${proc0.command.flatMap(_.value).mkString(" ")}")

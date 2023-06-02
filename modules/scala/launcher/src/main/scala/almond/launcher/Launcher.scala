@@ -229,7 +229,8 @@ object Launcher extends CaseApp[LauncherOptions] {
             Some("message")
           else
             None,
-        env = options.installOptions.envMap()
+        env = options.installOptions.envMap(),
+        extraStartupClassPath = Nil
       ) match {
         case Left(e) =>
           log.debug("Cannot install kernel", e)

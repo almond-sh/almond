@@ -1,8 +1,10 @@
 package almond.kernel.install
 
-import java.io.{ByteArrayOutputStream, InputStream}
+import java.io.{ByteArrayOutputStream, File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{Files, Path, Paths}
+import java.util.jar.{Attributes, Manifest}
+import java.util.zip.ZipFile
 
 import almond.kernel.util.JupyterPath
 import almond.protocol.KernelSpec
@@ -98,10 +100,9 @@ object Install {
             throw new Exception(
               s"Can't copy launcher, launcher argument in command ${spec.argv.mkString(" ")} cannot be found"
             )
-          case Some(pos) =>
-            val launcher0 = spec.argv(pos)
-            val dest      = dir.resolve("launcher.jar")
-            val source    = Paths.get(launcher0)
+          case Some((launcher0, pos)) =>
+            val dest   = dir.resolve("launcher.jar")
+            val source = Paths.get(launcher0)
             if (!Files.exists(source))
               throw new Exception(s"Launcher $launcher0 in kernel spec command not found")
             if (!Files.isRegularFile(source))
@@ -111,7 +112,7 @@ object Install {
             val launcherContent = Files.readAllBytes(Paths.get(launcher0))
             Files.write(dest, launcherContent)
             spec.copy(
-              argv = spec.argv.updated(pos, dest.toString)
+              argv = spec.argv.updated(pos, spec.argv(pos).replace(launcher0, dest.toString))
             )
         }
       else
@@ -126,6 +127,18 @@ object Install {
     dir
   }
 
+  private def mainClass(jar: String): String = {
+    val zf  = new ZipFile(new File(jar))
+    val ent = zf.getEntry("META-INF/MANIFEST.MF")
+    if (ent == null)
+      sys.error(s"No manifest found in $jar")
+    val mf   = new Manifest(zf.getInputStream(ent))
+    val attr = mf.getMainAttributes()
+    Option(attr.getValue(Attributes.Name.MAIN_CLASS)).getOrElse {
+      sys.error(s"No main class found in $jar")
+    }
+  }
+
   /** Gets the command that launched the current application if possible.
     *
     * Works if the coursier launcher is involved.
@@ -133,7 +146,10 @@ object Install {
     * @param filterOutArgs:
     *   arguments to filter-out
     */
-  def currentAppCommand(filterOutArgs: Set[String] = Set.empty): Option[List[String]] =
+  def currentAppCommand(
+    extraStartupClassPath: Seq[String],
+    filterOutArgs: Set[String] = Set.empty
+  ): Option[List[String]] =
     for {
       mainJar <- sys.props.get("coursier.mainJar")
       mainJar0 =
@@ -149,7 +165,8 @@ object Install {
         .takeWhile(_.nonEmpty)
         .collect { case Some(arg) if !filterOutArgs(arg) => arg }
         .toList
-    } yield "java" :: "-jar" :: mainJar0 :: mainArgs
+      cp = (extraStartupClassPath :+ mainJar0).mkString(File.pathSeparator)
+    } yield "java" :: "-cp" :: cp :: mainClass(mainJar0) :: mainArgs
 
   /** Gets the command that launched the current application if possible.
     *
@@ -172,19 +189,22 @@ object Install {
         .toList
     } yield "java" :: "-jar" :: mainJar :: mainArgs
 
-  def launcherPos(command: List[String]): Option[Int] =
+  def launcherPos(command: List[String]): Option[(String, Int)] =
     command match {
       case h :: t if h == "java" || h.endsWith("/java") =>
         @tailrec
-        def helper(l: List[(String, Int)]): Option[Int] =
+        def helper(l: List[(String, Int)]): Option[(String, Int)] =
           l match {
             case Nil =>
               None
             case (h, _) :: t =>
               if (h == "-cp")
-                None
+                t.headOption.map { case (arg, n) =>
+                  // assuming the launcher is last here…
+                  (arg.split(File.pathSeparator).last, n + 1)
+                }
               else if (h == "-jar")
-                t.headOption.map(_._2)
+                t.headOption.map { case (arg, n) => (arg, n + 1) }
               else if (h.startsWith("-"))
                 helper(t)
               else
@@ -192,7 +212,6 @@ object Install {
           }
 
         helper(t.zipWithIndex)
-          .map(_ + 1)
       case _ =>
         None
     }
@@ -205,6 +224,7 @@ object Install {
     defaultDisplayName: String,
     language: String,
     options: Options,
+    extraStartupClassPath: Seq[String] = Nil,
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = defaultConnectionFileArgs,
     interruptMode: Option[String] = None
@@ -217,7 +237,8 @@ object Install {
       defaultLogoOpt,
       connectionFileArgs,
       interruptMode,
-      Map.empty
+      Map.empty,
+      extraStartupClassPath
     )
 
   def install(
@@ -228,7 +249,8 @@ object Install {
     defaultLogoOpt: Option[URL],
     connectionFileArgs: Seq[String],
     interruptMode: Option[String],
-    env: Map[String, String]
+    env: Map[String, String],
+    extraStartupClassPath: Seq[String]
   ): Path = {
 
     val path =
@@ -251,9 +273,12 @@ object Install {
             .toSeq
         case None =>
           if (options.arg.isEmpty)
-            Install.currentAppCommand(Set("--install", "--force", "--global").flatMap(s =>
-              Seq(s, s"$s=true")
-            )).getOrElse {
+            Install.currentAppCommand(
+              extraStartupClassPath,
+              Set("--install", "--force", "--global").flatMap(s =>
+                Seq(s, s"$s=true")
+              )
+            ).getOrElse {
               throw new InstallException.CannotGetKernelCommand
             }
           else
@@ -291,6 +316,7 @@ object Install {
     defaultDisplayName: String,
     language: String,
     options: Options,
+    extraStartupClassPath: Seq[String],
     defaultLogoOpt: Option[URL] = None,
     connectionFileArgs: Seq[String] = defaultConnectionFileArgs,
     interruptMode: Option[String] = None
@@ -303,7 +329,8 @@ object Install {
       defaultLogoOpt,
       connectionFileArgs,
       interruptMode,
-      Map.empty
+      Map.empty,
+      extraStartupClassPath
     )
 
   def installOrError(
@@ -314,7 +341,8 @@ object Install {
     defaultLogoOpt: Option[URL],
     connectionFileArgs: Seq[String],
     interruptMode: Option[String],
-    env: Map[String, String]
+    env: Map[String, String],
+    extraStartupClassPath: Seq[String]
   ): Either[InstallException, Path] =
     try {
       val dir = install(
@@ -325,7 +353,8 @@ object Install {
         defaultLogoOpt,
         connectionFileArgs,
         interruptMode,
-        env
+        env,
+        extraStartupClassPath
       )
       Right(dir)
     }

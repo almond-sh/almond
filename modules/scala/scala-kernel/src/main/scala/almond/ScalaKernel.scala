@@ -59,7 +59,8 @@ object ScalaKernel extends CaseApp[Options] {
             Some("message")
           else
             None,
-        env = options.installOptions.envMap()
+        env = options.installOptions.envMap(),
+        extraStartupClassPath = options.extraStartupClassPath
       ) match {
         case Left(e) =>
           log.debug("Cannot install kernel", e)
