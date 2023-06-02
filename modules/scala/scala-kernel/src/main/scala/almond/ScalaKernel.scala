@@ -15,10 +15,17 @@ import coursier.cputil.ClassPathUtil
 
 import scala.language.reflectiveCalls
 import scala.concurrent.ExecutionContext
+import scala.util.Properties
 
 object ScalaKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
+
+    coursier.Resolve.proxySetup()
+
+    if (Properties.isWin && System.console() != null && coursier.paths.Util.useJni())
+      // Enable ANSI output in Windows terminal
+      coursier.jniutils.WindowsAnsiTerminal.enableAnsiOutput()
 
     val logCtx = Level.fromString(options.log) match {
       case Left(err) =>

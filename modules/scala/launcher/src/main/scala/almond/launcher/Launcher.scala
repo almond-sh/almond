@@ -182,6 +182,20 @@ object Launcher extends CaseApp[LauncherOptions] {
 
   def run(options: LauncherOptions, remainingArgs: RemainingArgs): Unit = {
 
+    // FIXME We'd need coursier-interface to allow us to do these:
+
+    // if (Properties.isWin && isGraalvmNativeImage)
+    //   // have to be initialized before running (new Argv0).get because Argv0SubstWindows uses csjniutils library
+    //   // The DLL loaded by LoadWindowsLibrary is statically linke/d in
+    //   // the Scala CLI native image, no need to manually load it.
+    //   coursier.jniutils.LoadWindowsLibrary.assumeInitialized()
+
+    // coursier.Resolve.proxySetup()
+
+    // if (Properties.isWin && System.console() != null && coursier.paths.Util.useJni())
+    //   // Enable ANSI output in Windows terminal
+    //   coursier.jniutils.WindowsAnsiTerminal.enableAnsiOutput()
+
     val logCtx = Level.fromString(options.log.getOrElse("warn")) match {
       case Left(err) =>
         Console.err.println(err)
