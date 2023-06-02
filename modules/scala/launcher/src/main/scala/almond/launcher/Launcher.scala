@@ -2,6 +2,7 @@ package almond.launcher
 
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
+import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.RawJson
@@ -182,6 +183,20 @@ object Launcher extends CaseApp[LauncherOptions] {
 
   def run(options: LauncherOptions, remainingArgs: RemainingArgs): Unit = {
 
+    // FIXME We'd need coursier-interface to allow us to do these:
+
+    // if (Properties.isWin && isGraalvmNativeImage)
+    //   // have to be initialized before running (new Argv0).get because Argv0SubstWindows uses csjniutils library
+    //   // The DLL loaded by LoadWindowsLibrary is statically linke/d in
+    //   // the Scala CLI native image, no need to manually load it.
+    //   coursier.jniutils.LoadWindowsLibrary.assumeInitialized()
+
+    // coursier.Resolve.proxySetup()
+
+    // if (Properties.isWin && System.console() != null && coursier.paths.Util.useJni())
+    //   // Enable ANSI output in Windows terminal
+    //   coursier.jniutils.WindowsAnsiTerminal.enableAnsiOutput()
+
     val logCtx = Level.fromString(options.log.getOrElse("warn")) match {
       case Left(err) =>
         Console.err.println(err)
@@ -194,6 +209,37 @@ object Launcher extends CaseApp[LauncherOptions] {
             LoggerContext.printStream(level, new PrintStream(new FileOutputStream(new File(f))))
         }
     }
+
+    val log = logCtx(getClass)
+
+    if (options.install)
+      Install.installOrError(
+        defaultId = "scala",
+        defaultDisplayName = "Scala",
+        language = "scala",
+        options = options.installOptions,
+        defaultLogoOpt = Option(
+          Thread.currentThread()
+            .getContextClassLoader
+            .getResource("almond/scala-logo-64x64.png")
+        ),
+        connectionFileArgs = Install.defaultConnectionFileArgs,
+        interruptMode =
+          if (options.installOptions.interruptViaMessage)
+            Some("message")
+          else
+            None,
+        env = options.installOptions.envMap(),
+        extraStartupClassPath = Nil
+      ) match {
+        case Left(e) =>
+          log.debug("Cannot install kernel", e)
+          Console.err.println(s"Error: ${e.getMessage}")
+          sys.exit(1)
+        case Right(dir) =>
+          println(s"Installed scala kernel under $dir")
+          sys.exit(0)
+      }
 
     val connectionFile = options.connectionFile.getOrElse {
       Console.err.println(

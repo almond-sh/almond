@@ -2,12 +2,9 @@ package almond.integration
 
 import almond.testkit.Dsl._
 
-abstract class KernelTestsDefinitions(
-  scalaVersion: String,
-  isTwoStepStartup: Boolean
-) extends munit.FunSuite {
+abstract class KernelTestsDefinitions extends munit.FunSuite {
 
-  val kernelLauncher = new KernelLauncher(isTwoStepStartup = isTwoStepStartup, scalaVersion)
+  def kernelLauncher: KernelLauncher
 
   test("jvm-repr") {
     kernelLauncher.withKernel { implicit runner =>
@@ -26,49 +23,51 @@ abstract class KernelTestsDefinitions(
   test("auto-update Future results upon completion") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.autoUpdateFutureUponCompletion(scalaVersion)
+      almond.integration.Tests.autoUpdateFutureUponCompletion(kernelLauncher.defaultScalaVersion)
     }
   }
 
   test("auto-update Future results in background upon completion") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.autoUpdateFutureInBackgroundUponCompletion(scalaVersion)
+      almond.integration.Tests.autoUpdateFutureInBackgroundUponCompletion(
+        kernelLauncher.defaultScalaVersion
+      )
     }
   }
 
   test("toree AddJar file") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = false)
+      almond.integration.Tests.toreeAddJarFile(kernelLauncher.defaultScalaVersion, sameCell = false)
     }
   }
 
   test("toree AddJar file same cell") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarFile(scalaVersion, sameCell = true)
+      almond.integration.Tests.toreeAddJarFile(kernelLauncher.defaultScalaVersion, sameCell = true)
     }
   }
 
   test("toree AddJar URL") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = false)
+      almond.integration.Tests.toreeAddJarURL(kernelLauncher.defaultScalaVersion, sameCell = false)
     }
   }
 
   test("toree AddJar URL same cell") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarURL(scalaVersion, sameCell = true)
+      almond.integration.Tests.toreeAddJarURL(kernelLauncher.defaultScalaVersion, sameCell = true)
     }
   }
 
   test("toree AddJar custom protocol") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarCustomProtocol(scalaVersion)
+      almond.integration.Tests.toreeAddJarCustomProtocol(kernelLauncher.defaultScalaVersion)
     }
   }
 
@@ -86,19 +85,19 @@ abstract class KernelTestsDefinitions(
     }
   }
 
-  if (scalaVersion.startsWith("2."))
+  if (kernelLauncher.defaultScalaVersion.startsWith("2."))
     test("extra class path") {
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
-        almond.integration.Tests.extraCp(scalaVersion)
+        almond.integration.Tests.extraCp(kernelLauncher.defaultScalaVersion)
       }
     }
 
-  if (scalaVersion.startsWith("2."))
+  if (kernelLauncher.defaultScalaVersion.startsWith("2."))
     test("inspections") {
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
-        almond.integration.Tests.inspections(scalaVersion)
+        almond.integration.Tests.inspections(kernelLauncher.defaultScalaVersion)
       }
     }
 

@@ -5,7 +5,7 @@ import almond.testkit.Dsl._
 
 class KernelTestsTwoStepStartup extends munit.FunSuite {
 
-  val kernelLauncher = new KernelLauncher(isTwoStepStartup = true, "2.13.10")
+  lazy val kernelLauncher = new KernelLauncher(KernelLauncher.LauncherType.Jvm, "2.13.10")
 
   test("Directives and code in first cell 3") {
     kernelLauncher.withKernel { runner =>

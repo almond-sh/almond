@@ -1,7 +1,7 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.0.21`
-import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
+import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.24`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
@@ -530,24 +530,19 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
 
 trait Integration extends SbtModule {
   private def scalaVersion0 = ScalaVersions.scala213
-  def crossScalaVersion     = scalaVersion0
   def scalaVersion          = scalaVersion0
 
   def moduleDeps = super.moduleDeps ++ Seq(
-    shared.`test-kit`(scalaVersion0)
+    shared.`test-kit`(scalaVersion0),
+    scala.`test-definitions`(scalaVersion0)
   )
-  def ivyDeps = Agg(
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.munit,
+    Deps.osLib,
     Deps.pprint
   )
 
   object test extends Tests {
-    def moduleDeps = super.moduleDeps ++ Seq(
-      scala.`test-definitions`(scalaVersion0)
-    )
-    def ivyDeps = Agg(
-      Deps.munit,
-      Deps.osLib
-    )
     def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()

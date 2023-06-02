@@ -2,11 +2,12 @@ package almond.integration
 
 import almond.channels.zeromq.ZeromqThreads
 import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
+import almond.protocol.{Connection => ConnectionSpec, KernelSpec}
 import almond.testkit.Dsl._
 import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
+import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import fs2.concurrent.SignallingRef
 
 import java.io.{File, IOException}
@@ -84,21 +85,38 @@ object KernelLauncher {
       os.Path(tmpDir.toIO.getCanonicalFile)
     }
   }
+
+  sealed abstract class LauncherType extends Product with Serializable {
+    def isTwoStepStartup: Boolean
+  }
+  object LauncherType {
+    case object Legacy extends LauncherType {
+      def isTwoStepStartup = false
+    }
+    case object Jvm extends LauncherType {
+      def isTwoStepStartup = true
+    }
+  }
 }
 
-class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
+class KernelLauncher(
+  val launcherType: KernelLauncher.LauncherType,
+  val defaultScalaVersion: String
+) {
 
   import KernelLauncher._
 
-  def generateLauncher(extraOptions: Seq[String] = Nil): (os.Path, os.Path) = {
+  def isTwoStepStartup = launcherType.isTwoStepStartup
+
+  private def generateLauncher(extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
     val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
-    val (jarDest, runnerDest, extraOpts) =
+    val (jarDest, extraOpts) =
       if (Properties.isWin)
-        (tmpDir / "launcher", tmpDir / "launcher.bat", Seq("--bat"))
+        (tmpDir / "launcher", Seq("--bat"))
       else {
         val launcher = tmpDir / "launcher.jar"
-        (launcher, launcher, Nil)
+        (launcher, Nil)
       }
     val repoArgs = Seq(
       "--no-default",
@@ -149,12 +167,12 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
            |Then try again.
            |""".stripMargin
       )
-    (jarDest, runnerDest)
+    jarDest
   }
 
-  lazy val (jarLauncher, launcher) = generateLauncher()
+  private lazy val jarLauncher = generateLauncher()
 
-  lazy val threads = ZeromqThreads.create("almond-tests")
+  private lazy val threads = ZeromqThreads.create("almond-tests")
 
   def session(conn: Connection): Session with AutoCloseable =
     new Session with AutoCloseable {
@@ -196,6 +214,82 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
+      var jupyterDirs         = List.empty[os.Path]
+
+      private def setupJupyterDir[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String]
+      ): (os.Path => os.Shellable, Map[String, String]) = {
+
+        val kernelId = "almond-it"
+
+        val baseCmd: os.Shellable = launcherType match {
+          case LauncherType.Legacy =>
+            val jarLauncher0 =
+              if (launcherOptions.isEmpty)
+                jarLauncher
+              else
+                generateLauncher(launcherOptions)
+            val baseCp = (extraClassPath :+ jarLauncher0.toString)
+              .filter(_.nonEmpty)
+              .mkString(File.pathSeparator)
+            Seq[os.Shellable](
+              "java",
+              "-Xmx1g",
+              "-cp",
+              baseCp,
+              "coursier.bootstrap.launcher.Launcher"
+            )
+          case LauncherType.Jvm =>
+            Seq[os.Shellable](
+              "java",
+              "-Xmx1g",
+              "-cp",
+              jarLauncher,
+              "coursier.bootstrap.launcher.Launcher"
+            )
+        }
+
+        val extraStartupClassPathOpts =
+          extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem))
+
+        val twoStepStartupOpts =
+          if (isTwoStepStartup)
+            launcherOptions ++
+              Seq("--scala", defaultScalaVersion)
+          else
+            Nil
+
+        val dir = TmpDir.tmpDir()
+        jupyterDirs = dir :: jupyterDirs
+        val proc0 = os.proc(
+          baseCmd,
+          "--log",
+          "debug",
+          "--color=false",
+          "--install",
+          "--jupyter-path",
+          dir,
+          "--id",
+          kernelId,
+          extraStartupClassPathOpts,
+          twoStepStartupOpts,
+          options
+        )
+        proc0.call(stdin = os.Inherit, stdout = os.Inherit)
+
+        val specFile = dir / kernelId / "kernel.json"
+        val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
+
+        val f: os.Path => os.Shellable =
+          connFile =>
+            spec.argv.map {
+              case "{connection_file}" => connFile: os.Shellable
+              case arg                 => arg: os.Shellable
+            }
+        (f, spec.env)
+      }
 
       def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T =
         withRunnerSession(options, Nil, Nil)(f)
@@ -269,51 +363,16 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
         val connFile = dir / "connection.json"
 
         val params      = ConnectionParameters.randomLocal()
-        val connDetails = almond.protocol.Connection.fromParams(params)
+        val connDetails = ConnectionSpec.fromParams(params)
 
         os.write(connFile, writeToArray(connDetails))
 
-        val (jarLauncher0, launcher0) =
-          if (isTwoStepStartup || launcherOptions.isEmpty)
-            (jarLauncher, launcher)
-          else
-            generateLauncher(launcherOptions)
+        val (command, specExtraEnv) = {
+          val (f, env0) = setupJupyterDir(options, launcherOptions, extraClassPath)
+          (f(connFile), env0)
+        }
 
-        val baseCp =
-          if (isTwoStepStartup)
-            jarLauncher0.toString
-          else
-            (extraClassPath :+ jarLauncher0.toString)
-              .filter(_.nonEmpty)
-              .mkString(File.pathSeparator)
-        val baseCmd: os.Shellable =
-          Seq[os.Shellable](
-            "java",
-            "-Xmx1g",
-            "-cp",
-            baseCp,
-            "coursier.bootstrap.launcher.Launcher"
-          )
-
-        val extraStartupClassPathOpts =
-          if (isTwoStepStartup)
-            extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem)) ++
-              launcherOptions ++
-              Seq("--scala", defaultScalaVersion)
-          else
-            Nil
-
-        val proc0 = os.proc(
-          baseCmd,
-          "--log",
-          "debug",
-          "--color=false",
-          "--connection-file",
-          connFile,
-          extraStartupClassPathOpts,
-          options
-        )
-        System.err.println(s"Running ${proc0.command.flatMap(_.value).mkString(" ")}")
+        System.err.println(s"Running ${command.value.mkString(" ")}")
         val extraEnv =
           if (isTwoStepStartup) {
             val baseRepos = sys.env.getOrElse(
@@ -327,9 +386,9 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
           }
           else
             Map.empty[String, String]
-        proc = proc0.spawn(
+        proc = os.proc(command).spawn(
           cwd = dir,
-          env = extraEnv,
+          env = extraEnv ++ specExtraEnv,
           stdin = os.Inherit,
           stdout = os.Inherit
         )
@@ -351,6 +410,8 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
       def close(): Unit = {
         sessions.foreach(_.close())
         sessions = Nil
+        jupyterDirs.foreach(os.remove.all(_))
+        jupyterDirs = Nil
         if (proc != null) {
           if (proc.isAlive()) {
             proc.close()

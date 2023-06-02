@@ -1,11 +1,15 @@
 package almond.launcher
 
+import almond.kernel.install.{Options => InstallOptions}
 import caseapp._
 
 import scala.collection.mutable
 
 // format: off
 final case class LauncherOptions(
+  install: Boolean = false,
+  @Recurse
+    installOptions: InstallOptions = InstallOptions(),
   log: Option[String] = None,
   connectionFile: Option[String] = None,
   variableInspector: Option[Boolean] = None,
