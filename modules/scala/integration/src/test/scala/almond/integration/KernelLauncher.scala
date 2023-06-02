@@ -90,7 +90,7 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
 
   import KernelLauncher._
 
-  def generateLauncher(extraOptions: Seq[String] = Nil): os.Path = {
+  private def generateLauncher(extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
     val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
     val (jarDest, extraOpts) =
@@ -152,9 +152,9 @@ class KernelLauncher(isTwoStepStartup: Boolean, defaultScalaVersion: String) {
     jarDest
   }
 
-  lazy val jarLauncher = generateLauncher()
+  private lazy val jarLauncher = generateLauncher()
 
-  lazy val threads = ZeromqThreads.create("almond-tests")
+  private lazy val threads = ZeromqThreads.create("almond-tests")
 
   def session(conn: Connection): Session with AutoCloseable =
     new Session with AutoCloseable {
