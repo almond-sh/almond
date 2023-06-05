@@ -174,7 +174,12 @@ object Launcher extends CaseApp[LauncherOptions] {
       }
     Runtime.getRuntime.addShutdownHook(hook)
     p.waitFor()
-    Runtime.getRuntime.removeShutdownHook(hook)
+    try Runtime.getRuntime.removeShutdownHook(hook)
+    catch {
+      case e: IllegalStateException =>
+        System.err.println("Ignoring error while trying to remove shutdown hook")
+        e.printStackTrace(System.err)
+    }
     val exitCode = p.exitCode()
     System.err.println(s"Sub-kernel exited with return code $exitCode")
     if (exitCode != 0)
