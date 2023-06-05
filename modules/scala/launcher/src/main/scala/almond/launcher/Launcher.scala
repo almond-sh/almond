@@ -163,7 +163,7 @@ object Launcher extends CaseApp[LauncherOptions] {
         override def run(): Unit =
           if (p.isAlive()) {
             p.close()
-            val timeout = 100.millis
+            val timeout = 500.millis
             if (!p.waitFor(timeout.toMillis)) {
               System.err.println(
                 s"Underlying kernel still running after $timeout, destroying it forcibly"
