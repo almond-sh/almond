@@ -18,7 +18,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.util.control.NonFatal
 import scala.util.Properties
 
@@ -397,7 +397,8 @@ class KernelLauncher(
         val conn = params.channels(
           bind = false,
           threads,
-          TestLogging.logCtx,
+          lingerPeriod = Some(Duration.Inf),
+          logCtx = TestLogging.logCtx,
           identityOpt = Some(UUID.randomUUID().toString)
         ).unsafeRunSync()(IORuntime.global)
 

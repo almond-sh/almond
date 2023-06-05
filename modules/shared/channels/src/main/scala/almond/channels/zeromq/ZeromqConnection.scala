@@ -18,6 +18,7 @@ final class ZeromqConnection(
   bind: Boolean,
   identityOpt: Option[String],
   threads: ZeromqThreads,
+  lingerPeriod: Option[Duration],
   logCtx: LoggerContext
 ) extends Connection {
 
@@ -48,6 +49,7 @@ final class ZeromqConnection(
     threads.context,
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
+    lingerPeriod,
     logCtx
   )
 
@@ -61,6 +63,7 @@ final class ZeromqConnection(
     threads.context,
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
+    lingerPeriod,
     logCtx
   )
 
@@ -74,6 +77,7 @@ final class ZeromqConnection(
     threads.context,
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
+    lingerPeriod,
     logCtx
   )
 
@@ -87,6 +91,7 @@ final class ZeromqConnection(
     threads.context,
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
+    lingerPeriod,
     logCtx
   )
 
@@ -236,6 +241,7 @@ object ZeromqConnection {
     bind: Boolean,
     identityOpt: Option[String],
     threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
     logCtx: LoggerContext
   ): IO[ZeromqConnection] =
     IO(
@@ -244,6 +250,7 @@ object ZeromqConnection {
         bind,
         identityOpt,
         threads,
+        lingerPeriod,
         logCtx
       )
     ).evalOn(threads.selectorOpenCloseEc)

@@ -23,6 +23,7 @@ import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
 
 final case class Kernel(
   interpreter: IOInterpreter,
@@ -203,7 +204,8 @@ final case class Kernel(
       c <- connection.channels(
         bind = true,
         zeromqThreads,
-        logCtx,
+        lingerPeriod = Some(Duration.Inf),
+        logCtx = logCtx,
         identityOpt = Some(kernelId)
       )
     } yield {

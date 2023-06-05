@@ -7,6 +7,8 @@ import almond.logger.LoggerContext
 import almond.util.Secret
 import cats.effect.IO
 
+import scala.concurrent.duration.Duration
+
 final case class ConnectionParameters(
   ip: String,
   transport: String,
@@ -38,10 +40,11 @@ final case class ConnectionParameters(
   def channels(
     bind: Boolean,
     threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
     logCtx: LoggerContext,
     identityOpt: Option[String] = None
   ): IO[ZeromqConnection] =
-    ZeromqConnection(this, bind, identityOpt, threads, logCtx)
+    ZeromqConnection(this, bind, identityOpt, threads, lingerPeriod, logCtx)
 
 }
 
