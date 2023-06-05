@@ -15,7 +15,10 @@ trait LoggerCompanionMethods {
   def printStream(level: Level, out: PrintStream): Logger =
     printStream(level, out, colored = true)
 
+  def stderr(level: Level, colored: Boolean): Logger =
+    printStream(level, System.err, colored)
+
   def stderr(level: Level): Logger =
-    printStream(level, System.err)
+    stderr(level, colored = true)
 
 }
