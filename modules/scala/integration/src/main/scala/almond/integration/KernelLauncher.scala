@@ -451,12 +451,6 @@ class KernelLauncher(
           }
           else
             Map.empty[String, String]
-        proc = os.proc(command).spawn(
-          cwd = dir,
-          env = extraEnv ++ specExtraEnv,
-          stdin = os.Inherit,
-          stdout = os.Inherit
-        )
 
         val ctx =
           if (perTestZeroMqContext) ZMQ.context(4)
@@ -470,6 +464,13 @@ class KernelLauncher(
         ).unsafeRunSync()(IORuntime.global)
 
         conn.open.unsafeRunSync()(IORuntime.global)
+
+        proc = os.proc(command).spawn(
+          cwd = dir,
+          env = extraEnv ++ specExtraEnv,
+          stdin = os.Inherit,
+          stdout = os.Inherit
+        )
 
         val sess = session(conn, ctx)
         sessions = sess :: sessions
