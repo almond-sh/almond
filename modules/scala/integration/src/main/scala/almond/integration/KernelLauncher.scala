@@ -12,6 +12,7 @@ import fs2.concurrent.SignallingRef
 
 import java.io.{File, IOException}
 import java.nio.channels.ClosedSelectorException
+import java.nio.file.FileSystemException
 import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
@@ -410,7 +411,13 @@ class KernelLauncher(
       def close(): Unit = {
         sessions.foreach(_.close())
         sessions = Nil
-        jupyterDirs.foreach(os.remove.all(_))
+        jupyterDirs.foreach { dir =>
+          try os.remove.all(dir)
+          catch {
+            case e: FileSystemException if Properties.isWin =>
+              System.err.println(s"Ignoring $e while trying to remove $dir")
+          }
+        }
         jupyterDirs = Nil
         if (proc != null) {
           if (proc.isAlive()) {

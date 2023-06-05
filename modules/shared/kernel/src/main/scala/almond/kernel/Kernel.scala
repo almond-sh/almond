@@ -87,7 +87,7 @@ final case class Kernel(
                 Status.messageType.messageType,
                 Some(Protocol.versionStr)
               ),
-              Status.starting,
+              status,
               idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)
             ).on(Channel.Publish)
           )

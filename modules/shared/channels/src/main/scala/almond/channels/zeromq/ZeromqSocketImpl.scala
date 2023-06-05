@@ -65,26 +65,50 @@ final class ZeromqSocketImpl(
 
   val open: IO[Unit] = {
 
+    def connectOrBind = IO {
+      if (bind)
+        channel.bind(uri)
+      else
+        channel.connect(uri)
+    }.flatMap {
+      case true =>
+        IO {
+          log.debug {
+            if (bind)
+              s"Listening on $uri"
+            else
+              s"Connected to $uri"
+          }
+          opened = true
+        }
+      case false =>
+        IO.raiseError(new Exception(s"Cannot bind / connect channel $uri"))
+    }
+
+    def maybeSubscribe = subscribeOpt.filter(_ => !bind) match {
+      case Some(b) =>
+        def asStr = Try(new String(b, "UTF-8")).getOrElse(b.toString)
+        IO {
+          channel.subscribe(b)
+        }.flatMap {
+          case true =>
+            IO {
+              log.debug(s"Subscribed to $asStr on $uri")
+            }
+          case false =>
+            IO.raiseError(
+              new Exception(s"Cannot subscribe to $asStr on channel $uri")
+            )
+        }
+      case None =>
+        IO.unit
+    }
+
     val t = IO {
       if (opened)
         IO.unit
-      else {
-        val res =
-          if (bind)
-            channel.bind(uri)
-          else
-            channel.connect(uri)
-
-        if (res) {
-          for (b <- subscribeOpt if !bind)
-            channel.subscribe(b)
-
-          opened = true
-          IO.unit
-        }
-        else
-          IO.raiseError(new Exception(s"Cannot bind / connect channel $uri"))
-      }
+      else
+        connectOrBind.flatMap(_ => maybeSubscribe)
     }
 
     delayedCondition(!closed, "Channel is closed")(

@@ -1,8 +1,8 @@
 package almond.kernel.install
 
-import java.io.{ByteArrayOutputStream, File, InputStream}
+import java.io.{ByteArrayOutputStream, File, IOException, InputStream}
 import java.net.{URI, URL}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
 
@@ -109,8 +109,16 @@ object Install {
               throw new Exception(
                 s"Launcher $launcher0 in kernel spec command is not a regular file"
               )
-            val launcherContent = Files.readAllBytes(Paths.get(launcher0))
-            Files.write(dest, launcherContent)
+            try Files.copy(
+                Paths.get(launcher0),
+                dest,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.COPY_ATTRIBUTES
+              )
+            catch {
+              case _: IOException =>
+                Files.copy(Paths.get(launcher0), dest, StandardCopyOption.REPLACE_EXISTING)
+            }
             spec.copy(
               argv = spec.argv.updated(pos, spec.argv(pos).replace(launcher0, dest.toString))
             )
