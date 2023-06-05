@@ -206,13 +206,15 @@ object Launcher extends CaseApp[LauncherOptions] {
           case None =>
             LoggerContext.stderr(
               level,
-              options.color.getOrElse(true)
+              options.color.getOrElse(true),
+              addPid = true
             )
           case Some(f) =>
             LoggerContext.printStream(
               level,
               new PrintStream(new FileOutputStream(new File(f))),
-              options.color.getOrElse(true)
+              options.color.getOrElse(true),
+              addPid = true
             )
         }
     }
