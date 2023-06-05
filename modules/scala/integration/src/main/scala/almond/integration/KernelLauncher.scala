@@ -9,6 +9,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import fs2.concurrent.SignallingRef
+import org.zeromq.ZMQ
 
 import java.io.{File, IOException}
 import java.nio.channels.ClosedSelectorException
@@ -175,7 +176,11 @@ class KernelLauncher(
 
   private lazy val threads = ZeromqThreads.create("almond-tests")
 
-  def session(conn: Connection): Session with AutoCloseable =
+  // not sure why, closing the context right after running a test on Windows
+  // creates a deadlock (on the CI, at least)
+  private def perTestZeroMqContext = !Properties.isWin
+
+  def session(conn: Connection, ctx: ZMQ.Context): Session with AutoCloseable =
     new Session with AutoCloseable {
       def run(streams: ClientStreams): Unit = {
 
@@ -204,8 +209,15 @@ class KernelLauncher(
         }
       }
 
-      def close(): Unit =
+      def close(): Unit = {
         conn.close.unsafeRunSync()(IORuntime.global)
+
+        if (perTestZeroMqContext) {
+          System.err.println("Closing test ZeroMQ context")
+          IO(ctx.close()).evalOn(threads.pollingEc).unsafeRunSync()(IORuntime.global)
+          System.err.println("Test ZeroMQ context closed")
+        }
+      }
     }
 
   def runner(): Runner with AutoCloseable =
@@ -394,9 +406,12 @@ class KernelLauncher(
           stdout = os.Inherit
         )
 
+        val ctx =
+          if (perTestZeroMqContext) ZMQ.context(4)
+          else threads.context
         val conn = params.channels(
           bind = false,
-          threads,
+          threads.copy(context = ctx),
           lingerPeriod = Some(Duration.Inf),
           logCtx = TestLogging.logCtx,
           identityOpt = Some(UUID.randomUUID().toString)
@@ -404,7 +419,7 @@ class KernelLauncher(
 
         conn.open.unsafeRunSync()(IORuntime.global)
 
-        val sess = session(conn)
+        val sess = session(conn, ctx)
         sessions = sess :: sessions
         sess
       }
