@@ -180,6 +180,37 @@ class KernelLauncher(
   // creates a deadlock (on the CI, at least)
   private def perTestZeroMqContext = !Properties.isWin
 
+  private def stackTracePrinterThread(): Thread =
+    new Thread("stack-trace-printer") {
+      import scala.collection.JavaConverters._
+      setDaemon(true)
+      override def run(): Unit =
+        try {
+          System.err.println("stack-trace-printer thread starting")
+          while (true) {
+            Thread.sleep(1.minute.toMillis)
+            Thread.getAllStackTraces
+              .asScala
+              .toMap
+              .toVector
+              .sortBy(_._1.getId)
+              .foreach {
+                case (t, stack) =>
+                  System.err.println(s"Thread $t (${t.getState}, ${t.getId})")
+                  for (e <- stack)
+                    System.err.println(s"  $e")
+                  System.err.println()
+              }
+          }
+        }
+        catch {
+          case _: InterruptedException =>
+            System.err.println("stack-trace-printer thread interrupted")
+        }
+        finally
+          System.err.println("stack-trace-printer thread exiting")
+    }
+
   def session(conn: Connection, ctx: ZMQ.Context): Session with AutoCloseable =
     new Session with AutoCloseable {
       def run(streams: ClientStreams): Unit = {
@@ -213,9 +244,15 @@ class KernelLauncher(
         conn.close.unsafeRunSync()(IORuntime.global)
 
         if (perTestZeroMqContext) {
-          System.err.println("Closing test ZeroMQ context")
-          IO(ctx.close()).evalOn(threads.pollingEc).unsafeRunSync()(IORuntime.global)
-          System.err.println("Test ZeroMQ context closed")
+          val t = stackTracePrinterThread()
+          try {
+            t.start()
+            System.err.println("Closing test ZeroMQ context")
+            IO(ctx.close()).evalOn(threads.pollingEc).unsafeRunSync()(IORuntime.global)
+            System.err.println("Test ZeroMQ context closed")
+          }
+          finally
+            t.interrupt()
         }
       }
     }
