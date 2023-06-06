@@ -9,6 +9,7 @@ import almond.protocol.RawJson
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import dependency.ScalaParameters
@@ -289,6 +290,12 @@ object Launcher extends CaseApp[LauncherOptions] {
       .unsafeRunSync()(IORuntime.global)
     connOpt = Some(conn)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)
+
+    log.debug("Closing ZeroMQ context")
+    IO(zeromqThreads.context.close())
+      .evalOn(zeromqThreads.pollingEc)
+      .unsafeRunSync()(IORuntime.global)
+    log.debug("ZeroMQ context closed")
 
     val leftoverMessagesFileOpt =
       if (leftoverMessages.isEmpty) None

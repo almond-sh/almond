@@ -12,6 +12,7 @@ import javax.crypto.spec.SecretKeySpec
 import org.zeromq.{SocketType, ZMQ}
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 
 final class ZeromqSocketImpl(
@@ -24,6 +25,7 @@ final class ZeromqSocketImpl(
   context: ZMQ.Context,
   key: Secret[String],
   algorithm: String,
+  lingerPeriod: Option[Duration],
   logCtx: LoggerContext
 ) extends ZeromqSocket {
 
@@ -53,7 +55,14 @@ final class ZeromqSocketImpl(
   val channel = context.socket(socketType)
   for (b <- identityOpt)
     channel.setIdentity(b)
-  channel.setLinger(1000)
+  lingerPeriod.foreach {
+    case f: FiniteDuration =>
+      log.debug(s"Setting linger period of $channel to $f")
+      channel.setLinger(f.toMillis.toInt)
+    case _ =>
+      log.debug(s"Setting linger period of $channel to infinite")
+      channel.setLinger(-1)
+  }
   if (socketType == SocketType.ROUTER)
     channel.setRouterHandover(true)
   if (socketType == SocketType.PUB)

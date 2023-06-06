@@ -9,6 +9,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import fs2.concurrent.SignallingRef
+import org.zeromq.ZMQ
 
 import java.io.{File, IOException}
 import java.nio.channels.ClosedSelectorException
@@ -18,7 +19,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.util.control.NonFatal
 import scala.util.Properties
 
@@ -175,7 +176,42 @@ class KernelLauncher(
 
   private lazy val threads = ZeromqThreads.create("almond-tests")
 
-  def session(conn: Connection): Session with AutoCloseable =
+  // not sure why, closing the context right after running a test on Windows
+  // creates a deadlock (on the CI, at least)
+  private def perTestZeroMqContext = !Properties.isWin
+
+  private def stackTracePrinterThread(): Thread =
+    new Thread("stack-trace-printer") {
+      import scala.collection.JavaConverters._
+      setDaemon(true)
+      override def run(): Unit =
+        try {
+          System.err.println("stack-trace-printer thread starting")
+          while (true) {
+            Thread.sleep(1.minute.toMillis)
+            Thread.getAllStackTraces
+              .asScala
+              .toMap
+              .toVector
+              .sortBy(_._1.getId)
+              .foreach {
+                case (t, stack) =>
+                  System.err.println(s"Thread $t (${t.getState}, ${t.getId})")
+                  for (e <- stack)
+                    System.err.println(s"  $e")
+                  System.err.println()
+              }
+          }
+        }
+        catch {
+          case _: InterruptedException =>
+            System.err.println("stack-trace-printer thread interrupted")
+        }
+        finally
+          System.err.println("stack-trace-printer thread exiting")
+    }
+
+  def session(conn: Connection, ctx: ZMQ.Context): Session with AutoCloseable =
     new Session with AutoCloseable {
       def run(streams: ClientStreams): Unit = {
 
@@ -204,8 +240,21 @@ class KernelLauncher(
         }
       }
 
-      def close(): Unit =
+      def close(): Unit = {
         conn.close.unsafeRunSync()(IORuntime.global)
+
+        if (perTestZeroMqContext) {
+          val t = stackTracePrinterThread()
+          try {
+            t.start()
+            System.err.println("Closing test ZeroMQ context")
+            IO(ctx.close()).evalOn(threads.pollingEc).unsafeRunSync()(IORuntime.global)
+            System.err.println("Test ZeroMQ context closed")
+          }
+          finally
+            t.interrupt()
+        }
+      }
     }
 
   def runner(): Runner with AutoCloseable =
@@ -394,16 +443,20 @@ class KernelLauncher(
           stdout = os.Inherit
         )
 
+        val ctx =
+          if (perTestZeroMqContext) ZMQ.context(4)
+          else threads.context
         val conn = params.channels(
           bind = false,
-          threads,
-          TestLogging.logCtx,
+          threads.copy(context = ctx),
+          lingerPeriod = Some(Duration.Inf),
+          logCtx = TestLogging.logCtx,
           identityOpt = Some(UUID.randomUUID().toString)
         ).unsafeRunSync()(IORuntime.global)
 
         conn.open.unsafeRunSync()(IORuntime.global)
 
-        val sess = session(conn)
+        val sess = session(conn, ctx)
         sessions = sess :: sessions
         sess
       }

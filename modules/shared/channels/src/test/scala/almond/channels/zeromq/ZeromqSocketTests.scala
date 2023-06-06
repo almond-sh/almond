@@ -52,6 +52,7 @@ object ZeromqSocketTests extends TestSuite {
         ctx,
         key,
         "hmac-sha256",
+        None,
         logCtx
       )
 
@@ -65,6 +66,7 @@ object ZeromqSocketTests extends TestSuite {
         ctx,
         key,
         "hmac-sha256",
+        None,
         logCtx
       )
 
@@ -115,6 +117,7 @@ object ZeromqSocketTests extends TestSuite {
         ctx,
         key,
         "hmac-sha256",
+        None,
         logCtx
       )
 
@@ -128,6 +131,7 @@ object ZeromqSocketTests extends TestSuite {
         ctx,
         key,
         "hmac-sha256",
+        None,
         logCtx
       )
 
