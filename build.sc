@@ -990,6 +990,20 @@ object ci extends Module {
     )
   }
 
+  def uploadNativeLaunchers(directory: String = "artifacts", almondVersion: String = buildVersion) =
+    T.command {
+      def ghToken() = Option(System.getenv("UPLOAD_GH_TOKEN")).getOrElse {
+        sys.error("UPLOAD_GH_TOKEN not set")
+      }
+      val launchers = os.list(os.Path(directory, os.pwd)).map(p => (p, p.last))
+      val (tag, overwriteAssets) =
+        if (almondVersion.endsWith("-SNAPSHOT")) ("nightly", true)
+        else ("v" + almondVersion, false)
+      Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
+        launchers: _*
+      )
+    }
+
   def copyNativeLauncher(directory: String = "artifacts") = T.command {
     val nativeLauncher = scala.launcher.nativeImage().path
     Upload.copyLauncher(
