@@ -205,7 +205,10 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         Agg(
           Deps.metabrowseServer
             // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
-            .exclude(("org.slf4j", "slf4j-api"))
+            .exclude(("org.slf4j", "slf4j-api")),
+          // bump the scalameta version, so that all scalameta JARs have the same version as the few scalameta
+          // dependencies of Ammonite
+          Deps.scalameta
         )
       else
         Agg.empty
