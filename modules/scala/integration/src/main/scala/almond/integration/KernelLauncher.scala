@@ -452,6 +452,20 @@ class KernelLauncher(
           else
             Map.empty[String, String]
 
+        proc = os.proc(command).spawn(
+          cwd = dir,
+          env = extraEnv ++ specExtraEnv,
+          stdin = os.Inherit,
+          stdout = os.Inherit
+        )
+
+        if (System.getenv("CI") != null) {
+          val delay = 4.seconds
+          System.err.println(s"Waiting $delay for the kernel to start")
+          Thread.sleep(delay.toMillis)
+          System.err.println("Done waiting")
+        }
+
         val ctx =
           if (perTestZeroMqContext) ZMQ.context(4)
           else threads.context
@@ -464,13 +478,6 @@ class KernelLauncher(
         ).unsafeRunSync()(IORuntime.global)
 
         conn.open.unsafeRunSync()(IORuntime.global)
-
-        proc = os.proc(command).spawn(
-          cwd = dir,
-          env = extraEnv ++ specExtraEnv,
-          stdin = os.Inherit,
-          stdout = os.Inherit
-        )
 
         val sess = session(conn, ctx)
         sessions = sess :: sessions
