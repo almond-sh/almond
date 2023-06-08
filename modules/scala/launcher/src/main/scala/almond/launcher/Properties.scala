@@ -22,7 +22,9 @@ object Properties {
   lazy val version    = prop("version")
   lazy val commitHash = prop("commit-hash")
 
-  lazy val kernelMainClass     = prop("kernel-main-class")
-  lazy val defaultScalaVersion = prop("default-scala-version")
+  lazy val kernelMainClass        = prop("kernel-main-class")
+  lazy val defaultScalaVersion    = prop("default-scala-version")
+  lazy val defaultScala212Version = prop("default-scala212-version")
+  lazy val defaultScala213Version = prop("default-scala213-version")
 
 }
