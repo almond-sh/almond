@@ -338,7 +338,10 @@ object ScalaKernelTests extends TestSuite {
         )
 
         assert(requestsMessageTypes == expectedRequestsMessageTypes)
-        TestUtil.comparePublishMessageTypes(expectedPublishMessageTypes, publishMessageTypes)
+        assert(TestUtil.comparePublishMessageTypes(
+          expectedPublishMessageTypes,
+          publishMessageTypes
+        ))
 
         val displayData = streams.displayData.map {
           case (d, b) =>
