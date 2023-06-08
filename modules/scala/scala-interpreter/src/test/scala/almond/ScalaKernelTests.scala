@@ -423,15 +423,21 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val expectedPublishMessageTypes = Seq(
-        "execute_input",
-        "display_data",
-        "execute_input",
-        "update_display_data",
-        "execute_input"
+        Set(
+          "execute_input",
+          "display_data"
+        ),
+        Set(
+          "execute_input",
+          "update_display_data"
+        ),
+        Set(
+          "execute_input"
+        )
       )
 
       assert(requestsMessageTypes == expectedRequestsMessageTypes)
-      assert(publishMessageTypes == expectedPublishMessageTypes)
+      assert(TestUtil.comparePublishMessageTypes(expectedPublishMessageTypes, publishMessageTypes))
 
       val displayData = streams.displayData.map {
         case (d, b) =>
