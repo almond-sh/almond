@@ -91,6 +91,10 @@ final case class Options(
   @ExtraName("extraClasspath")
     extraClassPath: List[String] = Nil,
 
+  @HelpMessage("Extra class path to add alongside the kernel JAR upon installation - should accept the same format as 'java -cp', see https://github.com/coursier/class-path-util for more details - only taken into account when --install is specified")
+  @ExtraName("extraStartupClasspath")
+    extraStartupClassPath: List[String] = Nil,
+
   @HelpMessage("JSON file containing messages to handle before those originating from the ZeroMQ sockets")
   @Hidden
     leftoverMessages: Option[String] = None,

@@ -7,6 +7,7 @@ import cats.effect.IO
 import org.zeromq.{SocketType, ZMQ}
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
 
 trait ZeromqSocket {
   def open: IO[Unit]
@@ -32,6 +33,7 @@ object ZeromqSocket {
     context: ZMQ.Context,
     key: Secret[String],
     algorithm: String,
+    lingerPeriod: Option[Duration],
     logCtx: LoggerContext
   ): ZeromqSocket =
     new ZeromqSocketImpl(
@@ -44,6 +46,7 @@ object ZeromqSocket {
       context,
       key,
       algorithm,
+      lingerPeriod,
       logCtx
     )
 

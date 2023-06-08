@@ -1,7 +1,7 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`io.get-coursier.util::get-cs:0.1.1`
-import $ivy.`com.github.lolgab::mill-mima::0.0.20`
-import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.21`
+import $ivy.`com.github.lolgab::mill-mima::0.0.21`
+import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.24`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
 import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
@@ -9,6 +9,7 @@ import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{
   AlmondModule,
   AlmondRepositories,
+  AlmondSimpleModule,
   AlmondTestModule,
   BootstrapLauncher,
   DependencyListResource,
@@ -16,6 +17,7 @@ import $file.project.settings, settings.{
   LocalRepo,
   Mima,
   PropertyFile,
+  TestCommand,
   Util,
   buildVersion
 }
@@ -203,7 +205,10 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         Agg(
           Deps.metabrowseServer
             // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
-            .exclude(("org.slf4j", "slf4j-api"))
+            .exclude(("org.slf4j", "slf4j-api")),
+          // bump the scalameta version, so that all scalameta JARs have the same version as the few scalameta
+          // dependencies of Ammonite
+          Deps.scalameta
         )
       else
         Agg.empty
@@ -348,6 +353,37 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   )
 }
 
+trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
+    with Bloop.Module {
+  def supports3    = true
+  private def sv   = ScalaVersions.scala3Latest
+  def scalaVersion = sv
+  def moduleDeps = Seq(
+    shared.kernel(ScalaVersions.scala3Compat)
+  )
+  def ivyDeps = Agg(
+    Deps.caseApp,
+    Deps.coursierApi,
+    Deps.coursierLauncher,
+    Deps.directiveHandler,
+    Deps.fansi,
+    Deps.scalaparse
+  )
+
+  def propertyFilePath = "almond/launcher/launcher.properties"
+  def propertyExtra = T {
+    val mainClass = scala.`scala-kernel`(ScalaVersions.scala3Latest).mainClass().getOrElse {
+      sys.error("No main class found")
+    }
+    Seq(
+      "kernel-main-class"        -> mainClass,
+      "default-scala212-version" -> ScalaVersions.scala212,
+      "default-scala213-version" -> ScalaVersions.scala213,
+      "default-scala-version"    -> ScalaVersions.scala3Latest
+    )
+  }
+}
+
 class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule with ExternalSources
     with Bloop.Module {
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
@@ -423,6 +459,7 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all: _*)
   object `scala-kernel-helper`
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
+  object launcher         extends Launcher
   object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
   object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
@@ -430,7 +467,7 @@ object scala extends Module {
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
   object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
-  object integration        extends Cross[Integration](ScalaVersions.all: _*)
+  object integration        extends Integration
 }
 
 class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
@@ -483,51 +520,56 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
       scala.`scala-kernel-api`(testScalaVersion),
       scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
       scala.`scala-interpreter`(testScalaVersion),
-      scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion))
+      scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
+      scala.launcher,
+      shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.`interpreter-api`(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.protocol(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.channels(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.logger(ScalaVersions.binary(ScalaVersions.scala3Latest)),
+      shared.`logger-scala2-macros`(ScalaVersions.binary(ScalaVersions.scala3Latest))
     ) ++ extra
   }
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
 
-class Integration(val testScalaVersion: String) extends CrossSbtModule with Bloop.Module {
-  def skipBloop             = testScalaVersion != scalaVersion0
+trait Integration extends SbtModule {
   private def scalaVersion0 = ScalaVersions.scala213
-  def crossScalaVersion     = scalaVersion0
   def scalaVersion          = scalaVersion0
 
   def moduleDeps = super.moduleDeps ++ Seq(
-    shared.`test-kit`(scalaVersion0)
+    shared.`test-kit`(scalaVersion0),
+    scala.`test-definitions`(scalaVersion0)
   )
-  def ivyDeps = Agg(
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.munit,
+    Deps.osLib,
     Deps.pprint
   )
 
-  object test extends Tests {
-    def moduleDeps = super.moduleDeps ++ Seq(
-      scala.`test-definitions`(scalaVersion0)
-    )
-    def ivyDeps = Agg(
-      Deps.munit,
-      Deps.osLib
-    )
+  object test extends Tests with TestCommand {
     def testFramework = "munit.Framework"
     def forkArgs = T {
-      scala.`local-repo`(testScalaVersion).localRepo()
-      val version = scala.`local-repo`(testScalaVersion).version()
+      scala.`local-repo`(ScalaVersions.scala212).localRepo()
+      scala.`local-repo`(ScalaVersions.scala213).localRepo()
+      scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
+      val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
       super.forkArgs() ++ Seq(
-        "-Xmx1g", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${scala.`local-repo`(testScalaVersion).repoRoot.toString.replace("{VERSION}", version)}",
+        "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
+        s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
-        s"-Dalmond.test.scala-version=$testScalaVersion",
-        s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
+        s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}",
+        s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
+        s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
+        s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}"
       )
     }
     def tmpDirBase = T.persistent {
       PathRef(T.dest / "working-dir")
     }
     def forkEnv = super.forkEnv() ++ Seq(
-      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString,
-      "TEST_SCALA_VERSION"     -> testScalaVersion
+      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
     )
   }
 }
@@ -645,13 +687,17 @@ def jupyter0(args: Seq[String], fast: Boolean, console: Boolean = false) = {
   val launcher =
     if (fast) scala.`scala-kernel`(sv).fastLauncher
     else scala.`scala-kernel`(sv).launcher
+  val specialLauncher =
+    if (fast) scala.launcher.fastLauncher
+    else scala.launcher.launcher
   T.command {
-    val jupyterDir = T.ctx().dest / "jupyter"
-    val launcher0  = launcher().path.toNIO
+    val jupyterDir       = T.ctx().dest / "jupyter"
+    val launcher0        = launcher().path.toNIO
+    val specialLauncher0 = specialLauncher().path.toNIO
     if (console)
-      jupyterConsole0(launcher0, jupyterDir.toNIO, args0)
+      jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
     else
-      jupyterServer(launcher0, jupyterDir.toNIO, args0)
+      jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
   }
 }
 
@@ -699,6 +745,11 @@ def scalaVersions() = T.command {
 
 def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.`scala-kernel`(scalaVersion).launcher().path.toNIO
+  println(launcher)
+}
+
+def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
+  val launcher = scala.launcher.launcher().path.toNIO
   println(launcher)
 }
 
@@ -825,6 +876,11 @@ def validateExamples(matcher: String = "") = {
 
 def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
+  println(launcher)
+}
+
+def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
+  val launcher = scala.launcher.fastLauncher().path.toNIO
   println(launcher)
 }
 
