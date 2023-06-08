@@ -83,7 +83,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        OS: [ubuntu-latest, macos-latest]
+        # Using ubuntu-20.04 here, see https://github.com/actions/runner-images/issues/6709
+        OS: ["ubuntu-20.04", macos-latest]
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'
