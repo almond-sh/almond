@@ -28,7 +28,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "2.13.10"
+          """//> using scala "2.13.11"
             |val sv = scala.util.Properties.versionNumberString
             |""".stripMargin,
           """sv: String = "2.13.10""""
