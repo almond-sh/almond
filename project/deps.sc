@@ -84,7 +84,7 @@ object ScalaVersions {
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
     else "2.13.10"
   def scala213 = "2.13.10"
-  def scala212 = "2.12.17"
+  def scala212 = "2.12.18"
   val binaries = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
@@ -101,14 +101,14 @@ object ScalaVersions {
     "2.13.2",
     "2.13.1",
     scala212,
+    "2.12.17",
     "2.12.16",
     "2.12.15",
     "2.12.14",
     "2.12.13",
     "2.12.12",
     "2.12.11",
-    "2.12.10",
-    "2.12.9"
+    "2.12.10"
   ).distinct
 
   def binary(sv: String) =
