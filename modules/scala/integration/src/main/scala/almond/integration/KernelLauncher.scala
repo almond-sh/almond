@@ -25,6 +25,21 @@ import scala.util.Properties
 
 object KernelLauncher {
 
+  lazy val testScalaVersion = sys.props.getOrElse(
+    "almond.test.scala-version",
+    sys.error("almond.test.scala-version Java property not set")
+  )
+
+  lazy val testScala212Version = sys.props.getOrElse(
+    "almond.test.scala212-version",
+    sys.error("almond.test.scala212-version Java property not set")
+  )
+
+  lazy val testScala213Version = sys.props.getOrElse(
+    "almond.test.scala213-version",
+    sys.error("almond.test.scala213-version Java property not set")
+  )
+
   lazy val localRepoRoot = sys.props.get("almond.test.local-repo")
     .map(os.Path(_, os.pwd))
     .getOrElse {

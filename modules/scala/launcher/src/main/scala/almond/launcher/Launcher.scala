@@ -36,9 +36,9 @@ object Launcher extends CaseApp[LauncherOptions] {
       .getOrElse(Properties.defaultScalaVersion)
 
     val scalaVersion = requestedScalaVersion match {
-      case "2.12"       => "2.12.17"
-      case "2" | "2.13" => "2.13.10"
-      case "3"          => "3.2.2"
+      case "2.12"       => Properties.defaultScala212Version
+      case "2" | "2.13" => Properties.defaultScala213Version
+      case "3"          => Properties.defaultScalaVersion
       case _            => requestedScalaVersion
     }
 
