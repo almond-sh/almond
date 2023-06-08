@@ -20,7 +20,7 @@ object Run {
 
     val args0 = map("args")
     val cwd   = map("cwd").head
-    val env   = map("env")
+    val env   = sys.env.toVector.sorted.map { case (k, v) => s"$k=$v" } ++ map("env")
 
     pprint.err.log(args0)
     pprint.err.log(cwd)
@@ -34,7 +34,11 @@ object Run {
         Chdir.chdir(cwd0.toString)
       }
 
-      Execve.execve(os.Path(args0.head, os.pwd).last, args0.toArray, env.toArray)
+      Execve.execve(
+        args0.head,
+        (os.Path(args0.head, os.pwd).last +: args0.tail).toArray,
+        env.toArray
+      )
     }
     else {
       System.err.println("exec system call not available")

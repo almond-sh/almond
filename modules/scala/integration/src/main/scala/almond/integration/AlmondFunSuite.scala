@@ -33,6 +33,7 @@ abstract class AlmondFunSuite extends munit.FunSuite {
               System.err.println(
                 s"Attempt $attempt of ${Console.RED}${options.name}${Console.RESET} failed, trying again"
               )
+              e.printStackTrace(System.err)
               runBody(attempt + 1)
           }
         }
