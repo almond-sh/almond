@@ -51,6 +51,9 @@ jobs:
           - OS: windows-latest
             JDK: 8
             SCALA: 2.13.10
+          - OS: macos-latest
+            JDK: 8
+            SCALA: 2.13.10
           - OS: ubuntu-latest
             JDK: 17
             SCALA: 2.12.17
@@ -75,7 +78,12 @@ jobs:
         SCALA: ${{ matrix.SCALA }}
 
   integration-tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.OS }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        OS: [ubuntu-latest, macos-latest]
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'
@@ -95,6 +103,7 @@ jobs:
 
   windows-integration-tests:
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'

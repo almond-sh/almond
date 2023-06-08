@@ -256,14 +256,21 @@ class KernelLauncher(
       }
 
       def close(): Unit = {
-        conn.close.unsafeRunSync()(IORuntime.global)
+        conn.close.unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
+          sys.error("Timeout when closing ZeroMQ connections")
+        }
 
         if (perTestZeroMqContext) {
           val t = stackTracePrinterThread()
           try {
             t.start()
             System.err.println("Closing test ZeroMQ context")
-            IO(ctx.close()).evalOn(threads.pollingEc).unsafeRunSync()(IORuntime.global)
+            IO(ctx.close())
+              .evalOn(threads.pollingEc)
+              .unsafeRunTimed(2.minutes)(IORuntime.global)
+              .getOrElse {
+                sys.error("Timeout when closing ZeroMQ context")
+              }
             System.err.println("Test ZeroMQ context closed")
           }
           finally
@@ -451,12 +458,20 @@ class KernelLauncher(
           }
           else
             Map.empty[String, String]
+
         proc = os.proc(command).spawn(
           cwd = dir,
           env = extraEnv ++ specExtraEnv,
           stdin = os.Inherit,
           stdout = os.Inherit
         )
+
+        if (System.getenv("CI") != null) {
+          val delay = 4.seconds
+          System.err.println(s"Waiting $delay for the kernel to start")
+          Thread.sleep(delay.toMillis)
+          System.err.println("Done waiting")
+        }
 
         val ctx =
           if (perTestZeroMqContext) ZMQ.context(4)
@@ -467,9 +482,13 @@ class KernelLauncher(
           lingerPeriod = Some(Duration.Inf),
           logCtx = TestLogging.logCtx,
           identityOpt = Some(UUID.randomUUID().toString)
-        ).unsafeRunSync()(IORuntime.global)
+        ).unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
+          sys.error("Timeout when creating ZeroMQ connections")
+        }
 
-        conn.open.unsafeRunSync()(IORuntime.global)
+        conn.open.unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
+          sys.error("Timeout when opening ZeroMQ connections")
+        }
 
         val sess = session(conn, ctx)
         sessions = sess :: sessions

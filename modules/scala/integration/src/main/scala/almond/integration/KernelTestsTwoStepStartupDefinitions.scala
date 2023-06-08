@@ -3,7 +3,7 @@ package almond.integration
 import almond.integration.Tests.ls
 import almond.testkit.Dsl._
 
-abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
+abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
