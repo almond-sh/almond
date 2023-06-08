@@ -635,6 +635,10 @@ object docs extends ScalaModule with AlmondRepositories {
       ammVer,
       "--site.SCALA_VERSION",
       scalaVer,
+      "--site.SCALA212_VERSION",
+      ScalaVersions.scala212,
+      "--site.SCALA213_VERSION",
+      ScalaVersions.scala213,
       "--site.EXTRA_COURSIER_ARGS",
       extraCoursierArgs
     ) ++ (if (watch) Seq("--watch") else Nil) ++ args0
