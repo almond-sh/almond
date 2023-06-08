@@ -160,6 +160,12 @@ object Dsl {
       .sortBy(_._1)
       .map(_._2)
       .map(s => if (trimReplyLines) s.trimLines else s)
+    if (replies != Option(reply).toVector) {
+      val expectedSingleReply = reply
+      val gotReplies          = replies
+      pprint.err.log(expectedSingleReply)
+      pprint.err.log(gotReplies)
+    }
     expect(replies == Option(reply).toVector)
 
     if (replyPayloads != null) {
