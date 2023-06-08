@@ -19,10 +19,15 @@ object Dsl {
     def withExtraClassPath(extraClassPath: String*)(options: String*): Session
     def withLauncherOptions(launcherOptions: String*)(options: String*): Session
 
-    def withSession[T](options: String*)(f: Session => T): T
-    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T): T
-    def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)
-      : T
+    def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T
+    def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)(
+      implicit sessionId: SessionId
+    ): T
+    def withLauncherOptionsSession[T](launcherOptions: String*)(options: String*)(f: Session => T)(
+      implicit sessionId: SessionId
+    ): T
+
+    def differedStartUp: Boolean = false
   }
 
   trait Session {
@@ -40,6 +45,20 @@ object Dsl {
             else trimmed + lSep.drop(l.length)
         }
         .mkString
+  }
+
+  private def stopWhen(replyType: String): (Channel, Message[RawJson]) => IO[Boolean] = {
+    var gotExpectedReply = false
+    var gotIdleStatus    = false
+    (c, m) =>
+      gotExpectedReply =
+        gotExpectedReply || (c == Channel.Requests && m.header.msg_type == replyType)
+      gotIdleStatus = gotIdleStatus || (
+        c == Channel.Publish &&
+        m.header.msg_type == Status.messageType.messageType &&
+        readFromArray(m.content.value)(Status.codec).execution_state == Status.idle.execution_state
+      )
+      IO.pure(gotExpectedReply && gotIdleStatus)
   }
 
   def execute(
@@ -71,24 +90,13 @@ object Dsl {
       executeMessage(code, stopOnError = !expectError0)
     )
 
-    val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+    val stopWhen0: (Channel, Message[RawJson]) => IO[Boolean] =
       if (waitForUpdateDisplay)
         (_, m) => IO.pure(m.header.msg_type == "update_display_data")
-      else {
-        var gotExecuteReply = false
-        var gotIdleStatus   = false
-        (c, m) =>
-          gotExecuteReply = gotExecuteReply ||
-            (c == Channel.Requests && m.header.msg_type == "execute_reply")
-          gotIdleStatus = gotIdleStatus || (
-            c == Channel.Publish && m.header.msg_type == "status" && readFromArray(m.content.value)(
-              Status.codec
-            ).execution_state == "idle"
-          )
-          IO.pure(gotExecuteReply && gotIdleStatus)
-      }
+      else
+        stopWhen(ProtocolExecute.replyType.messageType)
 
-    val streams = ClientStreams.create(input, stopWhen, handler)
+    val streams = ClientStreams.create(input, stopWhen0, handler)
 
     session.run(streams)
 
@@ -213,6 +221,32 @@ object Dsl {
     }
   }
 
+  def exit()(implicit
+    sessionId: SessionId,
+    session: Session
+  ): Unit = {
+
+    val input = Stream(
+      // the comment makes the kernel exit in compile-only mode
+      executeMessage("sys.exit(0) // ALMOND FORCE EXIT")
+    )
+
+    val streams = ClientStreams.create(input, stopWhen(ProtocolExecute.replyType.messageType))
+
+    val interrupted =
+      try {
+        session.run(streams)
+        false
+      }
+      catch {
+        case _: InterruptedException =>
+          true
+      }
+
+    if (!interrupted)
+      sys.error("Expected to be interrupted")
+  }
+
   final case class SessionId(sessionId: String = UUID.randomUUID().toString)
 
   private def executeMessage(
@@ -244,23 +278,7 @@ object Dsl {
       inspectMessage(code, pos, detailed)
     )
 
-    val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = {
-      var gotInspectReply = false
-      var gotIdleStatus   = false
-      (c, m) =>
-        gotInspectReply = gotInspectReply ||
-          (c == Channel.Requests && m.header.msg_type == Inspect.replyType.messageType)
-        gotIdleStatus = gotIdleStatus || (
-          c == Channel.Publish && m.header.msg_type == Status.messageType.messageType && readFromArray(
-            m.content.value
-          )(
-            Status.codec
-          ).execution_state == Status.idle.execution_state
-        )
-        IO.pure(gotInspectReply && gotIdleStatus)
-    }
-
-    val streams = ClientStreams.create(input, stopWhen)
+    val streams = ClientStreams.create(input, stopWhen(Inspect.replyType.messageType))
 
     session.run(streams)
 

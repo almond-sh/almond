@@ -23,6 +23,7 @@ import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 
 final case class Kernel(
   interpreter: IOInterpreter,
@@ -87,7 +88,7 @@ final case class Kernel(
                 Status.messageType.messageType,
                 Some(Protocol.versionStr)
               ),
-              Status.starting,
+              status,
               idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)
             ).on(Channel.Publish)
           )
@@ -203,7 +204,8 @@ final case class Kernel(
       c <- connection.channels(
         bind = true,
         zeromqThreads,
-        logCtx,
+        lingerPeriod = Some(10.seconds),
+        logCtx = logCtx,
         identityOpt = Some(kernelId)
       )
     } yield {

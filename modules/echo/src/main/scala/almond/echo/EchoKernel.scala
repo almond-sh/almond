@@ -27,7 +27,8 @@ object EchoKernel extends CaseApp[Options] {
         defaultId = "echo",
         defaultDisplayName = "Echo",
         language = "echo",
-        options = options.installOptions
+        options = options.installOptions,
+        extraStartupClassPath = Nil
       ) match {
         case Left(e) =>
           log.debug("Cannot install kernel", e)
