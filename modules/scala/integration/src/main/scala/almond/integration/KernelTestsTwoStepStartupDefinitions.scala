@@ -59,7 +59,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
           """//> using scala "2.13"
             |val sv = scala.util.Properties.versionNumberString
             |""".stripMargin,
-          """sv: String = "2.13.10""""
+          s"""sv: String = "${KernelLauncher.testScala213Version}""""
         )
       }
     }
@@ -73,7 +73,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
           """//> using scala "2.12"
             |val sv = scala.util.Properties.versionNumberString
             |""".stripMargin,
-          """sv: String = "2.12.17""""
+          s"""sv: String = "${KernelLauncher.testScala212Version}""""
         )
       }
     }

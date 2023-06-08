@@ -36,9 +36,9 @@ object Launcher extends CaseApp[LauncherOptions] {
       .getOrElse(Properties.defaultScalaVersion)
 
     val scalaVersion = requestedScalaVersion match {
-      case "2.12"       => "2.12.17"
-      case "2" | "2.13" => "2.13.10"
-      case "3"          => "3.2.2"
+      case "2.12"       => Properties.defaultScala212Version
+      case "2" | "2.13" => Properties.defaultScala213Version
+      case "3"          => Properties.defaultScalaVersion
       case _            => requestedScalaVersion
     }
 
@@ -51,9 +51,25 @@ object Launcher extends CaseApp[LauncherOptions] {
     }
 
     val cache = coursierapi.Cache.create().withLogger(coursierapi.Logger.progressBars())
+    val forcedVersions =
+      if (scalaVersion.startsWith("2."))
+        Map(
+          coursierapi.Module.of("org.scala-lang", "scala-library")  -> scalaVersion,
+          coursierapi.Module.of("org.scala-lang", "scala-compiler") -> scalaVersion,
+          coursierapi.Module.of("org.scala-lang", "scala-reflect")  -> scalaVersion
+        )
+      else
+        Map(
+          coursierapi.Module.of("org.scala-lang", "scala3-library_3")  -> scalaVersion,
+          coursierapi.Module.of("org.scala-lang", "scala3-compiler_3") -> scalaVersion,
+          coursierapi.Module.of("org.scala-lang", "scala3-interfaces") -> scalaVersion
+        )
+    val resolutionParams = coursierapi.ResolutionParams.create()
+      .forceVersions(forcedVersions.asJava)
     def fetcher = coursierapi.Fetch.create()
       .withCache(cache)
       .addRepositories(coursierapi.MavenRepository.of("https://jitpack.io"))
+      .withResolutionParams(resolutionParams)
     def fetch(
       dep: coursierapi.Dependency,
       extraDeps: Seq[coursierapi.Dependency] = Nil,

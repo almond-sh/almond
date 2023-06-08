@@ -205,7 +205,10 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         Agg(
           Deps.metabrowseServer
             // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
-            .exclude(("org.slf4j", "slf4j-api"))
+            .exclude(("org.slf4j", "slf4j-api")),
+          // bump the scalameta version, so that all scalameta JARs have the same version as the few scalameta
+          // dependencies of Ammonite
+          Deps.scalameta
         )
       else
         Agg.empty
@@ -373,8 +376,10 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
       sys.error("No main class found")
     }
     Seq(
-      "kernel-main-class"     -> mainClass,
-      "default-scala-version" -> ScalaVersions.scala3Latest
+      "kernel-main-class"        -> mainClass,
+      "default-scala212-version" -> ScalaVersions.scala212,
+      "default-scala213-version" -> ScalaVersions.scala213,
+      "default-scala-version"    -> ScalaVersions.scala3Latest
     )
   }
 }
@@ -554,7 +559,10 @@ trait Integration extends SbtModule {
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
         s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
-        s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}"
+        s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}",
+        s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
+        s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
+        s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}"
       )
     }
     def tmpDirBase = T.persistent {

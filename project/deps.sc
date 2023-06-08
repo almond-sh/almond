@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-28-239e82a8"
+  def ammonite      = "3.0.0-M0-31-80deef08"
   def caseApp       = "2.1.0-M24"
   def coursier      = "2.1.4"
   def jsoniterScala = "2.13.5"
@@ -67,6 +67,7 @@ object Deps {
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
+  def scalameta                = ivy"org.scalameta::scalameta:4.7.8"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
