@@ -18,7 +18,11 @@ checkResults() {
 
 "$SCALA_CLI" --power package --server=false .github/scripts/run --native-image -o "$RUN_APP"
 
-trap "jps -mlv" EXIT
+function exitHook() {
+  echo jps -mlv
+  jps -mlv
+}
+trap exitHook EXIT
 
 # Seems native-image sends its output to stdout, which borks the command JSON output
 # So we run the show command a first time, so that native-image can run, before actually
