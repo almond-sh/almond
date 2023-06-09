@@ -63,7 +63,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.3.7"
   def munit                    = ivy"org.scalameta::munit:0.7.29"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.9"
+  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.10"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
@@ -83,14 +83,15 @@ object ScalaVersions {
   def cross2_3Version(sv: String) =
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
     else "2.13.10"
-  def scala213 = "2.13.10"
-  def scala212 = "2.12.17"
+  def scala213 = "2.13.11"
+  def scala212 = "2.12.18"
   val binaries = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
     "3.2.1",
     scala3Compat,
     scala213,
+    "2.13.10",
     "2.13.9",
     "2.13.8",
     "2.13.7",
@@ -98,17 +99,15 @@ object ScalaVersions {
     "2.13.5",
     "2.13.4",
     "2.13.3",
-    "2.13.2",
-    "2.13.1",
     scala212,
+    "2.12.17",
     "2.12.16",
     "2.12.15",
     "2.12.14",
     "2.12.13",
     "2.12.12",
     "2.12.11",
-    "2.12.10",
-    "2.12.9"
+    "2.12.10"
   ).distinct
 
   def binary(sv: String) =
