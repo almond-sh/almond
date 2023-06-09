@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-31-80deef08"
+  def ammonite      = "3.0.0-M0-32-96e851cb"
   def caseApp       = "2.1.0-M24"
   def coursier      = "2.1.4"
   def jsoniterScala = "2.13.5"
@@ -78,16 +78,18 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest = "3.2.2"
+  def scala3Latest = "3.3.0"
   def scala3Compat = "3.2.0"
   def cross2_3Version(sv: String) =
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
-    else "2.13.10"
+    else if (sv.startsWith("3.2.")) "2.13.10"
+    else "2.13.11"
   def scala213 = "2.13.11"
   def scala212 = "2.12.18"
   val binaries = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
+    "3.2.2",
     "3.2.1",
     scala3Compat,
     scala213,
