@@ -469,6 +469,7 @@ class KernelLauncher(
           else
             Map.empty[String, String]
 
+        assert(proc == null)
         proc = os.proc(command).spawn(
           cwd = dir,
           env = extraEnv ++ specExtraEnv,
