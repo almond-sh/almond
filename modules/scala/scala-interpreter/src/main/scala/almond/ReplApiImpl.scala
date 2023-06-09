@@ -138,7 +138,7 @@ final class ReplApiImpl(
 
                     val err =
                       Execute.showException(ex, colors0().error(), Attr.Reset, colors0().literal())
-                    val s = messageColor("[last attempt failed]").render + "\n" + err
+                    val s = messageColor("[last attempt failed]").render + System.lineSeparator() + err
                     updatableResults.update(id, s, last = false)
                   case Right(value0) =>
                     val s = pprinter().tokenize(
