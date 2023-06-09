@@ -12,10 +12,10 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "3.2.2"
-            |import scala.compiletime.ops.*
-            |val sv = scala.util.Properties.versionNumberString
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |import scala.compiletime.ops.*
+             |val sv = scala.util.Properties.versionNumberString
+             |""".stripMargin,
           "import scala.compiletime.ops.*" + ls + ls +
             """sv: String = "2.13.10""""
         )
@@ -84,7 +84,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "3.2.2"""",
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"""",
           ""
         )
         execute(
@@ -104,8 +104,8 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession("--java-opt", "-Dfoo=thing") { implicit session =>
         execute(
-          """//> using scala "3.2.2"
-            |val foo = sys.props("foo")""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |val foo = sys.props("foo")""".stripMargin,
           """foo: String = "thing""""
         )
       }
