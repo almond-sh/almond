@@ -207,7 +207,7 @@ class AlmondPreprocessor(
         case (None, _)         => None
         case (Some(res), None) => Some(res)
         case (Some(res), Some(extra)) =>
-          Some(res.copy(printer = s"{ $extra; Iterator() }" +: res.printer))
+          Some(res.copy(printer = s"{ $extra; _root_.scala.Iterator[String]() }" +: res.printer))
       }
     }
     if (variableInspectorEnabled()) withExtra
