@@ -73,6 +73,7 @@ object AmmInterpreter {
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
     useNotebookCoursierLogger: Boolean,
+    silentImports: Boolean,
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
@@ -146,6 +147,7 @@ object AmmInterpreter {
             headFrame.classloader,
             autoUpdateLazyVals,
             autoUpdateVars,
+            silentImports,
             variableInspectorEnabled,
             outputDir0,
             logCtx

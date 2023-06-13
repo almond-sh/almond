@@ -7,6 +7,7 @@ class AlmondPreprocessor(
   ctx: Context,
   autoUpdateLazyVals: Boolean,
   autoUpdateVars: Boolean,
+  silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
   logCtx: almond.logger.LoggerContext
 ) extends Preprocessor(ctx, markGeneratedSections = false) {}
