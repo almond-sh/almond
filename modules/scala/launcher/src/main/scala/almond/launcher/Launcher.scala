@@ -5,7 +5,7 @@ import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
-import almond.protocol.RawJson
+import almond.protocol.{Execute, RawJson}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -19,17 +19,18 @@ import java.nio.channels.ClosedSelectorException
 
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 object Launcher extends CaseApp[LauncherOptions] {
 
-  private def launchActualKernel(
+  private def actualKernelCommand(
     connectionFile: String,
     msgFileOpt: Option[os.Path],
     currentCellCount: Int,
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
     params0: LauncherParameters
-  ): Unit = {
+  ): os.proc = {
 
     val requestedScalaVersion = params0.scala
       .orElse(options.scala.map(_.trim).filter(_.nonEmpty))
@@ -155,7 +156,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       if (javaOptions.exists(_.startsWith("-Xmx"))) Nil
       else Seq("-Xmx512m")
 
-    val proc = os.proc(
+    os.proc(
       javaCommand,
       memOptions,
       javaOptions,
@@ -172,6 +173,10 @@ object Launcher extends CaseApp[LauncherOptions] {
       noExecuteInputArgs,
       options.kernelOptions
     )
+  }
+
+  private def launchActualKernel(proc: os.proc): Unit = {
+
     System.err.println(s"Launching ${proc.command.flatMap(_.value).mkString(" ")}")
     val p = proc.spawn(stdin = os.Inherit, stdout = os.Inherit)
     val hook: Thread =
@@ -317,14 +322,41 @@ object Launcher extends CaseApp[LauncherOptions] {
         Some(leftoverMessagesFile)
       }
 
-    val firstMessageIdOpt = leftoverMessages
+    val firstMessageOpt = leftoverMessages
       .headOption
       .collect {
         case (Channel.Requests, m) =>
           almond.interpreter.Message.parse[RawJson](m).toOption // FIXME Log any error on the left?
       }
       .flatten
-      .map(_.header.msg_id)
+
+    val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
+
+    val actualKernelCommand0 = actualKernelCommand(
+      connectionFile,
+      leftoverMessagesFileOpt,
+      interpreter.lineCount,
+      options,
+      firstMessageIdOpt.toSeq,
+      interpreter.params
+    )
+
+    if (!options.quiet0)
+      for (msg <- firstMessageOpt) {
+        val msg0 = msg.publish(
+          Execute.streamType,
+          Execute.Stream("stdout", "Launching kernel" + System.lineSeparator()),
+          ident = Some("stdout")
+        )
+        try
+          conn
+            .send(Channel.Publish, msg0.asRawMessage)
+            .unsafeRunSync()(IORuntime.global)
+        catch {
+          case NonFatal(e) =>
+            throw new Exception(e)
+        }
+      }
 
     try conn.close(partial = false).unsafeRunSync()(IORuntime.global)
     catch {
@@ -338,13 +370,6 @@ object Launcher extends CaseApp[LauncherOptions] {
       .unsafeRunSync()(IORuntime.global)
     log.debug("ZeroMQ context closed")
 
-    launchActualKernel(
-      connectionFile,
-      leftoverMessagesFileOpt,
-      interpreter.lineCount,
-      options,
-      firstMessageIdOpt.toSeq,
-      interpreter.params
-    )
+    launchActualKernel(actualKernelCommand0)
   }
 }
