@@ -205,7 +205,8 @@ object ScalaKernel extends CaseApp[Options] {
           connectionFile,
           "scala",
           zeromqThreads,
-          options.leftoverMessages0()
+          options.leftoverMessages0(),
+          autoClose = true
         ))
         .unsafeRunSync()(IORuntime.global)
     finally

@@ -302,16 +302,16 @@ object Launcher extends CaseApp[LauncherOptions] {
     )
 
     val (run, conn) = Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
-      .flatMap(_.runOnConnectionFileAllowClose(connectionFile, "scala", zeromqThreads, Nil))
+      .flatMap(_.runOnConnectionFileAllowClose(
+        connectionFile,
+        "scala",
+        zeromqThreads,
+        Nil,
+        autoClose = false
+      ))
       .unsafeRunSync()(IORuntime.global)
     connOpt = Some(conn)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)
-
-    log.debug("Closing ZeroMQ context")
-    IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.pollingEc)
-      .unsafeRunSync()(IORuntime.global)
-    log.debug("ZeroMQ context closed")
 
     val leftoverMessagesFileOpt =
       if (leftoverMessages.isEmpty) None
@@ -333,6 +333,18 @@ object Launcher extends CaseApp[LauncherOptions] {
       }
       .flatten
       .map(_.header.msg_id)
+
+    try conn.close(partial = false).unsafeRunSync()(IORuntime.global)
+    catch {
+      case NonFatal(e) =>
+        throw new Exception(e)
+    }
+
+    log.debug("Closing ZeroMQ context")
+    IO(zeromqThreads.context.close())
+      .evalOn(zeromqThreads.pollingEc)
+      .unsafeRunSync()(IORuntime.global)
+    log.debug("ZeroMQ context closed")
 
     launchActualKernel(
       connectionFile,
