@@ -289,16 +289,9 @@ object Launcher extends CaseApp[LauncherOptions] {
     val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
 
-    var connOpt       = Option.empty[Connection]
-    var closeExpected = false
     val interpreter = new LauncherInterpreter(
       connectionFile,
-      options,
-      () => {
-        val conn = connOpt.getOrElse(sys.error("No connection"))
-        closeExpected = true
-        conn.close.unsafeRunSync()(IORuntime.global)
-      }
+      options
     )
 
     val (run, conn) = Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
@@ -310,7 +303,6 @@ object Launcher extends CaseApp[LauncherOptions] {
         autoClose = false
       ))
       .unsafeRunSync()(IORuntime.global)
-    connOpt = Some(conn)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)
 
     val leftoverMessagesFileOpt =
