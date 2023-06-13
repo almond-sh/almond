@@ -5,10 +5,9 @@ import java.nio.file.{Files, Path}
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.cslogger.NotebookCacheLogger
 import almond.logger.LoggerContext
-import ammonite.compiler.iface.{CodeWrapper, Preprocessor}
-import ammonite.compiler.CompilerLifecycleManager
+import ammonite.compiler.iface.CodeWrapper
 import ammonite.runtime.{Evaluator, Frame, Storage}
-import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
+import ammonite.util.{ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
