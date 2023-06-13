@@ -2,10 +2,11 @@ package almond.launcher
 
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
+import almond.interpreter.api.OutputHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
-import almond.protocol.{Execute, RawJson}
+import almond.protocol.RawJson
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -29,8 +30,9 @@ object Launcher extends CaseApp[LauncherOptions] {
     currentCellCount: Int,
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
-    params0: LauncherParameters
-  ): os.proc = {
+    params0: LauncherParameters,
+    outputHandler: OutputHandler
+  ): (os.proc, String, Option[String]) = {
 
     val requestedScalaVersion = params0.scala
       .orElse(options.scala.map(_.trim).filter(_.nonEmpty))
@@ -138,7 +140,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       Seq("--no-execute-input-for", id)
     }
 
-    val javaCommand = params0.jvm.filter(_.trim.nonEmpty) match {
+    val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
+    val javaCommand = jvmIdOpt match {
       case Some(jvmId) =>
         val jvmManager = coursierapi.JvmManager.create().setArchiveCache(
           coursierapi.ArchiveCache.create().withCache(cache)
@@ -156,7 +159,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       if (javaOptions.exists(_.startsWith("-Xmx"))) Nil
       else Seq("-Xmx512m")
 
-    os.proc(
+    val proc = os.proc(
       javaCommand,
       memOptions,
       javaOptions,
@@ -173,6 +176,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       noExecuteInputArgs,
       options.kernelOptions
     )
+
+    (proc, requestedScalaVersion, jvmIdOpt)
   }
 
   private def launchActualKernel(proc: os.proc): Unit = {
@@ -332,31 +337,29 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
 
-    val actualKernelCommand0 = actualKernelCommand(
+    val outputHandlerOpt = firstMessageOpt.map { firstMessage =>
+      new LauncherOutputHandler(firstMessage, conn)
+    }
+
+    val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
       connectionFile,
       leftoverMessagesFileOpt,
       interpreter.lineCount,
       options,
       firstMessageIdOpt.toSeq,
-      interpreter.params
+      interpreter.params,
+      outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler)
     )
 
     if (!options.quiet0)
-      for (msg <- firstMessageOpt) {
-        val msg0 = msg.publish(
-          Execute.streamType,
-          Execute.Stream("stdout", "Launching kernel" + System.lineSeparator()),
-          ident = Some("stdout")
-        )
-        try
-          conn
-            .send(Channel.Publish, msg0.asRawMessage)
-            .unsafeRunSync()(IORuntime.global)
-        catch {
-          case NonFatal(e) =>
-            throw new Exception(e)
-        }
+      for (outputHandler <- outputHandlerOpt) {
+        val toPrint =
+          s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
+        outputHandler.stdout(toPrint + System.lineSeparator())
       }
+
+    for (outputHandler <- outputHandlerOpt)
+      outputHandler.done()
 
     try conn.close(partial = false).unsafeRunSync()(IORuntime.global)
     catch {
