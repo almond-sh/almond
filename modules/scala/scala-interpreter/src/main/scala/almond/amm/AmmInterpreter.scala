@@ -3,6 +3,7 @@ package almond.amm
 import java.nio.file.{Files, Path}
 
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
+import almond.cslogger.NotebookCacheLogger
 import almond.logger.LoggerContext
 import ammonite.compiler.iface.{CodeWrapper, Preprocessor}
 import ammonite.compiler.CompilerLifecycleManager
@@ -71,6 +72,7 @@ object AmmInterpreter {
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
+    useNotebookCoursierLogger: Boolean,
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
@@ -156,6 +158,14 @@ object AmmInterpreter {
             else
               baseEval
           }
+        }
+
+      if (useNotebookCoursierLogger)
+        ammInterp0.resolutionHooks.append { fetch =>
+          val cache  = fetch.getCache
+          val logger = new NotebookCacheLogger(jupyterApi.publish, logCtx)
+          val cache0 = cache.withLogger(logger)
+          fetch.withCache(cache0)
         }
 
       val customPredefs = predefFileInfos ++ {

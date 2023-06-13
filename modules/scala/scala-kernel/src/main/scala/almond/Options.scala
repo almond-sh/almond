@@ -63,6 +63,8 @@ final case class Options(
   autoUpdateLazyVals: Boolean = true,
   @HelpMessage("Whether to automatically update var-s upon change")
   autoUpdateVars: Boolean = true,
+  @HelpMessage("Whether to use a notebook-specific coursier logger")
+    useNotebookCoursierLogger: Boolean = false,
   @HelpMessage("Whether to enable variable inspector")
   variableInspector: Option[Boolean] = None,
   @HelpMessage("Whether to process format requests with scalafmt")

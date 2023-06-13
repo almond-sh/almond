@@ -2,6 +2,7 @@ package almond.launcher
 
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
+import almond.cslogger.NotebookCacheLogger
 import almond.interpreter.api.OutputHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
@@ -31,7 +32,8 @@ object Launcher extends CaseApp[LauncherOptions] {
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
     params0: LauncherParameters,
-    outputHandler: OutputHandler
+    outputHandler: OutputHandler,
+    logCtx: LoggerContext
   ): (os.proc, String, Option[String]) = {
 
     val requestedScalaVersion = params0.scala
@@ -53,7 +55,13 @@ object Launcher extends CaseApp[LauncherOptions] {
       ClassLoaderContent(entries0)
     }
 
-    val cache = coursierapi.Cache.create().withLogger(coursierapi.Logger.progressBars())
+    val logger =
+      if (options.quiet0)
+        coursierapi.Logger.nop()
+      else
+        new NotebookCacheLogger(outputHandler, logCtx)
+
+    val cache = coursierapi.Cache.create().withLogger(logger)
     val forcedVersions =
       if (scalaVersion.startsWith("2."))
         Map(
@@ -348,7 +356,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       options,
       firstMessageIdOpt.toSeq,
       interpreter.params,
-      outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler)
+      outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
+      logCtx
     )
 
     if (!options.quiet0)

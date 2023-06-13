@@ -108,6 +108,7 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   def ivyDeps = Agg(
     Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
     Deps.collectionCompat,
+    Deps.coursierApi,
     Deps.fs2(crossScalaVersion)
   )
   object test extends Tests with AlmondTestModule {
@@ -190,12 +191,14 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     if (crossScalaVersion.startsWith("3."))
       Seq(
         shared.interpreter(ScalaVersions.scala3Compat),
+        scala.`coursier-logger`(ScalaVersions.scala3Compat),
         scala.`scala-kernel-api-helper`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
     else
       Seq(
         shared.interpreter(),
+        scala.`coursier-logger`(),
         scala.`scala-kernel-api`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
@@ -353,17 +356,29 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   )
 }
 
+class CoursierLogger(val crossScalaVersion: String) extends AlmondModule {
+  def supports3 = true
+  def moduleDeps = super.moduleDeps ++ Seq(
+    shared.`interpreter-api`(),
+    shared.logger()
+  )
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.coursierApi,
+    Deps.scalatags.applyBinaryVersion213_3(scalaVersion())
+  )
+}
+
 trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
     with Bloop.Module {
   def supports3    = true
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
   def moduleDeps = Seq(
+    scala.`coursier-logger`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
   )
   def ivyDeps = Agg(
     Deps.caseApp,
-    Deps.coursierApi,
     Deps.coursierLauncher,
     Deps.directiveHandler,
     Deps.fansi,
@@ -459,9 +474,10 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all: _*)
   object `scala-kernel-helper`
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
-  object launcher         extends Launcher
-  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
-  object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
+  object `coursier-logger` extends Cross[CoursierLogger](ScalaVersions.binaries: _*)
+  object launcher          extends Launcher
+  object `almond-scalapy`  extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
+  object `almond-rx`       extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
 
@@ -521,6 +537,7 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
       scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
       scala.`scala-interpreter`(testScalaVersion),
       scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
+      scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
       scala.launcher,
       shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
       shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),
