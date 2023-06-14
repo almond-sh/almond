@@ -405,7 +405,8 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     maybeActualKernelCommand match {
       case Right(actualKernelCommand0) =>
-        launchActualKernel(actualKernelCommand0)
+        val proc0 = os.proc(actualKernelCommand0.commandChunks, remainingArgs.unparsed)
+        launchActualKernel(proc0)
       case Left(e) =>
         throw new Exception(e)
     }
