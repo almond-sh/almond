@@ -13,8 +13,7 @@ import scala.cli.directivehandler.EitherSequence._
 
 class LauncherInterpreter(
   connectionFile: String,
-  options: LauncherOptions,
-  close: () => Unit
+  options: LauncherOptions
 ) extends Interpreter {
 
   def kernelInfo(): KernelInfo =

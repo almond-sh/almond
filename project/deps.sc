@@ -47,7 +47,7 @@ object Deps {
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.10.0"
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
+  def coursierApi        = ivy"io.get-coursier:interface:1.0.18"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def directiveHandler   = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.0"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"

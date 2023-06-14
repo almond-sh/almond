@@ -256,7 +256,7 @@ class KernelLauncher(
       }
 
       def close(): Unit = {
-        conn.close.unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
+        conn.close(partial = false).unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
           sys.error("Timeout when closing ZeroMQ connections")
         }
 

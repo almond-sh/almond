@@ -26,7 +26,8 @@ final case class LauncherOptions(
   extraStartupClassPath: List[String] = Nil,
   sharedDependencies: List[String] = Nil,
   compileOnly: Option[Boolean] = None,
-  javaOpt: List[String] = Nil
+  javaOpt: List[String] = Nil,
+  quiet: Option[Boolean] = None
 ) {
   // format: on
 
@@ -50,6 +51,8 @@ final case class LauncherOptions(
       b ++= Seq(s"--compile-only=$value")
     b.result()
   }
+
+  def quiet0 = quiet.getOrElse(true)
 }
 
 object LauncherOptions {

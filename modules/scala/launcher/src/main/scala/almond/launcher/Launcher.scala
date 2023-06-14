@@ -2,6 +2,8 @@ package almond.launcher
 
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
+import almond.cslogger.NotebookCacheLogger
+import almond.interpreter.api.OutputHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
@@ -19,17 +21,20 @@ import java.nio.channels.ClosedSelectorException
 
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 object Launcher extends CaseApp[LauncherOptions] {
 
-  private def launchActualKernel(
+  private def actualKernelCommand(
     connectionFile: String,
     msgFileOpt: Option[os.Path],
     currentCellCount: Int,
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
-    params0: LauncherParameters
-  ): Unit = {
+    params0: LauncherParameters,
+    outputHandler: OutputHandler,
+    logCtx: LoggerContext
+  ): (os.proc, String, Option[String]) = {
 
     val requestedScalaVersion = params0.scala
       .orElse(options.scala.map(_.trim).filter(_.nonEmpty))
@@ -50,7 +55,13 @@ object Launcher extends CaseApp[LauncherOptions] {
       ClassLoaderContent(entries0)
     }
 
-    val cache = coursierapi.Cache.create().withLogger(coursierapi.Logger.progressBars())
+    val logger =
+      if (options.quiet0)
+        coursierapi.Logger.nop()
+      else
+        new NotebookCacheLogger(outputHandler, logCtx)
+
+    val cache = coursierapi.Cache.create().withLogger(logger)
     val forcedVersions =
       if (scalaVersion.startsWith("2."))
         Map(
@@ -137,7 +148,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       Seq("--no-execute-input-for", id)
     }
 
-    val javaCommand = params0.jvm.filter(_.trim.nonEmpty) match {
+    val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
+    val javaCommand = jvmIdOpt match {
       case Some(jvmId) =>
         val jvmManager = coursierapi.JvmManager.create().setArchiveCache(
           coursierapi.ArchiveCache.create().withCache(cache)
@@ -172,6 +184,12 @@ object Launcher extends CaseApp[LauncherOptions] {
       noExecuteInputArgs,
       options.kernelOptions
     )
+
+    (proc, requestedScalaVersion, jvmIdOpt)
+  }
+
+  private def launchActualKernel(proc: os.proc): Unit = {
+
     System.err.println(s"Launching ${proc.command.flatMap(_.value).mkString(" ")}")
     val p = proc.spawn(stdin = os.Inherit, stdout = os.Inherit)
     val hook: Thread =
@@ -289,29 +307,21 @@ object Launcher extends CaseApp[LauncherOptions] {
     val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
 
-    var connOpt       = Option.empty[Connection]
-    var closeExpected = false
     val interpreter = new LauncherInterpreter(
       connectionFile,
-      options,
-      () => {
-        val conn = connOpt.getOrElse(sys.error("No connection"))
-        closeExpected = true
-        conn.close.unsafeRunSync()(IORuntime.global)
-      }
+      options
     )
 
     val (run, conn) = Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
-      .flatMap(_.runOnConnectionFileAllowClose(connectionFile, "scala", zeromqThreads, Nil))
+      .flatMap(_.runOnConnectionFileAllowClose(
+        connectionFile,
+        "scala",
+        zeromqThreads,
+        Nil,
+        autoClose = false
+      ))
       .unsafeRunSync()(IORuntime.global)
-    connOpt = Some(conn)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)
-
-    log.debug("Closing ZeroMQ context")
-    IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.pollingEc)
-      .unsafeRunSync()(IORuntime.global)
-    log.debug("ZeroMQ context closed")
 
     val leftoverMessagesFileOpt =
       if (leftoverMessages.isEmpty) None
@@ -325,22 +335,53 @@ object Launcher extends CaseApp[LauncherOptions] {
         Some(leftoverMessagesFile)
       }
 
-    val firstMessageIdOpt = leftoverMessages
+    val firstMessageOpt = leftoverMessages
       .headOption
       .collect {
         case (Channel.Requests, m) =>
           almond.interpreter.Message.parse[RawJson](m).toOption // FIXME Log any error on the left?
       }
       .flatten
-      .map(_.header.msg_id)
 
-    launchActualKernel(
+    val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
+
+    val outputHandlerOpt = firstMessageOpt.map { firstMessage =>
+      new LauncherOutputHandler(firstMessage, conn)
+    }
+
+    val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
       connectionFile,
       leftoverMessagesFileOpt,
       interpreter.lineCount,
       options,
       firstMessageIdOpt.toSeq,
-      interpreter.params
+      interpreter.params,
+      outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
+      logCtx
     )
+
+    if (!options.quiet0)
+      for (outputHandler <- outputHandlerOpt) {
+        val toPrint =
+          s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
+        outputHandler.stdout(toPrint + System.lineSeparator())
+      }
+
+    for (outputHandler <- outputHandlerOpt)
+      outputHandler.done()
+
+    try conn.close(partial = false).unsafeRunSync()(IORuntime.global)
+    catch {
+      case NonFatal(e) =>
+        throw new Exception(e)
+    }
+
+    log.debug("Closing ZeroMQ context")
+    IO(zeromqThreads.context.close())
+      .evalOn(zeromqThreads.pollingEc)
+      .unsafeRunSync()(IORuntime.global)
+    log.debug("ZeroMQ context closed")
+
+    launchActualKernel(actualKernelCommand0)
   }
 }
