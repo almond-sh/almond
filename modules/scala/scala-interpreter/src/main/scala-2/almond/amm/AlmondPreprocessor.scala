@@ -34,6 +34,7 @@ class AlmondPreprocessor(
   parse: => String => Either[String, Seq[G#Tree]],
   autoUpdateLazyVals: Boolean,
   autoUpdateVars: Boolean,
+  silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
   logCtx: almond.logger.LoggerContext
 ) extends DefaultPreprocessor(parse) {
@@ -179,17 +180,22 @@ class AlmondPreprocessor(
       Some(extraCode0)
   }
 
+  val SilenceImport = Processor {
+    case (_, code, _: G#Import) =>
+      DefaultPreprocessor.Expanded(code, Seq("_root_.scala.Iterator[String]()"))
+  }
+
   private val baseDecls = Seq[(String, String, G#Tree) => Option[DefaultPreprocessor.Expanded]](
     CustomLazyDef,
     CustomVarDef,
-    // same as super.decls
+    // same as super.decls, but for Import / SilenceImport
     ObjectDef,
     ClassDef,
     TraitDef,
     DefDef,
     TypeDef,
     PatVarDef,
-    Import,
+    if (silentImports) SilenceImport else Import,
     Expr
   )
 
@@ -201,7 +207,7 @@ class AlmondPreprocessor(
         case (None, _)         => None
         case (Some(res), None) => Some(res)
         case (Some(res), Some(extra)) =>
-          Some(res.copy(printer = s"{ $extra; Iterator() }" +: res.printer))
+          Some(res.copy(printer = s"{ $extra; _root_.scala.Iterator[String]() }" +: res.printer))
       }
     }
     if (variableInspectorEnabled()) withExtra

@@ -49,15 +49,22 @@ object Dsl {
 
   private def stopWhen(replyType: String): (Channel, Message[RawJson]) => IO[Boolean] = {
     var gotExpectedReply = false
+    var isStarting       = false
     var gotIdleStatus    = false
     (c, m) =>
       gotExpectedReply =
         gotExpectedReply || (c == Channel.Requests && m.header.msg_type == replyType)
-      gotIdleStatus = gotIdleStatus || (
+      def incomingIdle =
         c == Channel.Publish &&
         m.header.msg_type == Status.messageType.messageType &&
         readFromArray(m.content.value)(Status.codec).execution_state == Status.idle.execution_state
-      )
+      def incomingStarting =
+        c == Channel.Publish &&
+        m.header.msg_type == Status.messageType.messageType &&
+        readFromArray(m.content.value)(Status.codec).execution_state ==
+          Status.starting.execution_state
+      gotIdleStatus = gotIdleStatus || (!isStarting && incomingIdle)
+      isStarting = (isStarting && !incomingIdle) || incomingStarting
       IO.pure(gotExpectedReply && gotIdleStatus)
   }
 
@@ -153,6 +160,12 @@ object Dsl {
       .sortBy(_._1)
       .map(_._2)
       .map(s => if (trimReplyLines) s.trimLines else s)
+    if (replies != Option(reply).toVector) {
+      val expectedSingleReply = reply
+      val gotReplies          = replies
+      pprint.err.log(expectedSingleReply)
+      pprint.err.log(gotReplies)
+    }
     expect(replies == Option(reply).toVector)
 
     if (replyPayloads != null) {

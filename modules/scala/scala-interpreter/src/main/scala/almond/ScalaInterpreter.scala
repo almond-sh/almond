@@ -123,6 +123,8 @@ final class ScalaInterpreter(
       params.mavenProfiles,
       params.autoUpdateLazyVals,
       params.autoUpdateVars,
+      params.useNotebookCoursierLogger,
+      params.silentImports,
       params.initialClassLoader,
       logCtx,
       jupyterApi.VariableInspector.enabled,

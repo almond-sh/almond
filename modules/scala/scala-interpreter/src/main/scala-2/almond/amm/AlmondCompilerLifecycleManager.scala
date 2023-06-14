@@ -14,6 +14,7 @@ class AlmondCompilerLifecycleManager(
   initialClassLoader: ClassLoader,
   autoUpdateLazyVals: Boolean,
   autoUpdateVars: Boolean,
+  silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
   outputDir: Option[Path],
   logCtx: LoggerContext
@@ -40,6 +41,7 @@ class AlmondCompilerLifecycleManager(
           .asInstanceOf[Either[String, Seq[scala.tools.nsc.Global#Tree]]],
         autoUpdateLazyVals,
         autoUpdateVars,
+        silentImports,
         variableInspectorEnabled,
         logCtx
       )

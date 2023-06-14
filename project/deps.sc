@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-31-80deef08"
+  def ammonite      = "3.0.0-M0-39-72f519a6"
   def caseApp       = "2.1.0-M24"
   def coursier      = "2.1.4"
   def jsoniterScala = "2.13.5"
@@ -32,22 +32,22 @@ implicit class DepOps(private val dep: Dep) {
 
 object Deps {
   def ammoniteCompiler(sv: String) =
-    ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
+    ivy"sh.almond.tmp.ammonite:ammonite-compiler_$sv:${Versions.ammonite}"
   def ammoniteRepl(sv: String) =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl_$sv:${Versions.ammonite}"
+    if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl_$sv:${Versions.ammonite}"
     else
-      ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+      ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteReplApi(sv: String) =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
+    if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl-api_$sv:${Versions.ammonite}"
     else
-      ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
-  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.13.12"
+      ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC1"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.10.0"
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.16"
+  def coursierApi        = ivy"io.get-coursier:interface:1.0.18"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def directiveHandler   = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.0"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
@@ -63,7 +63,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.3.7"
   def munit                    = ivy"org.scalameta::munit:0.7.29"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.9"
+  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.10"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
@@ -78,19 +78,22 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest = "3.2.2"
+  def scala3Latest = "3.3.0"
   def scala3Compat = "3.2.0"
   def cross2_3Version(sv: String) =
     if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
-    else "2.13.10"
+    else if (sv.startsWith("3.2.")) "2.13.10"
+    else "2.13.11"
   def scala213 = "2.13.11"
-  def scala212 = "2.12.17"
+  def scala212 = "2.12.18"
   val binaries = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
+    "3.2.2",
     "3.2.1",
     scala3Compat,
     scala213,
+    "2.13.10",
     "2.13.9",
     "2.13.8",
     "2.13.7",
@@ -98,17 +101,15 @@ object ScalaVersions {
     "2.13.5",
     "2.13.4",
     "2.13.3",
-    "2.13.2",
-    "2.13.1",
     scala212,
+    "2.12.17",
     "2.12.16",
     "2.12.15",
     "2.12.14",
     "2.12.13",
     "2.12.12",
     "2.12.11",
-    "2.12.10",
-    "2.12.9"
+    "2.12.10"
   ).distinct
 
   def binary(sv: String) =

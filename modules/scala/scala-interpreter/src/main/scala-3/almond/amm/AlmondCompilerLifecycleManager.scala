@@ -15,6 +15,7 @@ class AlmondCompilerLifecycleManager(
   initialClassLoader: ClassLoader,
   autoUpdateLazyVals: Boolean,
   autoUpdateVars: Boolean,
+  silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
   outputDir: Option[Path],
   logCtx: LoggerContext
@@ -33,6 +34,7 @@ class AlmondCompilerLifecycleManager(
       compiler.initialCtx.fresh.withSource(SourceFile.virtual(fileName, "")),
       autoUpdateLazyVals,
       autoUpdateVars,
+      silentImports,
       variableInspectorEnabled,
       logCtx
     )

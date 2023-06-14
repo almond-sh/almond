@@ -289,6 +289,8 @@ object InterpreterMessageHandlers {
       // messages sent after the originating cell is done running, are still sent to the client.
       // TODO Warn if no commHandler is available
       commHandlerOpt.foreach(_.updateDisplay(displayData))
+
+    def canOutput(): Boolean = true
   }
 
 }

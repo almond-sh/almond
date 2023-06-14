@@ -3,7 +3,7 @@ package almond.integration
 import almond.integration.Tests.ls
 import almond.testkit.Dsl._
 
-abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
+abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
@@ -12,12 +12,12 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "3.2.2"
-            |import scala.compiletime.ops.*
-            |val sv = scala.util.Properties.versionNumberString
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |import scala.compiletime.ops.*
+             |val sv = scala.util.Properties.versionNumberString
+             |""".stripMargin,
           "import scala.compiletime.ops.*" + ls + ls +
-            """sv: String = "2.13.10""""
+            """sv: String = "2.13.11""""
         )
       }
     }
@@ -28,10 +28,10 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "2.13.11"
-            |val sv = scala.util.Properties.versionNumberString
-            |""".stripMargin,
-          """sv: String = "2.13.10""""
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |val sv = scala.util.Properties.versionNumberString
+             |""".stripMargin,
+          s"""sv: String = "${KernelLauncher.testScala213Version}""""
         )
       }
     }
@@ -42,10 +42,10 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "2.12.17"
-            |val sv = scala.util.Properties.versionNumberString
-            |""".stripMargin,
-          """sv: String = "2.12.17""""
+          s"""//> using scala "${KernelLauncher.testScala212Version}"
+             |val sv = scala.util.Properties.versionNumberString
+             |""".stripMargin,
+          s"""sv: String = "${KernelLauncher.testScala212Version}""""
         )
       }
     }
@@ -84,7 +84,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          """//> using scala "3.2.2"""",
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"""",
           ""
         )
         execute(
@@ -104,8 +104,8 @@ abstract class KernelTestsTwoStepStartupDefinitions extends munit.FunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession("--java-opt", "-Dfoo=thing") { implicit session =>
         execute(
-          """//> using scala "3.2.2"
-            |val foo = sys.props("foo")""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |val foo = sys.props("foo")""".stripMargin,
           """foo: String = "thing""""
         )
       }

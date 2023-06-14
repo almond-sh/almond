@@ -26,7 +26,10 @@ final case class LauncherOptions(
   extraStartupClassPath: List[String] = Nil,
   sharedDependencies: List[String] = Nil,
   compileOnly: Option[Boolean] = None,
-  javaOpt: List[String] = Nil
+  javaOpt: List[String] = Nil,
+  quiet: Option[Boolean] = None,
+  silentImports: Option[Boolean] = None,
+  useNotebookCoursierLogger: Option[Boolean] = None
 ) {
   // format: on
 
@@ -48,8 +51,14 @@ final case class LauncherOptions(
       b ++= Seq("--predef", value)
     for (value <- compileOnly)
       b ++= Seq(s"--compile-only=$value")
+    for (value <- silentImports)
+      b ++= Seq(s"--silent-imports=$value")
+    for (value <- useNotebookCoursierLogger)
+      b ++= Seq(s"--use-notebook-coursier-logger=$value")
     b.result()
   }
+
+  def quiet0 = quiet.getOrElse(true)
 }
 
 object LauncherOptions {

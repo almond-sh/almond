@@ -27,6 +27,8 @@ abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.Up
     * [[OutputHandler.UpdateDisplay]]).
     */
   def display(displayData: DisplayData): Unit
+
+  def canOutput(): Boolean
 }
 
 object OutputHandler {
@@ -59,7 +61,7 @@ object OutputHandler {
       updateDisplay(DisplayData(Map("text/html" -> html0), idOpt = Some(id)))
   }
 
-  final class OnlyUpdateVia(commHandler: CommHandler) extends OutputHandler {
+  final class OnlyUpdateVia(commHandlerOpt: => Option[CommHandler]) extends OutputHandler {
 
     private def unsupported() =
       throw new Exception("unsupported (no cell currently running?)")
@@ -72,7 +74,12 @@ object OutputHandler {
       unsupported()
 
     def updateDisplay(displayData: DisplayData): Unit =
-      commHandler.updateDisplay(displayData)
+      commHandlerOpt match {
+        case Some(commHandler) => commHandler.updateDisplay(displayData)
+        case None              => unsupported()
+      }
+    def canOutput(): Boolean =
+      commHandlerOpt.nonEmpty
   }
 
   final class StableOutputHandler(underlying: => OutputHandler) extends OutputHandler {
@@ -84,6 +91,8 @@ object OutputHandler {
       underlying.display(displayData)
     def updateDisplay(displayData: DisplayData): Unit =
       underlying.updateDisplay(displayData)
+    def canOutput(): Boolean =
+      underlying.canOutput()
   }
 
   object NopOutputHandler extends OutputHandler {
@@ -91,6 +100,7 @@ object OutputHandler {
     def stderr(s: String): Unit                       = ()
     def display(displayData: DisplayData): Unit       = ()
     def updateDisplay(displayData: DisplayData): Unit = ()
+    def canOutput(): Boolean                          = false
   }
 
 }

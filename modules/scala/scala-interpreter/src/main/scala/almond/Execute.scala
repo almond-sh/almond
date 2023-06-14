@@ -417,7 +417,11 @@ final class Execute(
                   (
                     "Interrupted!" +: st
                       .takeWhile(x => !cutoff(x.getMethodName))
-                      .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
+                      .map(ExecuteResult.Error.highlightFrame(
+                        _,
+                        fansi.Attr.Reset,
+                        colors0().literal()
+                      ))
                   ).mkString(System.lineSeparator())
                 )
             }
@@ -437,59 +441,6 @@ final class Execute(
 }
 
 object Execute {
-
-  // these come from Ammonite
-  // exception display was tweaked a bit (too much red for notebooks else)
-
-  private def highlightFrame(
-    f: StackTraceElement,
-    highlightError: fansi.Attrs,
-    source: fansi.Attrs
-  ) = {
-    val src =
-      if (f.isNativeMethod) source("Native Method")
-      else if (f.getFileName == null) source("Unknown Source")
-      else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
-
-    val prefix :+ clsName = f.getClassName.split('.').toSeq
-    val prefixString      = prefix.map(_ + '.').mkString("")
-    val clsNameString     = clsName // .replace("$", error("$"))
-    val method =
-      fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
-        highlightError(f.getMethodName)
-
-    fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
-  }
-
-  def showException(
-    ex: Throwable,
-    error: fansi.Attrs,
-    highlightError: fansi.Attrs,
-    source: fansi.Attrs
-  ) = {
-
-    val cutoff = Set("$main", "evaluatorRunPrinter")
-    val traces = Ex.unapplySeq(ex).get.map(exception =>
-      error(exception.toString).render + System.lineSeparator() +
-        exception
-          .getStackTrace
-          .takeWhile(x => !cutoff(x.getMethodName))
-          .map(highlightFrame(_, highlightError, source))
-          .mkString(System.lineSeparator())
-    )
-    traces.mkString(System.lineSeparator())
-  }
-
-  private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error(
-      msg + exOpt.fold("")(ex =>
-        (if (msg.isEmpty) "" else "\n") + showException(
-          ex,
-          colors.error(),
-          fansi.Attr.Reset,
-          colors.literal()
-        )
-      )
-    )
-
+  def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
+    ExecuteResult.Error.error(colors.error(), colors.literal(), exOpt, msg)
 }
