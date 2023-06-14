@@ -101,4 +101,5 @@ class LauncherOutputHandler(
     queue.add(Display(displayData))
   def updateDisplay(displayData: almond.interpreter.api.DisplayData): Unit =
     queue.add(UpdateDisplay(displayData))
+  def canOutput(): Boolean = true
 }

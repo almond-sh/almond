@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 /** Actual [[almond.api.JupyterApi]] instance */
 final class JupyterApiImpl(
   execute: Execute,
-  commHandlerOpt: => Option[CommHandler],
+  commHandlerOpt0: => Option[CommHandler],
   replApi: ReplApiImpl,
   silent0: Ref[Boolean],
   protected val allowVariableInspector: Option[Boolean],
@@ -66,8 +66,8 @@ final class JupyterApiImpl(
 
   override def changingPublish =
     execute.currentPublishOpt.getOrElse(super.changingPublish)
-  override def commHandler =
-    commHandlerOpt.getOrElse(super.commHandler)
+  override def commHandlerOpt =
+    commHandlerOpt0
 
   protected def updatableResults0: JupyterApi.UpdatableResults =
     execute.updatableResults

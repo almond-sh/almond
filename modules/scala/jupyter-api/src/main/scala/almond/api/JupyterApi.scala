@@ -21,7 +21,7 @@ abstract class JupyterApi { api =>
   def silent: Boolean          = false
 
   protected implicit def changingPublish: OutputHandler =
-    new almond.interpreter.api.OutputHandler.OnlyUpdateVia(commHandler)
+    new almond.interpreter.api.OutputHandler.OnlyUpdateVia(commHandlerOpt)
 
   /** Jupyter publishing helper
     *
@@ -30,8 +30,12 @@ abstract class JupyterApi { api =>
   final implicit lazy val publish: OutputHandler =
     new OutputHandler.StableOutputHandler(changingPublish)
 
-  implicit def commHandler: CommHandler =
-    throw new Exception("Comm handler not available (not supported)")
+  def commHandlerOpt: Option[CommHandler] =
+    None
+  final implicit def commHandler: CommHandler =
+    commHandlerOpt.getOrElse {
+      throw new Exception("Comm handler not available (not supported)")
+    }
   final def comm: CommHandler = commHandler
 
   protected def updatableResults0: JupyterApi.UpdatableResults

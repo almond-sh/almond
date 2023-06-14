@@ -30,6 +30,8 @@ final class TestOutputHandler extends OutputHandler {
     lock.synchronized {
       output += Output.UpdateDisplay(displayData)
     }
+  def canOutput(): Boolean =
+    true
 
   def result(): Seq[Output] =
     output.result()
