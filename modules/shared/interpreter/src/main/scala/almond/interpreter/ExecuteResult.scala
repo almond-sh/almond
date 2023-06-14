@@ -42,6 +42,75 @@ object ExecuteResult {
   object Error {
     def apply(msg: String): Error =
       Error("", msg, Nil)
+
+    // these come from Ammonite
+    // exception display was tweaked a bit (too much red for notebooks else)
+
+    def highlightFrame(
+      f: StackTraceElement,
+      highlightError: fansi.Attrs,
+      source: fansi.Attrs
+    ) = {
+      val src =
+        if (f.isNativeMethod) source("Native Method")
+        else if (f.getFileName == null) source("Unknown Source")
+        else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
+
+      val prefix :+ clsName = f.getClassName.split('.').toSeq
+      val prefixString      = prefix.map(_ + '.').mkString("")
+      val clsNameString     = clsName // .replace("$", error("$"))
+      val method =
+        fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
+          highlightError(f.getMethodName)
+
+      fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
+    }
+
+    private def unapplySeq(t: Throwable): Option[Seq[Throwable]] = {
+      def rec(t: Throwable): List[Throwable] =
+        t match {
+          case null => Nil
+          case t    => t :: rec(t.getCause)
+        }
+      Some(rec(t))
+    }
+
+    def showException(
+      ex: Throwable,
+      error: fansi.Attrs,
+      highlightError: fansi.Attrs,
+      source: fansi.Attrs
+    ) = {
+
+      val cutoff = Set("$main", "evaluatorRunPrinter")
+      val traces = unapplySeq(ex).get.map(exception =>
+        error(exception.toString).render + System.lineSeparator() +
+          exception
+            .getStackTrace
+            .takeWhile(x => !cutoff(x.getMethodName))
+            .map(highlightFrame(_, highlightError, source))
+            .mkString(System.lineSeparator())
+      )
+      traces.mkString(System.lineSeparator())
+    }
+
+    def error(
+      errorColor: fansi.Attrs,
+      literalColor: fansi.Attrs,
+      exOpt: Option[Throwable],
+      msg: String
+    ) =
+      ExecuteResult.Error(
+        msg + exOpt.fold("")(ex =>
+          (if (msg.isEmpty) "" else "\n") + showException(
+            ex,
+            errorColor,
+            fansi.Attr.Reset,
+            literalColor
+          )
+        )
+      )
+
   }
 
   /** [[ExecuteResult]], if execution was aborted.

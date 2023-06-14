@@ -92,6 +92,7 @@ class Interpreter(val crossScalaVersion: String) extends AlmondModule {
   )
   def ivyDeps = Agg(
     Deps.collectionCompat,
+    Deps.fansi,
     Deps.scalatags.applyBinaryVersion213_3(scalaVersion()),
     Deps.slf4jNop
   )
