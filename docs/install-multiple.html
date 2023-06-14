@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="Several versions of almond can be installed side-by-side. This is useful e.g. to have kernels">
-  <meta name="docsearch:version" content="0.14.0-RC3">
+  <meta name="docsearch:version" content="0.14.0-RC5">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Multiple kernels · almond">
   <meta property="og:type" content="website">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.14.0-RC3</h3></a>
+     <a href="../versions"><h3>0.14.0-RC5</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -149,7 +149,7 @@
        <article>
         <div>
          <span><p>Several versions of almond can be installed side-by-side. This is useful e.g. to have kernels for several Scala versions, or to test newer / former almond versions.</p> <p>To install several version of the kernel side-by-side, just ensure the different installed versions have different ids (required) and display names (recommended).</p> <p>For example, let's install almond for the scala <code>2.13.11</code> version,</p> <pre><code class="hljs css language-bash">$ cs launch almond --scala 2.13.11 -- --install
-</code></pre> <p>This installs almond with the default kernel id, <code>scala</code>, and default display name, "Scala".</p> <p>Now let's <em>also</em> install almond for scala <code>2.12.18</code>,</p> <pre><code class="hljs css language-bash">$ cs launch almond:0.14.0-RC3 --scala 2.12.18 \
+</code></pre> <p>This installs almond with the default kernel id, <code>scala</code>, and default display name, "Scala".</p> <p>Now let's <em>also</em> install almond for scala <code>2.12.18</code>,</p> <pre><code class="hljs css language-bash">$ cs launch almond:0.14.0-RC5 --scala 2.12.18 \
       -- --install --id scala212 --display-name <span class="hljs-string">"Scala (2.12)"</span>
 </code></pre> <p><code>--id scala212</code> ensures this kernel is installed along side the former, in a directory with a different name.</p> <p><code>--display-name "Scala (2.12)"</code> ensures users can differentiate both kernels, with the latter appearing in front-ends under the name "Scala (2.12)".</p> </span>
         </div>
