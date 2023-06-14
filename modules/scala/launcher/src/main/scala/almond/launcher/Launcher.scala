@@ -3,11 +3,12 @@ package almond.launcher
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
+import almond.interpreter.ExecuteResult
 import almond.interpreter.api.OutputHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
-import almond.protocol.RawJson
+import almond.protocol.{Execute, RawJson}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -349,22 +350,42 @@ object Launcher extends CaseApp[LauncherOptions] {
       new LauncherOutputHandler(firstMessage, conn)
     }
 
-    val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
-      connectionFile,
-      leftoverMessagesFileOpt,
-      interpreter.lineCount,
-      options,
-      firstMessageIdOpt.toSeq,
-      interpreter.params,
-      outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
-      logCtx
-    )
+    val maybeActualKernelCommand =
+      try {
+        val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
+          connectionFile,
+          leftoverMessagesFileOpt,
+          interpreter.lineCount,
+          options,
+          firstMessageIdOpt.toSeq,
+          interpreter.params,
+          outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
+          logCtx
+        )
 
-    if (!options.quiet0)
-      for (outputHandler <- outputHandlerOpt) {
-        val toPrint =
-          s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
-        outputHandler.stdout(toPrint + System.lineSeparator())
+        if (!options.quiet0)
+          for (outputHandler <- outputHandlerOpt) {
+            val toPrint =
+              s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
+            outputHandler.stdout(toPrint + System.lineSeparator())
+          }
+
+        Right(actualKernelCommand0)
+      }
+      catch {
+        case NonFatal(e) if firstMessageOpt.nonEmpty =>
+          val firstMessage = firstMessageOpt.getOrElse(sys.error("Cannot happen"))
+          val err = ExecuteResult.Error.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
+          val errMsg = firstMessage.publish(
+            Execute.errorType,
+            Execute.Error("", "", List(err.message))
+          )
+          try conn.send(Channel.Publish, errMsg.asRawMessage).unsafeRunSync()(IORuntime.global)
+          catch {
+            case NonFatal(e) =>
+              throw new Exception(e)
+          }
+          Left(e)
       }
 
     for (outputHandler <- outputHandlerOpt)
@@ -382,6 +403,12 @@ object Launcher extends CaseApp[LauncherOptions] {
       .unsafeRunSync()(IORuntime.global)
     log.debug("ZeroMQ context closed")
 
-    launchActualKernel(actualKernelCommand0)
+    maybeActualKernelCommand match {
+      case Right(actualKernelCommand0) =>
+        val proc0 = os.proc(actualKernelCommand0.commandChunks, remainingArgs.unparsed)
+        launchActualKernel(proc0)
+      case Left(e) =>
+        throw new Exception(e)
+    }
   }
 }
