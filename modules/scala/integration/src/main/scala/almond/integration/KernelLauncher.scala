@@ -544,7 +544,8 @@ class KernelLauncher(
       f(runner0)
     }
     finally
-      runner0.close()
+      if (runner0 != null)
+        runner0.close()
   }
 
 }
