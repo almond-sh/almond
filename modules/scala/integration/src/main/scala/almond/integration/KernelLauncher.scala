@@ -574,7 +574,8 @@ class KernelLauncher(
       res
     }
     finally {
-      runner0.close()
+      if (runner0 != null)
+        runner0.close()
       output.close(success = success, printOutputOnError = printOutputOnError)
     }
   }
