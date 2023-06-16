@@ -79,7 +79,7 @@ object OutputHandler {
         case None              => unsupported()
       }
     def canOutput(): Boolean =
-      commHandlerOpt.nonEmpty
+      false
   }
 
   final class StableOutputHandler(underlying: => OutputHandler) extends OutputHandler {
