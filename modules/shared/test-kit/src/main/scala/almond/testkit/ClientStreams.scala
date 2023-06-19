@@ -269,7 +269,7 @@ object ClientStreams {
 
     val poisonPill: (Channel, RawMessage) = null
 
-    val q = Queue.bounded[IO, (Channel, RawMessage)](10).unsafeRunSync()(IORuntime.global)
+    val q = Queue.unbounded[IO, (Channel, RawMessage)].unsafeRunSync()(IORuntime.global)
 
     val sink: Pipe[IO, (Channel, RawMessage), Unit] = { s =>
 
