@@ -43,20 +43,20 @@ object EvaluatorTests extends TestSuite {
         runner.run(
           Seq(
             ";1; 2L; '3';" ->
-              """res0_0: Int = 1
-                |res0_1: Long = 2L
-                |res0_2: Char = '3'""".stripMargin,
+              """res1_0: Int = 1
+                |res1_1: Long = 2L
+                |res1_2: Char = '3'""".stripMargin,
             "val x = 1; x;" ->
               """x: Int = 1
-                |res1_1: Int = 1""".stripMargin,
+                |res2_1: Int = 1""".stripMargin,
             "var x = 1; x = 2; x" ->
               """x: Int = 2
-                |res2_2: Int = 2""".stripMargin,
+                |res3_2: Int = 2""".stripMargin,
             "var y = 1; case class C(i: Int = 0){ def foo = x + y }; new C().foo" ->
               """y: Int = 1
                 |defined class C
-                |res3_2: Int = 3""".stripMargin,
-            "C()" -> (if (isScala212) "res4: C = C(0)" else "res4: C = C(i = 0)")
+                |res4_2: Int = 3""".stripMargin,
+            "C()" -> (if (isScala212) "res5: C = C(0)" else "res5: C = C(i = 0)")
           )
         )
       }
@@ -65,13 +65,13 @@ object EvaluatorTests extends TestSuite {
         runner.run(
           Seq(
             "lazy val x = 'h'"            -> (if (TestUtil.isScala2) "" else "x: Char = <lazy>"),
-            "x"                           -> "res1: Char = 'h'",
+            "x"                           -> "res2: Char = 'h'",
             "var w = 'l'"                 -> ifNotVarUpdates("w: Char = 'l'"),
             "lazy val y = {w = 'a'; 'A'}" -> (if (TestUtil.isScala2) "" else "y: Char = <lazy>"),
             "lazy val z = {w = 'b'; 'B'}" -> (if (TestUtil.isScala2) "" else "z: Char = <lazy>"),
-            "z"                           -> "res5: Char = 'B'",
-            "y"                           -> "res6: Char = 'A'",
-            "w"                           -> "res7: Char = 'a'"
+            "z"                           -> "res6: Char = 'B'",
+            "y"                           -> "res7: Char = 'A'",
+            "w"                           -> "res8: Char = 'a'"
           ),
           Seq(
             if (TestUtil.isScala2) "x: Char = [lazy]" else "",
@@ -91,9 +91,9 @@ object EvaluatorTests extends TestSuite {
         runner.run(
           Seq(
             "var x: Int = 10" -> ifNotVarUpdates("x: Int = 10"),
-            "x"               -> "res1: Int = 10",
+            "x"               -> "res2: Int = 10",
             "x = 1"           -> "",
-            "x"               -> "res3: Int = 1"
+            "x"               -> "res4: Int = 1"
           ),
           Seq(
             ifVarUpdates("x: Int = 10"),

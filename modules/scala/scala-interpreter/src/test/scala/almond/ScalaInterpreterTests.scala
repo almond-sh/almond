@@ -176,7 +176,7 @@ object ScalaInterpreterTests extends TestSuite {
         val textOpt = interpreter.execute("3")
           .asSuccess
           .flatMap(_.data.data.get("text/plain"))
-        val expectedTextOpt = Option("res0: Int = 3")
+        val expectedTextOpt = Option("res1: Int = 3")
         assert(textOpt == expectedTextOpt)
       }
 
@@ -357,7 +357,7 @@ object ScalaInterpreterTests extends TestSuite {
         val res0 = i.execute(code0)
         val res1 = i.execute(code1)
         val res2 = i.execute(code2)
-        val res3 = i.execute(code3)
+        val res4 = i.execute(code3)
 
         val expectedRes0 = ExecuteResult.Success(DisplayData.empty)
         val expectedRes1 = ExecuteResult.Success(DisplayData.empty)
@@ -371,7 +371,7 @@ object ScalaInterpreterTests extends TestSuite {
         assert(res0 == expectedRes0)
         assert(res1 == expectedRes1)
         assert(res2 == expectedRes2)
-        assert(res3 == expectedRes3)
+        assert(res4 == expectedRes3)
       }
     }
 

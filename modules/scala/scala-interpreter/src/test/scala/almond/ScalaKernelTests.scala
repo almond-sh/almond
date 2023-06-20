@@ -705,7 +705,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res0: Vector[Int] = " + (1 to 200).toVector.toString
+        "res1: Vector[Int] = " + (1 to 200).toVector.toString
       )
       kernel.execute(
         "%truncation on",
@@ -715,7 +715,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res1: Vector[Int] = " +
+        "res2: Vector[Int] = " +
           (1 to 38)
             .toVector
             .map("  " + _ + "," + "\n")

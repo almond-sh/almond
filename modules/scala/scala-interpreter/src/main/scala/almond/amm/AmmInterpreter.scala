@@ -138,6 +138,8 @@ object AmmInterpreter {
           scriptCodeWrapper = codeWrapper,
           parameters = interpParams
         ) {
+          override def wrapperNamePrefix = "cell"
+
           override val compilerManager = new AlmondCompilerLifecycleManager(
             storage0.dirOpt.map(_.toNIO),
             headFrame,
