@@ -385,14 +385,12 @@ object Kernel {
     noExecuteInputFor: Set[String]
   ): IO[Kernel] =
     for {
-      backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
-      executeQueue            <-
-        // FIXME Sizing
-        Queue.bounded[IO, Option[(
-          Option[(Channel, RawMessage)],
-          Stream[IO, (Channel, RawMessage)]
-        )]](50)
-      otherQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+      backgroundMessagesQueue <- Queue.unbounded[IO, (Channel, RawMessage)]
+      executeQueue <- Queue.unbounded[IO, Option[(
+        Option[(Channel, RawMessage)],
+        Stream[IO, (Channel, RawMessage)]
+      )]]
+      otherQueue <- Queue.unbounded[IO, Option[Stream[IO, (Channel, RawMessage)]]]
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {
