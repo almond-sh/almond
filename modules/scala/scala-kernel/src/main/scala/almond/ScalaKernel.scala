@@ -137,6 +137,8 @@ object ScalaKernel extends CaseApp[Options] {
         disableCache = options.disableCache,
         autoUpdateLazyVals = options.autoUpdateLazyVals,
         autoUpdateVars = options.autoUpdateVars,
+        useNotebookCoursierLogger = options.useNotebookCoursierLogger,
+        silentImports = options.silentImports,
         allowVariableInspector = options.variableInspector,
         useThreadInterrupt = options.useThreadInterrupt,
         outputDir = options.outputDirectory
@@ -205,7 +207,8 @@ object ScalaKernel extends CaseApp[Options] {
           connectionFile,
           "scala",
           zeromqThreads,
-          options.leftoverMessages0()
+          options.leftoverMessages0(),
+          autoClose = true
         ))
         .unsafeRunSync()(IORuntime.global)
     finally

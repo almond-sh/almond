@@ -189,7 +189,13 @@ final case class Kernel(
     leftoverMessages: Seq[(Channel, RawMessage)]
   ): IO[Unit] =
     for {
-      t <- runOnConnectionAllowClose0(connection, kernelId, zeromqThreads, leftoverMessages)
+      t <- runOnConnectionAllowClose0(
+        connection,
+        kernelId,
+        zeromqThreads,
+        leftoverMessages,
+        autoClose = true
+      )
       (run, _) = t
       _ <- run
     } yield ()
@@ -198,7 +204,8 @@ final case class Kernel(
     connection: ConnectionParameters,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean
   ): IO[(IO[Unit], Connection)] =
     for {
       c <- connection.channels(
@@ -212,7 +219,7 @@ final case class Kernel(
       val run0 =
         for {
           _ <- c.open
-          _ <- run(c.stream(), c.autoCloseSink, leftoverMessages)
+          _ <- run(c.stream(), c.autoCloseSink(partial = !autoClose), leftoverMessages)
         } yield ()
       (run0, c)
     }
@@ -228,9 +235,16 @@ final case class Kernel(
     connection: ConnectionParameters,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
-    runOnConnectionAllowClose0(connection, kernelId, zeromqThreads, leftoverMessages).map {
+    runOnConnectionAllowClose0(
+      connection,
+      kernelId,
+      zeromqThreads,
+      leftoverMessages,
+      autoClose
+    ).map {
       case (run, conn) =>
         val run0 = run.attempt.flatMap {
           case Left(e: CloseExecutionException) =>
@@ -249,7 +263,8 @@ final case class Kernel(
     connectionPath: Path,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     for {
       _ <- {
@@ -269,7 +284,8 @@ final case class Kernel(
         connection.connectionParameters,
         kernelId,
         zeromqThreads,
-        leftoverMessages
+        leftoverMessages,
+        autoClose
       )
     } yield value
 
@@ -277,10 +293,17 @@ final case class Kernel(
     connectionPath: Path,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean
   ): IO[Unit] =
     for {
-      t <- runOnConnectionFileAllowClose(connectionPath, kernelId, zeromqThreads, leftoverMessages)
+      t <- runOnConnectionFileAllowClose(
+        connectionPath,
+        kernelId,
+        zeromqThreads,
+        leftoverMessages,
+        autoClose
+      )
       (run, _) = t
       _ <- run
     } yield ()
@@ -289,10 +312,17 @@ final case class Kernel(
     connectionPath: String,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean
   ): IO[Unit] =
     for {
-      t <- runOnConnectionFileAllowClose(connectionPath, kernelId, zeromqThreads, leftoverMessages)
+      t <- runOnConnectionFileAllowClose(
+        connectionPath,
+        kernelId,
+        zeromqThreads,
+        leftoverMessages,
+        autoClose
+      )
       (run, _) = t
       _ <- run
     } yield ()
@@ -301,13 +331,15 @@ final case class Kernel(
     connectionPath: String,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     runOnConnectionFileAllowClose(
       Paths.get(connectionPath),
       kernelId,
       zeromqThreads,
-      leftoverMessages
+      leftoverMessages,
+      autoClose
     )
 
 }
@@ -353,14 +385,12 @@ object Kernel {
     noExecuteInputFor: Set[String]
   ): IO[Kernel] =
     for {
-      backgroundMessagesQueue <- Queue.bounded[IO, (Channel, RawMessage)](20) // FIXME Sizing
-      executeQueue            <-
-        // FIXME Sizing
-        Queue.bounded[IO, Option[(
-          Option[(Channel, RawMessage)],
-          Stream[IO, (Channel, RawMessage)]
-        )]](50)
-      otherQueue <- Queue.bounded[IO, Option[Stream[IO, (Channel, RawMessage)]]](50) // FIXME Sizing
+      backgroundMessagesQueue <- Queue.unbounded[IO, (Channel, RawMessage)]
+      executeQueue <- Queue.unbounded[IO, Option[(
+        Option[(Channel, RawMessage)],
+        Stream[IO, (Channel, RawMessage)]
+      )]]
+      otherQueue <- Queue.unbounded[IO, Option[Stream[IO, (Channel, RawMessage)]]]
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {

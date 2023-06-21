@@ -38,7 +38,7 @@ abstract class Connection {
     *
     * Can be run multiple times. Only the first call will actually close the channels.
     */
-  def close: IO[Unit]
+  def close(partial: Boolean): IO[Unit]
 
   /** Try to read a message from the specified [[Channel]].
     *
@@ -77,7 +77,7 @@ abstract class Connection {
   final def sink: Pipe[IO, (Channel, Message), Unit] =
     _.evalMap((send _).tupled)
 
-  final def autoCloseSink: Pipe[IO, (Channel, Message), Unit] =
-    s => Stream.bracket(IO.unit)(_ => close).flatMap(_ => sink(s))
+  final def autoCloseSink(partial: Boolean): Pipe[IO, (Channel, Message), Unit] =
+    s => Stream.bracket(IO.unit)(_ => close(partial)).flatMap(_ => sink(s))
 
 }

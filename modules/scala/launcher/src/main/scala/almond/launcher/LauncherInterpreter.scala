@@ -13,8 +13,7 @@ import scala.cli.directivehandler.EitherSequence._
 
 class LauncherInterpreter(
   connectionFile: String,
-  options: LauncherOptions,
-  close: () => Unit
+  options: LauncherOptions
 ) extends Interpreter {
 
   def kernelInfo(): KernelInfo =
@@ -116,59 +115,8 @@ object LauncherInterpreter {
 
   private val handlersMap = handlers.flatMap(h => h.keys.map(_ -> h)).toMap
 
-  // FIXME Also in almond.Execute
-  private def highlightFrame(
-    f: StackTraceElement,
-    highlightError: fansi.Attrs,
-    source: fansi.Attrs
-  ) = {
-    val src =
-      if (f.isNativeMethod) source("Native Method")
-      else if (f.getFileName == null) source("Unknown Source")
-      else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
-
-    val prefix :+ clsName = f.getClassName.split('.').toSeq
-    val prefixString      = prefix.map(_ + '.').mkString("")
-    val clsNameString     = clsName // .replace("$", error("$"))
-    val method =
-      fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
-        highlightError(f.getMethodName)
-
-    fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
-  }
-
-  // FIXME Also in almond.Execute
-  def showException(
-    ex: Throwable,
-    error: fansi.Attrs,
-    highlightError: fansi.Attrs,
-    source: fansi.Attrs
-  ) = {
-
-    val cutoff = Set("$main", "evaluatorRunPrinter")
-    val traces = Ex.unapplySeq(ex).get.map(exception =>
-      error(exception.toString).render + System.lineSeparator() +
-        exception
-          .getStackTrace
-          .takeWhile(x => !cutoff(x.getMethodName))
-          .map(highlightFrame(_, highlightError, source))
-          .mkString(System.lineSeparator())
-    )
-    traces.mkString(System.lineSeparator())
-  }
-
-  // FIXME Also in almond.Execute
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error(
-      msg + exOpt.fold("")(ex =>
-        (if (msg.isEmpty) "" else "\n") + showException(
-          ex,
-          colors.error,
-          fansi.Attr.Reset,
-          colors.literal
-        )
-      )
-    )
+    ExecuteResult.Error.error(colors.error, colors.literal, exOpt, msg)
 
   // from Model.scala in Ammonite
   object Ex {

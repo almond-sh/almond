@@ -3,11 +3,11 @@ package almond.amm
 import java.nio.file.{Files, Path}
 
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
+import almond.cslogger.NotebookCacheLogger
 import almond.logger.LoggerContext
-import ammonite.compiler.iface.{CodeWrapper, Preprocessor}
-import ammonite.compiler.CompilerLifecycleManager
+import ammonite.compiler.iface.CodeWrapper
 import ammonite.runtime.{Evaluator, Frame, Storage}
-import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
+import ammonite.util.{ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
@@ -71,6 +71,8 @@ object AmmInterpreter {
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
+    useNotebookCoursierLogger: Boolean,
+    silentImports: Boolean,
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
@@ -144,6 +146,7 @@ object AmmInterpreter {
             headFrame.classloader,
             autoUpdateLazyVals,
             autoUpdateVars,
+            silentImports,
             variableInspectorEnabled,
             outputDir0,
             logCtx
@@ -156,6 +159,14 @@ object AmmInterpreter {
             else
               baseEval
           }
+        }
+
+      if (useNotebookCoursierLogger)
+        ammInterp0.resolutionHooks.append { fetch =>
+          val cache  = fetch.getCache
+          val logger = new NotebookCacheLogger(jupyterApi.publish, logCtx)
+          val cache0 = cache.withLogger(logger)
+          fetch.withCache(cache0)
         }
 
       val customPredefs = predefFileInfos ++ {
