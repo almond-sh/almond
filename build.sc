@@ -829,11 +829,9 @@ def validateExamples(matcher: String = "", update: Boolean = false) = {
       "--install",
       "--force",
       "--trap-output",
-      "--predef-code",
-      maybeEscapeArg("sys.props(\"almond.ids.random\") = \"0\""),
       "--extra-repository",
       s"ivy:${repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
-    ).call(cwd = examplesDir)
+    ).call(cwd = examplesDir, env = Map("ALMOND_USE_RANDOM_IDS" -> "false"))
 
     val nbFiles = exampleNotebooks()
       .map(_.path)
