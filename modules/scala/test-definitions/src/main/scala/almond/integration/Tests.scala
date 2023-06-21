@@ -349,6 +349,25 @@ object Tests {
       }
     }
 
+  def toreeHtml()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession("--toree-magics") { implicit session =>
+
+      execute(
+        """%%html
+          |<p>
+          |<b>Hello</b>
+          |</p>
+          |""".stripMargin,
+        "",
+        displaysHtml = Seq(
+          """<p>
+            |<b>Hello</b>
+            |</p>
+            |""".stripMargin
+        )
+      )
+    }
+
   private def java17Cmd(): String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)

@@ -644,34 +644,8 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("toree Html") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          toreeMagics = true
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-
-      kernel.execute(
-        """%%html
-          |<p>
-          |<b>Hello</b>
-          |</p>
-          |""".stripMargin,
-        "",
-        displaysHtml = Seq(
-          """<p>
-            |<b>Hello</b>
-            |</p>
-            |""".stripMargin
-        )
-      )
+      almond.integration.Tests.toreeHtml()
     }
 
     test("toree Truncation") {
