@@ -361,7 +361,7 @@ object TestUtil {
       for ((a, b) <- publish0.zip(publish) if a != b)
         System.err.println(s"Expected $b, got $a")
       for (
-        k <- replies0.keySet.intersect(expectedReplies.keySet)
+        k <- replies0.keySet.intersect(expectedReplies.keySet).toVector.sorted
         if replies0.get(k) != expectedReplies.get(k)
       )
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got ${replies0(k)}")
