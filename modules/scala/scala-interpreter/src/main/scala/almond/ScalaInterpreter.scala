@@ -129,7 +129,8 @@ final class ScalaInterpreter(
       logCtx,
       jupyterApi.VariableInspector.enabled,
       outputDir = params.outputDir,
-      compileOnly = params.compileOnly
+      compileOnly = params.compileOnly,
+      addToreeApiCompatibilityImport = params.toreeApiCompatibility
     )
   }
 

@@ -14,6 +14,8 @@ final case class LauncherOptions(
   connectionFile: Option[String] = None,
   variableInspector: Option[Boolean] = None,
   toreeMagics: Option[Boolean] = None,
+  toreeApi: Option[Boolean] = None,
+  toreeCompatibility: Option[Boolean] = None,
   color: Option[Boolean] = None,
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
@@ -41,6 +43,10 @@ final case class LauncherOptions(
       b ++= Seq(s"--variable-inspector=$value")
     for (value <- toreeMagics)
       b ++= Seq(s"--toree-magics=$value")
+    for (value <- toreeApi)
+      b ++= Seq(s"--toree-api=$value")
+    for (value <- toreeCompatibility)
+      b ++= Seq(s"--toree-compatibility=$value")
     for (value <- color)
       b ++= Seq(s"--color=$value")
     for (value <- logTo)

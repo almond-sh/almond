@@ -99,7 +99,8 @@ object TestUtil {
 
   private case class Options(
     predef: List[String] = Nil,
-    toreeMagics: Boolean = false
+    toreeMagics: Boolean = false,
+    toreeApi: Boolean = false
   )
 
   private val optionsParser: caseapp.Parser[Options] = caseapp.Parser.derive
@@ -125,7 +126,8 @@ object TestUtil {
             initialColors = Colors.BlackWhite,
             updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
             predefFiles = opt.predef.map(Paths.get(_)),
-            toreeMagics = opt.toreeMagics
+            toreeMagics = opt.toreeMagics,
+            toreeApiCompatibility = opt.toreeApi
           )
         },
         logCtx = logCtx

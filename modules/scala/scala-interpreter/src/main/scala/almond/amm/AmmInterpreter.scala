@@ -53,6 +53,10 @@ object AmmInterpreter {
     ImportData("almond.input.Input")
   )
 
+  private def toreeApiCompatibilityImports = Imports(
+    ImportData("almond.toree.ToreeCompatibility.KernelToreeOps")
+  )
+
   /** Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
     */
   def apply(
@@ -77,7 +81,8 @@ object AmmInterpreter {
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
     outputDir: Either[os.Path, Boolean],
-    compileOnly: Boolean
+    compileOnly: Boolean,
+    addToreeApiCompatibilityImport: Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -107,6 +112,22 @@ object AmmInterpreter {
     val log = logCtx(getClass)
 
     try {
+
+      val addToreeApiCompatibilityImport0 =
+        addToreeApiCompatibilityImport && {
+          val loader = frames0().head.classloader
+          val clsOpt =
+            try Some(loader.loadClass("almond.toree.ToreeCompatibility$"))
+            catch {
+              case _: ClassNotFoundException =>
+                None
+            }
+          if (clsOpt.isEmpty)
+            log.error(
+              "Ignoring Toree API compatibility option, as sh.almond::toree-hooks isn't part of the user class path"
+            )
+          clsOpt.nonEmpty
+        }
 
       log.info("Creating Ammonite interpreter")
 
@@ -184,7 +205,8 @@ object AmmInterpreter {
 
       val imports = ammonite.main.Defaults.replImports ++
         ammonite.interp.Interpreter.predefImports ++
-        almondImports
+        almondImports ++
+        (if (addToreeApiCompatibilityImport0) toreeApiCompatibilityImports else Imports())
       for ((e, _) <- ammInterp0.initializePredef(Nil, customPredefs, extraBridges, imports))
         e match {
           case Res.Failure(msg) =>
