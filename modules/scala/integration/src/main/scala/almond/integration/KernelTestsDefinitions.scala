@@ -6,6 +6,8 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
+  override def mightRetry = true
+
   test("jvm-repr") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
