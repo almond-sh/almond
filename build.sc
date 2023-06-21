@@ -783,7 +783,7 @@ def exampleNotebooks = T.sources {
     .map(PathRef(_))
 }
 
-def validateExamples(matcher: String = "") = {
+def validateExamples(matcher: String = "", update: Boolean = false) = {
   val sv           = "2.12.12"
   val kernelId     = "almond-sources-tmp"
   val baseRepoRoot = os.rel / "out" / "repo"
@@ -829,11 +829,9 @@ def validateExamples(matcher: String = "") = {
       "--install",
       "--force",
       "--trap-output",
-      "--predef-code",
-      maybeEscapeArg("sys.props(\"almond.ids.random\") = \"0\""),
       "--extra-repository",
       s"ivy:${repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
-    ).call(cwd = examplesDir)
+    ).call(cwd = examplesDir, env = Map("ALMOND_USE_RANDOM_IDS" -> "false"))
 
     val nbFiles = exampleNotebooks()
       .map(_.path)
@@ -846,7 +844,7 @@ def validateExamples(matcher: String = "") = {
     var errorCount = 0
     for (f <- nbFiles) {
       val output = outputDir / f.last
-      os.proc(
+      val res = os.proc(
         "jupyter",
         "nbconvert",
         "--to",
@@ -855,38 +853,62 @@ def validateExamples(matcher: String = "") = {
         s"--ExecutePreprocessor.kernel_name=$kernelId",
         f,
         s"--output=$output"
-      ).call(cwd = examplesDir, env = Map("JUPYTER_PATH" -> jupyterPath.toString))
+      ).call(
+        cwd = examplesDir,
+        env = Map(
+          "JUPYTER_PATH"          -> jupyterPath.toString,
+          "ALMOND_USE_RANDOM_IDS" -> "false"
+        ),
+        check = false
+      )
 
-      val rawOutput = os.read(output, Charset.defaultCharset())
+      if (res.exitCode == 0) {
+        if (!os.exists(output)) {
+          val otherOutput = output / os.up / s"${output.last.stripSuffix(".ipynb")}.nbconvert.ipynb"
+          if (os.exists(otherOutput))
+            os.move(otherOutput, output)
+        }
+        val rawOutput = os.read(output, Charset.defaultCharset())
 
-      var updatedOutput = rawOutput
-      if (Properties.isWin)
-        updatedOutput = updatedOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
+        var updatedOutput = rawOutput
+        if (Properties.isWin)
+          updatedOutput = updatedOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
 
-      // Clear metadata, that usually looks like
-      // "metadata": {
-      //  "execution": {
-      //   "iopub.execute_input": "2022-08-17T10:35:13.619221Z",
-      //   "iopub.status.busy": "2022-08-17T10:35:13.614065Z",
-      //   "iopub.status.idle": "2022-08-17T10:35:16.310834Z",
-      //   "shell.execute_reply": "2022-08-17T10:35:16.311111Z"
-      //  }
-      // }
-      val json = ujson.read(updatedOutput)
-      for (cell <- json("cells").arr if cell("cell_type").str == "code")
-        cell("metadata") = ujson.Obj()
-      updatedOutput = json.render(1)
+        // Clear metadata, that usually looks like
+        // "metadata": {
+        //  "execution": {
+        //   "iopub.execute_input": "2022-08-17T10:35:13.619221Z",
+        //   "iopub.status.busy": "2022-08-17T10:35:13.614065Z",
+        //   "iopub.status.idle": "2022-08-17T10:35:16.310834Z",
+        //   "shell.execute_reply": "2022-08-17T10:35:16.311111Z"
+        //  }
+        // }
+        val json = ujson.read(updatedOutput)
+        for (cell <- json("cells").arr if cell("cell_type").str == "code")
+          cell("metadata") = ujson.Obj()
+        updatedOutput = json.render(1)
 
-      // writing the updated notebook on disk for the diff below
-      os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
+        // writing the updated notebook on disk for the diff below
+        os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
 
-      val result   = os.read(output, Charset.defaultCharset())
-      val expected = os.read(f)
+        val result   = os.read(output, Charset.defaultCharset())
+        val expected = os.read(f)
 
-      if (result != expected) {
-        System.err.println(s"${f.last} differs:")
-        System.err.println()
-        os.proc("diff", "-u", f, output).call(cwd = examplesDir)
+        if (result != expected) {
+          System.err.println(s"${f.last} differs:")
+          System.err.println()
+          os.proc("diff", "-u", f, output)
+            .call(cwd = examplesDir, check = false, stdin = os.Inherit, stdout = os.Inherit)
+          if (update) {
+            System.err.println(s"Updating ${f.last}")
+            os.copy.over(output, f)
+          }
+          else
+            errorCount += 1
+        }
+      }
+      else {
+        System.err.println(s"Failed to run nbconvert for ${f.last}")
         errorCount += 1
       }
     }

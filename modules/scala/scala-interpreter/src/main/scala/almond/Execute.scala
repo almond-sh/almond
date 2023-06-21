@@ -269,7 +269,7 @@ final class Execute(
                 val r = ammInterp.processLine(
                   code0,
                   stmts,
-                  if (storeHistory) currentLine0 else currentNoHistoryLine0,
+                  (if (storeHistory) currentLine0 else currentNoHistoryLine0) + 1,
                   silent = silent(),
                   incrementLine =
                     if (storeHistory)

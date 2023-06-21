@@ -6,6 +6,8 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
+  override def mightRetry = true
+
   test("jvm-repr") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
@@ -61,6 +63,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeAddJarURL(kernelLauncher.defaultScalaVersion, sameCell = true)
+    }
+  }
+
+  test("toree Html") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.toreeHtml()
     }
   }
 

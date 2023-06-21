@@ -4,7 +4,7 @@ import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
 import almond.interpreter.ExecuteResult
-import almond.interpreter.api.OutputHandler
+import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.logger.{Level, LoggerContext}
@@ -367,7 +367,17 @@ object Launcher extends CaseApp[LauncherOptions] {
           for (outputHandler <- outputHandlerOpt) {
             val toPrint =
               s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
-            outputHandler.stdout(toPrint + System.lineSeparator())
+            val toPrintHtml =
+              s"Launching Scala <code>$scalaVersion</code> kernel" +
+                jvmOpt.fold("")(jvm => s" with JVM <code>$jvm</code>")
+            outputHandler.display(
+              DisplayData(
+                Map(
+                  DisplayData.ContentType.text -> toPrint,
+                  DisplayData.ContentType.html -> toPrintHtml
+                )
+              )
+            )
           }
 
         Right(actualKernelCommand0)

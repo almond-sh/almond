@@ -644,34 +644,8 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("toree Html") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          toreeMagics = true
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-
-      kernel.execute(
-        """%%html
-          |<p>
-          |<b>Hello</b>
-          |</p>
-          |""".stripMargin,
-        "",
-        displaysHtml = Seq(
-          """<p>
-            |<b>Hello</b>
-            |</p>
-            |""".stripMargin
-        )
-      )
+      almond.integration.Tests.toreeHtml()
     }
 
     test("toree Truncation") {
@@ -705,7 +679,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res0: Vector[Int] = " + (1 to 200).toVector.toString
+        "res1: Vector[Int] = " + (1 to 200).toVector.toString
       )
       kernel.execute(
         "%truncation on",
@@ -715,7 +689,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res1: Vector[Int] = " +
+        "res2: Vector[Int] = " +
           (1 to 38)
             .toVector
             .map("  " + _ + "," + "\n")

@@ -349,6 +349,38 @@ object Tests {
       }
     }
 
+  def toreeHtml()(implicit sessionId: SessionId, runner: Runner): Unit = {
+    val launcherOptions =
+      if (runner.differedStartUp)
+        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
+      else
+        Seq("--shared", "sh.almond::toree-hooks")
+    runner.withLauncherOptionsSession(launcherOptions: _*)("--toree-magics", "--toree-api") {
+      implicit session =>
+
+        execute(
+          """%%html
+            |<p>
+            |<b>Hello</b>
+            |</p>
+            |""".stripMargin,
+          "",
+          displaysHtml = Seq(
+            """<p>
+              |<b>Hello</b>
+              |</p>
+              |""".stripMargin
+          )
+        )
+
+        execute(
+          """kernel.display.html("<p><b>Hello</b></p>")""",
+          "",
+          displaysHtml = Seq("<p><b>Hello</b></p>")
+        )
+    }
+  }
+
   private def java17Cmd(): String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)

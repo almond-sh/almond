@@ -148,7 +148,9 @@ object ScalaKernel extends CaseApp[Options] {
             options.tmpOutputDirectory
               .getOrElse(true) // Create tmp output dir by default
           },
-        toreeMagics = options.toreeMagics,
+        toreeMagics = options.toreeMagics.orElse(options.toreeCompatibility).getOrElse(false),
+        toreeApiCompatibility =
+          options.toreeApi.orElse(options.toreeCompatibility).getOrElse(false),
         compileOnly = options.compileOnly,
         extraClassPath = options.extraClassPath
           .filter(_.trim.nonEmpty)
