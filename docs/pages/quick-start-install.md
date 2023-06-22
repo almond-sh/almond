@@ -34,7 +34,7 @@ $ ./coursier launch --use-bootstrap almond:0.10.0 --scala 2.12.11 -- --install
 Short Scala versions, like just `2.12` or `2.13`, are accepted too.
 The available versions of Almond can be found [here](https://github.com/almond-sh/almond/releases).
 Not all Almond and Scala versions combinations are available.
-See the possible combinations [here](install-versions.md)).
+See the possible combinations [here](install-versions.md).
 
 
 <details>
