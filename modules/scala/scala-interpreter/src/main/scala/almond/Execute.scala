@@ -358,11 +358,13 @@ final class Execute(
             val cutoff = Set("$main", "evaluatorRunPrinter")
 
             ExecuteResult.Error(
-              (
-                "Interrupted!" +: st
-                  .takeWhile(x => !cutoff(x.getMethodName))
-                  .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
-              ).mkString(System.lineSeparator())
+              "Interrupted!",
+              "",
+              List("Interrupted!") ++ st
+                .takeWhile(x => !cutoff(x.getMethodName))
+                .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
+                .map(_.render)
+                .toList
             )
         }
 
@@ -410,29 +412,37 @@ object Execute {
     highlightError: fansi.Attrs,
     source: fansi.Attrs
   ) = {
+    exceptionToStackTraceLines(ex, error, highlightError, source).mkString(System.lineSeparator())
+  }
 
+  def exceptionToStackTraceLines(
+    ex: Throwable,
+    error: fansi.Attrs,
+    highlightError: fansi.Attrs,
+    source: fansi.Attrs
+  ): Seq[String] = {
     val cutoff = Set("$main", "evaluatorRunPrinter")
     val traces = Ex.unapplySeq(ex).get.map(exception =>
-      error(exception.toString).render + System.lineSeparator() +
+      Seq(error(exception.toString).render) ++
         exception
           .getStackTrace
           .takeWhile(x => !cutoff(x.getMethodName))
           .map(highlightFrame(_, highlightError, source))
-          .mkString(System.lineSeparator())
+          .map(_.render)
+          .toSeq
     )
-    traces.mkString(System.lineSeparator())
+    traces.flatten
   }
 
-  private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
+  private def error(colors: Colors, exOpt: Option[Throwable], msg: String) = {
     ExecuteResult.Error(
-      msg + exOpt.fold("")(ex =>
-        (if (msg.isEmpty) "" else "\n") + showException(
-          ex,
-          colors.error(),
-          fansi.Attr.Reset,
-          colors.literal()
-        )
-      )
-    )
-
+      exOpt.fold("")(_.getClass.getName),
+      msg + exOpt.fold("")(_.getMessage),
+      exOpt.fold(List.empty[String])(ex => exceptionToStackTraceLines(
+        ex,
+        colors.error(),
+        fansi.Attr.Reset,
+        colors.literal()
+      ).toList))
+  }
 }

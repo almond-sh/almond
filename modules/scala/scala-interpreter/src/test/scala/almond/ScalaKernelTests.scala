@@ -151,6 +151,14 @@ object ScalaKernelTests extends TestSuite {
 
       assert(messageTypes == expectedMessageTypes)
 
+      val executeErrors = streams.executeErrors
+      assert(executeErrors.size == 1)
+      assert(executeErrors.head.ename == "java.lang.RuntimeException")
+      assert(executeErrors.head.evalue == "foo")
+      val traceback = executeErrors.head.traceback.asInstanceOf[Seq[String]]
+      assert(traceback.exists(_.contains("java.lang.RuntimeException: foo")))
+      assert(traceback.exists(_.contains("cmd0")))
+
       val replies = streams.executeReplies
 
       // first code is in error, subsequent ones are cancelled because of the stop-on-error, so no results here

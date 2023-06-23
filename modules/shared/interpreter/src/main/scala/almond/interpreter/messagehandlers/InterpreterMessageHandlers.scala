@@ -79,7 +79,7 @@ final case class InterpreterMessageHandlers(
                 )
               else
                 IO.unit
-            val error = Execute.Error("", "", List(e.message))
+            val error = Execute.Error(e.name, e.message, e.stackTrace)
             extra *>
               message
                 .publish(Execute.errorType, error)
@@ -93,13 +93,10 @@ final case class InterpreterMessageHandlers(
           case v: ExecuteResult.Success =>
             Execute.Reply.Success(countAfter, v.data.jsonData)
           case ex: ExecuteResult.Error =>
-            val traceBack = Seq(ex.name, ex.message).filter(_.nonEmpty).mkString(
-              ": "
-            ) :: ex.stackTrace.map("    " + _)
             Execute.Reply.Error(
               ex.name,
               ex.message,
-              traceBack /* or just stackTrace? */,
+              ex.stackTrace,
               countAfter
             )
           case ExecuteResult.Abort =>
