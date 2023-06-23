@@ -242,7 +242,7 @@ final case class ClientStreams(
             case Right(m) =>
               m.content match {
                 case e: Execute.Error => Seq(e)
-                case _ => Nil
+                case _                => Nil
               }
           }
       }

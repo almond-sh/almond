@@ -179,7 +179,11 @@ object ScalaKernelTests extends TestSuite {
       val executeResultErrors = streams.executeResultErrors
       println(executeResultErrors)
       assert(executeResultErrors.size == 1)
-      checkError(executeResultErrors.head.ename, executeResultErrors.head.evalue, executeResultErrors.head.traceback)
+      checkError(
+        executeResultErrors.head.ename,
+        executeResultErrors.head.evalue,
+        executeResultErrors.head.traceback
+      )
 
       println(streams.executeErrors)
       val executeErrors = streams.executeErrors

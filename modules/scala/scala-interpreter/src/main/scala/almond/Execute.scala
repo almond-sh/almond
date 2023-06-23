@@ -418,7 +418,11 @@ final class Execute(
                   "",
                   List("Interrupted!") ++ st
                     .takeWhile(x => !cutoff(x.getMethodName))
-                    .map(ExecuteResult.Error.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
+                    .map(ExecuteResult.Error.highlightFrame(
+                      _,
+                      fansi.Attr.Reset,
+                      colors0().literal()
+                    ))
                     .map(_.render)
                     .toList
                 )
