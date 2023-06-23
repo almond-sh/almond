@@ -75,23 +75,32 @@ object ExecuteResult {
       Some(rec(t))
     }
 
+    def exceptionToStackTraceLines(
+      ex: Throwable,
+      error: fansi.Attrs,
+      highlightError: fansi.Attrs,
+      source: fansi.Attrs
+    ): Seq[String] = {
+      val cutoff = Set("$main", "evaluatorRunPrinter")
+      val traces = unapplySeq(ex).get.map(exception =>
+        Seq(error(exception.toString).render) ++
+          exception
+            .getStackTrace
+            .takeWhile(x => !cutoff(x.getMethodName))
+            .map(highlightFrame(_, highlightError, source))
+            .map(_.render)
+            .toSeq
+      )
+      traces.flatten
+    }
+
     def showException(
       ex: Throwable,
       error: fansi.Attrs,
       highlightError: fansi.Attrs,
       source: fansi.Attrs
     ) = {
-
-      val cutoff = Set("$main", "evaluatorRunPrinter")
-      val traces = unapplySeq(ex).get.map(exception =>
-        error(exception.toString).render + System.lineSeparator() +
-          exception
-            .getStackTrace
-            .takeWhile(x => !cutoff(x.getMethodName))
-            .map(highlightFrame(_, highlightError, source))
-            .mkString(System.lineSeparator())
-      )
-      traces.mkString(System.lineSeparator())
+      exceptionToStackTraceLines(ex, error, highlightError, source).mkString(System.lineSeparator())
     }
 
     def error(
@@ -101,16 +110,15 @@ object ExecuteResult {
       msg: String
     ) =
       ExecuteResult.Error(
-        msg + exOpt.fold("")(ex =>
-          (if (msg.isEmpty) "" else "\n") + showException(
-            ex,
-            errorColor,
-            fansi.Attr.Reset,
-            literalColor
-          )
-        )
+        exOpt.fold("")(_.getClass.getName),
+        msg + exOpt.fold("")(_.getMessage),
+        exOpt.fold(List.empty[String])(ex => exceptionToStackTraceLines(
+          ex,
+          errorColor,
+          fansi.Attr.Reset,
+          literalColor
+        ).toList)
       )
-
   }
 
   /** [[ExecuteResult]], if execution was aborted.

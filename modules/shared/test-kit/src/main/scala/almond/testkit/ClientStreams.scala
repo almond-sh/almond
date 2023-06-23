@@ -231,6 +231,24 @@ final case class ClientStreams(
       .flatten
       .toList
 
+  def executeResultErrors: Seq[Execute.Error] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.errorType.messageType =>
+          println(m)
+          m.decodeAs[Execute.Error] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              m.content match {
+                case e: Execute.Error => Seq(e)
+                case _ => Nil
+              }
+          }
+      }
+      .flatten
+      .toList
+
   def inspectRepliesHtml: Seq[String] =
     generatedMessages
       .iterator
