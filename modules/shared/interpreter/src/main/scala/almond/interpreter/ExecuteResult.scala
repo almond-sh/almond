@@ -99,9 +99,8 @@ object ExecuteResult {
       error: fansi.Attrs,
       highlightError: fansi.Attrs,
       source: fansi.Attrs
-    ) = {
+    ) =
       exceptionToStackTraceLines(ex, error, highlightError, source).mkString(System.lineSeparator())
-    }
 
     def error(
       errorColor: fansi.Attrs,
@@ -112,12 +111,14 @@ object ExecuteResult {
       ExecuteResult.Error(
         exOpt.fold("")(_.getClass.getName),
         msg + exOpt.fold("")(_.getMessage),
-        exOpt.fold(List.empty[String])(ex => exceptionToStackTraceLines(
-          ex,
-          errorColor,
-          fansi.Attr.Reset,
-          literalColor
-        ).toList)
+        exOpt.fold(List.empty[String])(ex =>
+          exceptionToStackTraceLines(
+            ex,
+            errorColor,
+            fansi.Attr.Reset,
+            literalColor
+          ).toList
+        )
       )
   }
 
