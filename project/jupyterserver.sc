@@ -17,7 +17,9 @@ def writeKernelJson(launcher: Path, jupyterDir: Path, kernelId: String, name: St
       "--variable-inspector",
       "--toree-magics",
       "--use-notebook-coursier-logger",
-      "--silent-imports"
+      "--silent-imports",
+      "--quiet=false",
+      "--use-notebook-coursier-logger"
     ]
   }"""
   Files.write(dir.resolve("kernel.json"), kernelJson.getBytes("UTF-8"))
