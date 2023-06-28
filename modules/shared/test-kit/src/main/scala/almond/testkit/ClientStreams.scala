@@ -236,7 +236,6 @@ final case class ClientStreams(
       .iterator
       .collect {
         case Left((Channel.Publish, m)) if m.header.msg_type == Execute.errorType.messageType =>
-          println(m)
           m.decodeAs[Execute.Error] match {
             case Left(_) => Nil
             case Right(m) =>

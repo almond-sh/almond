@@ -177,7 +177,6 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val executeResultErrors = streams.executeResultErrors
-      println(executeResultErrors)
       assert(executeResultErrors.size == 1)
       checkError(
         executeResultErrors.head.ename,
@@ -185,7 +184,6 @@ object ScalaKernelTests extends TestSuite {
         executeResultErrors.head.traceback
       )
 
-      println(streams.executeErrors)
       val executeErrors = streams.executeErrors
       checkError(executeErrors(1)._1, executeErrors(1)._2, executeErrors(1)._3)
 
