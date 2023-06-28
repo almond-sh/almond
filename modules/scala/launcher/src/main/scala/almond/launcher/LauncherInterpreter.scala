@@ -47,54 +47,27 @@ class LauncherInterpreter(
   ): ExecuteResult = {
     val path      = Left(s"cell$lineCount0.sc")
     val scopePath = ScopePath(Left("."), os.sub)
-    ExtractedDirectives.from(code.toCharArray, path) match {
+    val maybeUpdate = LauncherInterpreter.handlers0.parse(code, path, scopePath)
+      .map { res =>
+        res
+          .flatMap(_.global.map(_.launcherParameters).toSeq)
+          .foldLeft(LauncherParameters())(_ + _)
+      }
+    maybeUpdate match {
       case Left(ex) =>
-        LauncherInterpreter.error(LauncherInterpreter.Colors.default, Some(ex), "")
-      case Right(directives) =>
-        val directivesErrorOpt =
-          if (directives.directives.isEmpty)
-            None
-          else {
-            // FIXME There might be actual code alongside directives
-
-            val scopedDirectives = directives.directives.map { dir =>
-              ScopedDirective(dir, path, scopePath)
-            }
-            val res = scopedDirectives
-              .map { dir =>
-                LauncherInterpreter.handlersMap.get(dir.directive.key) match {
-                  case Some(h) =>
-                    h.handleValues(dir).map(_.global.map(_.launcherParameters))
-                  case None =>
-                    Left(dir.unusedDirectiveError)
-                }
-              }
-              .sequence
-              .left.map(CompositeDirectiveException(_))
-              .map(_.flatMap(_.toSeq).foldLeft(LauncherParameters())(_ + _))
-
-            res match {
-              case Left(ex) =>
-                val err = LauncherInterpreter.error(
-                  LauncherInterpreter.Colors.default,
-                  Some(ex),
-                  "Error while processing using directives"
-                )
-                Some(err)
-              case Right(paramsUpdate) =>
-                params = params + paramsUpdate
-                None
-            }
-          }
-
-        directivesErrorOpt.getOrElse {
-          if (ScalaParser.hasActualCode(code))
-            // handing over execution to the actual kernel
-            ExecuteResult.Close
-          else {
-            lineCount0 += 1
-            ExecuteResult.Success(DisplayData.empty)
-          }
+        LauncherInterpreter.error(
+          LauncherInterpreter.Colors.default,
+          Some(ex),
+          "Error while processing using directives"
+        )
+      case Right(paramsUpdate) =>
+        params = params + paramsUpdate
+        if (ScalaParser.hasActualCode(code))
+          // handing over execution to the actual kernel
+          ExecuteResult.Close
+        else {
+          lineCount0 += 1
+          ExecuteResult.Success(DisplayData.empty)
         }
     }
   }
@@ -113,7 +86,7 @@ object LauncherInterpreter {
     directives.ScalaVersion.handler
   )
 
-  private val handlersMap = handlers.flatMap(h => h.keys.map(_ -> h)).toMap
+  private val handlers0 = DirectiveHandlers(handlers)
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteResult.Error.error(colors.error, colors.literal, exOpt, msg)
