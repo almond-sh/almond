@@ -41,7 +41,7 @@ final case class Options(
   @HelpMessage("Enable Maven profile (start with ! to disable)")
   profile: List[String] = Nil,
   @HelpMessage("Log level (one of none, error, warn, info, debug)")
-  log: String = "warn",
+  log: Option[String] = None,
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
   logTo: Option[String] = None,
