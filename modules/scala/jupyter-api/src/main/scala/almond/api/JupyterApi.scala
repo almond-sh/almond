@@ -3,6 +3,7 @@ package almond.api
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import jupyter.{Displayer, Displayers}
 
+import java.io.PrintStream
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.{Locale, UUID}
 
@@ -55,6 +56,9 @@ abstract class JupyterApi { api =>
 
   def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
   def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
+
+  def consoleOut: PrintStream
+  def consoleErr: PrintStream
 }
 
 object JupyterApi {

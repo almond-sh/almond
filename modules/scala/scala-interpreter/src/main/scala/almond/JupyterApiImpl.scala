@@ -1,6 +1,6 @@
 package almond
 
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayOutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 
 import almond.api.{FullJupyterApi, JupyterApi}
@@ -21,7 +21,9 @@ final class JupyterApiImpl(
   replApi: ReplApiImpl,
   silent0: Ref[Boolean],
   protected val allowVariableInspector: Option[Boolean],
-  val kernelClassLoader: ClassLoader
+  val kernelClassLoader: ClassLoader,
+  val consoleOut: PrintStream,
+  val consoleErr: PrintStream
 ) extends FullJupyterApi with VariableInspectorApiImpl {
 
   protected def variableInspectorImplPPrinter() = replApi.pprinter()
