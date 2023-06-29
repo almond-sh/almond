@@ -108,7 +108,9 @@ final class Execute(
     resultStream,
     s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s)),
     s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s)),
-    s => currentPublishOpt0.fold(println(s))(_.stdout(s))
+    // to stdout in notebooks, not to get a red background,
+    // but stderr in the console, not to pollute stdout
+    s => currentPublishOpt0.fold(Console.err.println(s))(_.stdout(s))
   )
 
   def history: History =
