@@ -147,11 +147,19 @@ object Dsl {
 
     if (stdout != null) {
       val stdoutMessages = streams.output.mkString
+      if (stdout != stdoutMessages) {
+        pprint.err.log(stdout)
+        pprint.err.log(stdoutMessages)
+      }
       expect(stdout == stdoutMessages)
     }
 
     if (stderr != null) {
       val stderrMessages = streams.errorOutput.mkString
+      if (stderr != stderrMessages) {
+        pprint.err.log(stderr)
+        pprint.err.log(stderrMessages)
+      }
       expect(stderr == stderrMessages)
     }
 
