@@ -87,7 +87,7 @@ final case class InterpreterMessageHandlers(
                     runAfterQueued(interpreter.cancelledSignal.set(false))
                 else
                   IO.unit
-              val error = Execute.Error("", "", List(e.message))
+              val error = Execute.Error(e.name, e.message, e.stackTrace)
               extra *>
                 message
                   .publish(Execute.errorType, error)

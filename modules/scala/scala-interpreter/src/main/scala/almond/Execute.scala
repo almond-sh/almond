@@ -416,15 +416,17 @@ final class Execute(
                 val cutoff = Set("$main", "evaluatorRunPrinter")
 
                 ExecuteResult.Error(
-                  (
-                    "Interrupted!" +: st
-                      .takeWhile(x => !cutoff(x.getMethodName))
-                      .map(ExecuteResult.Error.highlightFrame(
-                        _,
-                        fansi.Attr.Reset,
-                        colors0().literal()
-                      ))
-                  ).mkString(System.lineSeparator())
+                  "Interrupted!",
+                  "",
+                  List("Interrupted!") ++ st
+                    .takeWhile(x => !cutoff(x.getMethodName))
+                    .map(ExecuteResult.Error.highlightFrame(
+                      _,
+                      fansi.Attr.Reset,
+                      colors0().literal()
+                    ))
+                    .map(_.render)
+                    .toList
                 )
             }
 

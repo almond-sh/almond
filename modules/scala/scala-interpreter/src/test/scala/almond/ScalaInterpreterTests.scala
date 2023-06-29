@@ -181,9 +181,11 @@ object ScalaInterpreterTests extends TestSuite {
       }
 
       test("exception") {
-        val code = """sys.error("foo")"""
+        val code = """sys.error("foo\nbar")"""
         val res  = interpreter.execute(code)
-        assert(res.asError.exists(_.message.contains("java.lang.RuntimeException: foo")))
+        assert(res.asError.exists(_.name.contains("java.lang.RuntimeException")))
+        assert(res.asError.exists(_.message.contains("foo\nbar")))
+        assert(res.asError.exists(_.stackTrace.exists(_.contains("ammonite."))))
       }
     }
 
