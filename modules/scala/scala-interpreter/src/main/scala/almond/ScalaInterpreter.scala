@@ -94,7 +94,9 @@ final class ScalaInterpreter(
       replApi,
       silent0,
       params.allowVariableInspector,
-      kernelClassLoader = Thread.currentThread().getContextClassLoader
+      kernelClassLoader = Thread.currentThread().getContextClassLoader,
+      consoleOut = System.out,
+      consoleErr = System.err
     )
 
   if (params.toreeMagics) {
