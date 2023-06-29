@@ -687,4 +687,59 @@ object Tests {
     }
   }
 
+  def compilationError(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val errorOutput =
+      if (scalaVersion.startsWith("2."))
+        """cell1.sc:2: not found: value foo
+          |  foo
+          |  ^
+          |cell1.sc:3: not found: value bar
+          |  bar
+          |  ^
+          |cell1.sc:4: not found: value other
+          |  other
+          |  ^
+          |Compilation Failed""".stripMargin
+      else
+        """-- [E006] Not Found Error: cell1.sc:2:2 ----------------------------------------
+          |2 |  foo
+          |  |  ^^^
+          |  |  Not found: foo
+          |  |
+          |  | longer explanation available when compiling with `-explain`
+          |-- [E006] Not Found Error: cell1.sc:3:2 ----------------------------------------
+          |3 |  bar
+          |  |  ^^^
+          |  |  Not found: bar
+          |  |
+          |  | longer explanation available when compiling with `-explain`
+          |-- [E006] Not Found Error: cell1.sc:4:2 ----------------------------------------
+          |4 |  other
+          |  |  ^^^^^
+          |  |  Not found: other
+          |  |
+          |  | longer explanation available when compiling with `-explain`
+          |Compilation Failed""".stripMargin
+
+    runner.withSession() { implicit session =>
+      execute(
+        """val n = {
+          |  foo
+          |  bar
+          |  other
+          |}
+          |""".stripMargin,
+        expectError = true,
+        stderr = errorOutput,
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        )
+      )
+    }
+  }
+
 }
