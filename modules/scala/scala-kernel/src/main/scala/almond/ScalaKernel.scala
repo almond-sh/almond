@@ -27,7 +27,23 @@ object ScalaKernel extends CaseApp[Options] {
       // Enable ANSI output in Windows terminal
       coursier.jniutils.WindowsAnsiTerminal.enableAnsiOutput()
 
-    val logCtx = Level.fromString(options.log) match {
+    def logLevelFromEnv =
+      Option(System.getenv("ALMOND_LOG_LEVEL")).flatMap { str =>
+        Level.fromString(str) match {
+          case Left(err) =>
+            Console.err.println(
+              s"Error parsing log level from environment variable ALMOND_LOG_LEVEL: $err, ignoring it"
+            )
+            None
+          case other =>
+            Some(other)
+        }
+      }
+    val maybeLogLevel = options.log
+      .map(Level.fromString)
+      .orElse(logLevelFromEnv)
+      .getOrElse(Right(Level.Warning))
+    val logCtx = maybeLogLevel match {
       case Left(err) =>
         Console.err.println(err)
         sys.exit(1)
