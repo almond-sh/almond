@@ -12,6 +12,8 @@ import fs2.Stream
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+import scala.util.Properties
+
 object Dsl {
 
   trait Runner {
@@ -147,20 +149,42 @@ object Dsl {
 
     if (stdout != null) {
       val stdoutMessages = streams.output.mkString
-      if (stdout != stdoutMessages) {
-        pprint.err.log(stdout)
-        pprint.err.log(stdoutMessages)
+      if (Properties.isWin) {
+        val expectedStdoutLines = stdout.linesIterator.toVector
+        val obtainedStdoutLines = stdoutMessages.linesIterator.toVector
+        if (expectedStdoutLines != obtainedStdoutLines) {
+          pprint.err.log(expectedStdoutLines)
+          pprint.err.log(obtainedStdoutLines)
+        }
+        expect(expectedStdoutLines == obtainedStdoutLines)
       }
-      expect(stdout == stdoutMessages)
+      else {
+        if (stdout != stdoutMessages) {
+          pprint.err.log(stdout)
+          pprint.err.log(stdoutMessages)
+        }
+        expect(stdout == stdoutMessages)
+      }
     }
 
     if (stderr != null) {
       val stderrMessages = streams.errorOutput.mkString
-      if (stderr != stderrMessages) {
-        pprint.err.log(stderr)
-        pprint.err.log(stderrMessages)
+      if (Properties.isWin) {
+        val expectedStderrLines = stderr.linesIterator.toVector
+        val obtainedStderrLines = stderrMessages.linesIterator.toVector
+        if (expectedStderrLines != obtainedStderrLines) {
+          pprint.err.log(expectedStderrLines)
+          pprint.err.log(obtainedStderrLines)
+        }
+        expect(expectedStderrLines == obtainedStderrLines)
       }
-      expect(stderr == stderrMessages)
+      else {
+        if (stderr != stderrMessages) {
+          pprint.err.log(stderr)
+          pprint.err.log(stderrMessages)
+        }
+        expect(stderr == stderrMessages)
+      }
     }
 
     val replies = streams.executeReplies
