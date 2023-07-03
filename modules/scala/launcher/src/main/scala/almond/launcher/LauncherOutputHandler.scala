@@ -102,4 +102,6 @@ class LauncherOutputHandler(
   def updateDisplay(displayData: almond.interpreter.api.DisplayData): Unit =
     queue.add(UpdateDisplay(displayData))
   def canOutput(): Boolean = true
+
+  def messageIdOpt: Option[String] = None
 }

@@ -1,4 +1,6 @@
-package almond.launcher
+package almond.launcher.directives
+
+import scala.cli.directivehandler.{DirectiveHandler, DirectiveHandlers}
 
 final case class LauncherParameters(
   jvm: Option[String] = None,
@@ -11,4 +13,16 @@ final case class LauncherParameters(
       javaOptions ++ other.javaOptions,
       scala.orElse(other.scala)
     )
+}
+
+object LauncherParameters {
+
+  val handlers = DirectiveHandlers(
+    Seq[DirectiveHandler[HasLauncherParameters]](
+      JavaOptions.handler,
+      Jvm.handler,
+      ScalaVersion.handler
+    )
+  )
+
 }
