@@ -69,6 +69,6 @@ abstract class AlmondFunSuite extends munit.FunSuite {
 
 object AlmondFunSuite {
   val maxRetriedTests           = if (System.getenv("CI") == null) 1 else 6
-  def retryAttempts             = 3
+  def retryAttempts             = if (System.getenv("CI") == null) 1 else 3
   private val retriedTestsCount = new AtomicInteger
 }

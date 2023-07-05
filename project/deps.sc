@@ -49,7 +49,7 @@ object Deps {
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.18"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
-  def directiveHandler   = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.0"
+  def directiveHandler   = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.1"
   def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi              = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
@@ -78,19 +78,14 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest = "3.3.0"
-  def scala3Compat = "3.2.0"
-  def cross2_3Version(sv: String) =
-    if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
-    else if (sv.startsWith("3.2.")) "2.13.10"
-    else "2.13.11"
-  def scala213 = "2.13.11"
-  def scala212 = "2.12.18"
-  val binaries = Seq(scala3Compat, scala213, scala212)
+  def scala3Latest                = "3.3.0"
+  def scala3Compat                = "3.3.0"
+  def cross2_3Version(sv: String) = "2.13.11"
+  def scala213                    = "2.13.11"
+  def scala212                    = "2.12.18"
+  val binaries                    = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
-    "3.2.2",
-    "3.2.1",
     scala3Compat,
     scala213,
     "2.13.10",
