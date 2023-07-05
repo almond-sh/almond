@@ -154,6 +154,29 @@ kernel.publish.updateHtml("Got all items", id)
 
 ![](/demo/updatable.gif)
 
+### After Interrupt Hooks
+
+After Interrupt Hooks allow clean-up code to be run after cell
+execution is interrupted.
+```scala
+val sparkAmmonite = {
+  new AmmoniteSparkSessionBuilder()
+    .getOrCreate()
+}
+lazy val spark = {
+  NotebookSparkSession.builder()
+    .progress(enable=true, keep=false)
+    .logsInDeveloperConsole(false)
+    .getOrCreate()
+}
+lazy val sc = {
+  spark.sparkContext
+}
+kernel.afterInterruptHooks += { _ =>
+  sc.cancelAllJobs()
+}
+```
+
 ### Hooks
 
 Hooks allow to pre-process code right before it's executed. Use like

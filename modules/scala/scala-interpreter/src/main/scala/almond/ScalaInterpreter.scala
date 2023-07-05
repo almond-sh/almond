@@ -142,8 +142,15 @@ final class ScalaInterpreter(
 
   override def interruptSupported: Boolean =
     true
-  override def interrupt(): Unit =
+  override def interrupt(): Unit = {
     execute0.interrupt()
+
+    try Function.chain(jupyterApi.afterInterruptHooks).apply(())
+    catch {
+      case NonFatal(e) =>
+        log.warn("Caught exception while trying to run after Interrupt hooks", e)
+    }
+  }
 
   override def supportComm: Boolean = true
   override def setCommHandler(commHandler0: CommHandler): Unit =

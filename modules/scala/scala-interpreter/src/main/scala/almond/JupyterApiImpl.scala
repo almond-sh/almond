@@ -89,4 +89,6 @@ final class JupyterApiImpl(
       true
     }
   }
+
+  val afterInterruptHooks = mutable.Buffer.empty[Any => Any]
 }
