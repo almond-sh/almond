@@ -394,7 +394,7 @@ object Tests {
   private def scalaCliLauncher(): File =
     coursierapi.Cache.create()
       .get(coursierapi.Artifact.of(
-        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.0-RC1/scala-cli"
+        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.1/scala-cli"
       ))
 
   def toreeAddJarCustomProtocol(scalaVersion: String)(implicit
