@@ -485,6 +485,35 @@ object scala extends Module {
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
   object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
   object integration        extends Integration
+
+  object examples extends Examples
+}
+
+trait Examples extends SbtModule {
+  private def examplesScalaVersion = "2.12.12"
+  private def baseRepoRoot         = os.rel / "out" / "repo"
+  def scalaVersion                 = ScalaVersions.scala3Latest
+  object test extends Tests {
+    def testFramework = "munit.Framework"
+    def ivyDeps = super.ivyDeps() ++ Agg(
+      Deps.expecty,
+      Deps.munit,
+      Deps.osLib,
+      Deps.pprint,
+      Deps.upickle
+    )
+    def forkArgs = T {
+      scala.`almond-scalapy`(ScalaVersions.scala212)
+        .publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
+      super.forkArgs() ++ Seq(
+        s"-Dalmond.examples.dir=${os.pwd / "examples"}",
+        s"-Dalmond.examples.output-dir=${T.dest / "output"}",
+        s"-Dalmond.examples.jupyter-path=${T.dest / "jupyter"}",
+        s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
+        s"-Dalmond.examples.repo-root=${baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
+      )
+    }
+  }
 }
 
 class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
@@ -773,149 +802,6 @@ def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
 def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.launcher.launcher().path.toNIO
   println(launcher)
-}
-
-private val examplesDir = os.pwd / "examples"
-def exampleNotebooks = T.sources {
-  os.list(examplesDir)
-    .filter(_.last.endsWith(".ipynb"))
-    .filter(os.isFile(_))
-    .map(PathRef(_))
-}
-
-def validateExamples(matcher: String = "", update: Boolean = false) = {
-  val sv           = "2.12.12"
-  val kernelId     = "almond-sources-tmp"
-  val baseRepoRoot = os.rel / "out" / "repo"
-
-  def maybeEscapeArg(arg: String): String =
-    if (Properties.isWin && arg.exists(c => c == ' ' || c == '\"'))
-      "\"" + arg.replace("\"", "\\\"") + "\""
-    else arg
-
-  val pathMatcherOpt =
-    if (matcher.trim.isEmpty) None
-    else {
-      val m = FileSystems.getDefault.getPathMatcher("glob:" + matcher.trim)
-      Some(m)
-    }
-
-  val sv0 = {
-    val prefix = sv.split('.').take(2).map(_ + ".").mkString
-    ScalaVersions.binaries.find(_.startsWith(prefix)).getOrElse {
-      sys.error(
-        s"Can't find a Scala version in ${ScalaVersions.binaries} with the same binary version as $sv (prefix: $prefix)"
-      )
-    }
-  }
-
-  T.command {
-    val launcher    = scala.`scala-kernel`(sv).launcher().path
-    val jupyterPath = T.dest / "jupyter"
-    val outputDir   = T.dest / "output"
-    os.makeDir.all(outputDir)
-
-    scala.`almond-scalapy`(sv0).publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
-
-    val version  = scala.`scala-kernel`(sv).publishVersion()
-    val repoRoot = baseRepoRoot / version
-
-    os.proc(
-      launcher,
-      "--jupyter-path",
-      jupyterPath / "kernels",
-      "--id",
-      kernelId,
-      "--install",
-      "--force",
-      "--trap-output",
-      "--extra-repository",
-      s"ivy:${repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
-    ).call(cwd = examplesDir, env = Map("ALMOND_USE_RANDOM_IDS" -> "false"))
-
-    val nbFiles = exampleNotebooks()
-      .map(_.path)
-      .filter { p =>
-        pathMatcherOpt.forall { m =>
-          m.matches(p.toNIO.getFileName)
-        }
-      }
-
-    var errorCount = 0
-    for (f <- nbFiles) {
-      val output = outputDir / f.last
-      val res = os.proc(
-        "jupyter",
-        "nbconvert",
-        "--to",
-        "notebook",
-        "--execute",
-        s"--ExecutePreprocessor.kernel_name=$kernelId",
-        f,
-        s"--output=$output"
-      ).call(
-        cwd = examplesDir,
-        env = Map(
-          "JUPYTER_PATH"          -> jupyterPath.toString,
-          "ALMOND_USE_RANDOM_IDS" -> "false"
-        ),
-        check = false
-      )
-
-      if (res.exitCode == 0) {
-        if (!os.exists(output)) {
-          val otherOutput = output / os.up / s"${output.last.stripSuffix(".ipynb")}.nbconvert.ipynb"
-          if (os.exists(otherOutput))
-            os.move(otherOutput, output)
-        }
-        val rawOutput = os.read(output, Charset.defaultCharset())
-
-        var updatedOutput = rawOutput
-        if (Properties.isWin)
-          updatedOutput = updatedOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
-
-        // Clear metadata, that usually looks like
-        // "metadata": {
-        //  "execution": {
-        //   "iopub.execute_input": "2022-08-17T10:35:13.619221Z",
-        //   "iopub.status.busy": "2022-08-17T10:35:13.614065Z",
-        //   "iopub.status.idle": "2022-08-17T10:35:16.310834Z",
-        //   "shell.execute_reply": "2022-08-17T10:35:16.311111Z"
-        //  }
-        // }
-        val json = ujson.read(updatedOutput)
-        for (cell <- json("cells").arr if cell("cell_type").str == "code")
-          cell("metadata") = ujson.Obj()
-        updatedOutput = json.render(1)
-
-        // writing the updated notebook on disk for the diff below
-        os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
-
-        val result   = os.read(output, Charset.defaultCharset())
-        val expected = os.read(f)
-
-        if (result != expected) {
-          System.err.println(s"${f.last} differs:")
-          System.err.println()
-          os.proc("diff", "-u", f, output)
-            .call(cwd = examplesDir, check = false, stdin = os.Inherit, stdout = os.Inherit)
-          if (update) {
-            System.err.println(s"Updating ${f.last}")
-            os.copy.over(output, f)
-          }
-          else
-            errorCount += 1
-        }
-      }
-      else {
-        System.err.println(s"Failed to run nbconvert for ${f.last}")
-        errorCount += 1
-      }
-    }
-
-    if (errorCount != 0)
-      sys.error(s"Found $errorCount error(s)")
-  }
 }
 
 def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
