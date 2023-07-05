@@ -3,25 +3,35 @@ import java.nio.file._
 def kernelId        = "scala-debug"
 def specialKernelId = "scala-special-debug"
 
-def writeKernelJson(launcher: Path, jupyterDir: Path, kernelId: String, name: String): Unit = {
+def writeKernelJson(
+  launcher: Path,
+  jupyterDir: Path,
+  kernelId: String,
+  name: String,
+  extraArgs: String*
+): Unit = {
   val launcherPath = launcher.toAbsolutePath.toString
   val dir          = jupyterDir.resolve(s"kernels/$kernelId")
   Files.createDirectories(dir)
-  val kernelJson = s"""{
-    "language": "scala",
-    "display_name": "$name",
-    "argv": [
-      "$launcherPath",
-      "--log", "debug",
-      "--connection-file", "{connection_file}",
-      "--variable-inspector",
-      "--toree-magics",
-      "--use-notebook-coursier-logger",
-      "--silent-imports",
-      "--quiet=false",
-      "--use-notebook-coursier-logger"
-    ]
-  }"""
+  val baseArgs = Seq(
+    launcherPath.toString,
+    "--log",
+    "debug",
+    "--connection-file",
+    "{connection_file}",
+    "--variable-inspector",
+    "--toree-magics",
+    "--use-notebook-coursier-logger",
+    "--silent-imports",
+    "--use-notebook-coursier-logger"
+  )
+  val kernelJson = ujson.Obj(
+    "language"     -> ujson.Str("scala"),
+    "display_name" -> ujson.Str(name),
+    "argv" -> ujson.Arr(
+      (baseArgs ++ extraArgs).map(ujson.Str(_)): _*
+    )
+  ).render()
   Files.write(dir.resolve("kernel.json"), kernelJson.getBytes("UTF-8"))
   System.err.println(s"JUPYTER_PATH=$jupyterDir")
 }
@@ -34,7 +44,13 @@ def jupyterServer(
 ): Unit = {
 
   writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
-  writeKernelJson(specialLauncher, jupyterDir, specialKernelId, "Scala (special, sources)")
+  writeKernelJson(
+    specialLauncher,
+    jupyterDir,
+    specialKernelId,
+    "Scala (special, sources)",
+    "--quiet=false"
+  )
 
   os.makeDir.all(os.pwd / "notebooks")
   val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
