@@ -381,7 +381,7 @@ object Tests {
     }
   }
 
-  private def java17Cmd(): String = {
+  lazy val java17Cmd: String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)
     val javaHome =
@@ -391,7 +391,7 @@ object Tests {
     new File(javaHome, "bin/java" + ext).toString
   }
 
-  private def scalaCliLauncher(): File =
+  lazy val scalaCliLauncher: File =
     coursierapi.Cache.create()
       .get(coursierapi.Artifact.of(
         "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.1/scala-cli"
@@ -427,9 +427,9 @@ object Tests {
     os.write(tmpDir / "FooURLConnection.scala", code)
 
     val extraCp = os.proc(
-      java17Cmd(),
+      java17Cmd,
       "-jar",
-      scalaCliLauncher().toString,
+      scalaCliLauncher.toString,
       "--power",
       "compile",
       "--print-class-path",

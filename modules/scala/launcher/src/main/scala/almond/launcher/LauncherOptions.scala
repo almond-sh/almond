@@ -1,8 +1,10 @@
 package almond.launcher
 
 import almond.kernel.install.{Options => InstallOptions}
+import almond.launcher.directives.CustomGroup
 import caseapp._
 
+import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 
 // format: off
@@ -31,7 +33,8 @@ final case class LauncherOptions(
   javaOpt: List[String] = Nil,
   quiet: Option[Boolean] = None,
   silentImports: Option[Boolean] = None,
-  useNotebookCoursierLogger: Option[Boolean] = None
+  useNotebookCoursierLogger: Option[Boolean] = None,
+  customDirectiveGroup: List[String] = Nil
 ) {
   // format: on
 
@@ -65,6 +68,27 @@ final case class LauncherOptions(
   }
 
   def quiet0 = quiet.getOrElse(true)
+
+  def customDirectiveGroupsOrExit(): Seq[CustomGroup] = {
+    val maybeGroups = customDirectiveGroup
+      .map { input =>
+        input.split(":", 2) match {
+          case Array(prefix, command) => Right(CustomGroup(prefix, command))
+          case Array(_) =>
+            Left(s"Malformed custom directive group argument, expected 'prefix:command': '$input'")
+        }
+      }
+      .sequence
+
+    maybeGroups match {
+      case Left(errors) =>
+        for (err <- errors)
+          System.err.println(err)
+        sys.exit(1)
+      case Right(groups) =>
+        groups
+    }
+  }
 }
 
 object LauncherOptions {

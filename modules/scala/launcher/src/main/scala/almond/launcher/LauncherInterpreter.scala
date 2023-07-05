@@ -12,6 +12,7 @@ import almond.protocol.KernelInfo
 import java.io.File
 
 import scala.cli.directivehandler._
+import scala.cli.directivehandler.DirectiveValueParser.DirectiveValueParserValueOps
 import scala.cli.directivehandler.EitherSequence._
 
 class LauncherInterpreter(
@@ -43,6 +44,62 @@ class LauncherInterpreter(
   var kernelOptions = KernelOptions()
   var params        = LauncherParameters()
 
+  val customDirectiveGroups = options.customDirectiveGroupsOrExit()
+  val launcherParametersHandlers =
+    LauncherInterpreter.launcherParametersHandlers.addCustomHandler { key =>
+      customDirectiveGroups.find(_.matches(key)).map { group =>
+        new DirectiveHandler[HasLauncherParameters] {
+          def name        = s"custom group ${group.prefix}"
+          def description = s"custom group ${group.prefix}"
+          def usage       = s"//> ${group.prefix}..."
+
+          def keys = Seq(key)
+          def handleValues(scopedDirective: ScopedDirective)
+            : Either[DirectiveException, ProcessedDirective[HasLauncherParameters]] = {
+            assert(scopedDirective.directive.key == key)
+            val maybeValues = scopedDirective.directive.values
+              .filter(!_.isEmpty)
+              .map { value =>
+                value.asString.toRight {
+                  new MalformedDirectiveError(
+                    s"Expected a string, got '${value.getRelatedASTNode.toString}'",
+                    Seq(value.position(scopedDirective.maybePath))
+                  )
+                }
+              }
+              .sequence
+              .left.map(CompositeDirectiveException(_))
+            maybeValues.map { values =>
+              ProcessedDirective(
+                Some(
+                  new HasLauncherParameters {
+                    def launcherParameters =
+                      LauncherParameters(customDirectives =
+                        Seq((group, scopedDirective.directive.key, values))
+                      )
+                  }
+                ),
+                Nil
+              )
+            }
+          }
+        }
+      }
+    }
+  val kernelOptionsHandlers = LauncherInterpreter.kernelOptionsHandlers.addCustomHandler { key =>
+    customDirectiveGroups.find(_.matches(key)).map { group =>
+      new DirectiveHandler[HasKernelOptions] {
+        def name        = s"custom group ${group.prefix}"
+        def description = s"custom group ${group.prefix}"
+        def usage       = s"//> ${group.prefix}..."
+        def keys        = Seq(key)
+        def handleValues(scopedDirective: ScopedDirective)
+          : Either[DirectiveException, ProcessedDirective[HasKernelOptions]] =
+          Right(ProcessedDirective(Some(HasKernelOptions.Ignore), Nil))
+      }
+    }
+  }
+
   def execute(
     code: String,
     storeHistory: Boolean,
@@ -52,14 +109,14 @@ class LauncherInterpreter(
     val path      = Left(s"cell$lineCount0.sc")
     val scopePath = ScopePath(Left("."), os.sub)
     val maybeParamsUpdate =
-      LauncherInterpreter.launcherParametersHandlers.parse(code, path, scopePath)
+      launcherParametersHandlers.parse(code, path, scopePath)
         .map { res =>
           res
             .flatMap(_.global.map(_.launcherParameters).toSeq)
             .foldLeft(LauncherParameters())(_ + _)
         }
     val maybeKernelOptionsUpdate =
-      LauncherInterpreter.kernelOptionsHandlers.parse(code, path, scopePath)
+      kernelOptionsHandlers.parse(code, path, scopePath)
         .flatMap { res =>
           res
             .flatMap(_.global.map(_.kernelOptions).toSeq)

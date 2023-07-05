@@ -182,4 +182,71 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
+  test("custom startup directives") {
+
+    val tmpDir = os.temp.dir(prefix = "almond-custom-directives-test-")
+
+    val handlerCode =
+      """//> using lib "com.lihaoyi::os-lib:0.9.1"
+        |//> using lib "com.lihaoyi::pprint:0.8.1"
+        |//> using lib "com.lihaoyi::upickle:3.1.0"
+        |//> using scala "2.13.11"
+        |//> using jvm "8"
+        |
+        |package handler
+        |
+        |object Handler {
+        |  case class Entry(key: String, values: List[String])
+        |  implicit val entryCodec: upickle.default.ReadWriter[Entry] = upickle.default.macroRW
+        |
+        |  def main(args: Array[String]): Unit = {
+        |    assert(args.length == 1, "Usage: handle-spark-directives input.json")
+        |    val inputEntries = upickle.default.read[List[Entry]](os.read.bytes(os.Path(args(0), os.pwd)))
+        |    pprint.err.log(inputEntries)
+        |
+        |    val version = inputEntries.find(_.key == "spark.version").flatMap(_.values.headOption).getOrElse("X.Y")
+        |
+        |    val output = ujson.Obj(
+        |      "javaCmd" -> ujson.Arr(Seq("java", s"-Dthe-version=$version").map(ujson.Str(_)): _*)
+        |    )
+        |
+        |    println(output.render())
+        |  }
+        |}
+        |""".stripMargin
+
+    val directivesHandler = tmpDir / "handle-spark-directives"
+
+    os.write(tmpDir / "Handler.scala", handlerCode)
+
+    os.proc(
+      Tests.java17Cmd,
+      "-jar",
+      Tests.scalaCliLauncher.toString,
+      "--power",
+      "package",
+      ".",
+      "-o",
+      directivesHandler
+    ).call(cwd = tmpDir)
+
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession("--custom-directive-group", s"spark:$directivesHandler") {
+        implicit session =>
+          execute(
+            """//> using spark.version "1.2.3"
+              |//> using spark
+              |""".stripMargin,
+            ""
+          )
+
+          execute(
+            """val version = sys.props.getOrElse("the-version", "nope")""",
+            """version: String = "1.2.3""""
+          )
+      }
+    }
+  }
+
 }

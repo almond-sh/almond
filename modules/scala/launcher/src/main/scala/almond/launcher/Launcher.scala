@@ -372,7 +372,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           interpreter.lineCount,
           options,
           firstMessageIdOpt.toSeq,
-          interpreter.params,
+          interpreter.params.processCustomDirectives(),
           interpreter.kernelOptions,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
           logCtx
