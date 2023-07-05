@@ -36,7 +36,7 @@ jobs:
     - uses: coursier/setup-action@v1.3
       with:
         jvm: 8
-    - run: ./mill -i validateExamples
+    - run: ./mill -i scala.examples.test
       shell: bash
 
   test:
