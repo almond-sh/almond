@@ -170,9 +170,9 @@ object Launcher extends CaseApp[LauncherOptions] {
         )
         val javaHome = os.Path(jvmManager.get(jvmId), os.pwd)
         val ext      = if (scala.util.Properties.isWin) ".exe" else ""
-        (javaHome / "bin" / s"java$ext").toString
+        Seq((javaHome / "bin" / s"java$ext").toString)
       case None =>
-        "java"
+        params0.javaCmd.getOrElse(Seq("java"))
     }
 
     val javaOptions = options.javaOpt ++ params0.javaOptions
