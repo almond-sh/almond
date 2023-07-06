@@ -20,26 +20,27 @@ class LauncherInterpreter(
   options: LauncherOptions
 ) extends Interpreter {
 
-  def kernelInfo(): KernelInfo =
+  def kernelInfo(): KernelInfo = {
+    val (sv, svOrigin) = LauncherInterpreter.computeScalaVersion(params, options)
     KernelInfo(
       implementation = "scala",
-      implementation_version = "???",
+      implementation_version = Properties.version,
       language_info = KernelInfo.LanguageInfo(
         name = "scala",
-        version = "???",
+        version = Properties.version,
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
         codemirror_mode = Some("text/x-scala")
       ),
       banner =
-        s"""Almond ${"???"}
-           |Ammonite ${"???"}
-           |${"???"}
-           |Java ${"???"}""".stripMargin, // +
+        s"""Almond ${Properties.version}
+           |Ammonite ${Properties.ammoniteVersion}
+           |Scala $sv (from $svOrigin)""".stripMargin, // +
       // params.extraBannerOpt.fold("")("\n\n" + _),
       help_links = None // Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
+  }
 
   var kernelOptions = KernelOptions()
   var params        = LauncherParameters()
@@ -225,5 +226,22 @@ object LauncherInterpreter {
       fansi.Attrs.Empty,
       fansi.Attrs.Empty
     )
+  }
+
+  def computeScalaVersion(
+    params0: LauncherParameters,
+    options: LauncherOptions
+  ): (String, String) = {
+
+    val requestedScalaVersion = params0.scala.map((_, "directive"))
+      .orElse(options.scala.map(_.trim).filter(_.nonEmpty).map((_, "command-line")))
+      .getOrElse((Properties.defaultScalaVersion, "default"))
+
+    requestedScalaVersion._1 match {
+      case "2.12"       => (Properties.defaultScala212Version, requestedScalaVersion._2)
+      case "2" | "2.13" => (Properties.defaultScala213Version, requestedScalaVersion._2)
+      case "3"          => (Properties.defaultScalaVersion, requestedScalaVersion._2)
+      case _            => requestedScalaVersion
+    }
   }
 }

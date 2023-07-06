@@ -414,6 +414,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     }
     Seq(
       "kernel-main-class"        -> mainClass,
+      "ammonite-version"         -> Versions.ammonite,
       "default-scala212-version" -> ScalaVersions.scala212,
       "default-scala213-version" -> ScalaVersions.scala213,
       "default-scala-version"    -> ScalaVersions.scala3Latest

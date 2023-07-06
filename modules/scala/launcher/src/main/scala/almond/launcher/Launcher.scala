@@ -41,16 +41,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     logCtx: LoggerContext
   ): (os.proc, String, Option[String]) = {
 
-    val requestedScalaVersion = params0.scala
-      .orElse(options.scala.map(_.trim).filter(_.nonEmpty))
-      .getOrElse(Properties.defaultScalaVersion)
-
-    val scalaVersion = requestedScalaVersion match {
-      case "2.12"       => Properties.defaultScala212Version
-      case "2" | "2.13" => Properties.defaultScala213Version
-      case "3"          => Properties.defaultScalaVersion
-      case _            => requestedScalaVersion
-    }
+    val (scalaVersion, _) = LauncherInterpreter.computeScalaVersion(params0, options)
 
     def content(entries: Seq[(coursierapi.Artifact, File)]): ClassLoaderContent = {
       val entries0 = entries.map {
