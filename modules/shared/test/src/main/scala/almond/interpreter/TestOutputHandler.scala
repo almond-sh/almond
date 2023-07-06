@@ -36,6 +36,7 @@ final class TestOutputHandler extends OutputHandler {
   def result(): Seq[Output] =
     output.result()
 
+  def messageIdOpt: Option[String] = None
 }
 
 object TestOutputHandler {

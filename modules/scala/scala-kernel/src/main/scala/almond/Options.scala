@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 
 import almond.api.Properties
 import almond.channels.{Channel, Message => RawMessage}
+import almond.directives.KernelOptions
 import almond.kernel.MessageFile
 import almond.kernel.install.{Options => InstallOptions}
 import almond.protocol.KernelInfo
@@ -113,7 +114,15 @@ final case class Options(
 
   @HelpMessage("Do not send execute_input message for incoming messages with the passed ids")
   @Hidden
-    noExecuteInputFor: List[String] = Nil
+    noExecuteInputFor: List[String] = Nil,
+
+  @HelpMessage("Path of JSON file with using directives kernel options")
+  @Hidden
+    kernelOptions: Option[String] = None,
+
+  @HelpMessage("Do warn users about launcher directives for incoming messages with the passed ids")
+  @Hidden
+    ignoreLauncherDirectivesIn: List[String] = Nil
 ) {
   // format: on
 
@@ -275,6 +284,13 @@ final case class Options(
       val bytes   = os.read.bytes(path)
       val msgFile = readFromArray(bytes)(MessageFile.codec)
       msgFile.parsedMessages
+    }
+
+  def readKernelOptions(): Option[KernelOptions.AsJson] =
+    kernelOptions.map { strPath =>
+      val path  = os.Path(strPath, os.pwd)
+      val bytes = os.read.bytes(path)
+      readFromArray(bytes)(KernelOptions.AsJson.codec)
     }
 
 }

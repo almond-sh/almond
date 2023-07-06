@@ -194,6 +194,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         shared.interpreter(ScalaVersions.scala3Compat),
         scala.`coursier-logger`(ScalaVersions.scala3Compat),
         scala.`scala-kernel-api-helper`(),
+        scala.`shared-directives`(ScalaVersions.scala3Compat),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
     else
@@ -201,6 +202,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         shared.interpreter(),
         scala.`coursier-logger`(),
         scala.`scala-kernel-api`(),
+        scala.`shared-directives`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
   def ivyDeps = T {
@@ -219,10 +221,18 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
+      Deps.dependencyInterface,
+      Deps.directiveHandler,
       Deps.jansi,
       Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
     )
+  }
+  def scalacOptions = super.scalacOptions() ++ {
+    val scala213Options =
+      if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations")
+      else Nil
+    scala213Options
   }
   object test extends Tests with AlmondTestModule {
     def moduleDeps = {
@@ -369,6 +379,17 @@ class CoursierLogger(val crossScalaVersion: String) extends AlmondModule {
   )
 }
 
+class SharedDirectives(val crossScalaVersion: String) extends AlmondModule {
+  def supports3 = true
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.directiveHandler,
+    Deps.jsoniterScalaCore.applyBinaryVersion213_3(scalaVersion())
+  )
+  def compileIvyDeps = Agg(
+    Deps.jsoniterScalaMacros
+  )
+}
+
 trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
     with Bloop.Module {
   def supports3    = true
@@ -376,12 +397,12 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   def scalaVersion = sv
   def moduleDeps = Seq(
     scala.`coursier-logger`(ScalaVersions.scala3Compat),
+    scala.`shared-directives`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
   )
   def ivyDeps = Agg(
     Deps.caseApp,
     Deps.coursierLauncher,
-    Deps.directiveHandler,
     Deps.fansi,
     Deps.scalaparse
   )
@@ -393,6 +414,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     }
     Seq(
       "kernel-main-class"        -> mainClass,
+      "ammonite-version"         -> Versions.ammonite,
       "default-scala212-version" -> ScalaVersions.scala212,
       "default-scala213-version" -> ScalaVersions.scala213,
       "default-scala-version"    -> ScalaVersions.scala3Latest
@@ -476,9 +498,11 @@ object scala extends Module {
   object `scala-kernel-helper`
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `coursier-logger` extends Cross[CoursierLogger](ScalaVersions.binaries: _*)
-  object launcher          extends Launcher
-  object `almond-scalapy`  extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
-  object `almond-rx`       extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
+  object `shared-directives`
+      extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries: _*)
+  object launcher         extends Launcher
+  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
+  object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
 
@@ -568,6 +592,7 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
       scala.`scala-interpreter`(testScalaVersion),
       scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
       scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
+      scala.`shared-directives`(ScalaVersions.binary(testScalaVersion)),
       scala.launcher,
       shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
       shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),

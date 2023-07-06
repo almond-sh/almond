@@ -73,7 +73,8 @@ final class ScalaInterpreter(
     silent0,
     params.useThreadInterrupt,
     params.initialCellCount,
-    enableExitHack = params.compileOnly
+    enableExitHack = params.compileOnly,
+    ignoreLauncherDirectivesIn = params.ignoreLauncherDirectivesIn
   )
 
   val sessApi = new SessionApiImpl(frames0)
@@ -109,7 +110,7 @@ final class ScalaInterpreter(
     for (ec <- params.updateBackgroundVariablesEcOpt)
       UpdatableFuture.setup(replApi, jupyterApi, ec)
 
-    AmmInterpreter(
+    val interp = AmmInterpreter(
       execute0,
       storage,
       replApi,
@@ -134,6 +135,10 @@ final class ScalaInterpreter(
       compileOnly = params.compileOnly,
       addToreeApiCompatibilityImport = params.toreeApiCompatibility
     )
+
+    execute0.loadOptions(interp, params.upfrontKernelOptions)
+
+    interp
   }
 
   if (!params.lazyInit)

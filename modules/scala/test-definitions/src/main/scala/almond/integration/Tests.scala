@@ -381,7 +381,7 @@ object Tests {
     }
   }
 
-  private def java17Cmd(): String = {
+  lazy val java17Cmd: String = {
     val isAtLeastJava17 =
       scala.util.Try(sys.props("java.version").takeWhile(_.isDigit).toInt).toOption.exists(_ >= 17)
     val javaHome =
@@ -391,10 +391,10 @@ object Tests {
     new File(javaHome, "bin/java" + ext).toString
   }
 
-  private def scalaCliLauncher(): File =
+  lazy val scalaCliLauncher: File =
     coursierapi.Cache.create()
       .get(coursierapi.Artifact.of(
-        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.0-RC1/scala-cli"
+        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.1/scala-cli"
       ))
 
   def toreeAddJarCustomProtocol(scalaVersion: String)(implicit
@@ -427,9 +427,9 @@ object Tests {
     os.write(tmpDir / "FooURLConnection.scala", code)
 
     val extraCp = os.proc(
-      java17Cmd(),
+      java17Cmd,
       "-jar",
-      scalaCliLauncher().toString,
+      scalaCliLauncher.toString,
       "--power",
       "compile",
       "--print-class-path",
@@ -741,5 +741,88 @@ object Tests {
       )
     }
   }
+
+  def addDependency()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """//> using dep "org.typelevel::cats-kernel:2.6.1"
+          |import cats.kernel._
+          |val msg =
+          |  Monoid.instance[String]("", (a, b) => a + b)
+          |    .combineAll(List("Hello", "", ""))
+          |""".stripMargin,
+        """import cats.kernel._
+          |
+          |msg: String = "Hello"""".stripMargin
+      )
+    }
+
+  def addRepository()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      // that repository should already have been added by Almond, so we don't test much here…
+      execute(
+        """//> using repository "jitpack"
+          |//> using dep "com.github.jupyter:jvm-repr:0.4.0"
+          |import jupyter._
+          |""".stripMargin,
+        """import jupyter._
+          |""".stripMargin
+      )
+    }
+
+  def addScalacOption(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """@deprecated("foo", "0.1")
+          |def getValue0(): Int = 2
+          |val n0 = getValue0()
+          |""".stripMargin,
+        """defined function getValue0
+          |n0: Int = 2""".stripMargin,
+        ignoreStreams = true
+      )
+
+      val errorMessage =
+        if (scalaVersion.startsWith("2.13."))
+          """cell2.sc:3: method getValue in class Helper is deprecated (since 0.1): foo
+            |val n = getValue()
+            |        ^
+            |No warnings can be incurred under -Werror.
+            |Compilation Failed""".stripMargin
+        else if (scalaVersion.startsWith("2.12."))
+          """cell2.sc:3: method getValue in class Helper is deprecated (since 0.1): foo
+            |val n = getValue()
+            |        ^
+            |No warnings can be incurred under -Xfatal-warnings.
+            |Compilation Failed""".stripMargin
+        else
+          """-- Error: cell2.sc:3:8 ---------------------------------------------------------
+            |3 |val n = getValue()
+            |  |        ^^^^^^^^
+            |  |        method getValue in class Helper is deprecated since 0.1: foo
+            |Compilation Failed""".stripMargin
+
+      execute(
+        """//> using option "-Xfatal-warnings" "-deprecation"
+          |@deprecated("foo", "0.1")
+          |def getValue(): Int = 2
+          |val n = getValue()
+          |""".stripMargin,
+        expectError = true,
+        stderr = errorMessage,
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        )
+      )
+    }
 
 }
