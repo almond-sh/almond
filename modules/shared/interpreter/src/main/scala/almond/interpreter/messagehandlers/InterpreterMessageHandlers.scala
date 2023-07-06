@@ -291,6 +291,8 @@ object InterpreterMessageHandlers {
       commHandlerOpt.foreach(_.updateDisplay(displayData))
 
     def canOutput(): Boolean = true
+
+    def messageIdOpt: Option[String] = Some(message.header.msg_id)
   }
 
 }

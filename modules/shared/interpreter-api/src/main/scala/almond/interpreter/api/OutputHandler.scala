@@ -29,6 +29,8 @@ abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.Up
   def display(displayData: DisplayData): Unit
 
   def canOutput(): Boolean
+
+  def messageIdOpt: Option[String]
 }
 
 object OutputHandler {
@@ -80,6 +82,8 @@ object OutputHandler {
       }
     def canOutput(): Boolean =
       false
+
+    def messageIdOpt: Option[String] = None
   }
 
   final class StableOutputHandler(underlying: => OutputHandler) extends OutputHandler {
@@ -93,6 +97,9 @@ object OutputHandler {
       underlying.updateDisplay(displayData)
     def canOutput(): Boolean =
       underlying.canOutput()
+
+    def messageIdOpt: Option[String] =
+      underlying.messageIdOpt
   }
 
   object NopOutputHandler extends OutputHandler {
@@ -101,6 +108,8 @@ object OutputHandler {
     def display(displayData: DisplayData): Unit       = ()
     def updateDisplay(displayData: DisplayData): Unit = ()
     def canOutput(): Boolean                          = false
+
+    def messageIdOpt: Option[String] = None
   }
 
 }

@@ -1,9 +1,12 @@
 package almond.launcher
 
+import almond.directives.{HasKernelOptions, KernelOptions}
+import almond.directives.HasKernelOptions.ops._
 import almond.interpreter.api.OutputHandler
 import almond.interpreter.{ExecuteResult, Interpreter}
 import almond.interpreter.api.DisplayData
 import almond.interpreter.input.InputManager
+import almond.launcher.directives.{HasLauncherParameters, LauncherParameters}
 import almond.protocol.KernelInfo
 
 import java.io.File
@@ -37,7 +40,8 @@ class LauncherInterpreter(
       help_links = None // Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
 
-  var params = LauncherParameters()
+  var kernelOptions = KernelOptions()
+  var params        = LauncherParameters()
 
   def execute(
     code: String,
@@ -47,21 +51,42 @@ class LauncherInterpreter(
   ): ExecuteResult = {
     val path      = Left(s"cell$lineCount0.sc")
     val scopePath = ScopePath(Left("."), os.sub)
-    val maybeUpdate = LauncherInterpreter.handlers0.parse(code, path, scopePath)
-      .map { res =>
-        res
-          .flatMap(_.global.map(_.launcherParameters).toSeq)
-          .foldLeft(LauncherParameters())(_ + _)
-      }
-    maybeUpdate match {
+    val maybeParamsUpdate =
+      LauncherInterpreter.launcherParametersHandlers.parse(code, path, scopePath)
+        .map { res =>
+          res
+            .flatMap(_.global.map(_.launcherParameters).toSeq)
+            .foldLeft(LauncherParameters())(_ + _)
+        }
+    val maybeKernelOptionsUpdate =
+      LauncherInterpreter.kernelOptionsHandlers.parse(code, path, scopePath)
+        .flatMap { res =>
+          res
+            .flatMap(_.global.map(_.kernelOptions).toSeq)
+            .sequence
+            .map(_.foldLeft(KernelOptions())(_ + _))
+            .left.map(CompositeDirectiveException(_))
+        }
+    val maybeUpdates = (maybeParamsUpdate, maybeKernelOptionsUpdate) match {
+      case (Left(err1), Left(err2)) =>
+        Left(CompositeDirectiveException(Seq(err1, err2)))
+      case (Left(err1), Right(_)) =>
+        Left(err1)
+      case (Right(_), Left(err2)) =>
+        Left(err2)
+      case (Right(paramsUpdate), Right(kernelUpdate)) =>
+        Right((paramsUpdate, kernelUpdate))
+    }
+    maybeUpdates match {
       case Left(ex) =>
         LauncherInterpreter.error(
           LauncherInterpreter.Colors.default,
           Some(ex),
           "Error while processing using directives"
         )
-      case Right(paramsUpdate) =>
+      case Right((paramsUpdate, kernelOptionsUpdate)) =>
         params = params + paramsUpdate
+        kernelOptions = kernelOptions + kernelOptionsUpdate
         if (ScalaParser.hasActualCode(code))
           // handing over execution to the actual kernel
           ExecuteResult.Close
@@ -80,13 +105,12 @@ class LauncherInterpreter(
 
 object LauncherInterpreter {
 
-  private val handlers = Seq[DirectiveHandler[directives.HasLauncherParameters]](
-    directives.JavaOptions.handler,
-    directives.Jvm.handler,
-    directives.ScalaVersion.handler
-  )
-
-  private val handlers0 = DirectiveHandlers(handlers)
+  private val launcherParametersHandlers =
+    LauncherParameters.handlers ++
+      HasKernelOptions.handlers.map(_ => HasLauncherParameters.Ignore)
+  private val kernelOptionsHandlers =
+    HasKernelOptions.handlers ++
+      LauncherParameters.handlers.map(_ => HasKernelOptions.Ignore)
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteResult.Error.error(colors.error, colors.literal, exOpt, msg)

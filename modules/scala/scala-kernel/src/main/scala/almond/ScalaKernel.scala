@@ -4,6 +4,7 @@ import java.io.{File, FileOutputStream, PrintStream}
 
 import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
+import almond.directives.KernelOptions
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
@@ -130,6 +131,21 @@ object ScalaKernel extends CaseApp[Options] {
 
     log.debug("Creating interpreter")
 
+    val kernelOptionsFromJson = options.readKernelOptions() match {
+      case Some(asJson) =>
+        asJson.toKernelOptions match {
+          case Left(errors) =>
+            log.warn(
+              s"Got errors when trying to read options from ${options.kernelOptions.getOrElse("???")}: ${errors.mkString(", ")}"
+            )
+            KernelOptions()
+          case Right(options) =>
+            options
+        }
+      case None =>
+        KernelOptions()
+    }
+
     val interpreter = new ScalaInterpreter(
       params = ScalaInterpreterParams(
         updateBackgroundVariablesEcOpt = Some(updateBackgroundVariablesEc),
@@ -174,7 +190,9 @@ object ScalaKernel extends CaseApp[Options] {
             ClassPathUtil.classPath(input)
               .map(os.Path(_, os.pwd))
           },
-        initialCellCount = options.initialCellCount.getOrElse(0)
+        initialCellCount = options.initialCellCount.getOrElse(0),
+        upfrontKernelOptions = kernelOptionsFromJson,
+        ignoreLauncherDirectivesIn = options.ignoreLauncherDirectivesIn.toSet
       ),
       logCtx = logCtx
     )

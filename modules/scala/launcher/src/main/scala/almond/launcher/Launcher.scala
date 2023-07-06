@@ -3,10 +3,12 @@ package almond.launcher
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
+import almond.directives.KernelOptions
 import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
+import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.{Execute, RawJson}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
@@ -14,6 +16,7 @@ import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import com.github.plokhotnyuk.jsoniter_scala.core._
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import dependency.ScalaParameters
 
@@ -33,6 +36,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
     params0: LauncherParameters,
+    kernelOptions: KernelOptions,
     outputHandler: OutputHandler,
     logCtx: LoggerContext
   ): (os.proc, String, Option[String]) = {
@@ -146,8 +150,17 @@ object Launcher extends CaseApp[LauncherOptions] {
       Seq[os.Shellable]("--leftover-messages", msgFile)
     }
     val noExecuteInputArgs = noExecuteInputFor.flatMap { id =>
-      Seq("--no-execute-input-for", id)
+      Seq("--no-execute-input-for", id, "--ignore-launcher-directives-in", id)
     }
+
+    val optionsArgs =
+      if (kernelOptions.isEmpty) Nil
+      else {
+        val asJson      = KernelOptions.AsJson(kernelOptions)
+        val bytes       = writeToArray(asJson)(KernelOptions.AsJson.codec)
+        val optionsFile = os.temp(bytes, prefix = "almond-options-", suffix = ".json")
+        Seq[os.Shellable]("--kernel-options", optionsFile)
+      }
 
     val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
     val javaCommand = jvmIdOpt match {
@@ -183,6 +196,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       currentCellCount,
       msgFileArgs,
       noExecuteInputArgs,
+      optionsArgs,
       options.kernelOptions
     )
 
@@ -359,6 +373,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           options,
           firstMessageIdOpt.toSeq,
           interpreter.params,
+          interpreter.kernelOptions,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
           logCtx
         )

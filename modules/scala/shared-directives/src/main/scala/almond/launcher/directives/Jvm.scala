@@ -1,7 +1,5 @@
 package almond.launcher.directives
 
-import almond.launcher.LauncherParameters
-
 import scala.cli.directivehandler._
 
 @DirectiveGroupName("JVM version")
@@ -22,5 +20,5 @@ final case class Jvm(
 }
 
 object Jvm {
-  val handler: DirectiveHandler[Jvm] = DirectiveHandler.derive
+  val handler: DirectiveHandler[Jvm] = DirectiveHandler.deriver[Jvm].derive
 }

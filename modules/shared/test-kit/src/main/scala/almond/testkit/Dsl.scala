@@ -180,8 +180,10 @@ object Dsl {
       }
       else {
         if (stderr != stderrMessages) {
-          pprint.err.log(stderr)
-          pprint.err.log(stderrMessages)
+          val expectedStderr = stderr
+          val obtainedStderr = stderrMessages
+          pprint.err.log(expectedStderr)
+          pprint.err.log(obtainedStderr)
         }
         expect(stderr == stderrMessages)
       }
@@ -192,13 +194,25 @@ object Dsl {
       .sortBy(_._1)
       .map(_._2)
       .map(s => if (trimReplyLines) s.trimLines else s)
-    if (replies != Option(reply).toVector) {
-      val expectedSingleReply = reply
-      val gotReplies          = replies
-      pprint.err.log(expectedSingleReply)
-      pprint.err.log(gotReplies)
+    if (Properties.isWin) {
+      expect(replies.length == Option(reply).toVector.length)
+      val obtainedReplyLines = replies.headOption.iterator.flatMap(_.linesIterator).toVector
+      val expectedReplyLines = Option(reply).iterator.flatMap(_.linesIterator).toVector
+      if (obtainedReplyLines != expectedReplyLines) {
+        pprint.err.log(obtainedReplyLines)
+        pprint.err.log(expectedReplyLines)
+      }
+      expect(obtainedReplyLines == expectedReplyLines)
     }
-    expect(replies == Option(reply).toVector)
+    else {
+      if (replies != Option(reply).toVector) {
+        val expectedSingleReply = reply
+        val gotReplies          = replies
+        pprint.err.log(expectedSingleReply)
+        pprint.err.log(gotReplies)
+      }
+      expect(replies == Option(reply).toVector)
+    }
 
     if (replyPayloads != null) {
       val gotReplyPayloads = streams.executeReplyPayloads

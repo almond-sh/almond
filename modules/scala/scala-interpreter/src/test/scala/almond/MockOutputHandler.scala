@@ -25,4 +25,5 @@ class MockOutputHandler extends OutputHandler {
 
   def updateDisplay(displayData: almond.interpreter.api.DisplayData): Unit = ()
   def canOutput(): Boolean                                                 = false
+  def messageIdOpt: Option[String]                                         = None
 }
