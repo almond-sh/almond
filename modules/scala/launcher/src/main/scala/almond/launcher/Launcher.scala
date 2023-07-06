@@ -41,16 +41,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     logCtx: LoggerContext
   ): (os.proc, String, Option[String]) = {
 
-    val requestedScalaVersion = params0.scala
-      .orElse(options.scala.map(_.trim).filter(_.nonEmpty))
-      .getOrElse(Properties.defaultScalaVersion)
-
-    val scalaVersion = requestedScalaVersion match {
-      case "2.12"       => Properties.defaultScala212Version
-      case "2" | "2.13" => Properties.defaultScala213Version
-      case "3"          => Properties.defaultScalaVersion
-      case _            => requestedScalaVersion
-    }
+    val (scalaVersion, _) = LauncherInterpreter.computeScalaVersion(params0, options)
 
     def content(entries: Seq[(coursierapi.Artifact, File)]): ClassLoaderContent = {
       val entries0 = entries.map {
@@ -170,9 +161,9 @@ object Launcher extends CaseApp[LauncherOptions] {
         )
         val javaHome = os.Path(jvmManager.get(jvmId), os.pwd)
         val ext      = if (scala.util.Properties.isWin) ".exe" else ""
-        (javaHome / "bin" / s"java$ext").toString
+        Seq((javaHome / "bin" / s"java$ext").toString)
       case None =>
-        "java"
+        params0.javaCmd.getOrElse(Seq("java"))
     }
 
     val javaOptions = options.javaOpt ++ params0.javaOptions
@@ -200,7 +191,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       options.kernelOptions
     )
 
-    (proc, requestedScalaVersion, jvmIdOpt)
+    (proc, scalaVersion, jvmIdOpt)
   }
 
   private def launchActualKernel(proc: os.proc): Unit = {
@@ -372,7 +363,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           interpreter.lineCount,
           options,
           firstMessageIdOpt.toSeq,
-          interpreter.params,
+          interpreter.params.processCustomDirectives(),
           interpreter.kernelOptions,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
           logCtx

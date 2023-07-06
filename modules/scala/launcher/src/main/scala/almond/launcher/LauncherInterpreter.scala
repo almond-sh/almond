@@ -12,6 +12,7 @@ import almond.protocol.KernelInfo
 import java.io.File
 
 import scala.cli.directivehandler._
+import scala.cli.directivehandler.DirectiveValueParser.DirectiveValueParserValueOps
 import scala.cli.directivehandler.EitherSequence._
 
 class LauncherInterpreter(
@@ -19,29 +20,86 @@ class LauncherInterpreter(
   options: LauncherOptions
 ) extends Interpreter {
 
-  def kernelInfo(): KernelInfo =
+  def kernelInfo(): KernelInfo = {
+    val (sv, svOrigin) = LauncherInterpreter.computeScalaVersion(params, options)
     KernelInfo(
       implementation = "scala",
-      implementation_version = "???",
+      implementation_version = Properties.version,
       language_info = KernelInfo.LanguageInfo(
         name = "scala",
-        version = "???",
+        version = Properties.version,
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
         codemirror_mode = Some("text/x-scala")
       ),
       banner =
-        s"""Almond ${"???"}
-           |Ammonite ${"???"}
-           |${"???"}
-           |Java ${"???"}""".stripMargin, // +
+        s"""Almond ${Properties.version}
+           |Ammonite ${Properties.ammoniteVersion}
+           |Scala $sv (from $svOrigin)""".stripMargin, // +
       // params.extraBannerOpt.fold("")("\n\n" + _),
       help_links = None // Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
+  }
 
   var kernelOptions = KernelOptions()
   var params        = LauncherParameters()
+
+  val customDirectiveGroups = options.customDirectiveGroupsOrExit()
+  val launcherParametersHandlers =
+    LauncherInterpreter.launcherParametersHandlers.addCustomHandler { key =>
+      customDirectiveGroups.find(_.matches(key)).map { group =>
+        new DirectiveHandler[HasLauncherParameters] {
+          def name        = s"custom group ${group.prefix}"
+          def description = s"custom group ${group.prefix}"
+          def usage       = s"//> ${group.prefix}..."
+
+          def keys = Seq(key)
+          def handleValues(scopedDirective: ScopedDirective)
+            : Either[DirectiveException, ProcessedDirective[HasLauncherParameters]] = {
+            assert(scopedDirective.directive.key == key)
+            val maybeValues = scopedDirective.directive.values
+              .filter(!_.isEmpty)
+              .map { value =>
+                value.asString.toRight {
+                  new MalformedDirectiveError(
+                    s"Expected a string, got '${value.getRelatedASTNode.toString}'",
+                    Seq(value.position(scopedDirective.maybePath))
+                  )
+                }
+              }
+              .sequence
+              .left.map(CompositeDirectiveException(_))
+            maybeValues.map { values =>
+              ProcessedDirective(
+                Some(
+                  new HasLauncherParameters {
+                    def launcherParameters =
+                      LauncherParameters(customDirectives =
+                        Seq((group, scopedDirective.directive.key, values))
+                      )
+                  }
+                ),
+                Nil
+              )
+            }
+          }
+        }
+      }
+    }
+  val kernelOptionsHandlers = LauncherInterpreter.kernelOptionsHandlers.addCustomHandler { key =>
+    customDirectiveGroups.find(_.matches(key)).map { group =>
+      new DirectiveHandler[HasKernelOptions] {
+        def name        = s"custom group ${group.prefix}"
+        def description = s"custom group ${group.prefix}"
+        def usage       = s"//> ${group.prefix}..."
+        def keys        = Seq(key)
+        def handleValues(scopedDirective: ScopedDirective)
+          : Either[DirectiveException, ProcessedDirective[HasKernelOptions]] =
+          Right(ProcessedDirective(Some(HasKernelOptions.Ignore), Nil))
+      }
+    }
+  }
 
   def execute(
     code: String,
@@ -52,14 +110,14 @@ class LauncherInterpreter(
     val path      = Left(s"cell$lineCount0.sc")
     val scopePath = ScopePath(Left("."), os.sub)
     val maybeParamsUpdate =
-      LauncherInterpreter.launcherParametersHandlers.parse(code, path, scopePath)
+      launcherParametersHandlers.parse(code, path, scopePath)
         .map { res =>
           res
             .flatMap(_.global.map(_.launcherParameters).toSeq)
             .foldLeft(LauncherParameters())(_ + _)
         }
     val maybeKernelOptionsUpdate =
-      LauncherInterpreter.kernelOptionsHandlers.parse(code, path, scopePath)
+      kernelOptionsHandlers.parse(code, path, scopePath)
         .flatMap { res =>
           res
             .flatMap(_.global.map(_.kernelOptions).toSeq)
@@ -168,5 +226,22 @@ object LauncherInterpreter {
       fansi.Attrs.Empty,
       fansi.Attrs.Empty
     )
+  }
+
+  def computeScalaVersion(
+    params0: LauncherParameters,
+    options: LauncherOptions
+  ): (String, String) = {
+
+    val requestedScalaVersion = params0.scala.map((_, "directive"))
+      .orElse(options.scala.map(_.trim).filter(_.nonEmpty).map((_, "command-line")))
+      .getOrElse((Properties.defaultScalaVersion, "default"))
+
+    requestedScalaVersion._1 match {
+      case "2.12"       => (Properties.defaultScala212Version, requestedScalaVersion._2)
+      case "2" | "2.13" => (Properties.defaultScala213Version, requestedScalaVersion._2)
+      case "3"          => (Properties.defaultScalaVersion, requestedScalaVersion._2)
+      case _            => requestedScalaVersion
+    }
   }
 }
