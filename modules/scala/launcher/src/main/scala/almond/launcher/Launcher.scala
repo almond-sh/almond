@@ -200,7 +200,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       options.kernelOptions
     )
 
-    (proc, requestedScalaVersion, jvmIdOpt)
+    (proc, scalaVersion, jvmIdOpt)
   }
 
   private def launchActualKernel(proc: os.proc): Unit = {
