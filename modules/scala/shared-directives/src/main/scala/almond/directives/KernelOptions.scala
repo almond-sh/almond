@@ -38,6 +38,12 @@ object KernelOptions {
     scalacOptions: Seq[String] = Nil,
     extraRepositories: Seq[String] = Nil
   ) {
+    def +(other: AsJson): AsJson =
+      AsJson(
+        dependencies = dependencies ++ other.dependencies,
+        scalacOptions = scalacOptions ++ other.scalacOptions,
+        extraRepositories = extraRepositories ++ other.extraRepositories
+      )
     def toKernelOptions: Either[::[String], KernelOptions] = {
       val maybeDependencies = dependencies
         .map { dep =>
@@ -62,7 +68,8 @@ object KernelOptions {
   }
 
   object AsJson {
-    val codec: JsonValueCodec[AsJson] = JsonCodecMaker.make
+    def empty: AsJson                          = AsJson(Nil, Nil, Nil)
+    implicit val codec: JsonValueCodec[AsJson] = JsonCodecMaker.makeWithRequiredCollectionFields
 
     def apply(options: KernelOptions): AsJson =
       AsJson(

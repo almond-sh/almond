@@ -187,33 +187,50 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     val tmpDir = os.temp.dir(prefix = "almond-custom-directives-test-")
 
     val handlerCode =
-      """//> using lib "com.lihaoyi::os-lib:0.9.1"
-        |//> using lib "com.lihaoyi::pprint:0.8.1"
-        |//> using lib "com.lihaoyi::upickle:3.1.0"
-        |//> using scala "2.13.11"
-        |//> using jvm "8"
-        |
-        |package handler
-        |
-        |object Handler {
-        |  case class Entry(key: String, values: List[String])
-        |  implicit val entryCodec: upickle.default.ReadWriter[Entry] = upickle.default.macroRW
-        |
-        |  def main(args: Array[String]): Unit = {
-        |    assert(args.length == 1, "Usage: handle-spark-directives input.json")
-        |    val inputEntries = upickle.default.read[List[Entry]](os.read.bytes(os.Path(args(0), os.pwd)))
-        |    pprint.err.log(inputEntries)
-        |
-        |    val version = inputEntries.find(_.key == "spark.version").flatMap(_.values.headOption).getOrElse("X.Y")
-        |
-        |    val output = ujson.Obj(
-        |      "javaCmd" -> ujson.Arr(Seq("java", s"-Dthe-version=$version").map(ujson.Str(_)): _*)
-        |    )
-        |
-        |    println(output.render())
-        |  }
-        |}
-        |""".stripMargin
+      s"""//> using lib "com.lihaoyi::os-lib:0.9.1"
+         |//> using lib "com.lihaoyi::pprint:0.8.1"
+         |//> using lib "com.lihaoyi::upickle:3.1.0"
+         |//> using scala "${KernelLauncher.testScala213Version}"
+         |//> using jvm "8"
+         |
+         |package handler
+         |
+         |object Handler {
+         |  case class Entry(key: String, values: List[String] = Nil)
+         |  case class LauncherParams(scala: String = "")
+         |  case class KernelParams(dependencies: List[String] = Nil)
+         |  case class Input(
+         |    entries: List[Entry] = Nil,
+         |    currentLauncherParameters: LauncherParams = LauncherParams(),
+         |    currentKernelParameters: KernelParams = KernelParams()
+         |  )
+         |  implicit val entryCodec: upickle.default.ReadWriter[Entry] = upickle.default.macroRW
+         |  implicit val launcherParamsCodec: upickle.default.ReadWriter[LauncherParams] = upickle.default.macroRW
+         |  implicit val kernelParamsCodec: upickle.default.ReadWriter[KernelParams] = upickle.default.macroRW
+         |  implicit val inputCodec: upickle.default.ReadWriter[Input] = upickle.default.macroRW
+         |
+         |  def main(args: Array[String]): Unit = {
+         |    assert(args.length == 1, "Usage: handle-spark-directives input.json")
+         |    pprint.err.log(os.read(os.Path(args(0), os.pwd)))
+         |    val input = upickle.default.read[Input](os.read.bytes(os.Path(args(0), os.pwd)))
+         |    pprint.err.log(input)
+         |
+         |    val version = input.entries.find(_.key == "spark.version").flatMap(_.values.headOption).getOrElse("X.Y")
+         |    val sv = Some(input.currentLauncherParameters.scala).filter(_.nonEmpty)
+         |      .getOrElse("3.3-test")
+         |
+         |    val output = ujson.Obj(
+         |      "launcherParameters" -> ujson.Obj(
+         |        "javaCmd" -> ujson.Arr(Seq(
+         |          "java", s"-Dthe-version=$$version", s"-Dthe-not-scala-version=not-$$sv"
+         |        ).map(ujson.Str(_)): _*)
+         |      )
+         |    )
+         |
+         |    println(output.render())
+         |  }
+         |}
+         |""".stripMargin
 
     val directivesHandler = tmpDir / "handle-spark-directives"
 
@@ -235,15 +252,19 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
       runner.withSession("--custom-directive-group", s"spark:$directivesHandler") {
         implicit session =>
           execute(
-            """//> using spark.version "1.2.3"
-              |//> using spark
-              |""".stripMargin,
+            s"""//> using spark.version "1.2.3"
+               |//> using spark
+               |//> using scala "${KernelLauncher.testScala213Version}"
+               |""".stripMargin,
             ""
           )
 
           execute(
-            """val version = sys.props.getOrElse("the-version", "nope")""",
-            """version: String = "1.2.3""""
+            """val version = sys.props.getOrElse("the-version", "nope")
+              |val notScalaVersion = sys.props.getOrElse("the-not-scala-version", "nope")
+              |""".stripMargin,
+            s"""version: String = "1.2.3"
+               |notScalaVersion: String = "not-${KernelLauncher.testScala213Version}"""".stripMargin
           )
       }
     }
