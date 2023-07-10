@@ -188,7 +188,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       msgFileArgs,
       noExecuteInputArgs,
       optionsArgs,
-      options.kernelOptions
+      options.kernelOptions,
+      params0.kernelOptions
     )
 
     (proc, scalaVersion, jvmIdOpt)
