@@ -12,6 +12,8 @@ import fs2.Stream
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+import scala.util.Properties
+
 object Dsl {
 
   trait Runner {
@@ -49,15 +51,22 @@ object Dsl {
 
   private def stopWhen(replyType: String): (Channel, Message[RawJson]) => IO[Boolean] = {
     var gotExpectedReply = false
+    var isStarting       = false
     var gotIdleStatus    = false
     (c, m) =>
       gotExpectedReply =
         gotExpectedReply || (c == Channel.Requests && m.header.msg_type == replyType)
-      gotIdleStatus = gotIdleStatus || (
+      def incomingIdle =
         c == Channel.Publish &&
         m.header.msg_type == Status.messageType.messageType &&
         readFromArray(m.content.value)(Status.codec).execution_state == Status.idle.execution_state
-      )
+      def incomingStarting =
+        c == Channel.Publish &&
+        m.header.msg_type == Status.messageType.messageType &&
+        readFromArray(m.content.value)(Status.codec).execution_state ==
+          Status.starting.execution_state
+      gotIdleStatus = gotIdleStatus || (!isStarting && incomingIdle)
+      isStarting = (isStarting && !incomingIdle) || incomingStarting
       IO.pure(gotExpectedReply && gotIdleStatus)
   }
 
@@ -140,12 +149,44 @@ object Dsl {
 
     if (stdout != null) {
       val stdoutMessages = streams.output.mkString
-      expect(stdout == stdoutMessages)
+      if (Properties.isWin) {
+        val expectedStdoutLines = stdout.linesIterator.toVector
+        val obtainedStdoutLines = stdoutMessages.linesIterator.toVector
+        if (expectedStdoutLines != obtainedStdoutLines) {
+          pprint.err.log(expectedStdoutLines)
+          pprint.err.log(obtainedStdoutLines)
+        }
+        expect(expectedStdoutLines == obtainedStdoutLines)
+      }
+      else {
+        if (stdout != stdoutMessages) {
+          pprint.err.log(stdout)
+          pprint.err.log(stdoutMessages)
+        }
+        expect(stdout == stdoutMessages)
+      }
     }
 
     if (stderr != null) {
       val stderrMessages = streams.errorOutput.mkString
-      expect(stderr == stderrMessages)
+      if (Properties.isWin) {
+        val expectedStderrLines = stderr.linesIterator.toVector
+        val obtainedStderrLines = stderrMessages.linesIterator.toVector
+        if (expectedStderrLines != obtainedStderrLines) {
+          pprint.err.log(expectedStderrLines)
+          pprint.err.log(obtainedStderrLines)
+        }
+        expect(expectedStderrLines == obtainedStderrLines)
+      }
+      else {
+        if (stderr != stderrMessages) {
+          val expectedStderr = stderr
+          val obtainedStderr = stderrMessages
+          pprint.err.log(expectedStderr)
+          pprint.err.log(obtainedStderr)
+        }
+        expect(stderr == stderrMessages)
+      }
     }
 
     val replies = streams.executeReplies
@@ -153,7 +194,25 @@ object Dsl {
       .sortBy(_._1)
       .map(_._2)
       .map(s => if (trimReplyLines) s.trimLines else s)
-    expect(replies == Option(reply).toVector)
+    if (Properties.isWin) {
+      expect(replies.length == Option(reply).toVector.length)
+      val obtainedReplyLines = replies.headOption.iterator.flatMap(_.linesIterator).toVector
+      val expectedReplyLines = Option(reply).iterator.flatMap(_.linesIterator).toVector
+      if (obtainedReplyLines != expectedReplyLines) {
+        pprint.err.log(obtainedReplyLines)
+        pprint.err.log(expectedReplyLines)
+      }
+      expect(obtainedReplyLines == expectedReplyLines)
+    }
+    else {
+      if (replies != Option(reply).toVector) {
+        val expectedSingleReply = reply
+        val gotReplies          = replies
+        pprint.err.log(expectedSingleReply)
+        pprint.err.log(gotReplies)
+      }
+      expect(replies == Option(reply).toVector)
+    }
 
     if (replyPayloads != null) {
       val gotReplyPayloads = streams.executeReplyPayloads

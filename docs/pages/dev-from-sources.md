@@ -175,10 +175,10 @@ in the examples job on the CI to fail.
 
 To validate the examples locally, run
 ```text
-$ ./mill -i validateExamples
+$ ./mill -i scala.examples.test
 ```
 
 Optionally, you can pass a glob to filter notebook names:
 ```text
-$ ./mill -i validateExamples 'scalapy*'
+$ ./mill -i scala.examples.test 'almond.examples.Examples.scalapy*'
 ```

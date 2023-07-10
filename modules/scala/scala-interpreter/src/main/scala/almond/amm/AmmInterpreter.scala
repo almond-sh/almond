@@ -3,11 +3,11 @@ package almond.amm
 import java.nio.file.{Files, Path}
 
 import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
+import almond.cslogger.NotebookCacheLogger
 import almond.logger.LoggerContext
-import ammonite.compiler.iface.{CodeWrapper, Preprocessor}
-import ammonite.compiler.CompilerLifecycleManager
+import ammonite.compiler.iface.CodeWrapper
 import ammonite.runtime.{Evaluator, Frame, Storage}
-import ammonite.util.{Colors, ImportData, Imports, Name, PredefInfo, Ref, Res}
+import ammonite.util.{ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import coursier.util.ModuleMatcher
 
@@ -53,6 +53,10 @@ object AmmInterpreter {
     ImportData("almond.input.Input")
   )
 
+  private def toreeApiCompatibilityImports = Imports(
+    ImportData("almond.toree.ToreeCompatibility.KernelToreeOps")
+  )
+
   /** Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
     */
   def apply(
@@ -71,11 +75,14 @@ object AmmInterpreter {
     mavenProfiles: Map[String, Boolean],
     autoUpdateLazyVals: Boolean,
     autoUpdateVars: Boolean,
+    useNotebookCoursierLogger: Boolean,
+    silentImports: Boolean,
     initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
     outputDir: Either[os.Path, Boolean],
-    compileOnly: Boolean
+    compileOnly: Boolean,
+    addToreeApiCompatibilityImport: Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -105,6 +112,22 @@ object AmmInterpreter {
     val log = logCtx(getClass)
 
     try {
+
+      val addToreeApiCompatibilityImport0 =
+        addToreeApiCompatibilityImport && {
+          val loader = frames0().head.classloader
+          val clsOpt =
+            try Some(loader.loadClass("almond.toree.ToreeCompatibility$"))
+            catch {
+              case _: ClassNotFoundException =>
+                None
+            }
+          if (clsOpt.isEmpty)
+            log.error(
+              "Ignoring Toree API compatibility option, as sh.almond::toree-hooks isn't part of the user class path"
+            )
+          clsOpt.nonEmpty
+        }
 
       log.info("Creating Ammonite interpreter")
 
@@ -136,6 +159,8 @@ object AmmInterpreter {
           scriptCodeWrapper = codeWrapper,
           parameters = interpParams
         ) {
+          override def wrapperNamePrefix = "cell"
+
           override val compilerManager = new AlmondCompilerLifecycleManager(
             storage0.dirOpt.map(_.toNIO),
             headFrame,
@@ -144,6 +169,7 @@ object AmmInterpreter {
             headFrame.classloader,
             autoUpdateLazyVals,
             autoUpdateVars,
+            silentImports,
             variableInspectorEnabled,
             outputDir0,
             logCtx
@@ -156,6 +182,14 @@ object AmmInterpreter {
             else
               baseEval
           }
+        }
+
+      if (useNotebookCoursierLogger)
+        ammInterp0.resolutionHooks.append { fetch =>
+          val cache  = fetch.getCache
+          val logger = new NotebookCacheLogger(jupyterApi.publish, logCtx)
+          val cache0 = cache.withLogger(logger)
+          fetch.withCache(cache0)
         }
 
       val customPredefs = predefFileInfos ++ {
@@ -171,7 +205,8 @@ object AmmInterpreter {
 
       val imports = ammonite.main.Defaults.replImports ++
         ammonite.interp.Interpreter.predefImports ++
-        almondImports
+        almondImports ++
+        (if (addToreeApiCompatibilityImport0) toreeApiCompatibilityImports else Imports())
       for ((e, _) <- ammInterp0.initializePredef(Nil, customPredefs, extraBridges, imports))
         e match {
           case Res.Failure(msg) =>

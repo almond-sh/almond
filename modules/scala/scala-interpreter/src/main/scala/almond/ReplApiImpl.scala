@@ -1,6 +1,7 @@
 package almond
 
 import almond.api.JupyterApi
+import almond.interpreter.ExecuteResult
 import almond.interpreter.api.DisplayData
 import ammonite.repl.api.{FrontEnd, ReplLoad}
 import ammonite.repl.{FullReplAPI, SessionApiImpl}
@@ -137,7 +138,12 @@ final class ReplApiImpl(
                       .getOrElse(fansi.Color.LightGray)
 
                     val err =
-                      Execute.showException(ex, colors0().error(), Attr.Reset, colors0().literal())
+                      ExecuteResult.Error.showException(
+                        ex,
+                        colors0().error(),
+                        Attr.Reset,
+                        colors0().literal()
+                      )
                     val s = messageColor("[last attempt failed]").render + "\n" + err
                     updatableResults.update(id, s, last = false)
                   case Right(value0) =>
@@ -179,7 +185,7 @@ final class ReplApiImpl(
       def apply(line: String) =
         ammInterp.processExec(
           line,
-          execute0.currentLine,
+          execute0.currentLine + 1,
           () => execute0.incrementLineCount()
         ) match {
           case Res.Failure(s)      => throw new CompilationError(s)

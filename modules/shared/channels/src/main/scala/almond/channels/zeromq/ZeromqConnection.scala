@@ -203,28 +203,28 @@ final class ZeromqConnection(
         .getOrElse(IO.pure(None))
     }.evalOn(threads.pollingEc).flatMap(identity)
 
-  val close: IO[Unit] = {
+  def close(partial: Boolean): IO[Unit] = {
 
     val log0 = IO(log.debug(s"Closing channels for $params"))
 
     val channels = Seq(
       requests0,
       control0,
-      publish0,
       stdin0
-    )
+    ) ++ (if (partial) Nil else Seq(publish0))
 
     val t = channels.foldLeft(IO.unit)((acc, c) => acc *> c.close)
 
     val other = IO {
-      log.debug(s"Closing things for $params")
+      log.debug(s"Closing things for $params" + (if (partial) " (partial)" else ""))
 
-      heartBeatThreadOpt.foreach(_.interrupt())
+      if (!partial)
+        heartBeatThreadOpt.foreach(_.interrupt())
 
       selectorOpt.foreach(_.close())
       selectorOpt = None
 
-      log.debug(s"Closed channels for $params")
+      log.debug(s"Closed channels for $params" + (if (partial) " (partial)" else ""))
     }.evalOn(threads.selectorOpenCloseEc)
 
     log0 *> t *> other

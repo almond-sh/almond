@@ -1,38 +1,12 @@
 package almond.integration
 
 import almond.testkit.Dsl._
-import munit.{Location, TestOptions}
-import scala.util.control.NonFatal
 
-abstract class KernelTestsDefinitions extends munit.FunSuite {
+abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
-  override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit =
-    super.test(options) {
-      System.err.println()
-      System.err.println(s"Running ${Console.BLUE}${options.name}${Console.RESET}")
-      var success = false
-      var exOpt   = Option.empty[Throwable]
-      try {
-        body
-        success = true
-      }
-      catch {
-        case NonFatal(e) =>
-          exOpt = Some(e)
-          throw e
-      }
-      finally {
-        if (success)
-          System.err.println(s"Done: ${Console.CYAN}${options.name}${Console.RESET}")
-        else {
-          System.err.println(s"Failed: ${Console.RED}${options.name}${Console.RESET}")
-          exOpt.foreach(_.printStackTrace(System.err))
-        }
-        System.err.println()
-      }
-    }(loc)
+  override def mightRetry = true
 
   test("jvm-repr") {
     kernelLauncher.withKernel { implicit runner =>
@@ -92,6 +66,13 @@ abstract class KernelTestsDefinitions extends munit.FunSuite {
     }
   }
 
+  test("toree Html") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.toreeHtml()
+    }
+  }
+
   test("toree AddJar custom protocol") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
@@ -128,5 +109,33 @@ abstract class KernelTestsDefinitions extends munit.FunSuite {
         almond.integration.Tests.inspections(kernelLauncher.defaultScalaVersion)
       }
     }
+
+  test("compilation error") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.compilationError(kernelLauncher.defaultScalaVersion)
+    }
+  }
+
+  test("add dependency") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.addDependency()
+    }
+  }
+
+  test("add repository") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.addRepository()
+    }
+  }
+
+  test("add scalac option") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.addScalacOption(kernelLauncher.defaultScalaVersion)
+    }
+  }
 
 }

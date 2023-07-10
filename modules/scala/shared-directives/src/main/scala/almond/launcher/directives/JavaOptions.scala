@@ -1,7 +1,5 @@
 package almond.launcher.directives
 
-import almond.launcher.LauncherParameters
-
 import scala.cli.directivehandler._
 
 @DirectiveGroupName("Java options")
@@ -21,5 +19,5 @@ final case class JavaOptions(
 }
 
 object JavaOptions {
-  val handler: DirectiveHandler[JavaOptions] = DirectiveHandler.derive
+  val handler: DirectiveHandler[JavaOptions] = DirectiveHandler.deriver[JavaOptions].derive
 }

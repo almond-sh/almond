@@ -99,7 +99,8 @@ object TestUtil {
 
   private case class Options(
     predef: List[String] = Nil,
-    toreeMagics: Boolean = false
+    toreeMagics: Boolean = false,
+    toreeApi: Boolean = false
   )
 
   private val optionsParser: caseapp.Parser[Options] = caseapp.Parser.derive
@@ -125,7 +126,8 @@ object TestUtil {
             initialColors = Colors.BlackWhite,
             updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
             predefFiles = opt.predef.map(Paths.get(_)),
-            toreeMagics = opt.toreeMagics
+            toreeMagics = opt.toreeMagics,
+            toreeApiCompatibility = opt.toreeApi
           )
         },
         logCtx = logCtx
@@ -361,7 +363,7 @@ object TestUtil {
       for ((a, b) <- publish0.zip(publish) if a != b)
         System.err.println(s"Expected $b, got $a")
       for (
-        k <- replies0.keySet.intersect(expectedReplies.keySet)
+        k <- replies0.keySet.intersect(expectedReplies.keySet).toVector.sorted
         if replies0.get(k) != expectedReplies.get(k)
       )
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got ${replies0(k)}")
@@ -378,6 +380,8 @@ object TestUtil {
   def comparePublishMessageTypes(expected: Seq[Set[String]], got: Seq[String]): Boolean =
     expected.map(_.size).sum == got.length && {
       val it = got.iterator
+        // Workaround for https://github.com/scala/bug/issues/12803
+        .map(identity)
       expected.forall { expectedGroup =>
         val got0 = it.take(expectedGroup.size).toSet
         expectedGroup == got0

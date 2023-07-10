@@ -53,7 +53,7 @@ object EchoKernel extends CaseApp[Options] {
 
     log.debug("Running kernel")
     Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, logCtx)
-      .flatMap(_.runOnConnectionFile(connectionFile, "echo", zeromqThreads, Nil))
+      .flatMap(_.runOnConnectionFile(connectionFile, "echo", zeromqThreads, Nil, autoClose = true))
       .unsafeRunSync()(IORuntime.global)
   }
 }

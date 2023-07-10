@@ -195,7 +195,7 @@ object MessageHandler {
     val poisonPill: (Channel, RawMessage) = null // a bit meh
 
     val task = for {
-      queue <- Queue.bounded[IO, (Channel, RawMessage)](40) // FIXME sizing?
+      queue <- Queue.unbounded[IO, (Channel, RawMessage)]
       main = run(queue)
       _ <- {
         val t = for {
@@ -253,7 +253,7 @@ object MessageHandler {
 
     val task =
       for {
-        queue <- Queue.bounded[IO, Either[Throwable, (Channel, RawMessage)]](40) // FIXME sizing?
+        queue <- Queue.unbounded[IO, Either[Throwable, (Channel, RawMessage)]]
         main = run(queue)
         _ <- {
           val t = for {

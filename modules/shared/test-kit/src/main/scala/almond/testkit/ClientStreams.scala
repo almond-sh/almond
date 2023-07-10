@@ -231,6 +231,23 @@ final case class ClientStreams(
       .flatten
       .toList
 
+  def executeResultErrors: Seq[Execute.Error] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.errorType.messageType =>
+          m.decodeAs[Execute.Error] match {
+            case Left(_) => Nil
+            case Right(m) =>
+              m.content match {
+                case e: Execute.Error => Seq(e)
+                case _                => Nil
+              }
+          }
+      }
+      .flatten
+      .toList
+
   def inspectRepliesHtml: Seq[String] =
     generatedMessages
       .iterator
@@ -269,7 +286,7 @@ object ClientStreams {
 
     val poisonPill: (Channel, RawMessage) = null
 
-    val q = Queue.bounded[IO, (Channel, RawMessage)](10).unsafeRunSync()(IORuntime.global)
+    val q = Queue.unbounded[IO, (Channel, RawMessage)].unsafeRunSync()(IORuntime.global)
 
     val sink: Pipe[IO, (Channel, RawMessage), Unit] = { s =>
 

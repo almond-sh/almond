@@ -1,8 +1,10 @@
 package almond.launcher
 
 import almond.kernel.install.{Options => InstallOptions}
+import almond.launcher.directives.CustomGroup
 import caseapp._
 
+import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 
 // format: off
@@ -14,6 +16,8 @@ final case class LauncherOptions(
   connectionFile: Option[String] = None,
   variableInspector: Option[Boolean] = None,
   toreeMagics: Option[Boolean] = None,
+  toreeApi: Option[Boolean] = None,
+  toreeCompatibility: Option[Boolean] = None,
   color: Option[Boolean] = None,
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
@@ -26,7 +30,11 @@ final case class LauncherOptions(
   extraStartupClassPath: List[String] = Nil,
   sharedDependencies: List[String] = Nil,
   compileOnly: Option[Boolean] = None,
-  javaOpt: List[String] = Nil
+  javaOpt: List[String] = Nil,
+  quiet: Option[Boolean] = None,
+  silentImports: Option[Boolean] = None,
+  useNotebookCoursierLogger: Option[Boolean] = None,
+  customDirectiveGroup: List[String] = Nil
 ) {
   // format: on
 
@@ -38,6 +46,10 @@ final case class LauncherOptions(
       b ++= Seq(s"--variable-inspector=$value")
     for (value <- toreeMagics)
       b ++= Seq(s"--toree-magics=$value")
+    for (value <- toreeApi)
+      b ++= Seq(s"--toree-api=$value")
+    for (value <- toreeCompatibility)
+      b ++= Seq(s"--toree-compatibility=$value")
     for (value <- color)
       b ++= Seq(s"--color=$value")
     for (value <- logTo)
@@ -48,7 +60,34 @@ final case class LauncherOptions(
       b ++= Seq("--predef", value)
     for (value <- compileOnly)
       b ++= Seq(s"--compile-only=$value")
+    for (value <- silentImports)
+      b ++= Seq(s"--silent-imports=$value")
+    for (value <- useNotebookCoursierLogger)
+      b ++= Seq(s"--use-notebook-coursier-logger=$value")
     b.result()
+  }
+
+  def quiet0 = quiet.getOrElse(true)
+
+  def customDirectiveGroupsOrExit(): Seq[CustomGroup] = {
+    val maybeGroups = customDirectiveGroup
+      .map { input =>
+        input.split(":", 2) match {
+          case Array(prefix, command) => Right(CustomGroup(prefix, command))
+          case Array(_) =>
+            Left(s"Malformed custom directive group argument, expected 'prefix:command': '$input'")
+        }
+      }
+      .sequence
+
+    maybeGroups match {
+      case Left(errors) =>
+        for (err <- errors)
+          System.err.println(err)
+        sys.exit(1)
+      case Right(groups) =>
+        groups
+    }
   }
 }
 

@@ -169,6 +169,24 @@ object ScalaKernelTests extends TestSuite {
 
       assert(messageTypes == expectedMessageTypes)
 
+      def checkError(ename: String, evalue: String, traceback: List[String]) = {
+        assert(ename == "java.lang.RuntimeException")
+        assert(evalue == "foo")
+        assert(traceback.exists(_.contains("java.lang.RuntimeException: foo")))
+        assert(traceback.exists(_.contains("ammonite.")))
+      }
+
+      val executeResultErrors = streams.executeResultErrors
+      assert(executeResultErrors.size == 1)
+      checkError(
+        executeResultErrors.head.ename,
+        executeResultErrors.head.evalue,
+        executeResultErrors.head.traceback
+      )
+
+      val executeErrors = streams.executeErrors
+      checkError(executeErrors(1)._1, executeErrors(1)._2, executeErrors(1)._3)
+
       val replies = streams.executeReplies
 
       // first code is in error, subsequent ones are cancelled because of the stop-on-error, so no results here
@@ -338,7 +356,10 @@ object ScalaKernelTests extends TestSuite {
         )
 
         assert(requestsMessageTypes == expectedRequestsMessageTypes)
-        TestUtil.comparePublishMessageTypes(expectedPublishMessageTypes, publishMessageTypes)
+        assert(TestUtil.comparePublishMessageTypes(
+          expectedPublishMessageTypes,
+          publishMessageTypes
+        ))
 
         val displayData = streams.displayData.map {
           case (d, b) =>
@@ -420,15 +441,21 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val expectedPublishMessageTypes = Seq(
-        "execute_input",
-        "display_data",
-        "execute_input",
-        "update_display_data",
-        "execute_input"
+        Set(
+          "execute_input",
+          "display_data"
+        ),
+        Set(
+          "execute_input",
+          "update_display_data"
+        ),
+        Set(
+          "execute_input"
+        )
       )
 
       assert(requestsMessageTypes == expectedRequestsMessageTypes)
-      assert(publishMessageTypes == expectedPublishMessageTypes)
+      assert(TestUtil.comparePublishMessageTypes(expectedPublishMessageTypes, publishMessageTypes))
 
       val displayData = streams.displayData.map {
         case (d, b) =>
@@ -635,34 +662,8 @@ object ScalaKernelTests extends TestSuite {
     }
 
     test("toree Html") {
-
-      val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
-          toreeMagics = true
-        ),
-        logCtx = logCtx
-      )
-
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
-
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-
-      kernel.execute(
-        """%%html
-          |<p>
-          |<b>Hello</b>
-          |</p>
-          |""".stripMargin,
-        "",
-        displaysHtml = Seq(
-          """<p>
-            |<b>Hello</b>
-            |</p>
-            |""".stripMargin
-        )
-      )
+      almond.integration.Tests.toreeHtml()
     }
 
     test("toree Truncation") {
@@ -696,7 +697,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res0: Vector[Int] = " + (1 to 200).toVector.toString
+        "res1: Vector[Int] = " + (1 to 200).toVector.toString
       )
       kernel.execute(
         "%truncation on",
@@ -706,7 +707,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res1: Vector[Int] = " +
+        "res2: Vector[Int] = " +
           (1 to 38)
             .toVector
             .map("  " + _ + "," + "\n")

@@ -77,4 +77,6 @@ final class DefaultCommHandler(
 
     publish(Execute.updateDisplayDataType, content, RawJson.emptyObj.value)
   }
+
+  def canOutput(): Boolean = true
 }

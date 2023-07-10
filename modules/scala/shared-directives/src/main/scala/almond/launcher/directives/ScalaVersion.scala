@@ -1,7 +1,5 @@
 package almond.launcher.directives
 
-import almond.launcher.LauncherParameters
-
 import scala.cli.directivehandler._
 
 @DirectiveGroupName("Scala version")
@@ -22,5 +20,5 @@ final case class ScalaVersion(
 }
 
 object ScalaVersion {
-  val handler: DirectiveHandler[ScalaVersion] = DirectiveHandler.derive
+  val handler: DirectiveHandler[ScalaVersion] = DirectiveHandler.deriver[ScalaVersion].derive
 }

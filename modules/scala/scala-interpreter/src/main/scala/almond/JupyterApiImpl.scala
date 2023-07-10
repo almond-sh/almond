@@ -1,6 +1,6 @@
 package almond
 
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayOutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 
 import almond.api.{FullJupyterApi, JupyterApi}
@@ -17,11 +17,13 @@ import scala.reflect.ClassTag
 /** Actual [[almond.api.JupyterApi]] instance */
 final class JupyterApiImpl(
   execute: Execute,
-  commHandlerOpt: => Option[CommHandler],
+  commHandlerOpt0: => Option[CommHandler],
   replApi: ReplApiImpl,
   silent0: Ref[Boolean],
   protected val allowVariableInspector: Option[Boolean],
-  val kernelClassLoader: ClassLoader
+  val kernelClassLoader: ClassLoader,
+  val consoleOut: PrintStream,
+  val consoleErr: PrintStream
 ) extends FullJupyterApi with VariableInspectorApiImpl {
 
   protected def variableInspectorImplPPrinter() = replApi.pprinter()
@@ -66,8 +68,8 @@ final class JupyterApiImpl(
 
   override def changingPublish =
     execute.currentPublishOpt.getOrElse(super.changingPublish)
-  override def commHandler =
-    commHandlerOpt.getOrElse(super.commHandler)
+  override def commHandlerOpt =
+    commHandlerOpt0
 
   protected def updatableResults0: JupyterApi.UpdatableResults =
     execute.updatableResults
@@ -87,4 +89,6 @@ final class JupyterApiImpl(
       true
     }
   }
+
+  val afterInterruptHooks = mutable.Buffer.empty[Any => Any]
 }

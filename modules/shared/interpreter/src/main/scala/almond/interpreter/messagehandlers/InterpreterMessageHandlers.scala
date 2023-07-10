@@ -87,7 +87,7 @@ final case class InterpreterMessageHandlers(
                     runAfterQueued(interpreter.cancelledSignal.set(false))
                 else
                   IO.unit
-              val error = Execute.Error("", "", List(e.message))
+              val error = Execute.Error(e.name, e.message, e.stackTrace)
               extra *>
                 message
                   .publish(Execute.errorType, error)
@@ -289,6 +289,10 @@ object InterpreterMessageHandlers {
       // messages sent after the originating cell is done running, are still sent to the client.
       // TODO Warn if no commHandler is available
       commHandlerOpt.foreach(_.updateDisplay(displayData))
+
+    def canOutput(): Boolean = true
+
+    def messageIdOpt: Option[String] = Some(message.header.msg_id)
   }
 
 }

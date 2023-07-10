@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.api.JupyterApi
+import almond.directives.{HasKernelOptions, KernelOptions}
+import almond.directives.HasKernelOptions.ops._
 import almond.internals.{
   Capture,
   FunctionInputStream,
@@ -15,14 +17,20 @@ import almond.internals.{
 import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
+import almond.launcher.directives.LauncherParameters
 import almond.logger.LoggerContext
 import ammonite.compiler.Parsers
 import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Ex, Printer, Ref, Res}
+import coursierapi.{IvyRepository, MavenRepository}
+import dependency.ScalaParameters
+import dependency.api.ops._
 import fastparse.Parsed
 
+import scala.cli.directivehandler._
+import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -40,8 +48,12 @@ final class Execute(
   silent: Ref[Boolean],
   useThreadInterrupt: Boolean,
   initialCellCount: Int,
-  enableExitHack: Boolean
+  enableExitHack: Boolean,
+  ignoreLauncherDirectivesIn: Set[String]
 ) {
+
+  private val handlers = HasKernelOptions.handlers ++
+    LauncherParameters.handlers.mapDirectives(_.ignoredDirective)
 
   private val log = logCtx(getClass)
 
@@ -106,10 +118,47 @@ final class Execute(
     capture0.out,
     capture0.err,
     resultStream,
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s)),
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s)),
-    s => currentPublishOpt0.fold(println(s))(_.stdout(s))
+    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s + System.lineSeparator())),
+    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s + System.lineSeparator())),
+    // to stdout in notebooks, not to get a red background,
+    // but stderr in the console, not to pollute stdout
+    s => currentPublishOpt0.fold(Console.err.println(s))(_.stdout(s + System.lineSeparator()))
   )
+
+  private def useOptions(
+    ammInterp: ammonite.interp.Interpreter,
+    options: KernelOptions
+  ): Either[String, Unit] = {
+
+    for (input <- options.extraRepositories) {
+      val repo =
+        if (input.startsWith("ivy:"))
+          IvyRepository.of(input.drop("ivy:".length))
+        else
+          MavenRepository.of(input)
+      ammInterp.repositories.update(ammInterp.repositories() :+ repo)
+    }
+
+    almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
+      options.scalacOptions.toSeq.map(_.value.value)
+    )
+
+    val params       = ScalaParameters(ammInterp.scalaVersion)
+    val compatParams = ScalaParameters(scala.util.Properties.versionNumberString)
+    val deps = options.dependencies.map { dep =>
+      val params0 =
+        if (dep.userParams.get("compat").nonEmpty) compatParams
+        else params
+      dep.applyParams(params0).toCs
+    }
+    val loadDepsRes =
+      if (deps.isEmpty) Right(Nil)
+      else ammInterp.loadIvy(deps: _*)
+    loadDepsRes.map { loaded =>
+      ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+      ()
+    }
+  }
 
   def history: History =
     history0
@@ -231,6 +280,19 @@ final class Execute(
 
   def lastExceptionOpt: Option[Throwable] = lastExceptionOpt0
 
+  private def incrementLine(storeHistory: Boolean): Unit =
+    if (storeHistory)
+      currentLine0 += 1
+    else
+      currentNoHistoryLine0 += 1
+
+  def loadOptions(ammInterp: ammonite.interp.Interpreter, options: KernelOptions): Unit =
+    useOptions(ammInterp, options) match {
+      case Left(err) =>
+        log.warn(s"Error loading initial kernel options: $err")
+      case Right(()) =>
+    }
+
   private def ammResult(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
@@ -269,13 +331,9 @@ final class Execute(
                 val r = ammInterp.processLine(
                   code0,
                   stmts,
-                  if (storeHistory) currentLine0 else currentNoHistoryLine0,
+                  (if (storeHistory) currentLine0 else currentNoHistoryLine0) + 1,
                   silent = silent(),
-                  incrementLine =
-                    if (storeHistory)
-                      () => currentLine0 += 1
-                    else
-                      () => currentNoHistoryLine0 += 1
+                  incrementLine = () => incrementLine(storeHistory)
                 )
 
                 log.debug(s"Handling output of '$code0'")
@@ -401,95 +459,101 @@ final class Execute(
         ExecuteResult.Success()
 
       case Success(Right(finalCode)) =>
-        ammResult(ammInterp, finalCode, inputManager, outputHandler, storeHistory) match {
-          case Res.Success((_, data)) =>
-            ExecuteResult.Success(data)
-          case Res.Failure(msg) =>
-            interruptedStackTraceOpt0 match {
-              case None =>
-                val err = Execute.error(colors0(), None, msg)
-                outputHandler.foreach(_.stderr(err.message)) // necessary?
-                err
-              case Some(st) =>
-                val cutoff = Set("$main", "evaluatorRunPrinter")
+        val path      = Left(s"cell$currentLine0.sc")
+        val scopePath = ScopePath(Left("."), os.sub)
+        handlers.parse(finalCode, path, scopePath) match {
+          case Left(err) =>
+            log.error(s"exception while processing directives (${err.getMessage})", err)
+            Execute.error(colors0(), Some(err), err.getMessage)
+          case Right(res) =>
+            val maybeOptions = res
+              .flatMap(_.global.map(_.kernelOptions).toSeq)
+              .sequence
+              .map(_.foldLeft(KernelOptions())(_ + _))
+            maybeOptions match {
+              case Left(err) =>
+                // FIXME Use positions in the exception to report errors as diagnostics
+                // FIXME This discards all errors but the first
+                Execute.error(colors0(), Some(err.head), "")
+              case Right(options) =>
+                val optionsRes = useOptions(ammInterp, options)
 
-                ExecuteResult.Error(
-                  (
-                    "Interrupted!" +: st
-                      .takeWhile(x => !cutoff(x.getMethodName))
-                      .map(Execute.highlightFrame(_, fansi.Attr.Reset, colors0().literal()))
-                  ).mkString(System.lineSeparator())
-                )
+                if (
+                  options.ignoredDirectives.nonEmpty &&
+                  outputHandler
+                    .flatMap(_.messageIdOpt)
+                    .forall(id => !ignoreLauncherDirectivesIn.contains(id))
+                ) {
+                  def printErr(s: String): Unit =
+                    outputHandler match {
+                      case Some(h) => h.stderr(s + System.lineSeparator())
+                      case None    => System.err.println(s)
+                    }
+                  printErr(
+                    s"Warning: ignoring ${options.ignoredDirectives.length} directive(s) that can only be used prior to any code:"
+                  )
+                  for (dir <- options.ignoredDirectives.map(_.directive))
+                    printErr(s"  //> using ${dir.directive.key}")
+                }
+
+                optionsRes match {
+                  case Left(failureMsg) =>
+                    // kind of meh that we have to build a new Exception here
+                    Execute.error(colors0(), Some(new Exception(failureMsg)), "")
+                  case Right(()) =>
+                    ammResult(
+                      ammInterp,
+                      finalCode,
+                      inputManager,
+                      outputHandler,
+                      storeHistory
+                    ) match {
+                      case Res.Success((_, data)) =>
+                        ExecuteResult.Success(data)
+                      case Res.Failure(msg) =>
+                        interruptedStackTraceOpt0 match {
+                          case None =>
+                            val err = Execute.error(colors0(), None, msg)
+                            outputHandler.foreach(_.stderr(err.message)) // necessary?
+                            err
+                          case Some(st) =>
+                            val cutoff = Set("$main", "evaluatorRunPrinter")
+
+                            ExecuteResult.Error(
+                              "Interrupted!",
+                              "",
+                              List("Interrupted!") ++ st
+                                .takeWhile(x => !cutoff(x.getMethodName))
+                                .map(ExecuteResult.Error.highlightFrame(
+                                  _,
+                                  fansi.Attr.Reset,
+                                  colors0().literal()
+                                ))
+                                .map(_.render)
+                                .toList
+                            )
+                        }
+
+                      case Res.Exception(ex, msg) =>
+                        log.error(s"exception in user code (${ex.getMessage})", ex)
+                        Execute.error(colors0(), Some(ex), msg)
+
+                      case Res.Skip =>
+                        if (!options.isEmpty)
+                          incrementLine(storeHistory)
+                        ExecuteResult.Success()
+
+                      case Res.Exit(_) =>
+                        ExecuteResult.Exit
+                    }
+                }
             }
-
-          case Res.Exception(ex, msg) =>
-            log.error(s"exception in user code (${ex.getMessage})", ex)
-            Execute.error(colors0(), Some(ex), msg)
-
-          case Res.Skip =>
-            ExecuteResult.Success()
-
-          case Res.Exit(_) =>
-            ExecuteResult.Exit
         }
     }
   }
 }
 
 object Execute {
-
-  // these come from Ammonite
-  // exception display was tweaked a bit (too much red for notebooks else)
-
-  private def highlightFrame(
-    f: StackTraceElement,
-    highlightError: fansi.Attrs,
-    source: fansi.Attrs
-  ) = {
-    val src =
-      if (f.isNativeMethod) source("Native Method")
-      else if (f.getFileName == null) source("Unknown Source")
-      else source(f.getFileName) ++ ":" ++ source(f.getLineNumber.toString)
-
-    val prefix :+ clsName = f.getClassName.split('.').toSeq
-    val prefixString      = prefix.map(_ + '.').mkString("")
-    val clsNameString     = clsName // .replace("$", error("$"))
-    val method =
-      fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
-        highlightError(f.getMethodName)
-
-    fansi.Str(s"  ") ++ method ++ "(" ++ src ++ ")"
-  }
-
-  def showException(
-    ex: Throwable,
-    error: fansi.Attrs,
-    highlightError: fansi.Attrs,
-    source: fansi.Attrs
-  ) = {
-
-    val cutoff = Set("$main", "evaluatorRunPrinter")
-    val traces = Ex.unapplySeq(ex).get.map(exception =>
-      error(exception.toString).render + System.lineSeparator() +
-        exception
-          .getStackTrace
-          .takeWhile(x => !cutoff(x.getMethodName))
-          .map(highlightFrame(_, highlightError, source))
-          .mkString(System.lineSeparator())
-    )
-    traces.mkString(System.lineSeparator())
-  }
-
-  private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error(
-      msg + exOpt.fold("")(ex =>
-        (if (msg.isEmpty) "" else "\n") + showException(
-          ex,
-          colors.error(),
-          fansi.Attr.Reset,
-          colors.literal()
-        )
-      )
-    )
-
+  def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
+    ExecuteResult.Error.error(colors.error(), colors.literal(), exOpt, msg)
 }

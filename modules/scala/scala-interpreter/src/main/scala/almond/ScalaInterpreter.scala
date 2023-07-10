@@ -73,7 +73,8 @@ final class ScalaInterpreter(
     silent0,
     params.useThreadInterrupt,
     params.initialCellCount,
-    enableExitHack = params.compileOnly
+    enableExitHack = params.compileOnly,
+    ignoreLauncherDirectivesIn = params.ignoreLauncherDirectivesIn
   )
 
   val sessApi = new SessionApiImpl(frames0)
@@ -94,7 +95,9 @@ final class ScalaInterpreter(
       replApi,
       silent0,
       params.allowVariableInspector,
-      kernelClassLoader = Thread.currentThread().getContextClassLoader
+      kernelClassLoader = Thread.currentThread().getContextClassLoader,
+      consoleOut = System.out,
+      consoleErr = System.err
     )
 
   if (params.toreeMagics) {
@@ -107,7 +110,7 @@ final class ScalaInterpreter(
     for (ec <- params.updateBackgroundVariablesEcOpt)
       UpdatableFuture.setup(replApi, jupyterApi, ec)
 
-    AmmInterpreter(
+    val interp = AmmInterpreter(
       execute0,
       storage,
       replApi,
@@ -123,12 +126,19 @@ final class ScalaInterpreter(
       params.mavenProfiles,
       params.autoUpdateLazyVals,
       params.autoUpdateVars,
+      params.useNotebookCoursierLogger,
+      params.silentImports,
       params.initialClassLoader,
       logCtx,
       jupyterApi.VariableInspector.enabled,
       outputDir = params.outputDir,
-      compileOnly = params.compileOnly
+      compileOnly = params.compileOnly,
+      addToreeApiCompatibilityImport = params.toreeApiCompatibility
     )
+
+    execute0.loadOptions(interp, params.upfrontKernelOptions)
+
+    interp
   }
 
   if (!params.lazyInit)
@@ -137,8 +147,15 @@ final class ScalaInterpreter(
 
   override def interruptSupported: Boolean =
     true
-  override def interrupt(): Unit =
+  override def interrupt(): Unit = {
     execute0.interrupt()
+
+    try Function.chain(jupyterApi.afterInterruptHooks).apply(())
+    catch {
+      case NonFatal(e) =>
+        log.warn("Caught exception while trying to run after Interrupt hooks", e)
+    }
+  }
 
   override def supportComm: Boolean = true
   override def setCommHandler(commHandler0: CommHandler): Unit =
