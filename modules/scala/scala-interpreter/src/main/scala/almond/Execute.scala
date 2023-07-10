@@ -17,7 +17,7 @@ import almond.internals.{
 import almond.interpreter.ExecuteResult
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
-import almond.launcher.directives.LauncherParameters
+import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
 import ammonite.compiler.Parsers
 import ammonite.repl.api.History
@@ -49,11 +49,27 @@ final class Execute(
   useThreadInterrupt: Boolean,
   initialCellCount: Int,
   enableExitHack: Boolean,
-  ignoreLauncherDirectivesIn: Set[String]
+  ignoreLauncherDirectivesIn: Set[String],
+  launcherDirectiveGroups: Seq[CustomGroup]
 ) {
 
   private val handlers = HasKernelOptions.handlers ++
-    LauncherParameters.handlers.mapDirectives(_.ignoredDirective)
+    LauncherParameters.handlers.mapDirectives(_.ignoredDirective).addCustomHandler { key =>
+      launcherDirectiveGroups.find(_.matches(key)).map { group =>
+        new DirectiveHandler[HasKernelOptions] {
+          def name        = s"custom group ${group.prefix}"
+          def description = s"custom group ${group.prefix}"
+          def usage       = s"//> ${group.prefix}..."
+          def keys        = Seq(key)
+          def handleValues(scopedDirective: ScopedDirective)
+            : Either[DirectiveException, ProcessedDirective[HasKernelOptions]] =
+            Right(ProcessedDirective(
+              Some(HasKernelOptions.IgnoredDirectives(Seq(IgnoredDirective(scopedDirective)))),
+              Nil
+            ))
+        }
+      }
+    }
 
   private val log = logCtx(getClass)
 
