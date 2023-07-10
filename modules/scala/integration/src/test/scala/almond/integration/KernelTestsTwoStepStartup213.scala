@@ -13,9 +13,9 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
       runner.withSession() { implicit session =>
 
         execute(
-          """//> using scala "2.13.11"
-            |2
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |2
+             |""".stripMargin,
           "res1: Int = 2"
         )
         execute(
@@ -47,10 +47,10 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
       runner.withSession() { implicit session =>
 
         execute(
-          """//> using scala "2.13.11"
-            |//> using option "-deprecation" "-Xfatal-warnings"
-            |2
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |//> using option "-deprecation" "-Xfatal-warnings"
+             |2
+             |""".stripMargin,
           "res1: Int = 2"
         )
         execute(
@@ -80,14 +80,14 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
       runner.withSession() { implicit session =>
 
         execute(
-          """//> using scala "2.13.11"
-            |//> using option "-deprecation" "-Xfatal-warnings"
-            |
-            |@deprecated
-            |def foo() = 2
-            |
-            |foo()
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |//> using option "-deprecation" "-Xfatal-warnings"
+             |
+             |@deprecated
+             |def foo() = 2
+             |
+             |foo()
+             |""".stripMargin,
           expectError = true,
           stderr =
             """cell1.sc:4: method foo in class Helper is deprecated
@@ -171,7 +171,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
         )
 
         execute(
-          """//> using scala "2.13.11"""",
+          s"""//> using scala "${KernelLauncher.testScala213Version}"""",
           "",
           stderr =
             """Warning: ignoring 1 directive(s) that can only be used prior to any code:
