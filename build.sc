@@ -514,7 +514,7 @@ object scala extends Module {
 }
 
 trait Examples extends SbtModule {
-  private def examplesScalaVersion = "2.12.12"
+  private def examplesScalaVersion = "2.12.18"
   private def baseRepoRoot         = os.rel / "out" / "repo"
   def scalaVersion                 = ScalaVersions.scala3Latest
   object test extends Tests {
