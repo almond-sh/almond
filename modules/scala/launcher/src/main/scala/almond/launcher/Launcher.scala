@@ -3,10 +3,12 @@ package almond.launcher
 import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
+import almond.directives.KernelOptions
 import almond.interpreter.ExecuteResult
-import almond.interpreter.api.OutputHandler
+import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
+import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.{Execute, RawJson}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
@@ -14,6 +16,7 @@ import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import com.github.plokhotnyuk.jsoniter_scala.core._
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import dependency.ScalaParameters
 
@@ -33,20 +36,12 @@ object Launcher extends CaseApp[LauncherOptions] {
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
     params0: LauncherParameters,
+    kernelOptions: KernelOptions,
     outputHandler: OutputHandler,
     logCtx: LoggerContext
   ): (os.proc, String, Option[String]) = {
 
-    val requestedScalaVersion = params0.scala
-      .orElse(options.scala.map(_.trim).filter(_.nonEmpty))
-      .getOrElse(Properties.defaultScalaVersion)
-
-    val scalaVersion = requestedScalaVersion match {
-      case "2.12"       => Properties.defaultScala212Version
-      case "2" | "2.13" => Properties.defaultScala213Version
-      case "3"          => Properties.defaultScalaVersion
-      case _            => requestedScalaVersion
-    }
+    val (scalaVersion, _) = LauncherInterpreter.computeScalaVersion(params0, options)
 
     def content(entries: Seq[(coursierapi.Artifact, File)]): ClassLoaderContent = {
       val entries0 = entries.map {
@@ -146,8 +141,17 @@ object Launcher extends CaseApp[LauncherOptions] {
       Seq[os.Shellable]("--leftover-messages", msgFile)
     }
     val noExecuteInputArgs = noExecuteInputFor.flatMap { id =>
-      Seq("--no-execute-input-for", id)
+      Seq("--no-execute-input-for", id, "--ignore-launcher-directives-in", id)
     }
+
+    val optionsArgs =
+      if (kernelOptions.isEmpty) Nil
+      else {
+        val asJson      = KernelOptions.AsJson(kernelOptions)
+        val bytes       = writeToArray(asJson)(KernelOptions.AsJson.codec)
+        val optionsFile = os.temp(bytes, prefix = "almond-options-", suffix = ".json")
+        Seq[os.Shellable]("--kernel-options", optionsFile)
+      }
 
     val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
     val javaCommand = jvmIdOpt match {
@@ -157,9 +161,9 @@ object Launcher extends CaseApp[LauncherOptions] {
         )
         val javaHome = os.Path(jvmManager.get(jvmId), os.pwd)
         val ext      = if (scala.util.Properties.isWin) ".exe" else ""
-        (javaHome / "bin" / s"java$ext").toString
+        Seq((javaHome / "bin" / s"java$ext").toString)
       case None =>
-        "java"
+        params0.javaCmd.getOrElse(Seq("java"))
     }
 
     val javaOptions = options.javaOpt ++ params0.javaOptions
@@ -183,10 +187,11 @@ object Launcher extends CaseApp[LauncherOptions] {
       currentCellCount,
       msgFileArgs,
       noExecuteInputArgs,
+      optionsArgs,
       options.kernelOptions
     )
 
-    (proc, requestedScalaVersion, jvmIdOpt)
+    (proc, scalaVersion, jvmIdOpt)
   }
 
   private def launchActualKernel(proc: os.proc): Unit = {
@@ -358,7 +363,8 @@ object Launcher extends CaseApp[LauncherOptions] {
           interpreter.lineCount,
           options,
           firstMessageIdOpt.toSeq,
-          interpreter.params,
+          interpreter.params.processCustomDirectives(),
+          interpreter.kernelOptions,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
           logCtx
         )
@@ -367,7 +373,17 @@ object Launcher extends CaseApp[LauncherOptions] {
           for (outputHandler <- outputHandlerOpt) {
             val toPrint =
               s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
-            outputHandler.stdout(toPrint + System.lineSeparator())
+            val toPrintHtml =
+              s"Launching Scala <code>$scalaVersion</code> kernel" +
+                jvmOpt.fold("")(jvm => s" with JVM <code>$jvm</code>")
+            outputHandler.display(
+              DisplayData(
+                Map(
+                  DisplayData.ContentType.text -> toPrint,
+                  DisplayData.ContentType.html -> toPrintHtml
+                )
+              )
+            )
           }
 
         Right(actualKernelCommand0)

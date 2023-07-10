@@ -4,6 +4,7 @@ import java.io.{File, FileOutputStream, PrintStream}
 
 import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
+import almond.directives.KernelOptions
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
@@ -27,7 +28,23 @@ object ScalaKernel extends CaseApp[Options] {
       // Enable ANSI output in Windows terminal
       coursier.jniutils.WindowsAnsiTerminal.enableAnsiOutput()
 
-    val logCtx = Level.fromString(options.log) match {
+    def logLevelFromEnv =
+      Option(System.getenv("ALMOND_LOG_LEVEL")).flatMap { str =>
+        Level.fromString(str) match {
+          case Left(err) =>
+            Console.err.println(
+              s"Error parsing log level from environment variable ALMOND_LOG_LEVEL: $err, ignoring it"
+            )
+            None
+          case other =>
+            Some(other)
+        }
+      }
+    val maybeLogLevel = options.log
+      .map(Level.fromString)
+      .orElse(logLevelFromEnv)
+      .getOrElse(Right(Level.Warning))
+    val logCtx = maybeLogLevel match {
       case Left(err) =>
         Console.err.println(err)
         sys.exit(1)
@@ -114,6 +131,21 @@ object ScalaKernel extends CaseApp[Options] {
 
     log.debug("Creating interpreter")
 
+    val kernelOptionsFromJson = options.readKernelOptions() match {
+      case Some(asJson) =>
+        asJson.toKernelOptions match {
+          case Left(errors) =>
+            log.warn(
+              s"Got errors when trying to read options from ${options.kernelOptions.getOrElse("???")}: ${errors.mkString(", ")}"
+            )
+            KernelOptions()
+          case Right(options) =>
+            options
+        }
+      case None =>
+        KernelOptions()
+    }
+
     val interpreter = new ScalaInterpreter(
       params = ScalaInterpreterParams(
         updateBackgroundVariablesEcOpt = Some(updateBackgroundVariablesEc),
@@ -148,7 +180,9 @@ object ScalaKernel extends CaseApp[Options] {
             options.tmpOutputDirectory
               .getOrElse(true) // Create tmp output dir by default
           },
-        toreeMagics = options.toreeMagics,
+        toreeMagics = options.toreeMagics.orElse(options.toreeCompatibility).getOrElse(false),
+        toreeApiCompatibility =
+          options.toreeApi.orElse(options.toreeCompatibility).getOrElse(false),
         compileOnly = options.compileOnly,
         extraClassPath = options.extraClassPath
           .filter(_.trim.nonEmpty)
@@ -156,7 +190,9 @@ object ScalaKernel extends CaseApp[Options] {
             ClassPathUtil.classPath(input)
               .map(os.Path(_, os.pwd))
           },
-        initialCellCount = options.initialCellCount.getOrElse(0)
+        initialCellCount = options.initialCellCount.getOrElse(0),
+        upfrontKernelOptions = kernelOptionsFromJson,
+        ignoreLauncherDirectivesIn = options.ignoreLauncherDirectivesIn.toSet
       ),
       logCtx = logCtx
     )

@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-40-d95c3b3d"
+  def ammonite      = "3.0.0-M0-45-9c598c7c"
   def caseApp       = "2.1.0-M24"
   def coursier      = "2.1.5"
   def jsoniterScala = "2.13.5"
@@ -41,7 +41,7 @@ object Deps {
     if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl-api_$sv:${Versions.ammonite}"
     else
       ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
-  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC3"
+  def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
@@ -49,9 +49,10 @@ object Deps {
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.18"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
-  def directiveHandler   = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.0"
-  def expecty            = ivy"com.eed3si9n.expecty::expecty:0.16.0"
-  def fansi              = ivy"com.lihaoyi::fansi:0.4.0"
+  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.3"
+  def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.3"
+  def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
+  def fansi               = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
     if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.7.0" else ivy"co.fs2:fs2-core_2.13:3.7.0"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
@@ -74,23 +75,19 @@ object Deps {
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
+  def upickle                  = ivy"com.lihaoyi::upickle:3.1.0"
   def utest                    = ivy"com.lihaoyi::utest:0.8.1"
 }
 
 object ScalaVersions {
-  def scala3Latest = "3.3.0"
-  def scala3Compat = "3.2.0"
-  def cross2_3Version(sv: String) =
-    if (sv.startsWith("3.0.") || sv.startsWith("3.1.")) "2.13.7"
-    else if (sv.startsWith("3.2.")) "2.13.10"
-    else "2.13.11"
-  def scala213 = "2.13.11"
-  def scala212 = "2.12.18"
-  val binaries = Seq(scala3Compat, scala213, scala212)
+  def scala3Latest                = "3.3.0"
+  def scala3Compat                = "3.3.0"
+  def cross2_3Version(sv: String) = "2.13.11"
+  def scala213                    = "2.13.11"
+  def scala212                    = "2.12.18"
+  val binaries                    = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
-    "3.2.2",
-    "3.2.1",
     scala3Compat,
     scala213,
     "2.13.10",

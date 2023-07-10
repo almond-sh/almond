@@ -2,6 +2,7 @@ package almond
 
 import java.nio.file.Path
 
+import almond.directives.KernelOptions
 import almond.protocol.KernelInfo
 import ammonite.compiler.iface.CodeWrapper
 import ammonite.compiler.CodeClassWrapper
@@ -38,7 +39,10 @@ final case class ScalaInterpreterParams(
   useThreadInterrupt: Boolean = false,
   outputDir: Either[os.Path, Boolean] = Right(true),
   toreeMagics: Boolean = false,
+  toreeApiCompatibility: Boolean = false,
   compileOnly: Boolean = false,
   extraClassPath: List[os.Path] = Nil,
-  initialCellCount: Int = 0
+  initialCellCount: Int = 0,
+  upfrontKernelOptions: KernelOptions = KernelOptions(),
+  ignoreLauncherDirectivesIn: Set[String] = Set.empty
 )

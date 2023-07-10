@@ -23,10 +23,13 @@ trait UpdatableDisplay extends Display {
 
 object UpdatableDisplay {
 
-  def useRandomIds(): Boolean =
-    sys.props
-      .get("almond.ids.random")
+  private lazy val useRandomIds0: Boolean =
+    Option(System.getenv("ALMOND_USE_RANDOM_IDS"))
+      .orElse(sys.props.get("almond.ids.random"))
       .forall(s => s == "1" || s.toLowerCase(Locale.ROOT) == "true")
+
+  def useRandomIds(): Boolean =
+    useRandomIds0
 
   private val idCounter  = new AtomicInteger
   private val divCounter = new AtomicInteger

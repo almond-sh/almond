@@ -185,7 +185,7 @@ final class ReplApiImpl(
       def apply(line: String) =
         ammInterp.processExec(
           line,
-          execute0.currentLine,
+          execute0.currentLine + 1,
           () => execute0.incrementLineCount()
         ) match {
           case Res.Failure(s)      => throw new CompilationError(s)

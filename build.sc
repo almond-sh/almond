@@ -194,6 +194,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         shared.interpreter(ScalaVersions.scala3Compat),
         scala.`coursier-logger`(ScalaVersions.scala3Compat),
         scala.`scala-kernel-api-helper`(),
+        scala.`shared-directives`(ScalaVersions.scala3Compat),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
     else
@@ -201,6 +202,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
         shared.interpreter(),
         scala.`coursier-logger`(),
         scala.`scala-kernel-api`(),
+        scala.`shared-directives`(),
         scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
       )
   def ivyDeps = T {
@@ -219,10 +221,18 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
     metabrowse ++ Agg(
       Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
+      Deps.dependencyInterface,
+      Deps.directiveHandler,
       Deps.jansi,
       Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
     )
+  }
+  def scalacOptions = super.scalacOptions() ++ {
+    val scala213Options =
+      if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations")
+      else Nil
+    scala213Options
   }
   object test extends Tests with AlmondTestModule {
     def moduleDeps = {
@@ -369,6 +379,17 @@ class CoursierLogger(val crossScalaVersion: String) extends AlmondModule {
   )
 }
 
+class SharedDirectives(val crossScalaVersion: String) extends AlmondModule {
+  def supports3 = true
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.directiveHandler,
+    Deps.jsoniterScalaCore.applyBinaryVersion213_3(scalaVersion())
+  )
+  def compileIvyDeps = Agg(
+    Deps.jsoniterScalaMacros
+  )
+}
+
 trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
     with Bloop.Module {
   def supports3    = true
@@ -376,12 +397,12 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   def scalaVersion = sv
   def moduleDeps = Seq(
     scala.`coursier-logger`(ScalaVersions.scala3Compat),
+    scala.`shared-directives`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
   )
   def ivyDeps = Agg(
     Deps.caseApp,
     Deps.coursierLauncher,
-    Deps.directiveHandler,
     Deps.fansi,
     Deps.scalaparse
   )
@@ -393,6 +414,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     }
     Seq(
       "kernel-main-class"        -> mainClass,
+      "ammonite-version"         -> Versions.ammonite,
       "default-scala212-version" -> ScalaVersions.scala212,
       "default-scala213-version" -> ScalaVersions.scala213,
       "default-scala-version"    -> ScalaVersions.scala3Latest
@@ -476,15 +498,46 @@ object scala extends Module {
   object `scala-kernel-helper`
       extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
   object `coursier-logger` extends Cross[CoursierLogger](ScalaVersions.binaries: _*)
-  object launcher          extends Launcher
-  object `almond-scalapy`  extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
-  object `almond-rx`       extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
+  object `shared-directives`
+      extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries: _*)
+  object launcher         extends Launcher
+  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
+  object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
   object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
   object integration        extends Integration
+
+  object examples extends Examples
+}
+
+trait Examples extends SbtModule {
+  private def examplesScalaVersion = "2.12.12"
+  private def baseRepoRoot         = os.rel / "out" / "repo"
+  def scalaVersion                 = ScalaVersions.scala3Latest
+  object test extends Tests {
+    def testFramework = "munit.Framework"
+    def ivyDeps = super.ivyDeps() ++ Agg(
+      Deps.expecty,
+      Deps.munit,
+      Deps.osLib,
+      Deps.pprint,
+      Deps.upickle
+    )
+    def forkArgs = T {
+      scala.`almond-scalapy`(ScalaVersions.scala212)
+        .publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
+      super.forkArgs() ++ Seq(
+        s"-Dalmond.examples.dir=${os.pwd / "examples"}",
+        s"-Dalmond.examples.output-dir=${T.dest / "output"}",
+        s"-Dalmond.examples.jupyter-path=${T.dest / "jupyter"}",
+        s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
+        s"-Dalmond.examples.repo-root=${baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
+      )
+    }
+  }
 }
 
 class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
@@ -539,6 +592,7 @@ class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
       scala.`scala-interpreter`(testScalaVersion),
       scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
       scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
+      scala.`shared-directives`(ScalaVersions.binary(testScalaVersion)),
       scala.launcher,
       shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
       shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),
@@ -773,127 +827,6 @@ def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
 def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
   val launcher = scala.launcher.launcher().path.toNIO
   println(launcher)
-}
-
-private val examplesDir = os.pwd / "examples"
-def exampleNotebooks = T.sources {
-  os.list(examplesDir)
-    .filter(_.last.endsWith(".ipynb"))
-    .filter(os.isFile(_))
-    .map(PathRef(_))
-}
-
-def validateExamples(matcher: String = "") = {
-  val sv           = "2.12.12"
-  val kernelId     = "almond-sources-tmp"
-  val baseRepoRoot = os.rel / "out" / "repo"
-
-  def maybeEscapeArg(arg: String): String =
-    if (Properties.isWin && arg.exists(c => c == ' ' || c == '\"'))
-      "\"" + arg.replace("\"", "\\\"") + "\""
-    else arg
-
-  val pathMatcherOpt =
-    if (matcher.trim.isEmpty) None
-    else {
-      val m = FileSystems.getDefault.getPathMatcher("glob:" + matcher.trim)
-      Some(m)
-    }
-
-  val sv0 = {
-    val prefix = sv.split('.').take(2).map(_ + ".").mkString
-    ScalaVersions.binaries.find(_.startsWith(prefix)).getOrElse {
-      sys.error(
-        s"Can't find a Scala version in ${ScalaVersions.binaries} with the same binary version as $sv (prefix: $prefix)"
-      )
-    }
-  }
-
-  T.command {
-    val launcher    = scala.`scala-kernel`(sv).launcher().path
-    val jupyterPath = T.dest / "jupyter"
-    val outputDir   = T.dest / "output"
-    os.makeDir.all(outputDir)
-
-    scala.`almond-scalapy`(sv0).publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
-
-    val version  = scala.`scala-kernel`(sv).publishVersion()
-    val repoRoot = baseRepoRoot / version
-
-    os.proc(
-      launcher,
-      "--jupyter-path",
-      jupyterPath / "kernels",
-      "--id",
-      kernelId,
-      "--install",
-      "--force",
-      "--trap-output",
-      "--predef-code",
-      maybeEscapeArg("sys.props(\"almond.ids.random\") = \"0\""),
-      "--extra-repository",
-      s"ivy:${repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
-    ).call(cwd = examplesDir)
-
-    val nbFiles = exampleNotebooks()
-      .map(_.path)
-      .filter { p =>
-        pathMatcherOpt.forall { m =>
-          m.matches(p.toNIO.getFileName)
-        }
-      }
-
-    var errorCount = 0
-    for (f <- nbFiles) {
-      val output = outputDir / f.last
-      os.proc(
-        "jupyter",
-        "nbconvert",
-        "--to",
-        "notebook",
-        "--execute",
-        s"--ExecutePreprocessor.kernel_name=$kernelId",
-        f,
-        s"--output=$output"
-      ).call(cwd = examplesDir, env = Map("JUPYTER_PATH" -> jupyterPath.toString))
-
-      val rawOutput = os.read(output, Charset.defaultCharset())
-
-      var updatedOutput = rawOutput
-      if (Properties.isWin)
-        updatedOutput = updatedOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
-
-      // Clear metadata, that usually looks like
-      // "metadata": {
-      //  "execution": {
-      //   "iopub.execute_input": "2022-08-17T10:35:13.619221Z",
-      //   "iopub.status.busy": "2022-08-17T10:35:13.614065Z",
-      //   "iopub.status.idle": "2022-08-17T10:35:16.310834Z",
-      //   "shell.execute_reply": "2022-08-17T10:35:16.311111Z"
-      //  }
-      // }
-      val json = ujson.read(updatedOutput)
-      for (cell <- json("cells").arr if cell("cell_type").str == "code")
-        cell("metadata") = ujson.Obj()
-      updatedOutput = json.render(1)
-
-      // writing the updated notebook on disk for the diff below
-      os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
-
-      val result   = os.read(output, Charset.defaultCharset())
-      val expected = os.read(f)
-
-      if (result != expected) {
-        System.err.println(s"${f.last} differs:")
-        System.err.println()
-        os.proc("diff", "-u", f, output).call(cwd = examplesDir)
-        errorCount += 1
-      }
-    }
-
-    if (errorCount != 0)
-      sys.error(s"Found $errorCount error(s)")
-  }
 }
 
 def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {

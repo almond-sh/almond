@@ -1,9 +1,11 @@
 package almond.api
 
-import java.util.UUID
-
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import jupyter.{Displayer, Displayers}
+
+import java.io.PrintStream
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.{Locale, UUID}
 
 import scala.reflect.{ClassTag, classTag}
 
@@ -54,6 +56,9 @@ abstract class JupyterApi { api =>
 
   def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
   def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
+
+  def consoleOut: PrintStream
+  def consoleErr: PrintStream
 }
 
 object JupyterApi {
@@ -107,6 +112,13 @@ object JupyterApi {
     case object Exit extends ExecuteHookResult
   }
 
+  private lazy val useRandomIds: Boolean =
+    Option(System.getenv("ALMOND_USE_RANDOM_IDS"))
+      .orElse(sys.props.get("almond.ids.random"))
+      .forall(s => s == "1" || s.toLowerCase(Locale.ROOT) == "true")
+
+  private val updatableIdCounter = new AtomicInteger(1111111)
+
   abstract class UpdatableResults {
 
     @deprecated("Use updatable instead", "0.4.1")
@@ -120,7 +132,11 @@ object JupyterApi {
       // temporary dummy implementation for binary compatibility
     }
     def updatable(v: String): String = {
-      val id = UUID.randomUUID().toString
+      val id =
+        if (useRandomIds)
+          UUID.randomUUID().toString
+        else
+          updatableIdCounter.incrementAndGet().toString
       updatable(id, v)
       id
     }
