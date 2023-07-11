@@ -35,7 +35,7 @@ We list below useful commands, to help get you started using mill to build almon
 ## Run a Jupyter notebook server without installing a kernel
 
 ```text
-$ ./mill -i jupyter
+$ ./mill -i jupyterFast
 ```
 
 This should
@@ -46,29 +46,29 @@ From the JupyterLab instance, select the kernel "Scala (sources)".
 
 Optionally, pass a Scala version and / or JupyterLab options, like
 ```text
-$ ./mill -i jupyter 2.12.13
-$ ./mill -i jupyter --ip=192.168.0.1
-$ ./mill -i jupyter 2.12.13 --ip=192.168.0.1
+$ ./mill -i jupyterFast 2.12.13
+$ ./mill -i jupyterFast --ip=192.168.0.1
+$ ./mill -i jupyterFast 2.12.13 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.)
 
 ## Build a kernel launcher
 
 ```text
-$ ./mill launcher
+$ ./mill launcherFast
 ```
 
 Once done building, this should print the path to the kernel launcher, like
-`out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher`.
+`out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher`.
 
 Optionally, pass a Scala version, like
 ```text
-$ ./mill launcher 2.12.13
+$ ./mill launcherFast 2.12.13
 ```
 
 You can then run that launcher to install it on your system:
 ```text
-$ out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher --install
+$ out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher --install
 ```
 Pass `--help` or see [this page](install-options.md) for the available options.
 
@@ -76,7 +76,7 @@ Pass `--help` or see [this page](install-options.md) for the available options.
 
 You can re-build a launcher upon source changes with
 ```text
-$ ./mill -w launcher
+$ ./mill -w launcherFast
 ```
 
 If you [ran a JupyterLab server from the almond sources](#run-a-jupyter-notebook-server-without-installing-a-kernel),
