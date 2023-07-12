@@ -6,7 +6,7 @@ object Versions {
   def caseApp       = "2.1.0-M24"
   def coursier      = "2.1.5"
   def jsoniterScala = "2.13.5"
-  def scalafmt      = "2.7.5"
+  def scalafmt      = "3.7.8"
 }
 
 implicit class DepOps(private val dep: Dep) {
