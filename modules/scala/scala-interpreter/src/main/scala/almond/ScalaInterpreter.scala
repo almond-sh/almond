@@ -74,7 +74,8 @@ final class ScalaInterpreter(
     params.useThreadInterrupt,
     params.initialCellCount,
     enableExitHack = params.compileOnly,
-    ignoreLauncherDirectivesIn = params.ignoreLauncherDirectivesIn
+    ignoreLauncherDirectivesIn = params.ignoreLauncherDirectivesIn,
+    launcherDirectiveGroups = params.launcherDirectiveGroups
   )
 
   val sessApi = new SessionApiImpl(frames0)

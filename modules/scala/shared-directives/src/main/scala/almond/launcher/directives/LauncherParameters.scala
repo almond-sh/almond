@@ -11,6 +11,7 @@ final case class LauncherParameters(
   javaOptions: Seq[String] = Nil,
   scala: Option[String] = None,
   javaCmd: Option[Seq[String]] = None,
+  kernelOptions: Seq[String] = Nil,
   customDirectives: Seq[(CustomGroup, String, Seq[String])] = Nil
 ) {
   import LauncherParameters._
@@ -21,6 +22,7 @@ final case class LauncherParameters(
       javaOptions ++ other.javaOptions,
       scala.orElse(other.scala),
       javaCmd.orElse(other.javaCmd),
+      kernelOptions ++ other.kernelOptions,
       customDirectives = customDirectives ++ other.customDirectives
     )
 
@@ -109,21 +111,24 @@ object LauncherParameters {
     jvm: Option[String] = None,
     javaOptions: Seq[String] = Nil,
     scala: Option[String] = None,
-    javaCmd: Option[Seq[String]] = None
+    javaCmd: Option[Seq[String]] = None,
+    kernelOptions: Seq[String] = Nil
   ) {
     def +(other: AsJson): AsJson =
       AsJson(
         jvm = jvm.orElse(other.jvm),
         javaOptions = javaOptions ++ other.javaOptions,
         scala = scala.orElse(other.scala),
-        javaCmd = javaCmd.orElse(other.javaCmd)
+        javaCmd = javaCmd.orElse(other.javaCmd),
+        kernelOptions = kernelOptions ++ other.kernelOptions
       )
     def params: LauncherParameters =
       LauncherParameters(
         jvm = jvm,
         javaOptions = javaOptions,
         scala = scala,
-        javaCmd = javaCmd
+        javaCmd = javaCmd,
+        kernelOptions = kernelOptions
       )
   }
 
