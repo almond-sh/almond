@@ -122,7 +122,11 @@ final case class Options(
 
   @HelpMessage("Do warn users about launcher directives for incoming messages with the passed ids")
   @Hidden
-    ignoreLauncherDirectivesIn: List[String] = Nil
+    ignoreLauncherDirectivesIn: List[String] = Nil,
+
+  @HelpMessage("Pass launcher directive groups with this option. These directives will be either ignored (see --ignore-launcher-directives-in), or trigger an unused directive warning")
+  @Hidden
+    launcherDirectiveGroup: List[String] = Nil
 ) {
   // format: on
 

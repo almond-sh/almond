@@ -8,6 +8,7 @@ import almond.directives.KernelOptions
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
+import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContext
 import caseapp._
@@ -192,7 +193,8 @@ object ScalaKernel extends CaseApp[Options] {
           },
         initialCellCount = options.initialCellCount.getOrElse(0),
         upfrontKernelOptions = kernelOptionsFromJson,
-        ignoreLauncherDirectivesIn = options.ignoreLauncherDirectivesIn.toSet
+        ignoreLauncherDirectivesIn = options.ignoreLauncherDirectivesIn.toSet,
+        launcherDirectiveGroups = options.launcherDirectiveGroup.map(CustomGroup(_, ""))
       ),
       logCtx = logCtx
     )
