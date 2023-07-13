@@ -138,4 +138,11 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  test("completion") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.completion(kernelLauncher.defaultScalaVersion)
+    }
+  }
+
 }

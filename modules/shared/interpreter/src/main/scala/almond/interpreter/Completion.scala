@@ -16,12 +16,16 @@ final case class Completion(
   from: Int,
   until: Int,
   completions: Seq[String],
+  completionWithTypes: Option[Seq[(String, String)]],
   metadata: RawJson
-)
+) {
+  def withCompletionWithTypes(completionWithTypes: Seq[(String, String)]): Completion =
+    copy(completionWithTypes = Some(completionWithTypes))
+}
 
 object Completion {
   def apply(from: Int, until: Int, completions: Seq[String]): Completion =
-    Completion(from, until, completions, RawJson.emptyObj)
+    Completion(from, until, completions, None, RawJson.emptyObj)
   def empty(pos: Int): Completion =
-    Completion(pos, pos, Nil, RawJson.emptyObj)
+    Completion(pos, pos, Nil, None, RawJson.emptyObj)
 }

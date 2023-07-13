@@ -7,7 +7,7 @@ import almond.interpreter.api.{CommHandler, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
-import almond.protocol.KernelInfo
+import almond.protocol.{KernelInfo, RawJson}
 import almond.toree.{CellMagicHook, LineMagicHook}
 import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
@@ -15,6 +15,8 @@ import ammonite.runtime._
 import ammonite.util.{Frame => _, _}
 import coursier.cache.shaded.dirs.{GetWinDirs, ProjectDirectories}
 import fastparse.Parsed
+
+import java.nio.charset.StandardCharsets
 
 import scala.util.control.NonFatal
 
@@ -197,20 +199,87 @@ final class ScalaInterpreter(
 
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, completions0, _) = ammInterp.compilerManager.complete(
+    val (newPos, completions0, _, completionsWithTypes) = ScalaInterpreterCompletions.complete(
+      ammInterp.compilerManager,
+      Some(ammInterp.dependencyComplete),
       pos,
       (ammInterp.predefImports ++ frames0().head.imports).toString(),
-      code
+      code,
+      logCtx
     )
 
     val completions = completions0
       .filter(!_.contains("$"))
       .filter(_.nonEmpty)
 
+    val metadata =
+      if (java.lang.Boolean.getBoolean("almond.completion.demo") && code.startsWith("// Demo"))
+        // Types from https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
+        RawJson(
+          """{
+            |  "_jupyter_types_experimental": [
+            |    {
+            |      "text": "AField",
+            |      "type": "Field"
+            |    },
+            |    {
+            |      "text": "AMethod",
+            |      "type": "Method"
+            |    },
+            |    {
+            |      "text": "AConstructor",
+            |      "type": "Constructor"
+            |    },
+            |    {
+            |      "text": "AVariable",
+            |      "type": "Variable"
+            |    },
+            |    {
+            |      "text": "AClass",
+            |      "type": "Class"
+            |    },
+            |    {
+            |      "text": "AnInterface",
+            |      "type": "Interface"
+            |    },
+            |    {
+            |      "text": "AModule",
+            |      "type": "Module"
+            |    },
+            |    {
+            |      "text": "AProperty",
+            |      "type": "Property"
+            |    }
+            |  ]
+            |}
+            |""".stripMargin.getBytes(StandardCharsets.UTF_8)
+        )
+      else {
+        val elems = completionsWithTypes.map {
+          case (compl, tpe) =>
+            val tpe0 = tpe match {
+              case "value" => "Field"
+              case _       => tpe.capitalize
+            }
+            ujson.Obj(
+              "text" -> ujson.Str(compl),
+              "type" -> ujson.Str(tpe0)
+            )
+        }
+        if (elems.isEmpty)
+          RawJson.emptyObj
+        else {
+          val json = ujson.Obj("_jupyter_types_experimental" -> ujson.Arr(elems: _*)).render()
+          RawJson(json.getBytes(StandardCharsets.UTF_8))
+        }
+      }
+
     Completion(
       if (completions.isEmpty) pos else newPos,
       pos,
-      completions.map(_.trim).distinct
+      completions.map(_.trim).distinct,
+      None,
+      metadata = metadata
     )
   }
 
