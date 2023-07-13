@@ -216,13 +216,14 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
          |    pprint.err.log(input)
          |
          |    val version = input.entries.find(_.key == "spark.version").flatMap(_.values.headOption).getOrElse("X.Y")
+         |    val thing = input.entries.find(_.key == "spark.thing").flatMap(_.values.headOption).getOrElse("no thing")
          |    val sv = Some(input.currentLauncherParameters.scala).filter(_.nonEmpty)
          |      .getOrElse("3.3-test")
          |
          |    val output = ujson.Obj(
          |      "launcherParameters" -> ujson.Obj(
          |        "javaCmd" -> ujson.Arr(Seq(
-         |          "java", s"-Dthe-version=$$version", s"-Dthe-not-scala-version=not-$$sv"
+         |          "java", s"-Dthe-version=$$version", s"-Dthe-not-scala-version=not-$$sv", s"-Dthe-thing=$$thing"
          |        ).map(ujson.Str(_)): _*)
          |      )
          |    )
@@ -253,6 +254,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
         implicit session =>
           execute(
             s"""//> using spark.version "1.2.3"
+               |//> using spark.thing "foo"
                |//> using spark
                |//> using scala "${KernelLauncher.testScala213Version}"
                |""".stripMargin,
@@ -261,9 +263,11 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
 
           execute(
             """val version = sys.props.getOrElse("the-version", "nope")
+              |val thing = sys.props.getOrElse("the-thing", "nope")
               |val notScalaVersion = sys.props.getOrElse("the-not-scala-version", "nope")
               |""".stripMargin,
             s"""version: String = "1.2.3"
+               |thing: String = "foo"
                |notScalaVersion: String = "not-${KernelLauncher.testScala213Version}"""".stripMargin
           )
       }

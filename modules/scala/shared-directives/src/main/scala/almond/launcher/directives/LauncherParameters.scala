@@ -34,12 +34,24 @@ final case class LauncherParameters(
       tmpFile0
     }
 
+    val customDirectives0 = customDirectives
+      .groupBy(_._1)
+      .toVector
+      .sortBy(_._1.prefix) // maybe not the best order (keep the order on the CLI instead?), but better than non-deterministic
+      .map {
+        case (group, directives) =>
+          (group, directives.map { case (_, key, values) => (key, values) })
+      }
+
     val updates =
       try
-        customDirectives
+        customDirectives0
           .map {
-            case (group, key, values) =>
-              val entries = List(Entry(key, values.toList))
+            case (group, directives) =>
+              val entries = directives.toList.map {
+                case (key, values) =>
+                  Entry(key, values.toList)
+              }
               val input = CustomGroupInput(
                 entries,
                 LauncherParameters.AsJson.from(this),
