@@ -263,6 +263,8 @@ object Tests {
   ): Unit =
     runner.withSession("--toree-magics") { implicit session =>
 
+      val isScala2 = scalaVersion.startsWith("2.")
+
       val jar = coursierapi.Fetch.create()
         .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
         .fetch()
@@ -282,22 +284,22 @@ object Tests {
         execute(
           s"%AddJar $jarUri" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$" + ls + ls +
-            "import picocli.CommandLine" + ls,
+          "import $cp.$" + ls + maybePostImportNewLine(isScala2) +
+            "import picocli.CommandLine" + maybePostImportNewLine(isScala2),
           ignoreStreams = true,
           trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jarUri",
-          "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+          "import $cp.$" + maybePostImportNewLine(isScala2),
           ignoreStreams = true,
           trimReplyLines = true
         )
 
         execute(
           "import picocli.CommandLine",
-          "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+          "import picocli.CommandLine" + maybePostImportNewLine(isScala2)
         )
       }
     }
@@ -307,6 +309,8 @@ object Tests {
     runner: Runner
   ): Unit =
     runner.withSession("--toree-magics") { implicit session =>
+
+      val isScala2 = scalaVersion.startsWith("2.")
 
       val jar = coursierapi.Fetch.create()
         .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
@@ -329,22 +333,22 @@ object Tests {
         execute(
           s"%AddJar $jar" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$" + ls + ls +
-            "import picocli.CommandLine" + ls,
+          "import $cp.$" + maybePostImportNewLine(isScala2) + ls +
+            "import picocli.CommandLine" + maybePostImportNewLine(isScala2),
           ignoreStreams = true,
           trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jar",
-          "import $cp.$" + maybePostImportNewLine(scalaVersion.startsWith("2.")),
+          "import $cp.$" + maybePostImportNewLine(isScala2),
           ignoreStreams = true,
           trimReplyLines = true
         )
 
         execute(
           "import picocli.CommandLine",
-          "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+          "import picocli.CommandLine" + maybePostImportNewLine(isScala2)
         )
       }
     }
@@ -461,6 +465,9 @@ object Tests {
 
     runner.withExtraClassPathSession(extraCp)("--toree-magics", "--predef", predefPath.toString) {
       implicit session =>
+
+        val isScala2 = scalaVersion.startsWith("2.")
+
         execute(
           "import picocli.CommandLine",
           errors = Seq(
@@ -471,13 +478,13 @@ object Tests {
 
         execute(
           "%AddJar foo://thing/a/b" + ls,
-          "import $cp.$" + ls,
+          "import $cp.$" + maybePostImportNewLine(isScala2),
           trimReplyLines = true
         )
 
         execute(
           "import picocli.CommandLine",
-          "import picocli.CommandLine" + maybePostImportNewLine(scalaVersion.startsWith("2."))
+          "import picocli.CommandLine" + maybePostImportNewLine(isScala2)
         )
     }
   }
@@ -613,7 +620,8 @@ object Tests {
 
   def extraCp(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
 
-    val sbv = scalaVersion.split('.').take(2).mkString(".")
+    val sbv      = scalaVersion.split('.').take(2).mkString(".")
+    val isScala2 = scalaVersion.startsWith("2.")
 
     val kernelShapelessVersion = "2.3.10" // might need to be updated when bumping case-app
     val testShapelessVersion   = "2.3.3"  // no need to bump that one
@@ -635,7 +643,7 @@ object Tests {
         execute(
           "import shapeless._" + ls +
             """val l = 1 :: "aa" :: true :: HNil""",
-          "import shapeless._" + ls + ls +
+          "import shapeless._" + maybePostImportNewLine(isScala2) + ls +
             """l: Int :: String :: Boolean :: HNil = 1 :: "aa" :: true :: HNil"""
         )
 
@@ -742,11 +750,13 @@ object Tests {
     }
   }
 
-  def addDependency()(implicit
+  def addDependency(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
   ): Unit =
     runner.withSession() { implicit session =>
+      val isScala2 = scalaVersion.startsWith("2.")
+
       execute(
         """//> using dep "org.typelevel::cats-kernel:2.6.1"
           |import cats.kernel._
@@ -754,25 +764,26 @@ object Tests {
           |  Monoid.instance[String]("", (a, b) => a + b)
           |    .combineAll(List("Hello", "", ""))
           |""".stripMargin,
-        """import cats.kernel._
-          |
-          |msg: String = "Hello"""".stripMargin
+        s"""import cats.kernel._${maybePostImportNewLine(isScala2)}
+           |msg: String = "Hello"""".stripMargin
       )
     }
 
-  def addRepository()(implicit
+  def addRepository(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
   ): Unit =
     runner.withSession() { implicit session =>
+
+      val isScala2 = scalaVersion.startsWith("2.")
+
       // that repository should already have been added by Almond, so we don't test much here…
       execute(
         """//> using repository "jitpack"
           |//> using dep "com.github.jupyter:jvm-repr:0.4.0"
           |import jupyter._
           |""".stripMargin,
-        """import jupyter._
-          |""".stripMargin
+        "import jupyter._" + maybePostImportNewLine(isScala2)
       )
     }
 
@@ -793,18 +804,19 @@ object Tests {
 
       val errorMessage =
         if (scalaVersion.startsWith("2.13."))
-          """cell2.sc:3: method getValue in class Helper is deprecated (since 0.1): foo
+          """cell2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()
             |        ^
             |No warnings can be incurred under -Werror.
             |Compilation Failed""".stripMargin
         else if (scalaVersion.startsWith("2.12."))
-          """cell2.sc:3: method getValue in class Helper is deprecated (since 0.1): foo
+          """cell2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()
             |        ^
             |No warnings can be incurred under -Xfatal-warnings.
             |Compilation Failed""".stripMargin
         else
+          // FIXME The line number is wrong here
           """-- Error: cell2.sc:3:8 ---------------------------------------------------------
             |3 |val n = getValue()
             |  |        ^^^^^^^^
