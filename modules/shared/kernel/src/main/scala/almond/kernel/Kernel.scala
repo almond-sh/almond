@@ -211,7 +211,7 @@ final case class Kernel(
       c <- connection.channels(
         bind = true,
         zeromqThreads,
-        lingerPeriod = Some(10.seconds),
+        lingerPeriod = Some(5.minutes),
         logCtx = logCtx,
         identityOpt = Some(kernelId)
       )
