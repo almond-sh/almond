@@ -1,6 +1,6 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`io.get-coursier.util::get-cs:0.1.1`
-import $ivy.`com.github.lolgab::mill-mima::0.0.21`
+import $ivy.`com.github.lolgab::mill-mima::0.0.23`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.24`
 
 import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
@@ -519,13 +519,15 @@ trait Examples extends SbtModule {
   def scalaVersion                 = ScalaVersions.scala3Latest
   object test extends Tests {
     def testFramework = "munit.Framework"
-    def ivyDeps = super.ivyDeps() ++ Agg(
-      Deps.expecty,
-      Deps.munit,
-      Deps.osLib,
-      Deps.pprint,
-      Deps.upickle
-    )
+    def ivyDeps = T {
+      super.ivyDeps() ++ Agg(
+        Deps.expecty,
+        Deps.munit,
+        Deps.osLib,
+        Deps.pprint,
+        Deps.upickle
+      )
+    }
     def forkArgs = T {
       scala.`almond-scalapy`(ScalaVersions.scala212)
         .publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
@@ -564,9 +566,12 @@ class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with
   def moduleDeps = super.moduleDeps ++ Seq(
     shared.`test-kit`()
   )
-  def ivyDeps = Agg(
-    Deps.coursierApi
-  )
+  def ivyDeps = T {
+    Agg(
+      Deps.coursierApi,
+      Deps.upickleCompat(scalaVersion())
+    )
+  }
 }
 
 class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {

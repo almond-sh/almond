@@ -3,7 +3,7 @@ import mill.scalalib._
 
 object Versions {
   def ammonite      = "3.0.0-M0-45-9c598c7c"
-  def caseApp       = "2.1.0-M24"
+  def caseApp       = "2.1.0-M25"
   def coursier      = "2.1.5"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "2.7.5"
@@ -50,11 +50,11 @@ object Deps {
   def coursierApi        = ivy"io.get-coursier:interface:1.0.18"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.3"
-  def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.3"
+  def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
-    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.7.0" else ivy"co.fs2:fs2-core_2.13:3.6.1"
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.7.0" else ivy"co.fs2:fs2-core_2.13:3.7.0"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
   def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
@@ -68,15 +68,20 @@ object Deps {
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.8.2"
+  def scalameta                = ivy"org.scalameta::scalameta:4.8.3"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
-  def upickle                  = ivy"com.lihaoyi::upickle:3.1.0"
-  def utest                    = ivy"com.lihaoyi::utest:0.8.1"
+  def upickle =
+    ivy"com.lihaoyi::upickle:3.0.0" // trying to use the same version as Ammonite, to avoid bin compat issues
+  def upickleCompat(sv: String) =
+    // also using the 2.13 version in Scala 3, as that's the one that Ammonite pulls (the Scala 3 one creates bin compat issues too)
+    if (sv.startsWith("2.")) ivy"com.lihaoyi::upickle:3.0.0"
+    else ivy"com.lihaoyi:upickle_2.13:3.0.0"
+  def utest = ivy"com.lihaoyi::utest:0.8.1"
 }
 
 object ScalaVersions {

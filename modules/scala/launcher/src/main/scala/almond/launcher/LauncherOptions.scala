@@ -64,6 +64,8 @@ final case class LauncherOptions(
       b ++= Seq(s"--silent-imports=$value")
     for (value <- useNotebookCoursierLogger)
       b ++= Seq(s"--use-notebook-coursier-logger=$value")
+    for (group <- customDirectiveGroup.map(_.split(":", 2)).collect { case Array(k, _) => k })
+      b ++= Seq(s"--launcher-directive-group=$group")
     b.result()
   }
 

@@ -84,7 +84,7 @@ final class TestInterpreter extends Interpreter {
         )
       }
       else if (code.startsWith("meta:")) {
-        val c = Completion(pos, pos, Seq("sent"), RawJson(code.drop("meta:".length).bytes))
+        val c = Completion(pos, pos, Seq("sent"), None, RawJson(code.drop("meta:".length).bytes))
         CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
       }
       else

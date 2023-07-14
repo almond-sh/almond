@@ -188,7 +188,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       msgFileArgs,
       noExecuteInputArgs,
       optionsArgs,
-      options.kernelOptions
+      options.kernelOptions,
+      params0.kernelOptions
     )
 
     (proc, scalaVersion, jvmIdOpt)
@@ -357,14 +358,16 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     val maybeActualKernelCommand =
       try {
+        val (launcherParams, kernelParams) =
+          interpreter.params.processCustomDirectives(interpreter.kernelOptions)
         val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
           connectionFile,
           leftoverMessagesFileOpt,
           interpreter.lineCount,
           options,
           firstMessageIdOpt.toSeq,
-          interpreter.params.processCustomDirectives(),
-          interpreter.kernelOptions,
+          launcherParams,
+          kernelParams,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
           logCtx
         )

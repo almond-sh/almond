@@ -4,6 +4,7 @@ import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.DisplayData
 import almond.interpreter.{Completion, ExecuteResult, Interpreter}
+import almond.protocol.RawJson
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
@@ -150,6 +151,13 @@ object ScalaInterpreterTests extends TestSuite {
     }
   }
 
+  private implicit class TestCompletionOps(private val compl: Completion) extends AnyVal {
+    def clearMetadata: Completion =
+      compl.copy(
+        metadata = RawJson.emptyObj
+      )
+  }
+
   val tests = Tests {
 
     test("execute") {
@@ -200,7 +208,7 @@ object ScalaInterpreterTests extends TestSuite {
       test {
         val code        = "repl.la"
         val expectedRes = Completion(5, 7, Seq("lastException"))
-        val res         = interpreter.complete(code, code.length)
+        val res         = interpreter.complete(code, code.length).clearMetadata
         assert(res == expectedRes)
       }
 
@@ -208,7 +216,7 @@ object ScalaInterpreterTests extends TestSuite {
         val code                   = "Lis"
         val expectedRes            = Completion(0, 3, Seq("List"))
         val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
-        val res0                   = interpreter.complete(code, code.length)
+        val res0                   = interpreter.complete(code, code.length).clearMetadata
         val res = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
@@ -241,7 +249,7 @@ object ScalaInterpreterTests extends TestSuite {
             "scala.collection.mutable.HashMap"
           ) ++ extraCompletions
         )
-        val res0 = interpreter.complete(code, code.length)
+        val res0 = interpreter.complete(code, code.length).clearMetadata
         val res = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
