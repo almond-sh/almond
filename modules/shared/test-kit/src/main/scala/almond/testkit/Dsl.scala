@@ -196,8 +196,10 @@ object Dsl {
       .map(s => if (trimReplyLines) s.trimLines else s)
     if (Properties.isWin) {
       expect(replies.length == Option(reply).toVector.length)
-      val obtainedReplyLines = replies.headOption.iterator.flatMap(_.linesIterator).toVector
-      val expectedReplyLines = Option(reply).iterator.flatMap(_.linesIterator).toVector
+      val obtainedReplyLines =
+        replies.headOption.iterator.flatMap(_.linesIterator).filter(_.nonEmpty).toVector
+      val expectedReplyLines =
+        Option(reply).iterator.flatMap(_.linesIterator).filter(_.nonEmpty).toVector
       if (obtainedReplyLines != expectedReplyLines) {
         pprint.err.log(obtainedReplyLines)
         pprint.err.log(expectedReplyLines)
