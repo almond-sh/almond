@@ -619,7 +619,10 @@ object ScalaKernelTests extends TestSuite {
       val suffix = if (transitive) " --transitive" else ""
       kernel.execute(
         s"%AddDeps     com.github.alexarchambault scalacheck-shapeless_1.16_$sbv 1.3.1" + suffix,
-        "import $ivy.$                                                                " + maybePostImportNewLine,
+        if (TestUtil.isScala2)
+          "import $ivy.$"
+        else
+          "import $ivy.$                                                                " + maybePostImportNewLine,
         ignoreStreams = true // ignoring coursier messages (that it prints when downloading things)
       )
       kernel.execute(
