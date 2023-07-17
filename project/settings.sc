@@ -732,6 +732,8 @@ trait TestCommand extends TestModule {
         else
           forkArgs() -> Map()
 
+      os.remove(outputPath)
+
       val testArgs = TestRunner.TestArgs(
         framework = testFramework(),
         classpath = runClasspath().map(_.path.toString()),

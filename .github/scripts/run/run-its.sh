@@ -22,16 +22,17 @@ trap "jps -mlv" EXIT
 
 if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "MINGW" ]; then
   ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup212.*" > test-args-212.json
+  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup213.*" > test-args-213.json
+  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup3.*" > test-args-3.json
+
   cat test-args-212.json
   "$RUN_APP" test-args-212.json
   checkResults
 
-  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup213.*" > test-args-213.json
   cat test-args-213.json
   "$RUN_APP" test-args-213.json
   checkResults
 
-  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup3.*" > test-args-3.json
   cat test-args-3.json
   "$RUN_APP" test-args-3.json
   checkResults

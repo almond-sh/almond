@@ -2,6 +2,8 @@ package almond.integration
 
 import almond.testkit.Dsl._
 
+import scala.util.Properties
+
 class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
 
   lazy val kernelLauncher =
@@ -233,7 +235,10 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
          |}
          |""".stripMargin
 
-    val directivesHandler = tmpDir / "handle-spark-directives"
+    val directivesHandler = {
+      val ext = if (Properties.isWin) ".bat" else ""
+      tmpDir / s"handle-spark-directives$ext"
+    }
 
     os.write(tmpDir / "Handler.scala", handlerCode)
 
