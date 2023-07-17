@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="## Prerequisites">
-  <meta name="docsearch:version" content="0.14.0-RC11">
+  <meta name="docsearch:version" content="0.14.0-RC12">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Installing from sources · almond">
   <meta property="og:type" content="website">
@@ -27,7 +27,7 @@
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.14.0-RC11</h3></a>
+     <a href="../versions"><h3>0.14.0-RC12</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -162,24 +162,24 @@ $ cd almond
 </code></pre> <p>Almond is built with <a href="https://com-lihaoyi.github.io/mill">mill</a>. A mill launcher ships with almond, so that you don't need to install mill yourself. We list below useful commands, to help get you started using mill to build almond.</p> <h2><a class="anchor" aria-hidden="true" id="run-a-jupyter-notebook-server-without-installing-a-kernel"></a><a href="dev-from-sources.html#run-a-jupyter-notebook-server-without-installing-a-kernel" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Run a Jupyter notebook server without installing a kernel</h2> <pre><code class="hljs css language-text">$ ./mill -i jupyter
+            </svg></a>Run a Jupyter notebook server without installing a kernel</h2> <pre><code class="hljs css language-text">$ ./mill -i jupyterFast
 </code></pre> <p>This should</p> 
           <ul> 
            <li>build an almond launcher, then</li> 
            <li>start JupyterLab in the current directory.</li> 
-          </ul> <p>From the JupyterLab instance, select the kernel "Scala (sources)".</p> <p>Optionally, pass a Scala version and / or JupyterLab options, like</p> <pre><code class="hljs css language-text">$ ./mill -i jupyter 2.12.13
-$ ./mill -i jupyter --ip=192.168.0.1
-$ ./mill -i jupyter 2.12.13 --ip=192.168.0.1
+          </ul> <p>From the JupyterLab instance, select the kernel "Scala (sources)".</p> <p>Optionally, pass a Scala version and / or JupyterLab options, like</p> <pre><code class="hljs css language-text">$ ./mill -i jupyterFast 2.12.13
+$ ./mill -i jupyterFast --ip=192.168.0.1
+$ ./mill -i jupyterFast 2.12.13 --ip=192.168.0.1
 </code></pre> <p>(If specified, the Scala version needs to be passed first.)</p> <h2><a class="anchor" aria-hidden="true" id="build-a-kernel-launcher"></a><a href="dev-from-sources.html#build-a-kernel-launcher" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Build a kernel launcher</h2> <pre><code class="hljs css language-text">$ ./mill launcher
-</code></pre> <p>Once done building, this should print the path to the kernel launcher, like <code>out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher</code>.</p> <p>Optionally, pass a Scala version, like</p> <pre><code class="hljs css language-text">$ ./mill launcher 2.12.13
-</code></pre> <p>You can then run that launcher to install it on your system:</p> <pre><code class="hljs css language-text">$ out/scala/scala-kernel/2.13.4/unixLauncher/dest/launcher --install
+            </svg></a>Build a kernel launcher</h2> <pre><code class="hljs css language-text">$ ./mill launcherFast
+</code></pre> <p>Once done building, this should print the path to the kernel launcher, like <code>out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher</code>.</p> <p>Optionally, pass a Scala version, like</p> <pre><code class="hljs css language-text">$ ./mill launcherFast 2.12.13
+</code></pre> <p>You can then run that launcher to install it on your system:</p> <pre><code class="hljs css language-text">$ out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher --install
 </code></pre> <p>Pass <code>--help</code> or see <a href="install-options">this page</a> for the available options.</p> <h2><a class="anchor" aria-hidden="true" id="watch-for-source-changes"></a><a href="dev-from-sources.html#watch-for-source-changes" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Watch for source changes</h2> <p>You can re-build a launcher upon source changes with</p> <pre><code class="hljs css language-text">$ ./mill -w launcher
+            </svg></a>Watch for source changes</h2> <p>You can re-build a launcher upon source changes with</p> <pre><code class="hljs css language-text">$ ./mill -w launcherFast
 </code></pre> <p>If you <a href="dev-from-sources.html#run-a-jupyter-notebook-server-without-installing-a-kernel">ran a JupyterLab server from the almond sources</a>, you can restart the kernel from a notebook via JupyterLab to pick a newly built launcher. If you passed a Scala version to <code>./mill jupyter</code>, beware to pass the same version to <code>./mill -w launcher</code>.</p> <h2><a class="anchor" aria-hidden="true" id="useful-commands"></a><a href="dev-from-sources.html#useful-commands" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
