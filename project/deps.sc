@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-50-f03f2d82"
+  def ammonite      = "3.0.0-M0-42-55d908ea"
   def caseApp       = "2.1.0-M25"
   def coursier      = "2.1.6"
   def jsoniterScala = "2.13.5"
@@ -32,15 +32,15 @@ implicit class DepOps(private val dep: Dep) {
 
 object Deps {
   def ammoniteCompiler(sv: String) =
-    ivy"sh.almond.tmp.ammonite:ammonite-compiler_$sv:${Versions.ammonite}"
+    ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
   def ammoniteRepl(sv: String) =
-    if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl_$sv:${Versions.ammonite}"
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl_$sv:${Versions.ammonite}"
     else
-      ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+      ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteReplApi(sv: String) =
-    if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl-api_$sv:${Versions.ammonite}"
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else
-      ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+      ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
