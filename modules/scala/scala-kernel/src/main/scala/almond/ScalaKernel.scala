@@ -167,6 +167,7 @@ object ScalaKernel extends CaseApp[Options] {
         metabrowsePort = -1,
         lazyInit = true,
         trapOutput = options.trapOutput,
+        quiet = options.quiet,
         disableCache = options.disableCache,
         autoUpdateLazyVals = options.autoUpdateLazyVals,
         autoUpdateVars = options.autoUpdateVars,

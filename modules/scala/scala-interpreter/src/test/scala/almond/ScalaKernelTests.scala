@@ -2,7 +2,6 @@ package almond
 
 import java.net.{URL, URLClassLoader}
 import java.util.UUID
-
 import almond.amm.AlmondCompilerLifecycleManager
 import almond.channels.Channel
 import almond.interpreter.Message
@@ -12,7 +11,7 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
-import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, isScala212}
+import almond.TestUtil.{IOOps, KernelOps, isScala212, execute => executeMessage}
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
@@ -20,6 +19,8 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
+import java.io.{ByteArrayOutputStream, PrintStream}
+import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
 import scala.collection.compat._
 
@@ -45,6 +46,28 @@ object ScalaKernelTests extends TestSuite {
     threads.attemptShutdown()
     if (!attemptShutdownExecutionContext(interpreterEc))
       println(s"Don't know how to shutdown $interpreterEc")
+  }
+
+  def withConsoleRedirect(f: (=> String, => String) => Unit): Unit = {
+    val consoleOut = new ByteArrayOutputStream()
+    val consoleErr = new ByteArrayOutputStream()
+    val outStream  = new PrintStream(consoleOut, true)
+    val errStream  = new PrintStream(consoleErr, true)
+    val oldOut     = System.out
+    val oldErr     = System.err
+    try {
+      System.setOut(outStream)
+      System.setErr(errStream)
+
+      f(
+        consoleOut.toString(StandardCharsets.UTF_8.name()),
+        consoleErr.toString(StandardCharsets.UTF_8.name())
+      )
+    }
+    finally {
+      System.setOut(oldOut)
+      System.setErr(oldErr)
+    }
   }
 
   val tests = Tests {
@@ -283,6 +306,32 @@ object ScalaKernelTests extends TestSuite {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
       almond.integration.Tests.trapOutput()
+    }
+
+    test("quiet=false") {
+      withConsoleRedirect { (stdout, stderr) =>
+        implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+          threads,
+          interpreterEc,
+          processParams = _.copy(quiet = false)
+        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        almond.integration.Tests.quietOutput(stdout, stderr, quiet = false)
+      }
+    }
+
+    test("quiet=true") {
+      withConsoleRedirect { (stdout, stderr) =>
+        implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+          threads,
+          interpreterEc,
+          processParams = _.copy(quiet = true)
+        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        almond.integration.Tests.quietOutput(stdout, stderr, quiet = true)
+      }
     }
 
     test("last exception") {

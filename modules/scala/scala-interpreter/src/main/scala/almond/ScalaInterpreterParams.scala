@@ -31,6 +31,7 @@ final case class ScalaInterpreterParams(
   metabrowsePort: Int = -1,
   lazyInit: Boolean = false,
   trapOutput: Boolean = false,
+  quiet: Boolean = true,
   disableCache: Boolean = false,
   autoUpdateLazyVals: Boolean = true,
   autoUpdateVars: Boolean = true,

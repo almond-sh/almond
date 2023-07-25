@@ -10,8 +10,8 @@ trait Capture {
 }
 
 object Capture {
-  def create(): Capture =
-    new CaptureImpl
+  def create(mirrorToConsole: Boolean): Capture =
+    new CaptureImpl(mirrorToConsole = mirrorToConsole)
   def nop(): Capture =
     new NopCapture
 }

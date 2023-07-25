@@ -41,6 +41,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class Execute(
   trapOutput: Boolean,
+  quiet: Boolean,
   storage: Storage,
   logCtx: LoggerContext,
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
@@ -111,7 +112,7 @@ final class Execute(
     if (trapOutput)
       Capture.nop()
     else
-      Capture.create()
+      Capture.create(mirrorToConsole = !quiet)
 
   private val updatableResultsOpt0 =
     updateBackgroundVariablesEcOpt.map { ec =>

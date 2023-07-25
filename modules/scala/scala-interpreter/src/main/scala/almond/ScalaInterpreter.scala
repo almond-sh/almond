@@ -68,6 +68,7 @@ final class ScalaInterpreter(
 
   private val execute0 = new Execute(
     params.trapOutput,
+    params.quiet,
     storage,
     logCtx,
     params.updateBackgroundVariablesEcOpt,

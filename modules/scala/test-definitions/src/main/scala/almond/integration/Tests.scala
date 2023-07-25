@@ -233,6 +233,29 @@ object Tests {
       )
     }
 
+  def quietOutput(consoleOut: => String, consoleErr: => String, quiet: Boolean)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+    runner.withSession() { implicit session =>
+      execute(
+        """System.err.print("test err"); System.out.print("test out")""",
+        "",
+        stdout = "test out",
+        stderr = "test err"
+      )
+
+      if (quiet) {
+        assert(!consoleOut.contains("test out"))
+        assert(!consoleErr.contains("test err"))
+      }
+      else {
+        assert(consoleOut.contains("test out"))
+        assert(consoleErr.contains("test err"))
+      }
+    }
+  }
+
   def lastException()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(
