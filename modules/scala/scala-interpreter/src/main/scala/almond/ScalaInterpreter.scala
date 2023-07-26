@@ -1,6 +1,7 @@
 package almond
 
 import almond.amm.AmmInterpreter
+import almond.api.JupyterApi
 import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, OutputHandler}
@@ -102,6 +103,7 @@ final class ScalaInterpreter(
       consoleOut = System.out,
       consoleErr = System.err
     )
+  JupyterApi.setInstance(jupyterApi)
 
   if (params.toreeMagics) {
     jupyterApi.addExecuteHook(LineMagicHook.hook(replApi.pprinter))
@@ -152,12 +154,6 @@ final class ScalaInterpreter(
     true
   override def interrupt(): Unit = {
     execute0.interrupt()
-
-    try Function.chain(jupyterApi.afterInterruptHooks).apply(())
-    catch {
-      case NonFatal(e) =>
-        log.warn("Caught exception while trying to run after Interrupt hooks", e)
-    }
   }
 
   override def supportComm: Boolean = true

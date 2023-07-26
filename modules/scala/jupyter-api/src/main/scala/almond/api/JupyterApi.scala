@@ -57,6 +57,11 @@ abstract class JupyterApi { api =>
   def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
   def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
 
+  def addAfterInterruptHook(name: String, hook: Any => Any): Boolean
+  def removeAfterInterruptHook(name: String): Boolean
+  def afterInterruptHooks(): Seq[(String, Any => Any)]
+  def runAfterInterruptHooks(): Unit
+
   def consoleOut: PrintStream
   def consoleErr: PrintStream
 }
@@ -143,6 +148,16 @@ object JupyterApi {
     def update(k: String, v: String, last: Boolean): Unit = {
       // temporary dummy implementation for binary compatibility
     }
+  }
+
+  // Convenience functions for facilitating JupyterApi instance access
+  private var japi: JupyterApi = null
+  def setInstance(jupyterApi: JupyterApi) = synchronized {
+    if (jupyterApi != null) japi = jupyterApi
+    else throw new Exception("fct 'setInstance': Cannot set instance to 'null'")
+  }
+  def getInstanceOpt: Option[JupyterApi] = synchronized {
+    if (japi != null) Some(japi) else None
   }
 
 }

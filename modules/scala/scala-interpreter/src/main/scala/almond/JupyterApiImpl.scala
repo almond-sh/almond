@@ -13,6 +13,7 @@ import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
+import scala.util.control.NonFatal
 
 /** Actual [[almond.api.JupyterApi]] instance */
 final class JupyterApiImpl(
@@ -90,5 +91,28 @@ final class JupyterApiImpl(
     }
   }
 
-  val afterInterruptHooks = mutable.Buffer.empty[Any => Any]
+  private val afterInterruptHooks0 = new mutable.ListBuffer[(String, Any => Any)]
+  def addAfterInterruptHook(name: String, hook: Any => Any): Boolean = {
+    !afterInterruptHooks0.map(_._1).contains((name)) && {
+      afterInterruptHooks0.append((name, hook))
+      true
+    }
+  }
+  def removeAfterInterruptHook(name: String): Boolean = {
+    val idx = afterInterruptHooks0.map(_._1).indexOf(name)
+    idx >= 0 && {
+      afterInterruptHooks0.remove(idx)
+      true
+    }
+  }
+  def afterInterruptHooks(): Seq[(String, Any => Any)] = afterInterruptHooks0.toList
+  def runAfterInterruptHooks(): Unit = {
+    try {
+      Function.chain(afterInterruptHooks0.map(_._2)).apply(())
+    } catch {
+      // Not able to import 'almond.logger.Logger' here, so need to report from caller. JVM will release the lock.
+      case NonFatal(e) => throw (e)
+    }
+  }
+
 }

@@ -34,6 +34,7 @@ import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** Wraps contextual things around when executing code (capturing output, stdin via front-ends,
@@ -259,12 +260,23 @@ final class Execute(
               s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}"
             )
             if (useThreadInterrupt) {
-              log.debug(s"Calling 'Thread.interrupt'")
+              log.debug(s"fct 'interruptible': Calling 'Thread.interrupt'")
               t.interrupt()
             }
             else {
-              log.debug(s"Calling 'Thread.stop'")
+              log.debug(s"fct 'interruptible': Calling 'Thread.stop'")
               t.stop()
+            }
+
+            // Run post-interrupt hooks
+            JupyterApi.getInstanceOpt match {
+              case Some(japi) => try {
+                japi.runAfterInterruptHooks()
+              } catch {
+                case NonFatal(e) =>
+                  log.warn("fct 'interruptible': Caught exception while running post-interrupt hooks", e)
+              }
+              case _ => log.warn("fct 'interruptible': JupyterApi instance could not be retrieved")
             }
         }
       }.apply {
@@ -283,12 +295,23 @@ final class Execute(
           s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}"
         )
         if (useThreadInterrupt) {
-          log.debug(s"Calling 'Thread.interrupt'")
+          log.debug(s"fct 'interrupt': Calling 'Thread.interrupt'")
           t.interrupt()
         }
         else {
-          log.debug(s"Calling 'Thread.stop'")
+          log.debug(s"fct 'interrupt': Calling 'Thread.stop'")
           t.stop()
+        }
+
+        // Run post-interrupt hooks
+        JupyterApi.getInstanceOpt match {
+          case Some(japi) => try {
+            japi.runAfterInterruptHooks()
+          } catch {
+            case NonFatal(e) =>
+              log.warn("fct 'interrupt': Caught exception while trying to run post-interrupt hooks", e)
+          }
+          case _ => log.warn("fct 'interrupt': JupyterApi instance could not be retrieved")
         }
     }
 
