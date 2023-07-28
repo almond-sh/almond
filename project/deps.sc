@@ -68,7 +68,7 @@ object Deps {
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.8.4"
+  def scalameta                = ivy"org.scalameta::scalameta:4.8.5"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
