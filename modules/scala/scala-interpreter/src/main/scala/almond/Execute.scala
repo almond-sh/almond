@@ -271,7 +271,7 @@ final class Execute(
             // Run post-interrupt hooks
             JupyterApi.getInstanceOpt match {
               case Some(japi) => try {
-                japi.runAfterInterruptHooks()
+                japi.runPostInterruptHooks()
               } catch {
                 case NonFatal(e) =>
                   log.warn("fct 'interruptible': Caught exception while running post-interrupt hooks", e)
@@ -306,7 +306,7 @@ final class Execute(
         // Run post-interrupt hooks
         JupyterApi.getInstanceOpt match {
           case Some(japi) => try {
-            japi.runAfterInterruptHooks()
+            japi.runPostInterruptHooks()
           } catch {
             case NonFatal(e) =>
               log.warn("fct 'interrupt': Caught exception while trying to run post-interrupt hooks", e)

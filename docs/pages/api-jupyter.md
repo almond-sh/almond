@@ -174,19 +174,19 @@ lazy val sc = {
 }
 
 // Add new hook with name "CancelAllSparkJobs"
-kernel.addAfterInterruptHook(
+kernel.addPostInterruptHook(
   "CancelAllSparkJobs",
   _ => sc.cancelAllJobs()
 )
 
 // Return a list with all registered hooks
-kernel.afterInterruptHooks
+kernel.postInterruptHooks
 
 // Remove hook by name
-kernel.removeAfterInterruptHook("CancelAllSparkJobs")
+kernel.removePostInterruptHook("CancelAllSparkJobs")
 
 // Run after-interrupt hooks (called internally after a cell interrupt)
-kernel.runAfterInterruptHooks()
+kernel.runPostInterruptHooks()
 ```
 Since Scala anonymous functions don't print well after being compiled to bytecode
 each hook is registered with a name.

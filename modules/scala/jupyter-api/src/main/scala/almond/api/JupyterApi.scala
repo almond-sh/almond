@@ -57,10 +57,10 @@ abstract class JupyterApi { api =>
   def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
   def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
 
-  def addAfterInterruptHook(name: String, hook: Any => Any): Boolean
-  def removeAfterInterruptHook(name: String): Boolean
-  def afterInterruptHooks(): Seq[(String, Any => Any)]
-  def runAfterInterruptHooks(): Unit
+  def addPostInterruptHook(name: String, hook: Any => Any): Boolean
+  def removePostInterruptHook(name: String): Boolean
+  def postInterruptHooks(): Seq[(String, Any => Any)]
+  def runPostInterruptHooks(): Unit
 
   def consoleOut: PrintStream
   def consoleErr: PrintStream
