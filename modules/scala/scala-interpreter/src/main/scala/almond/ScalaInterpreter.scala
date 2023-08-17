@@ -152,9 +152,8 @@ final class ScalaInterpreter(
 
   override def interruptSupported: Boolean =
     true
-  override def interrupt(): Unit = {
+  override def interrupt(): Unit =
     execute0.interrupt(jupyterApi)
-  }
 
   override def supportComm: Boolean = true
   override def setCommHandler(commHandler0: CommHandler): Unit =
