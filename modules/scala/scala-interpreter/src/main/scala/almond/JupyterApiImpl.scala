@@ -110,13 +110,11 @@ final class JupyterApiImpl(
     }
   }
   def postInterruptHooks(): Seq[(String, Any => Any)] = postInterruptHooks0.toList
-  def runPostInterruptHooks(): Unit = {
-    try {
-      Function.chain(postInterruptHooks0.map(_._2)).apply(())
-    } catch {
+  def runPostInterruptHooks(): Unit =
+    try Function.chain(postInterruptHooks0.map(_._2)).apply(())
+    catch {
       case NonFatal(e) =>
         log.warn("Caught exception while running post-interrupt hooks", e)
     }
-  }
 
 }
