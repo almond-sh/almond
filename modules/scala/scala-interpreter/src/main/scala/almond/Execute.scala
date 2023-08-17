@@ -259,11 +259,11 @@ final class Execute(
               s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}"
             )
             if (useThreadInterrupt) {
-              log.debug(s"fct 'interruptible': Calling 'Thread.interrupt'")
+              log.debug(s"Calling 'Thread.interrupt'")
               t.interrupt()
             }
             else {
-              log.debug(s"fct 'interruptible': Calling 'Thread.stop'")
+              log.debug(s"Calling 'Thread.stop'")
               t.stop()
             }
 
@@ -286,11 +286,11 @@ final class Execute(
           s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}"
         )
         if (useThreadInterrupt) {
-          log.debug(s"fct 'interrupt': Calling 'Thread.interrupt'")
+          log.debug(s"Calling 'Thread.interrupt'")
           t.interrupt()
         }
         else {
-          log.debug(s"fct 'interrupt': Calling 'Thread.stop'")
+          log.debug(s"Calling 'Thread.stop'")
           t.stop()
         }
 

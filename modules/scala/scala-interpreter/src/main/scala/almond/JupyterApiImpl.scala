@@ -115,7 +115,7 @@ final class JupyterApiImpl(
       Function.chain(postInterruptHooks0.map(_._2)).apply(())
     } catch {
       case NonFatal(e) =>
-        log.warn("fct 'interruptible': Caught exception while running post-interrupt hooks", e)
+        log.warn("Caught exception while running post-interrupt hooks", e)
     }
   }
 
