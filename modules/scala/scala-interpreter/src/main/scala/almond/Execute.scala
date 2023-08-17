@@ -34,7 +34,6 @@ import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** Wraps contextual things around when executing code (capturing output, stdin via front-ends,
@@ -269,11 +268,7 @@ final class Execute(
             }
 
             // Run post-interrupt hooks
-            try jupyterApi.runPostInterruptHooks()
-            catch {
-              case NonFatal(e) =>
-                log.warn("fct 'interruptible': Caught exception while running post-interrupt hooks", e)
-            }
+            jupyterApi.runPostInterruptHooks()
         }
       }.apply {
         t
@@ -300,11 +295,7 @@ final class Execute(
         }
 
         // Run post-interrupt hooks
-        try jupyterApi.runPostInterruptHooks()
-        catch {
-          case NonFatal(e) =>
-            log.warn("fct 'interrupt': Caught exception while trying to run post-interrupt hooks", e)
-        }
+        jupyterApi.runPostInterruptHooks()
     }
 
   private var lastExceptionOpt0 = Option.empty[Throwable]

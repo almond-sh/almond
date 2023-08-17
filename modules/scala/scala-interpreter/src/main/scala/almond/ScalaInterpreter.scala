@@ -101,7 +101,8 @@ final class ScalaInterpreter(
       params.allowVariableInspector,
       kernelClassLoader = Thread.currentThread().getContextClassLoader,
       consoleOut = System.out,
-      consoleErr = System.err
+      consoleErr = System.err,
+      logCtx = logCtx
     )
 
   if (params.toreeMagics) {

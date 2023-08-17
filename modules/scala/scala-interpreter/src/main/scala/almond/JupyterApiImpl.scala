@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import almond.api.{FullJupyterApi, JupyterApi}
 import almond.internals.HtmlAnsiOutputStream
 import almond.interpreter.api.CommHandler
+import almond.logger.LoggerContext
 import ammonite.util.Ref
 import pprint.{TPrint, TPrintColors}
 
@@ -24,8 +25,11 @@ final class JupyterApiImpl(
   protected val allowVariableInspector: Option[Boolean],
   val kernelClassLoader: ClassLoader,
   val consoleOut: PrintStream,
-  val consoleErr: PrintStream
+  val consoleErr: PrintStream,
+  logCtx: LoggerContext
 ) extends FullJupyterApi with VariableInspectorApiImpl {
+
+  private val log = logCtx(getClass)
 
   protected def variableInspectorImplPPrinter() = replApi.pprinter()
 
@@ -110,8 +114,8 @@ final class JupyterApiImpl(
     try {
       Function.chain(postInterruptHooks0.map(_._2)).apply(())
     } catch {
-      // Not able to import 'almond.logger.Logger' here, so need to report from caller. JVM will release the lock.
-      case NonFatal(e) => throw (e)
+      case NonFatal(e) =>
+        log.warn("fct 'interruptible': Caught exception while running post-interrupt hooks", e)
     }
   }
 
