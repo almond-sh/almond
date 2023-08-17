@@ -103,7 +103,6 @@ final class ScalaInterpreter(
       consoleOut = System.out,
       consoleErr = System.err
     )
-  JupyterApi.setInstance(jupyterApi)
 
   if (params.toreeMagics) {
     jupyterApi.addExecuteHook(LineMagicHook.hook(replApi.pprinter))
@@ -153,7 +152,7 @@ final class ScalaInterpreter(
   override def interruptSupported: Boolean =
     true
   override def interrupt(): Unit = {
-    execute0.interrupt()
+    execute0.interrupt(jupyterApi)
   }
 
   override def supportComm: Boolean = true
@@ -173,7 +172,8 @@ final class ScalaInterpreter(
       outputHandler,
       colors0,
       storeHistory,
-      jupyterApi.executeHooks
+      jupyterApi.executeHooks,
+      jupyterApi
     )
 
   def currentLine(): Int =

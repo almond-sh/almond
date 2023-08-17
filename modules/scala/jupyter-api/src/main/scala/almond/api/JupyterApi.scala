@@ -150,14 +150,4 @@ object JupyterApi {
     }
   }
 
-  // Convenience functions for facilitating JupyterApi instance access
-  private var japi: JupyterApi = null
-  def setInstance(jupyterApi: JupyterApi) = synchronized {
-    if (jupyterApi != null) japi = jupyterApi
-    else throw new Exception("fct 'setInstance': Cannot set instance to 'null'")
-  }
-  def getInstanceOpt: Option[JupyterApi] = synchronized {
-    if (japi != null) Some(japi) else None
-  }
-
 }
