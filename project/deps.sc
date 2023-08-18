@@ -54,7 +54,7 @@ object Deps {
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
-    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.7.0" else ivy"co.fs2:fs2-core_2.13:3.7.0"
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.8.0" else ivy"co.fs2:fs2-core_2.13:3.7.0"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
   def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
@@ -68,7 +68,7 @@ object Deps {
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.8.4"
+  def scalameta                = ivy"org.scalameta::scalameta:4.8.7"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
