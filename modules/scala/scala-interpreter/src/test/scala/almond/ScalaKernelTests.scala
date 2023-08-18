@@ -1,7 +1,10 @@
 package almond
 
+import java.io.{ByteArrayOutputStream, PrintStream}
 import java.net.{URL, URLClassLoader}
+import java.nio.charset.StandardCharsets
 import java.util.UUID
+
 import almond.amm.AlmondCompilerLifecycleManager
 import almond.channels.Channel
 import almond.interpreter.Message
@@ -11,7 +14,7 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
-import almond.TestUtil.{IOOps, KernelOps, isScala212, execute => executeMessage}
+import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, isScala212}
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
@@ -19,8 +22,6 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
-import java.io.{ByteArrayOutputStream, PrintStream}
-import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
 import scala.collection.compat._
 
