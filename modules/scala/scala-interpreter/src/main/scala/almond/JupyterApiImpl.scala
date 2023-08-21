@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import almond.api.{FullJupyterApi, JupyterApi}
 import almond.internals.HtmlAnsiOutputStream
 import almond.interpreter.api.CommHandler
+import almond.logger.LoggerContext
 import ammonite.util.Ref
 import pprint.{TPrint, TPrintColors}
 
@@ -13,6 +14,7 @@ import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
+import scala.util.control.NonFatal
 
 /** Actual [[almond.api.JupyterApi]] instance */
 final class JupyterApiImpl(
@@ -23,8 +25,11 @@ final class JupyterApiImpl(
   protected val allowVariableInspector: Option[Boolean],
   val kernelClassLoader: ClassLoader,
   val consoleOut: PrintStream,
-  val consoleErr: PrintStream
+  val consoleErr: PrintStream,
+  logCtx: LoggerContext
 ) extends FullJupyterApi with VariableInspectorApiImpl {
+
+  private val log = logCtx(getClass)
 
   protected def variableInspectorImplPPrinter() = replApi.pprinter()
 
@@ -90,5 +95,26 @@ final class JupyterApiImpl(
     }
   }
 
-  val afterInterruptHooks = mutable.Buffer.empty[Any => Any]
+  private val postInterruptHooks0 = new mutable.ListBuffer[(String, Any => Any)]
+  def addPostInterruptHook(name: String, hook: Any => Any): Boolean = {
+    !postInterruptHooks0.map(_._1).contains((name)) && {
+      postInterruptHooks0.append((name, hook))
+      true
+    }
+  }
+  def removePostInterruptHook(name: String): Boolean = {
+    val idx = postInterruptHooks0.map(_._1).indexOf(name)
+    idx >= 0 && {
+      postInterruptHooks0.remove(idx)
+      true
+    }
+  }
+  def postInterruptHooks(): Seq[(String, Any => Any)] = postInterruptHooks0.toList
+  def runPostInterruptHooks(): Unit =
+    try Function.chain(postInterruptHooks0.map(_._2)).apply(())
+    catch {
+      case NonFatal(e) =>
+        log.warn("Caught exception while running post-interrupt hooks", e)
+    }
+
 }

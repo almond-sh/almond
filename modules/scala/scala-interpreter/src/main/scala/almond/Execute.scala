@@ -245,7 +245,7 @@ final class Execute(
       case Some(p) => capture0(p.stdout, p.stderr)(t)
     }
 
-  private def interruptible[T](t: => T): T = {
+  private def interruptible[T](jupyterApi: JupyterApi)(t: => T): T = {
     interruptedStackTraceOpt0 = None
     currentThreadOpt0 = Some(Thread.currentThread())
     try
@@ -266,6 +266,9 @@ final class Execute(
               log.debug(s"Calling 'Thread.stop'")
               t.stop()
             }
+
+            // Run post-interrupt hooks
+            jupyterApi.runPostInterruptHooks()
         }
       }.apply {
         t
@@ -274,7 +277,7 @@ final class Execute(
       currentThreadOpt0 = None
   }
 
-  def interrupt(): Unit =
+  def interrupt(jupyterApi: JupyterApi): Unit =
     currentThreadOpt0 match {
       case None =>
         log.warn("Interrupt asked, but no execution is running")
@@ -290,6 +293,9 @@ final class Execute(
           log.debug(s"Calling 'Thread.stop'")
           t.stop()
         }
+
+        // Run post-interrupt hooks
+        jupyterApi.runPostInterruptHooks()
     }
 
   private var lastExceptionOpt0 = Option.empty[Throwable]
@@ -314,7 +320,8 @@ final class Execute(
     code: String,
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler],
-    storeHistory: Boolean
+    storeHistory: Boolean,
+    jupyterApi: JupyterApi
   ) =
     withOutputHandler(outputHandler) {
       val code0 = {
@@ -337,7 +344,7 @@ final class Execute(
             Res.Failure(err)
         }
         _ = log.debug(s"splitted '$code0'")
-        ev <- interruptible {
+        ev <- interruptible(jupyterApi) {
           withInputManager(inputManager) {
             withClientStdin {
               capturingOutput {
@@ -415,7 +422,8 @@ final class Execute(
     outputHandler: Option[OutputHandler],
     colors0: Ref[Colors],
     storeHistory: Boolean,
-    executeHooks: Seq[JupyterApi.ExecuteHook]
+    executeHooks: Seq[JupyterApi.ExecuteHook],
+    jupyterApi: JupyterApi
   ): ExecuteResult = {
 
     if (enableExitHack && code.endsWith("// ALMOND FORCE EXIT")) {
@@ -430,7 +438,7 @@ final class Execute(
 
     val finalCodeOrResult =
       withOutputHandler(outputHandler) {
-        interruptible {
+        interruptible(jupyterApi) {
           withInputManager(inputManager, done = false) {
             withClientStdin {
               capturingOutput {
@@ -522,7 +530,8 @@ final class Execute(
                       finalCode,
                       inputManager,
                       outputHandler,
-                      storeHistory
+                      storeHistory,
+                      jupyterApi
                     ) match {
                       case Res.Success((_, data)) =>
                         ExecuteResult.Success(data)
