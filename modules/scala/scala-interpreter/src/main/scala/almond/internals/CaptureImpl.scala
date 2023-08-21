@@ -6,7 +6,8 @@ import java.nio.charset.{Charset, StandardCharsets}
 final class CaptureImpl(
   inputBufferSize: Int = 1024,
   outputBufferSize: Int = 1024,
-  internalCharset: Charset = StandardCharsets.UTF_8
+  internalCharset: Charset = StandardCharsets.UTF_8,
+  mirrorToConsole: Boolean
 ) extends Capture {
 
   // not thread-safe
@@ -14,12 +15,19 @@ final class CaptureImpl(
   private var out0: String => Unit = _
   private var err0: String => Unit = _
 
+  private val systemOut = System.out
+  private val systemErr = System.err
+
   val out: PrintStream =
     new FunctionOutputStream(
       inputBufferSize,
       outputBufferSize,
       internalCharset,
-      s => if (out0 != null) out0(s)
+      s =>
+        if (out0 != null) {
+          out0(s)
+          if (mirrorToConsole) systemOut.print(s)
+        }
     ).printStream()
 
   val err: PrintStream =
@@ -27,7 +35,11 @@ final class CaptureImpl(
       inputBufferSize,
       outputBufferSize,
       internalCharset,
-      s => if (err0 != null) err0(s)
+      s =>
+        if (err0 != null) {
+          err0(s)
+          if (mirrorToConsole) systemErr.print(s)
+        }
     ).printStream()
 
   def apply[T](

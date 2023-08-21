@@ -58,6 +58,8 @@ final case class Options(
   metabrowse: Boolean = false,
   @HelpMessage("Trap what user code sends to stdout and stderr")
   trapOutput: Boolean = false,
+  @HelpMessage("If false, duplicates stdout/stderr to console, similar to IPKernelApp.quiet")
+  quiet: Boolean = true,
   @HelpMessage("Disable ammonite compilation cache")
   disableCache: Boolean = false,
   @HelpMessage("Whether to automatically update lazy val-s upon computation")
