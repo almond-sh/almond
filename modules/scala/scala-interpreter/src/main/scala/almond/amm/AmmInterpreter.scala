@@ -82,7 +82,8 @@ object AmmInterpreter {
     variableInspectorEnabled: () => Boolean,
     outputDir: Either[os.Path, Boolean],
     compileOnly: Boolean,
-    addToreeApiCompatibilityImport: Boolean
+    addToreeApiCompatibilityImport: Boolean,
+    initialSettings: Seq[String]
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -171,6 +172,7 @@ object AmmInterpreter {
             silentImports,
             variableInspectorEnabled,
             outputDir0,
+            initialSettings,
             logCtx
           )
 

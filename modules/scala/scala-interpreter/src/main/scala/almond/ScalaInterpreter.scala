@@ -139,7 +139,8 @@ final class ScalaInterpreter(
       jupyterApi.VariableInspector.enabled,
       outputDir = params.outputDir,
       compileOnly = params.compileOnly,
-      addToreeApiCompatibilityImport = params.toreeApiCompatibility
+      addToreeApiCompatibilityImport = params.toreeApiCompatibility,
+      initialSettings = params.initialSettings
     )
 
     execute0.loadOptions(interp, params.upfrontKernelOptions)
