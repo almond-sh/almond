@@ -96,12 +96,11 @@ final class JupyterApiImpl(
   }
 
   private val postInterruptHooks0 = new mutable.ListBuffer[(String, Any => Any)]
-  def addPostInterruptHook(name: String, hook: Any => Any): Boolean = {
-    !postInterruptHooks0.map(_._1).contains((name)) && {
+  def addPostInterruptHook(name: String, hook: Any => Any): Boolean =
+    !postInterruptHooks0.map(_._1).contains(name) && {
       postInterruptHooks0.append((name, hook))
       true
     }
-  }
   def removePostInterruptHook(name: String): Boolean = {
     val idx = postInterruptHooks0.map(_._1).indexOf(name)
     idx >= 0 && {
