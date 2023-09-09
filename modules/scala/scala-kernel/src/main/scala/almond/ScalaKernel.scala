@@ -226,7 +226,12 @@ object ScalaKernel extends CaseApp[Options] {
         val fmtPool = ExecutionContext.fromExecutorService(
           coursier.cache.internal.ThreadUtil.fixedThreadPool(1)
         )
-        val scalafmt = new Scalafmt(fmtPool, kernelThreads.queueEc, logCtx)
+        val scalafmt = new Scalafmt(
+          fmtPool,
+          kernelThreads.queueEc,
+          logCtx,
+          Scalafmt.defaultDialectFor(interpreter.ammInterp.compilerBuilder.scalaVersion)
+        )
         scalafmt.messageHandler
       }
       else
