@@ -82,7 +82,8 @@ object AmmInterpreter {
     variableInspectorEnabled: () => Boolean,
     outputDir: Either[os.Path, Boolean],
     compileOnly: Boolean,
-    addToreeApiCompatibilityImport: Boolean
+    addToreeApiCompatibilityImport: Boolean,
+    initialSettings: Seq[String]
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -138,7 +139,8 @@ object AmmInterpreter {
         colors = replApi.colors,
         verboseOutput = true, // ???
         alreadyLoadedDependencies =
-          ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt")
+          ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt"),
+        wrapperNamePrefix = "cell"
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)
@@ -159,8 +161,6 @@ object AmmInterpreter {
           scriptCodeWrapper = codeWrapper,
           parameters = interpParams
         ) {
-          override def wrapperNamePrefix = "cell"
-
           override val compilerManager = new AlmondCompilerLifecycleManager(
             storage0.dirOpt.map(_.toNIO),
             headFrame,
@@ -172,6 +172,7 @@ object AmmInterpreter {
             silentImports,
             variableInspectorEnabled,
             outputDir0,
+            initialSettings,
             logCtx
           )
 

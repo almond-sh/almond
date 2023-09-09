@@ -17,6 +17,7 @@ class AlmondCompilerLifecycleManager(
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
   outputDir: Option[Path],
+  initialSettings: Seq[String],
   logCtx: LoggerContext
 ) extends CompilerLifecycleManager(
       rtCacheDir,
@@ -24,7 +25,8 @@ class AlmondCompilerLifecycleManager(
       dependencyCompleteOpt,
       classPathWhitelist,
       initialClassLoader,
-      outputDir
+      outputDir,
+      initialSettings
     ) {
   override def preprocess(fileName: String): Preprocessor =
     synchronized {
