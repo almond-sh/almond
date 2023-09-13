@@ -19,6 +19,7 @@ final class Scalafmt(
   fmtPool: ExecutionContext,
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
+  defaultDialect: String,
   defaultVersion: String = almond.api.Properties.defaultScalafmtVersionOpt.getOrElse("2.7.5")
 ) {
 
@@ -42,9 +43,15 @@ final class Scalafmt(
 
   private val defaultDummyPath = Paths.get("/foo.sc")
 
+  private def defaultConfFile =
+    Seq(
+      s"version=$defaultVersion",
+      s"runner.dialect=$defaultDialect"
+    ).map(_ + System.lineSeparator).mkString
+
   private def format(code: String): String =
     // TODO Get version via build.sbt
-    interface.format(confFile(s"version=$defaultVersion"), defaultDummyPath, code)
+    interface.format(confFile(defaultConfFile), defaultDummyPath, code)
       .stripSuffix("\n") // System.lineSeparator() instead?
 
   def messageHandler: MessageHandler =
@@ -75,4 +82,12 @@ final class Scalafmt(
           _ <- sendReply
         } yield ()
     }
+}
+
+object Scalafmt {
+  def defaultDialectFor(scalaVersion: String): String =
+    if (scalaVersion.startsWith("2.11.")) "scala211"
+    else if (scalaVersion.startsWith("2.12.")) "scala212"
+    else if (scalaVersion.startsWith("2.13.")) "scala213"
+    else "scala3"
 }

@@ -2,11 +2,11 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-50-f03f2d82"
+  def ammonite      = "3.0.0-M0-49-151446c5"
   def caseApp       = "2.1.0-M25"
-  def coursier      = "2.1.6"
+  def coursier      = "2.1.7"
   def jsoniterScala = "2.13.5"
-  def scalafmt      = "2.7.5"
+  def scalafmt      = "3.7.13"
 }
 
 implicit class DepOps(private val dep: Dep) {
@@ -32,15 +32,15 @@ implicit class DepOps(private val dep: Dep) {
 
 object Deps {
   def ammoniteCompiler(sv: String) =
-    ivy"sh.almond.tmp.ammonite:ammonite-compiler_$sv:${Versions.ammonite}"
+    ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
   def ammoniteRepl(sv: String) =
-    if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl_$sv:${Versions.ammonite}"
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl_$sv:${Versions.ammonite}"
     else
-      ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+      ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteReplApi(sv: String) =
-    if (sv.startsWith("2.")) ivy"sh.almond.tmp.ammonite:ammonite-repl-api_$sv:${Versions.ammonite}"
+    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
     else
-      ivy"sh.almond.tmp.ammonite:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+      ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
   def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
@@ -54,7 +54,7 @@ object Deps {
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
-    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.1" else ivy"co.fs2:fs2-core_2.13:3.8.0"
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.1" else ivy"co.fs2:fs2-core_2.13:3.9.1"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
   def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
@@ -68,7 +68,7 @@ object Deps {
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.8.9"
+  def scalameta                = ivy"org.scalameta::scalameta:4.8.10"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.2"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
