@@ -3,7 +3,7 @@ import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.1.0`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.24`
 
-import $file.project.deps, deps.{Deps, DepOps, ScalaVersions}
+import $file.project.deps, deps.{Deps, DepOps, ScalaVersions, Versions}
 import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
 import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{
@@ -33,18 +33,20 @@ import _root_.scala.concurrent.duration._
 import _root_.scala.util.Properties
 
 // Tell mill modules are under modules/
-implicit def millModuleBasePath: define.BasePath =
-  define.BasePath(super.millModuleBasePath.value / "modules")
+implicit def millModuleBasePath: define.Ctx.BasePath =
+  define.Ctx.BasePath(super.millModuleBasePath.value / "modules")
 
-class LoggerScala2Macros(val crossScalaVersion: String) extends AlmondModule {
+trait LoggerScala2Macros extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
   def ivyDeps = T {
     val sv = scalaVersion()
     Agg(Deps.scalaReflect(sv))
   }
 }
 
-class Logger(val crossScalaVersion: String) extends AlmondModule {
-  def supports3 = true
+trait Logger extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+  def supports3         = true
   def moduleDeps = Seq(
     shared.`logger-scala2-macros`()
   )
@@ -55,10 +57,11 @@ class Logger(val crossScalaVersion: String) extends AlmondModule {
       else Agg(ivy"org.scala-lang:scala3-library_3:${scalaVersion()}")
     scalaReflect
   }
-  object test extends Tests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule
 }
 
-class Channels(val crossScalaVersion: String) extends AlmondModule with Mima {
+trait Channels extends Cross.Module[String] with AlmondModule with Mima {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.logger()
   )
@@ -66,10 +69,11 @@ class Channels(val crossScalaVersion: String) extends AlmondModule with Mima {
     Deps.fs2(crossScalaVersion),
     Deps.jeromq
   )
-  object test extends Tests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule
 }
 
-class Protocol(val crossScalaVersion: String) extends AlmondModule {
+trait Protocol extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.channels()
   )
@@ -80,12 +84,15 @@ class Protocol(val crossScalaVersion: String) extends AlmondModule {
     Deps.scalaReflect(scalaVersion()),
     Deps.jsoniterScalaMacros.withConfiguration("provided")
   )
-  object test extends Tests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule
 }
 
-class InterpreterApi(val crossScalaVersion: String) extends AlmondModule with Mima
+trait InterpreterApi extends Cross.Module[String] with AlmondModule with Mima {
+  def crossScalaVersion = crossValue
+}
 
-class Interpreter(val crossScalaVersion: String) extends AlmondModule {
+trait Interpreter extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.`interpreter-api`(),
     shared.protocol()
@@ -96,10 +103,11 @@ class Interpreter(val crossScalaVersion: String) extends AlmondModule {
     Deps.scalatags.applyBinaryVersion213_3(scalaVersion()),
     Deps.slf4jNop
   )
-  object test extends Tests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule
 }
 
-class Kernel(val crossScalaVersion: String) extends AlmondModule {
+trait Kernel extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.interpreter()
   )
@@ -112,7 +120,7 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
     Deps.coursierApi,
     Deps.fs2(crossScalaVersion)
   )
-  object test extends Tests with AlmondTestModule {
+  object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       shared.interpreter().test,
       shared.`test-kit`()
@@ -120,13 +128,15 @@ class Kernel(val crossScalaVersion: String) extends AlmondModule {
   }
 }
 
-class Test(val crossScalaVersion: String) extends AlmondModule {
+trait Test extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.`interpreter-api`()
   )
 }
 
-class JupyterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
+trait JupyterApi extends Cross.Module[String] with AlmondModule with Mima {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.`interpreter-api`()
   )
@@ -135,8 +145,9 @@ class JupyterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
   )
 }
 
-class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with DependencyListResource
+trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with DependencyListResource
     with ExternalSources with PropertyFile with Mima with Bloop.Module {
+  def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def moduleDeps =
@@ -184,7 +195,8 @@ class ScalaKernelApi(val crossScalaVersion: String) extends AlmondModule with De
   }
 }
 
-class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with Bloop.Module {
+trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop.Module {
+  def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def supports3             = true
@@ -234,7 +246,7 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
       else Nil
     scala213Options
   }
-  object test extends Tests with AlmondTestModule {
+  object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = {
       val rx =
         if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
@@ -269,8 +281,9 @@ class ScalaInterpreter(val crossScalaVersion: String) extends AlmondModule with 
   }
 }
 
-class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with ExternalSources
+trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSources
     with BootstrapLauncher with Bloop.Module {
+  def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def moduleDeps =
@@ -289,7 +302,7 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
     Deps.classPathUtil,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
-  object test extends Tests with AlmondTestModule {
+  object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       scala.`scala-interpreter`().test
     )
@@ -357,7 +370,8 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
 // depend on the more complex 2.13-targeting-scala-3 module like
 // scala-kernel-cross-3.0.2_2.13.7. The former follows the same name pattern
 // as their Scala 2 counterparts, and are more convenient to write down for end users.
-class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with Bloop.Module {
+trait ScalaKernelHelper extends Cross.Module[String] with AlmondModule with Bloop.Module {
+  def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def supports3             = true
@@ -367,8 +381,9 @@ class ScalaKernelHelper(val crossScalaVersion: String) extends AlmondModule with
   )
 }
 
-class CoursierLogger(val crossScalaVersion: String) extends AlmondModule {
-  def supports3 = true
+trait CoursierLogger extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+  def supports3         = true
   def moduleDeps = super.moduleDeps ++ Seq(
     shared.`interpreter-api`(),
     shared.logger()
@@ -379,8 +394,9 @@ class CoursierLogger(val crossScalaVersion: String) extends AlmondModule {
   )
 }
 
-class SharedDirectives(val crossScalaVersion: String) extends AlmondModule {
-  def supports3 = true
+trait SharedDirectives extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+  def supports3         = true
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.directiveHandler,
     Deps.jsoniterScalaCore.applyBinaryVersion213_3(scalaVersion())
@@ -422,8 +438,9 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   }
 }
 
-class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule with ExternalSources
+trait ScalaKernelApiHelper extends Cross.Module[String] with AlmondModule with ExternalSources
     with Bloop.Module {
+  def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
   def supports3             = true
@@ -433,7 +450,8 @@ class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule w
   )
 }
 
-class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule with Mima {
+trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with Mima {
+  def crossScalaVersion = crossValue
   def ivyDeps = Agg(
     Deps.jvmRepr
   )
@@ -442,7 +460,8 @@ class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule with Mim
   )
 }
 
-class AlmondRx(val crossScalaVersion: String) extends AlmondModule with Mima {
+trait AlmondRx extends Cross.Module[String] with AlmondModule with Mima {
+  def crossScalaVersion = crossValue
   def compileModuleDeps = Seq(
     scala.`scala-kernel-api`()
   )
@@ -451,7 +470,8 @@ class AlmondRx(val crossScalaVersion: String) extends AlmondModule with Mima {
   )
 }
 
-class Echo(val crossScalaVersion: String) extends AlmondModule {
+trait Echo extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.kernel()
   )
@@ -459,55 +479,56 @@ class Echo(val crossScalaVersion: String) extends AlmondModule {
     Deps.caseApp.withDottyCompat(crossScalaVersion)
   )
   def propertyFilePath = "almond/echo.properties"
-  object test extends Tests with AlmondTestModule {
+  object test extends this.CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       shared.test()
     )
   }
 }
 
-class ToreeHooks(val crossScalaVersion: String) extends AlmondModule {
-  def supports3 = true
+trait ToreeHooks extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+  def supports3         = true
   def compileModuleDeps = super.compileModuleDeps ++ Seq(
     scala.`scala-kernel-api`(ScalaVersions.binary(crossScalaVersion))
   )
 }
 
 object shared extends Module {
-  object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.binaries: _*)
-  object logger                 extends Cross[Logger](ScalaVersions.binaries: _*)
-  object channels               extends Cross[Channels](ScalaVersions.binaries: _*)
-  object protocol               extends Cross[Protocol](ScalaVersions.binaries: _*)
-  object `interpreter-api`      extends Cross[InterpreterApi](ScalaVersions.binaries: _*)
-  object interpreter            extends Cross[Interpreter](ScalaVersions.binaries: _*)
-  object kernel                 extends Cross[Kernel](ScalaVersions.binaries: _*)
-  object test                   extends Cross[Test](ScalaVersions.binaries: _*)
-  object `test-kit`             extends Cross[TestKit](ScalaVersions.all: _*)
+  object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.binaries)
+  object logger                 extends Cross[Logger](ScalaVersions.binaries)
+  object channels               extends Cross[Channels](ScalaVersions.binaries)
+  object protocol               extends Cross[Protocol](ScalaVersions.binaries)
+  object `interpreter-api`      extends Cross[InterpreterApi](ScalaVersions.binaries)
+  object interpreter            extends Cross[Interpreter](ScalaVersions.binaries)
+  object kernel                 extends Cross[Kernel](ScalaVersions.binaries)
+  object test                   extends Cross[Test](ScalaVersions.binaries)
+  object `test-kit`             extends Cross[TestKit](ScalaVersions.all)
 }
 
 // FIXME Can't use 'scala' because of macro hygiene issues in some mill macros
 object scala extends Module {
-  implicit def millModuleBasePath: define.BasePath =
-    define.BasePath(super.millModuleBasePath.value / os.up / "scala")
-  object `jupyter-api`      extends Cross[JupyterApi](ScalaVersions.binaries: _*)
-  object `scala-kernel-api` extends Cross[ScalaKernelApi](ScalaVersions.all: _*)
+  implicit def millModuleBasePath: define.Ctx.BasePath =
+    define.Ctx.BasePath(super.millModuleBasePath.value / os.up / "scala")
+  object `jupyter-api`      extends Cross[JupyterApi](ScalaVersions.binaries)
+  object `scala-kernel-api` extends Cross[ScalaKernelApi](ScalaVersions.all)
   object `scala-kernel-api-helper`
-      extends Cross[ScalaKernelApiHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
-  object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all: _*)
-  object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all: _*)
+      extends Cross[ScalaKernelApiHelper](ScalaVersions.all.filter(_.startsWith("3.")))
+  object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all)
+  object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all)
   object `scala-kernel-helper`
-      extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")): _*)
-  object `coursier-logger` extends Cross[CoursierLogger](ScalaVersions.binaries: _*)
+      extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")))
+  object `coursier-logger` extends Cross[CoursierLogger](ScalaVersions.binaries)
   object `shared-directives`
-      extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries: _*)
+      extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries)
   object launcher         extends Launcher
-  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries: _*)
-  object `almond-rx`      extends Cross[AlmondRx](ScalaVersions.scala212, ScalaVersions.scala213)
+  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries)
+  object `almond-rx` extends Cross[AlmondRx](Seq(ScalaVersions.scala212, ScalaVersions.scala213))
 
-  object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries: _*)
+  object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
 
-  object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all: _*)
-  object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all: _*)
+  object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
+  object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all)
   object integration        extends Integration
 
   object examples extends Examples
@@ -517,7 +538,7 @@ trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.18"
   private def baseRepoRoot         = os.rel / "out" / "repo"
   def scalaVersion                 = ScalaVersions.scala3Latest
-  object test extends Tests {
+  object test extends SbtModuleTests {
     def testFramework = "munit.Framework"
     def ivyDeps = T {
       super.ivyDeps() ++ Agg(
@@ -542,8 +563,9 @@ trait Examples extends SbtModule {
   }
 }
 
-class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
-  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
+trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module {
+  def crossScalaVersion = crossValue
+  def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
   def moduleDeps =
     if (crossScalaVersion.startsWith("3."))
       Seq(
@@ -560,8 +582,9 @@ class TestKit(val crossScalaVersion: String) extends CrossSbtModule with Bloop.M
   )
 }
 
-class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with Bloop.Module {
-  def skipBloop = !ScalaVersions.binaries.contains(crossScalaVersion)
+trait TestDefinitions extends Cross.Module[String] with CrossSbtModule with Bloop.Module {
+  def crossScalaVersion = crossValue
+  def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
 
   def moduleDeps = super.moduleDeps ++ Seq(
     shared.`test-kit`()
@@ -574,7 +597,8 @@ class TestDefinitions(val crossScalaVersion: String) extends CrossSbtModule with
   }
 }
 
-class KernelLocalRepo(val testScalaVersion: String) extends LocalRepo {
+trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
+  def testScalaVersion = crossValue
   def stubsModules = {
     val extra =
       if (testScalaVersion.startsWith("2.")) Nil
@@ -625,7 +649,7 @@ trait Integration extends SbtModule {
     Deps.pprint
   )
 
-  object test extends Tests with TestCommand {
+  object test extends SbtModuleTests with TestCommand {
     def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()
@@ -651,7 +675,7 @@ trait Integration extends SbtModule {
   }
 }
 
-object echo extends Cross[Echo](ScalaVersions.binaries: _*)
+object echo extends Cross[Echo](ScalaVersions.binaries)
 
 object docs extends ScalaModule with AlmondRepositories {
   private def scalaVersion0 = ScalaVersions.scala213
@@ -759,89 +783,76 @@ object docs extends ScalaModule with AlmondRepositories {
   }
 }
 
-def jupyter0(args: Seq[String], fast: Boolean, console: Boolean = false) = {
-  val (sv, args0) = args match {
-    case Seq(sv, rem @ _*) if sv.startsWith("2.") || sv.startsWith("3.") =>
-      (sv, rem)
-    case _ => (ScalaVersions.scala213, args)
-  }
-  val launcher =
-    if (fast) scala.`scala-kernel`(sv).fastLauncher
-    else scala.`scala-kernel`(sv).launcher
-  val specialLauncher =
-    if (fast) scala.launcher.fastLauncher
-    else scala.launcher.launcher
-  T.command {
-    val jupyterDir       = T.ctx().dest / "jupyter"
-    val launcher0        = launcher().path.toNIO
-    val specialLauncher0 = specialLauncher().path.toNIO
-    if (console)
-      jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
-    else
-      jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
-  }
-}
+object dev extends Module {
 
-def jupyter(args: String*) =
-  jupyter0(args, fast = false)
-
-def jupyterFast(args: String*) =
-  jupyter0(args, fast = true)
-
-def jupyterConsole(args: String*) =
-  jupyter0(args, fast = false, console = true)
-
-def jupyterConsoleFast(args: String*) =
-  jupyter0(args, fast = true, console = true)
-
-def publishSonatype(tasks: mill.main.Tasks[PublishModule.PublishData]) =
-  T.command {
-    val timeout     = 10.minutes
-    val credentials = sys.env("SONATYPE_USERNAME") + ":" + sys.env("SONATYPE_PASSWORD")
-    val pgpPassword = sys.env("PGP_PASSWORD")
-    val data        = T.sequence(tasks.value)()
-
-    settings.publishSonatype(
-      credentials = credentials,
-      pgpPassword = pgpPassword,
-      data = data,
-      timeout = timeout,
-      log = T.ctx().log
-    )
+  def jupyter0(args: Seq[String], fast: Boolean, console: Boolean = false) = {
+    val (sv, args0) = args match {
+      case Seq(sv, rem @ _*) if sv.startsWith("2.") || sv.startsWith("3.") =>
+        (sv, rem)
+      case _ => (ScalaVersions.scala213, args)
+    }
+    val launcher =
+      if (fast) scala.`scala-kernel`(sv).fastLauncher
+      else scala.`scala-kernel`(sv).launcher
+    val specialLauncher =
+      if (fast) scala.launcher.fastLauncher
+      else scala.launcher.launcher
+    T.command {
+      val jupyterDir       = T.ctx().dest / "jupyter"
+      val launcher0        = launcher().path.toNIO
+      val specialLauncher0 = specialLauncher().path.toNIO
+      if (console)
+        jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
+      else
+        jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
+    }
   }
 
-def scala212() = T.command {
-  println(ScalaVersions.scala212)
-}
-def scala213() = T.command {
-  println(ScalaVersions.scala213)
-}
-def scala3() = T.command {
-  println(ScalaVersions.scala3Latest)
-}
-def scalaVersions() = T.command {
-  for (sv <- ScalaVersions.all)
-    println(sv)
-}
+  def jupyter(args: String*) =
+    jupyter0(args, fast = false)
 
-def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
-  val launcher = scala.`scala-kernel`(scalaVersion).launcher().path.toNIO
-  println(launcher)
-}
+  def jupyterFast(args: String*) =
+    jupyter0(args, fast = true)
 
-def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
-  val launcher = scala.launcher.launcher().path.toNIO
-  println(launcher)
-}
+  def jupyterConsole(args: String*) =
+    jupyter0(args, fast = false, console = true)
 
-def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
-  val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
-  println(launcher)
-}
+  def jupyterConsoleFast(args: String*) =
+    jupyter0(args, fast = true, console = true)
 
-def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
-  val launcher = scala.launcher.fastLauncher().path.toNIO
-  println(launcher)
+  def scala212() = T.command {
+    println(ScalaVersions.scala212)
+  }
+  def scala213() = T.command {
+    println(ScalaVersions.scala213)
+  }
+  def scala3() = T.command {
+    println(ScalaVersions.scala3Latest)
+  }
+  def scalaVersions() = T.command {
+    for (sv <- ScalaVersions.all)
+      println(sv)
+  }
+
+  def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
+    val launcher = scala.`scala-kernel`(scalaVersion).launcher().path.toNIO
+    println(launcher)
+  }
+
+  def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
+    val launcher = scala.launcher.launcher().path.toNIO
+    println(launcher)
+  }
+
+  def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
+    val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
+    println(launcher)
+  }
+
+  def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
+    val launcher = scala.launcher.fastLauncher().path.toNIO
+    println(launcher)
+  }
 }
 
 def ghOrg  = "almond-sh"
@@ -883,6 +894,22 @@ object ci extends Module {
       launchers: _*
     )
   }
+
+  def publishSonatype(tasks: mill.main.Tasks[PublishModule.PublishData]) =
+    T.command {
+      val timeout     = 10.minutes
+      val credentials = sys.env("SONATYPE_USERNAME") + ":" + sys.env("SONATYPE_PASSWORD")
+      val pgpPassword = sys.env("PGP_PASSWORD")
+      val data        = T.sequence(tasks.value)()
+
+      settings.publishSonatype(
+        credentials = credentials,
+        pgpPassword = pgpPassword,
+        data = data,
+        timeout = timeout,
+        log = T.ctx().log
+      )
+    }
 }
 
 object dummy extends Module {

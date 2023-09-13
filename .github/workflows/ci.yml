@@ -161,7 +161,7 @@ jobs:
         echo "-Xmx2g" > .mill-jvm-opts
         cat .mill-jvm-opts.bak | grep -v Xmx >> .mill-jvm-opts
         # sometimes running into memory issues when attempting __.publishLocal upfront
-        for SV in $(./mill scalaVersions); do
+        for SV in $(./mill dev.scalaVersions); do
           ./mill -i '__['"$SV"'].compile'
           ./mill -i '__['"$SV"'].docJar'
           ./mill -i '__['"$SV"'].publishLocal'

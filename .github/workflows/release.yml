@@ -26,13 +26,13 @@ jobs:
         mv .mill-jvm-opts .mill-jvm-opts.bak
         cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts
         # sometimes running into memory issues when attempting __.publishLocal or __.publishArtifacts upfront
-        for SV in $(./mill scalaVersions); do
+        for SV in $(./mill dev.scalaVersions); do
           ./mill -i '__['"$SV"'].compile'
           ./mill -i '__['"$SV"'].docJar'
           ./mill -i '__['"$SV"'].publishLocal'
         done
         ./mill -i __.publishLocal
-        ./mill -i publishSonatype __.publishArtifacts
+        ./mill -i ci.publishSonatype __.publishArtifacts
       shell: bash
       env:
         PGP_PASSWORD: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}

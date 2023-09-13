@@ -3,9 +3,9 @@ set -eu
 
 # TODO Convert to a mill task
 
-SCALA212_VERSION="$(./mill scala212)"
-SCALA213_VERSION="$(./mill scala213)"
-SCALA3_VERSION="$(./mill scala3)"
+SCALA212_VERSION="$(./mill dev.scala212)"
+SCALA213_VERSION="$(./mill dev.scala213)"
+SCALA3_VERSION="$(./mill dev.scala3)"
 
 DOCKER_REPO=almondsh/almond
 
