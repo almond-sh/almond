@@ -133,7 +133,7 @@ trait PublishLocalNoFluff extends PublishModule {
         new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), os.pwd))
     }
 
-    publisher.publish(
+    publisher.publishLocal(
       jar = jar().path,
       sourcesJar = sourceJar().path,
       docJar = emptyZip().path,
@@ -758,7 +758,7 @@ trait TestCommand extends TestModule {
     useCpPassingJar: Boolean = false
   )(implicit ctx: mill.api.Ctx): Seq[String] = {
 
-    import mill.modules.Jvm
+    import mill.util.Jvm
 
     val cp =
       if (useCpPassingJar && !classPath.iterator.isEmpty) {
