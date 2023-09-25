@@ -54,7 +54,7 @@ object Deps {
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.4.0"
   def fs2(sv: String) =
-    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.2" else ivy"co.fs2:fs2-core_2.13:3.9.1"
+    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.2" else ivy"co.fs2:fs2-core_2.13:3.9.2"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.0"
   def jeromq = ivy"org.zeromq:jeromq:0.5.3"
   def jsoniterScalaCore =
