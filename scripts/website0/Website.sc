@@ -126,7 +126,7 @@ object Relativize {
   import org.jsoup.Jsoup
   import org.jsoup.nodes.Element
 
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
 
   def relativize(site: Path): Unit =
     Files.walkFileTree(

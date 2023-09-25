@@ -341,13 +341,13 @@ class ScalaKernel(val crossScalaVersion: String) extends AlmondModule with Exter
     import java.util.jar.Attributes.Name
     val ver = publishVersion()
     super.manifest().add(
-      Name.IMPLEMENTATION_TITLE.toString     -> "scala-kernel",
-      Name.IMPLEMENTATION_VERSION.toString   -> ver,
-      Name.SPECIFICATION_VENDOR.toString     -> "sh.almond",
-      Name.SPECIFICATION_TITLE.toString      -> "scala-kernel",
-      Name.IMPLEMENTATION_VENDOR_ID.toString -> "sh.almond",
-      Name.SPECIFICATION_VERSION.toString    -> ver,
-      Name.IMPLEMENTATION_VENDOR.toString    -> "sh.almond"
+      Name.IMPLEMENTATION_TITLE.toString   -> "scala-kernel",
+      Name.IMPLEMENTATION_VERSION.toString -> ver,
+      Name.SPECIFICATION_VENDOR.toString   -> "sh.almond",
+      Name.SPECIFICATION_TITLE.toString    -> "scala-kernel",
+      "Implementation-Vendor-Id"           -> "sh.almond",
+      "Specification-Version"              -> ver,
+      Name.IMPLEMENTATION_VENDOR.toString  -> "sh.almond"
     )
   }
   def mainClass = Some("almond.ScalaKernel")

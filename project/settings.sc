@@ -14,21 +14,21 @@ import scala.concurrent.duration._
 
 lazy val latestTaggedVersion = os.proc("git", "describe", "--abbrev=0", "--tags", "--match", "v*")
   .call().out
-  .trim
+  .trim()
 lazy val buildVersion = {
-  val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim
+  val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim()
   val maybeExactTag = scala.util.Try {
     os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
       .call().out
-      .trim
+      .trim()
       .stripPrefix("v")
   }
   maybeExactTag.toOption.getOrElse {
     val commitsSinceTaggedVersion =
-      os.proc('git, "rev-list", gitHead, "--not", latestTaggedVersion, "--count")
-        .call().out.trim
+      os.proc("git", "rev-list", gitHead, "--not", latestTaggedVersion, "--count")
+        .call().out.trim()
         .toInt
-    val gitHash = os.proc("git", "rev-parse", "--short", "HEAD").call().out.trim
+    val gitHash = os.proc("git", "rev-parse", "--short", "HEAD").call().out.trim()
     s"${latestTaggedVersion.stripPrefix("v")}-$commitsSinceTaggedVersion-$gitHash-SNAPSHOT"
   }
 }
@@ -93,7 +93,7 @@ trait TransitiveSources extends SbtModule {
       case mod                    => mod.sourceJar.map(Seq(_))
     }().flatten
   }
-  def transitiveSources: define.Sources = T.sources {
+  def transitiveSources: T[Seq[PathRef]] = T.sources {
     sources() ++ T.traverse(moduleDeps) {
       case mod: TransitiveSources => mod.transitiveSources
       case mod                    => mod.sources
@@ -667,6 +667,8 @@ def publishSonatype(
     readTimeout = timeout.toMillis.toInt,
     connectTimeout = timeout.toMillis.toInt,
     log = log,
+    workspace = os.pwd,
+    env = sys.env,
     awaitTimeout = timeout.toMillis.toInt,
     stagingRelease = isRelease
   )
