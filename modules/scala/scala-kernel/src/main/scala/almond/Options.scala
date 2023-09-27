@@ -303,7 +303,8 @@ final case class Options(
 
 object Options {
 
-  implicit val help = Help[Options]
+  implicit lazy val parser: Parser[Options] = Parser.derive
+  implicit lazy val help: Help[Options] = Help.derive
     // not sure why the @ProgName annotation above isn't picked here
     .withProgName("almond")
 
