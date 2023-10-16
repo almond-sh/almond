@@ -104,7 +104,12 @@ object ScalafmtTests extends TestSuite {
     """def g(n: Int): String =
       |  (n + 2).toString""".stripMargin
 
-  val scalafmt = new Scalafmt(fmtPool, queueEc, logCtx)
+  val scalafmt = new Scalafmt(
+    fmtPool,
+    queueEc,
+    logCtx,
+    "scala3"
+  )
 
   val tests = Tests {
 

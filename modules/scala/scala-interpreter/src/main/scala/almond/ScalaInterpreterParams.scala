@@ -47,5 +47,6 @@ final case class ScalaInterpreterParams(
   initialCellCount: Int = 0,
   upfrontKernelOptions: KernelOptions = KernelOptions(),
   ignoreLauncherDirectivesIn: Set[String] = Set.empty,
-  launcherDirectiveGroups: Seq[CustomGroup] = Nil
+  launcherDirectiveGroups: Seq[CustomGroup] = Nil,
+  initialSettings: Seq[String] = Seq("-deprecation", "-feature")
 )
