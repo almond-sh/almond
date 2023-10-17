@@ -8,7 +8,7 @@ import almond.logger.{Logger, LoggerContext}
 import ammonite.runtime.Frame
 import ammonite.util.Util.newLine
 import scala.meta.dialects
-import scala.meta.internal.metals.Docstrings
+import scala.meta.internal.metals.{Docstrings, EmptyReportContext}
 import scala.meta.internal.mtags.MtagsEnrichments._
 import scala.meta.internal.mtags.{IndexingExceptions, OnDemandSymbolIndex}
 import scala.meta.internal.semanticdb.scalac.SemanticdbOps
@@ -56,7 +56,7 @@ final class ScalaInterpreterInspections(
           dialects.Scala213
         else
           dialects.Scala212
-      val index = OnDemandSymbolIndex.empty()
+      val index = OnDemandSymbolIndex.empty()(EmptyReportContext)
       for (p <- sourcePaths)
         try index.addSourceJar(AbsolutePath(p), dialect)
         catch {

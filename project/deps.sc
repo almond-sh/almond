@@ -64,11 +64,11 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.3.8"
   def munit                    = ivy"org.scalameta::munit:0.7.29"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.10"
+  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.12"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.9.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.8.10"
+  def scalameta                = ivy"org.scalameta::scalameta:4.8.3"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.0.2"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
@@ -88,30 +88,20 @@ object ScalaVersions {
   def scala3Latest                = "3.3.1"
   def scala3Compat                = "3.3.0"
   def cross2_3Version(sv: String) = "2.13.11"
-  def scala213                    = "2.13.11"
+  def scala213                    = "2.13.12"
   def scala212                    = "2.12.18"
   val binaries                    = Seq(scala3Compat, scala213, scala212)
   val all = Seq(
     scala3Latest,
     scala3Compat,
     scala213,
+    "2.13.11",
     "2.13.10",
     "2.13.9",
-    "2.13.8",
-    "2.13.7",
-    "2.13.6",
-    "2.13.5",
-    "2.13.4",
-    "2.13.3",
     scala212,
     "2.12.17",
     "2.12.16",
-    "2.12.15",
-    "2.12.14",
-    "2.12.13",
-    "2.12.12",
-    "2.12.11",
-    "2.12.10"
+    "2.12.15"
   ).distinct
 
   def binary(sv: String) =
