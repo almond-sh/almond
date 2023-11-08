@@ -16,7 +16,7 @@ checkResults() {
   fi
 }
 
-"$SCALA_CLI" --power package .github/scripts/run --native-image -o "$RUN_APP" -- --no-fallback
+"$SCALA_CLI" --power package --server=false .github/scripts/run --native-image -o "$RUN_APP" -- --no-fallback
 
 trap "jps -mlv" EXIT
 
