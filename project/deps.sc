@@ -81,7 +81,7 @@ object Deps {
     // also using the 2.13 version in Scala 3, as that's the one that Ammonite pulls (the Scala 3 one creates bin compat issues too)
     if (sv.startsWith("2.")) ivy"com.lihaoyi::upickle:3.1.3"
     else ivy"com.lihaoyi:upickle_2.13:3.1.3"
-  def utest = ivy"com.lihaoyi::utest:0.8.1"
+  def utest = ivy"com.lihaoyi::utest:0.8.2"
 }
 
 object ScalaVersions {
