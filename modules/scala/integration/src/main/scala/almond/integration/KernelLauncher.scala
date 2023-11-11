@@ -56,6 +56,11 @@ object KernelLauncher {
     sys.error("almond.test.cs-launcher Java property not set")
   )
 
+  lazy val nativeLauncher = sys.props.getOrElse(
+    "almond.test.native-launcher",
+    sys.error("almond.test.native-launcher Java property not set")
+  )
+
   object TmpDir {
 
     private lazy val baseTmpDir = {
@@ -111,6 +116,9 @@ object KernelLauncher {
       def isTwoStepStartup = false
     }
     case object Jvm extends LauncherType {
+      def isTwoStepStartup = true
+    }
+    case object Native extends LauncherType {
       def isTwoStepStartup = true
     }
   }
@@ -321,6 +329,8 @@ class KernelLauncher(
               jarLauncher,
               "coursier.bootstrap.launcher.Launcher"
             )
+          case LauncherType.Native =>
+            Seq[os.Shellable](nativeLauncher)
         }
 
         val extraStartupClassPathOpts =
@@ -459,6 +469,7 @@ class KernelLauncher(
           else
             Map.empty[String, String]
 
+        assert(proc == null)
         proc = os.proc(command).spawn(
           cwd = dir,
           env = extraEnv ++ specExtraEnv,
@@ -467,7 +478,9 @@ class KernelLauncher(
         )
 
         if (System.getenv("CI") != null) {
-          val delay = 4.seconds
+          val delay =
+            if (launcherType == LauncherType.Native) 10.seconds
+            else 4.seconds
           System.err.println(s"Waiting $delay for the kernel to start")
           Thread.sleep(delay.toMillis)
           System.err.println("Done waiting")
@@ -531,7 +544,8 @@ class KernelLauncher(
       f(runner0)
     }
     finally
-      runner0.close()
+      if (runner0 != null)
+        runner0.close()
   }
 
 }
