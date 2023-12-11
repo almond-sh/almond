@@ -83,9 +83,12 @@ class Protocol(val crossScalaVersion: String) extends AlmondModule {
   object test extends Tests with AlmondTestModule
 }
 
-class InterpreterApi(val crossScalaVersion: String) extends AlmondModule with Mima
+class InterpreterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
+  def supports3 = true
+}
 
 class Interpreter(val crossScalaVersion: String) extends AlmondModule {
+  def supports3 = true
   def moduleDeps = Seq(
     shared.`interpreter-api`(),
     shared.protocol()
@@ -127,6 +130,7 @@ class Test(val crossScalaVersion: String) extends AlmondModule {
 }
 
 class JupyterApi(val crossScalaVersion: String) extends AlmondModule with Mima {
+  def supports3 = true
   def moduleDeps = Seq(
     shared.`interpreter-api`()
   )
@@ -434,6 +438,7 @@ class ScalaKernelApiHelper(val crossScalaVersion: String) extends AlmondModule w
 }
 
 class AlmondScalaPy(val crossScalaVersion: String) extends AlmondModule with Mima {
+  def supports3 = true
   def ivyDeps = Agg(
     Deps.jvmRepr
   )
