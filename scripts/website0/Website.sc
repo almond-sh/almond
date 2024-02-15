@@ -5,61 +5,6 @@ import java.nio.file.Files
 
 import scala.annotation.tailrec
 
-final case class Mdoc(
-  inputDir: File,
-  outputDir: File,
-  scalaVersion: String,
-  dependencies: Seq[String] = Nil,
-  mdocVersion: String = "1.2.7",
-  mdocProps: Map[String, String] = Map()
-) {
-
-  private def run0(watch: Boolean = false): Unit = {
-    val cmd = Seq(
-      "cs",
-      "launch",
-      "--scala-version",
-      scalaVersion,
-      s"org.scalameta::mdoc:$mdocVersion"
-    ) ++ dependencies ++ Seq(
-      "--",
-      "--in",
-      inputDir.getAbsolutePath,
-      "--out",
-      outputDir.getAbsolutePath
-    ) ++ mdocProps.flatMap {
-      case (k, v) =>
-        Seq(s"--site.$k", v)
-    } ++ {
-      if (watch)
-        Seq("--watch")
-      else
-        Seq()
-    }
-
-    Util.runCmd(cmd)
-  }
-
-  def run(yarnRunBuildIn: Option[File] = None): Unit = {
-    run0()
-    for (d <- yarnRunBuildIn)
-      Util.runCmd(Seq("yarn", "run", "build"), dir = d)
-  }
-  def watch(yarnRunStartIn: Option[File] = None): Unit =
-    yarnRunStartIn match {
-      case Some(d) =>
-        Util.withBgProcess(
-          Seq("yarn", "run", "start"),
-          dir = d,
-          waitFor = () => Util.waitForDir(outputDir)
-        ) {
-          run0(true)
-        }
-      case None =>
-        run0(true)
-    }
-}
-
 object Util {
   def waitForDir(dir: File): Unit = {
 

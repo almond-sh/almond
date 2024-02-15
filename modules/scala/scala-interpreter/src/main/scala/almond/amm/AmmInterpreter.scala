@@ -77,7 +77,6 @@ object AmmInterpreter {
     autoUpdateVars: Boolean,
     useNotebookCoursierLogger: Boolean,
     silentImports: Boolean,
-    initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
     outputDir: Either[os.Path, Boolean],
