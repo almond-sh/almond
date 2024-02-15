@@ -578,7 +578,8 @@ trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.expecty,
     Deps.osLib,
-    Deps.pprint
+    Deps.pprint,
+    Deps.testUtil
   )
 }
 
@@ -646,7 +647,8 @@ trait Integration extends SbtModule {
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.munit,
     Deps.osLib,
-    Deps.pprint
+    Deps.pprint,
+    Deps.testUtil
   )
 
   object test extends SbtModuleTests with TestCommand {

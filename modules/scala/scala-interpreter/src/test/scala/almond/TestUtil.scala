@@ -64,18 +64,20 @@ object TestUtil {
   }
 
   final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
-    def apply(options: String*): KernelSession =
+    private def apply(options: String*): KernelSession =
       new KernelSession(kernel(options))
-    def withExtraClassPath(extraClassPath: String*)(options: String*): KernelSession =
+    private def withExtraClassPath(extraClassPath: String*)(options: String*): KernelSession =
       if (extraClassPath.isEmpty) apply(options: _*)
       else sys.error("Extra startup JARs unsupported in unit tests")
-    def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
+    private def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
       if (launcherOptions.nonEmpty)
         System.err.println(
           s"Warning: ignoring extra launcher options ${launcherOptions.mkString(" ")} in unit test"
         )
       apply(options: _*)
     }
+
+    def output = None
 
     def withSession[T](options: String*)(f: Dsl.Session => T)(implicit
       sessionId: Dsl.SessionId

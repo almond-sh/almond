@@ -242,18 +242,19 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
 
     os.write(tmpDir / "Handler.scala", handlerCode)
 
-    os.proc(
-      Tests.java17Cmd,
-      "-jar",
-      Tests.scalaCliLauncher.toString,
-      "--power",
-      "package",
-      ".",
-      "-o",
-      directivesHandler
-    ).call(cwd = tmpDir)
-
     kernelLauncher.withKernel { implicit runner =>
+
+      os.proc(
+        Tests.java17Cmd,
+        "-jar",
+        Tests.scalaCliLauncher.toString,
+        "--power",
+        "package",
+        ".",
+        "-o",
+        directivesHandler
+      ).call(cwd = tmpDir, stderr = runner.output.map(_.processOutput).getOrElse(os.Inherit))
+
       implicit val sessionId: SessionId = SessionId()
       runner.withSession("--custom-directive-group", s"spark:$directivesHandler") {
         implicit session =>
