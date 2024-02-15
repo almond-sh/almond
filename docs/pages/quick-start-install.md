@@ -19,7 +19,7 @@ like
 ```text
 $ curl -Lo coursier https://git.io/coursier-cli
 $ chmod +x coursier
-$ ./coursier launch --fork almond -- --install
+$ ./coursier launch --use-bootstrap almond -- --install
 $ rm -f coursier
 ```
 
@@ -28,13 +28,13 @@ from the ones handled by coursier.
 
 You can specify explicit Almond and / or Scala versions, like
 ```text
-$ ./coursier launch --fork almond:0.10.0 --scala 2.12.11 -- --install
+$ ./coursier launch --use-bootstrap almond:0.10.0 --scala 2.12.11 -- --install
 ```
 
 Short Scala versions, like just `2.12` or `2.13`, are accepted too.
 The available versions of Almond can be found [here](https://github.com/almond-sh/almond/releases).
 Not all Almond and Scala versions combinations are available.
-See the possible combinations [here](install-versions.md)).
+See the possible combinations [here](install-versions.md).
 
 
 <details>
@@ -42,7 +42,7 @@ See the possible combinations [here](install-versions.md)).
 ```bat
 > bitsadmin /transfer downloadCoursierCli https://git.io/coursier-cli "%cd%\coursier"
 > bitsadmin /transfer downloadCoursierBat https://git.io/coursier-bat "%cd%\coursier.bat"
-> .\coursier launch --fork almond -M almond.ScalaKernel -- --install
+> .\coursier launch --use-bootstrap almond -M almond.ScalaKernel -- --install
 ```
 </details>
 
@@ -52,12 +52,12 @@ Once the kernel is installed, you can use it within Jupyter or nteract.
 
 Pass `--help` instead of `--install`, like
 ```text
-$ ./coursier launch --fork almond -- --help
+$ ./coursier launch --use-bootstrap almond -- --help
 ```
 
 ## Update the almond kernel
 
-To update the almond kernel, just re-install it, but passing the `--force` option to almond (like `./coursier launch --fork almond -- --install --force`). That will override any previous almond (or kernel with name `scala`).
+To update the almond kernel, just re-install it, but passing the `--force` option to almond (like `./coursier launch --use-bootstrap almond -- --install --force`). That will override any previous almond (or kernel with name `scala`).
 
 ## Uninstall the almond kernel
 
