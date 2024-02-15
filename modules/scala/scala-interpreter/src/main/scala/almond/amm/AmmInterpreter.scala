@@ -77,7 +77,6 @@ object AmmInterpreter {
     autoUpdateVars: Boolean,
     useNotebookCoursierLogger: Boolean,
     silentImports: Boolean,
-    initialClassLoader: ClassLoader,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
     outputDir: Either[os.Path, Boolean],
@@ -118,7 +117,7 @@ object AmmInterpreter {
         addToreeApiCompatibilityImport && {
           val loader = frames0().head.classloader
           val clsOpt =
-            try Some(loader.loadClass("almond.toree.ToreeCompatibility$"))
+            try Some[Class[_]](loader.loadClass("almond.toree.ToreeCompatibility$"))
             catch {
               case _: ClassNotFoundException =>
                 None
@@ -312,7 +311,7 @@ object AmmInterpreter {
     }
     catch {
       case t: Throwable =>
-        log.error(s"Caught exception while initializing interpreter", t)
+        log.error("Caught exception while initializing interpreter", t)
         throw t
     }
   }

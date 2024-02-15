@@ -33,7 +33,7 @@ object MessageFile {
         Left(e)
     }
 
-  private val channelCodec: JsonValueCodec[Channel] =
+  private implicit val channelCodec: JsonValueCodec[Channel] =
     new JsonValueCodec[Channel] {
       val stringCodec: JsonValueCodec[String] = JsonCodecMaker.make
       def nullValue                           = Channel.Requests
