@@ -142,7 +142,7 @@ jobs:
     - uses: coursier/setup-action@v1.3
       with:
         jvm: "temurin:17"
-        apps: scalafmt:3.0.0
+        apps: scalafmt
     - run: scalafmt --check
 
   publishLocal:
