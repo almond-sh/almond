@@ -76,11 +76,11 @@ object Deps {
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def upickle =
-    ivy"com.lihaoyi::upickle:3.1.3" // trying to use the same version as Ammonite, to avoid bin compat issues
+    ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
   def upickleCompat(sv: String) =
     // also using the 2.13 version in Scala 3, as that's the one that Ammonite pulls (the Scala 3 one creates bin compat issues too)
-    if (sv.startsWith("2.")) ivy"com.lihaoyi::upickle:3.1.3"
-    else ivy"com.lihaoyi:upickle_2.13:3.1.3"
+    if (sv.startsWith("2.")) ivy"com.lihaoyi::upickle:3.1.4"
+    else ivy"com.lihaoyi:upickle_2.13:3.1.4"
   def utest = ivy"com.lihaoyi::utest:0.8.2"
 }
 
