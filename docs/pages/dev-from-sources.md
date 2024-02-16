@@ -35,7 +35,7 @@ We list below useful commands, to help get you started using mill to build almon
 ## Run a Jupyter notebook server without installing a kernel
 
 ```text
-$ ./mill -i jupyterFast
+$ ./mill -i dev.jupyterFast
 ```
 
 This should
@@ -46,16 +46,16 @@ From the JupyterLab instance, select the kernel "Scala (sources)".
 
 Optionally, pass a Scala version and / or JupyterLab options, like
 ```text
-$ ./mill -i jupyterFast 2.12.13
-$ ./mill -i jupyterFast --ip=192.168.0.1
-$ ./mill -i jupyterFast 2.12.13 --ip=192.168.0.1
+$ ./mill -i dev.jupyterFast 2.12.13
+$ ./mill -i dev.jupyterFast --ip=192.168.0.1
+$ ./mill -i dev.jupyterFast 2.12.13 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.)
 
 ## Build a kernel launcher
 
 ```text
-$ ./mill launcherFast
+$ ./mill dev.launcherFast
 ```
 
 Once done building, this should print the path to the kernel launcher, like
@@ -63,7 +63,7 @@ Once done building, this should print the path to the kernel launcher, like
 
 Optionally, pass a Scala version, like
 ```text
-$ ./mill launcherFast 2.12.13
+$ ./mill dev.launcherFast 2.12.13
 ```
 
 You can then run that launcher to install it on your system:
@@ -76,18 +76,18 @@ Pass `--help` or see [this page](install-options.md) for the available options.
 
 You can re-build a launcher upon source changes with
 ```text
-$ ./mill -w launcherFast
+$ ./mill -w dev.launcherFast
 ```
 
 If you [ran a JupyterLab server from the almond sources](#run-a-jupyter-notebook-server-without-installing-a-kernel),
 you can restart the kernel from a notebook via JupyterLab to pick a newly built launcher. If you passed a Scala
-version to `./mill jupyter`, beware to pass the same version to `./mill -w launcher`.
+version to `./mill dev.jupyter`, beware to pass the same version to `./mill -w dev.launcher`.
 
 ## Useful commands
 
 ### List available Scala versions
 ```text
-$ ./mill scalaVersions
+$ ./mill dev.scalaVersions
 2.13.4
 2.13.3
 …
@@ -95,13 +95,13 @@ $ ./mill scalaVersions
 
 ### Print the latest supported Scala 2.13 version
 ```text
-$ ./mill scala213
+$ ./mill dev.scala213
 2.13.4
 ```
 
 ### Print the latest supported Scala 2.12 version
 ```text
-$ ./mill scala212
+$ ./mill dev.scala212
 2.12.13
 ```
 

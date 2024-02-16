@@ -8,6 +8,7 @@ import java.nio.file.{Files, Path}
 import java.util.{Arrays, Properties}
 
 import mill._, scalalib.{CrossSbtModule => _, _}
+import mill.scalalib.api.ZincWorkerUtil
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -34,20 +35,27 @@ lazy val buildVersion = {
 }
 
 // Adapted from https://github.com/lihaoyi/mill/blob/0.9.3/scalalib/src/MiscModule.scala/#L80-L100
+// and https://github.com/com-lihaoyi/mill/blob/c75e29c78cfc3c1e04776978bfc8e5697f8ca1aa/scalalib/src/mill/scalalib/CrossSbtModule.scala#L7
 // Compared to the original code, we ensure `scalaVersion()` rather than `crossScalaVersion` is
 // used when computing paths, as the former is always a valid Scala version,
 // while the latter can be a 3.x version while we compile using Scala 2.x
 // (and later rely on dotty compatibility to mix Scala 2 / Scala 3 modules).
 trait CrossSbtModule extends mill.scalalib.SbtModule with mill.scalalib.CrossModuleBase { outer =>
 
-  override def sources = T.sources {
-    super.sources() ++
-      mill.scalalib.CrossModuleBase.scalaVersionPaths(
-        scalaVersion(),
-        s => millSourcePath / 'src / 'main / s"scala-$s"
-      )
-
+  def sources = T.sources {
+    super.sources() ++ scalaVersionDirectoryNames.map(s =>
+      PathRef(millSourcePath / "src" / "main" / s"scala-$s")
+    )
   }
+  trait CrossSbtModuleTests extends SbtModuleTests {
+    override def millSourcePath = outer.millSourcePath
+    def sources = T.sources {
+      super.sources() ++ scalaVersionDirectoryNames.map(s =>
+        PathRef(millSourcePath / "src" / "test" / s"scala-$s")
+      )
+    }
+  }
+  trait Tests extends CrossSbtModuleTests
 }
 
 trait AlmondRepositories extends CoursierModule {
@@ -74,9 +82,9 @@ trait AlmondPublishModule extends PublishModule {
 }
 
 trait ExternalSources extends CrossSbtModule {
-  def allIvyDeps = T(transitiveIvyDeps() ++ scalaLibraryIvyDeps())
+  // def allIvyDeps = T((transitiveIvyDeps(): Agg[Dep]) ++ (scalaLibraryIvyDeps(): Agg[Dep]))
   def externalSources = T {
-    resolveDeps(allIvyDeps, sources = true)()
+    resolveDeps(T.task(transitiveCompileIvyDeps() ++ transitiveIvyDeps()), sources = true)()
   }
 }
 
@@ -125,7 +133,7 @@ trait PublishLocalNoFluff extends PublishModule {
         new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), os.pwd))
     }
 
-    publisher.publish(
+    publisher.publishLocal(
       jar = jar().path,
       sourcesJar = sourceJar().path,
       docJar = emptyZip().path,
@@ -152,11 +160,11 @@ trait AlmondArtifactName extends SbtModule {
 trait AlmondScala2Or3Module extends CrossSbtModule {
   def crossScalaVersion: String
   def supports3: Boolean = false
-  def scalaVersion = T {
+  private def actualScalaVersion =
     if (crossScalaVersion.startsWith("3.") && !supports3)
       ScalaVersions.cross2_3Version(crossScalaVersion)
     else crossScalaVersion
-  }
+  def scalaVersion = T(actualScalaVersion)
   def useCrossSuffix = T {
     crossScalaVersion.startsWith("3.") && !scalaVersion().startsWith("3.")
   }
@@ -170,6 +178,8 @@ trait AlmondScala2Or3Module extends CrossSbtModule {
       else Nil
     tastyReaderOptions
   }
+  override def scalaVersionDirectoryNames =
+    ZincWorkerUtil.matchingVersions(actualScalaVersion)
 }
 
 trait AlmondScalacOptions extends ScalaModule {
@@ -234,27 +244,10 @@ trait AlmondModule
   }
   def transitiveIvyDeps = T {
     super.transitiveIvyDeps().map { dep =>
-      def isScala3Lib =
-        dep.dep.module.organization.value == "org.scala-lang" &&
-        dep.dep.module.name.value == "scala3-library" &&
-        (dep.cross match {
-          case _: CrossVersion.Binary => true
-          case _                      => false
-        })
-      def isScala3JarWithSuffix =
+      val isScala3JarWithSuffix =
         dep.dep.module.organization.value == "org.scala-lang" &&
         dep.dep.module.name.value.startsWith("scala3-")
-      if (isScala3Lib)
-        dep.copy(
-          dep = dep.dep.withModule(
-            dep.dep.module.withName(
-              coursier.ModuleName(dep.dep.module.name.value + "_3")
-            )
-          ),
-          cross = CrossVersion.empty(dep.cross.platformed),
-          force = false
-        )
-      else if (isScala3JarWithSuffix)
+      if (isScala3JarWithSuffix)
         dep.copy(force = false)
       else dep
     }
@@ -267,6 +260,124 @@ trait AlmondTestModule
     with AlmondRepositories
     with AlmondScalacOptions {
   // with AlmondScala2Or3Module {
+
+  // originally based on https://github.com/com-lihaoyi/mill/blob/3335d2a2f7f33766a680e30df6a7d0dc0fbe08b3/scalalib/src/mill/scalalib/TestModule.scala#L80-L146
+  // goal here is to use a coursier bootstrap rather than a manifest JAR when testUseArgsFile is true
+  protected def testTask(
+    args: Task[Seq[String]],
+    globSelectors: Task[Seq[String]]
+  ): Task[(String, Seq[mill.testrunner.TestResult])] =
+    T.task {
+      val outputPath  = T.dest / "out.json"
+      val useArgsFile = testUseArgsFile()
+
+      val (jvmArgs, props: Map[String, String]) =
+        if (useArgsFile) {
+          val (props, jvmArgs) = forkArgs().partition(_.startsWith("-D"))
+          val sysProps =
+            props
+              .map(_.drop(2).split("[=]", 2))
+              .map {
+                case Array(k, v) => k -> v
+                case Array(k)    => k -> ""
+              }
+              .toMap
+
+          jvmArgs -> sysProps
+        }
+        else
+          forkArgs() -> Map()
+
+      val testArgs = mill.testrunner.TestArgs(
+        framework = testFramework(),
+        classpath = runClasspath().map(_.path),
+        arguments = args(),
+        sysProps = props,
+        outputPath = outputPath,
+        colored = T.log.colored,
+        testCp = compile().classes.path,
+        home = T.home,
+        globSelectors = globSelectors()
+      )
+
+      val testRunnerClasspathArg = zincWorker().scalalibClasspath()
+        .map(_.path.toNIO.toUri.toURL)
+        .mkString(",")
+
+      val argsFile = T.dest / "testargs"
+      os.write(argsFile, upickle.default.write(testArgs))
+      val mainArgs = Seq(testRunnerClasspathArg, argsFile.toString)
+
+      runSubprocess(
+        mainClass = "mill.testrunner.entrypoint.TestRunnerMain",
+        classPath = (runClasspath() ++ zincWorker().testrunnerEntrypointClasspath()).map(_.path),
+        jvmArgs = jvmArgs,
+        envArgs = forkEnv(),
+        mainArgs = mainArgs,
+        workingDir = forkWorkingDir(),
+        useCpPassingJar = useArgsFile
+      )
+
+      if (!os.exists(outputPath)) mill.api.Result.Failure("Test execution failed.")
+      else
+        try {
+          val jsonOutput = ujson.read(outputPath.toIO)
+          val (doneMsg, results) =
+            upickle.default.read[(String, Seq[mill.testrunner.TestResult])](jsonOutput)
+          TestModule.handleResults(doneMsg, results, Some(T.ctx()))
+        }
+        catch {
+          case e: Throwable =>
+            mill.api.Result.Failure("Test reporting failed: " + e)
+        }
+    }
+
+  private def createBootstrapJar(
+    dest: os.Path,
+    classPath: Agg[os.Path],
+    mainClass: String
+  ): Unit = {
+    import coursier.launcher._
+    val content = Seq(ClassLoaderContent.fromUrls(classPath.toSeq.map(_.toNIO.toUri.toASCIIString)))
+    val params  = Parameters.Bootstrap(content, mainClass)
+    BootstrapGenerator.generate(params, dest.toNIO)
+  }
+
+  // originally based on https://github.com/com-lihaoyi/mill/blob/3335d2a2f7f33766a680e30df6a7d0dc0fbe08b3/main/util/src/mill/util/Jvm.scala#L117-L154
+  // goal is to use coursier bootstraps rather than manifest JARs
+  // the former load JARs via standard URLClassLoader-s, which is better dealt with in Ammonite and almond
+  private def runSubprocess(
+    mainClass: String,
+    classPath: Agg[os.Path],
+    jvmArgs: Seq[String] = Seq.empty,
+    envArgs: Map[String, String] = Map.empty,
+    mainArgs: Seq[String] = Seq.empty,
+    workingDir: os.Path = null,
+    useCpPassingJar: Boolean = false
+  )(implicit ctx: mill.api.Ctx): Unit = {
+
+    val (cp, mainClass0) =
+      if (useCpPassingJar && !classPath.iterator.isEmpty) {
+        val passingJar = os.temp(prefix = "run-", suffix = ".jar", deleteOnExit = false)
+        ctx.log.debug(
+          s"Creating classpath passing jar '$passingJar' with Class-Path: ${classPath.iterator.map(_.toNIO.toUri.toURL.toExternalForm).mkString(" ")}"
+        )
+        createBootstrapJar(passingJar, classPath, mainClass)
+        (Agg(passingJar), "coursier.bootstrap.launcher.Launcher")
+      }
+      else
+        (classPath, mainClass)
+
+    val args =
+      Vector(mill.util.Jvm.javaExe) ++
+        jvmArgs ++
+        Vector("-cp", cp.iterator.mkString(java.io.File.pathSeparator), mainClass0) ++
+        mainArgs
+
+    ctx.log.debug(s"Run subprocess with args: ${args.map(a => s"'$a'").mkString(" ")}")
+
+    mill.util.Jvm.runSubprocess(args, envArgs, workingDir)
+  }
 
   def ivyDeps       = Agg(Deps.utest)
   def testFramework = "utest.runner.Framework"
@@ -296,38 +407,13 @@ trait AlmondTestModule
   }
   def transitiveIvyDeps = T {
     super.transitiveIvyDeps().map { dep =>
-      def isScala3Lib =
-        dep.dep.module.organization.value == "org.scala-lang" &&
-        dep.dep.module.name.value == "scala3-library" &&
-        (dep.cross match {
-          case _: CrossVersion.Binary => true
-          case _                      => false
-        })
-      def isScala3JarWithSuffix =
+      val isScala3JarWithSuffix =
         dep.dep.module.organization.value == "org.scala-lang" &&
         dep.dep.module.name.value.startsWith("scala3-")
-      if (isScala3Lib)
-        dep.copy(
-          dep = dep.dep.withModule(
-            dep.dep.module.withName(
-              coursier.ModuleName(dep.dep.module.name.value + "_3")
-            )
-          ),
-          cross = CrossVersion.empty(dep.cross.platformed),
-          force = false
-        )
-      else if (isScala3JarWithSuffix)
+      if (isScala3JarWithSuffix)
         dep.copy(force = false)
       else dep
     }
-  }
-
-  def sources = T.sources {
-    super.sources() ++
-      mill.scalalib.CrossModuleBase.scalaVersionPaths(
-        scalaVersion(),
-        s => millSourcePath / "src" / "test" / s"scala-$s"
-      )
   }
 }
 
@@ -516,9 +602,10 @@ trait DependencyListResource extends CrossSbtModule {
   def depResourcesDir = T.persistent {
     val (_, res) = Lib.resolveDependenciesMetadata(
       repositoriesTask(),
-      resolveCoursierDependency().apply(_),
       transitiveIvyDeps(),
-      Some(mapDependencies())
+      Some(mapDependencies()),
+      customizer = resolutionCustomizer(),
+      coursierCacheCustomizer = coursierCacheCustomizer()
     )
     val content = res
       .orderedDependencies
@@ -734,34 +821,31 @@ trait TestCommand extends TestModule {
         else
           forkArgs() -> Map()
 
-      os.remove(outputPath)
-
-      val testArgs = TestRunner.TestArgs(
+      val testArgs = mill.testrunner.TestArgs(
         framework = testFramework(),
-        classpath = runClasspath().map(_.path.toString()),
+        classpath = runClasspath().map(_.path),
         arguments = args,
         sysProps = props,
-        outputPath = outputPath.toString(),
+        outputPath = outputPath,
         colored = T.log.colored,
-        testCp = compile().classes.path.toString(),
-        homeStr = T.home.toString(),
+        testCp = compile().classes.path,
+        home = T.home,
         globSelectors = globSelectors
       )
 
-      val mainArgs =
-        if (useArgsFile) {
-          val argsFile = T.dest / "testargs"
-          Seq(testArgs.writeArgsFile(argsFile))
-        }
-        else
-          testArgs.toArgsSeq
+      val testRunnerClasspathArg = zincWorker().scalalibClasspath()
+        .map(_.path.toNIO.toUri.toURL)
+        .mkString(",")
 
+      val argsFile = T.dest / "testargs"
+      os.write(argsFile, upickle.default.write(testArgs))
+      val mainArgs   = Seq(testRunnerClasspathArg, argsFile.toString)
       val envArgs    = forkEnv()
       val workingDir = forkWorkingDir()
 
       val args0 = jvmSubprocessCommand(
-        mainClass = "mill.testrunner.TestRunner",
-        classPath = zincWorker.scalalibClasspath().map(_.path),
+        mainClass = "mill.testrunner.entrypoint.TestRunnerMain",
+        classPath = (runClasspath() ++ zincWorker().testrunnerEntrypointClasspath()).map(_.path),
         jvmArgs = jvmArgs,
         envArgs = envArgs,
         mainArgs = mainArgs,
@@ -792,7 +876,7 @@ trait TestCommand extends TestModule {
     useCpPassingJar: Boolean = false
   )(implicit ctx: mill.api.Ctx): Seq[String] = {
 
-    import mill.modules.Jvm
+    import mill.util.Jvm
 
     val cp =
       if (useCpPassingJar && !classPath.iterator.isEmpty) {
