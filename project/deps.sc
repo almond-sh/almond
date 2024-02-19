@@ -74,7 +74,7 @@ object Deps {
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
-  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
+  def slf4jNop                 = ivy"org.slf4j:slf4j-nop:2.0.12"
   def sourcecode               = ivy"com.lihaoyi::sourcecode:0.3.0"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
