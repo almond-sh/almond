@@ -209,6 +209,14 @@ trait AlmondSimpleModule
     with PublishLocalNoFluff
     with AlmondScalacOptions
 
+trait AlmondUnpublishedModule
+    extends CrossSbtModule
+    with AlmondRepositories
+    with TransitiveSources
+    with AlmondArtifactName
+    with AlmondScala2Or3Module
+    with AlmondScalacOptions
+
 trait AlmondModule
     extends CrossSbtModule
     with AlmondRepositories

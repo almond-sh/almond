@@ -11,6 +11,7 @@ import $file.project.settings, settings.{
   AlmondRepositories,
   AlmondSimpleModule,
   AlmondTestModule,
+  AlmondUnpublishedModule,
   BootstrapLauncher,
   DependencyListResource,
   ExternalSources,
@@ -536,7 +537,7 @@ object scala extends Module {
 
 trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.18"
-  private def baseRepoRoot         = os.rel / "out" / "repo"
+  private def baseRepoRoot         = os.sub / "out" / "repo"
   def scalaVersion                 = ScalaVersions.scala3Latest
   object test extends SbtModuleTests {
     def testFramework = "munit.Framework"
@@ -583,7 +584,8 @@ trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module
   )
 }
 
-trait TestDefinitions extends Cross.Module[String] with CrossSbtModule with Bloop.Module {
+trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule with Bloop.Module {
+  def supports3         = true
   def crossScalaVersion = crossValue
   def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
 
