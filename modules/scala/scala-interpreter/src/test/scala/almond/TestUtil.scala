@@ -19,6 +19,7 @@ import fs2.Stream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 
+import scala.collection.compat._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
@@ -374,7 +375,7 @@ object TestUtil {
       for (k <- expectedReplies.keySet.--(replies0.keySet))
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
 
-      expect(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
+      expect(replies0.view.mapValues(noCrLf).toMap == expectedReplies.view.mapValues(noCrLf).toMap)
       expect(publish0.map(noCrLf) == publish.map(noCrLf))
     }
   }

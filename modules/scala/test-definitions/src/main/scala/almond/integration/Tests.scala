@@ -10,7 +10,7 @@ import com.eed3si9n.expecty.Expecty.expect
 import java.io.File
 import java.util.UUID
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Properties
 
 object Tests {

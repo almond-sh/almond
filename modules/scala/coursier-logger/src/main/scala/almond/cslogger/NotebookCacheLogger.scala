@@ -7,7 +7,7 @@ import java.lang.{Long => JLong}
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class NotebookCacheLogger(
   publish: OutputHandler,

@@ -390,6 +390,7 @@ trait CoursierLogger extends Cross.Module[String] with AlmondModule {
     shared.logger()
   )
   def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.collectionCompat,
     Deps.coursierApi,
     Deps.scalatags.applyBinaryVersion213_3(scalaVersion())
   )

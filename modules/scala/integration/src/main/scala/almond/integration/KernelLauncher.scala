@@ -216,7 +216,7 @@ class KernelLauncher(
 
   private def stackTracePrinterThread(output: TestOutput): Thread =
     new Thread("stack-trace-printer") {
-      import scala.collection.JavaConverters._
+      import scala.jdk.CollectionConverters._
       setDaemon(true)
       override def run(): Unit =
         try {
