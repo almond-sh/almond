@@ -19,6 +19,7 @@ import fs2.Stream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 
+import scala.collection.compat._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
@@ -64,18 +65,20 @@ object TestUtil {
   }
 
   final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
-    def apply(options: String*): KernelSession =
+    private def apply(options: String*): KernelSession =
       new KernelSession(kernel(options))
-    def withExtraClassPath(extraClassPath: String*)(options: String*): KernelSession =
+    private def withExtraClassPath(extraClassPath: String*)(options: String*): KernelSession =
       if (extraClassPath.isEmpty) apply(options: _*)
       else sys.error("Extra startup JARs unsupported in unit tests")
-    def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
+    private def withLauncherOptions(launcherOptions: String*)(options: String*): KernelSession = {
       if (launcherOptions.nonEmpty)
         System.err.println(
           s"Warning: ignoring extra launcher options ${launcherOptions.mkString(" ")} in unit test"
         )
       apply(options: _*)
     }
+
+    def output = None
 
     def withSession[T](options: String*)(f: Dsl.Session => T)(implicit
       sessionId: Dsl.SessionId
@@ -372,7 +375,7 @@ object TestUtil {
       for (k <- expectedReplies.keySet.--(replies0.keySet))
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
 
-      expect(replies0.mapValues(noCrLf).toMap == expectedReplies.mapValues(noCrLf).toMap)
+      expect(replies0.view.mapValues(noCrLf).toMap == expectedReplies.view.mapValues(noCrLf).toMap)
       expect(publish0.map(noCrLf) == publish.map(noCrLf))
     }
   }

@@ -9,6 +9,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import fs2.concurrent.SignallingRef
+import io.github.alexarchambault.testutil.{TestOutput, TestUtil}
 import org.zeromq.ZMQ
 
 import java.io.{File, IOException}
@@ -24,6 +25,10 @@ import scala.util.control.NonFatal
 import scala.util.Properties
 
 object KernelLauncher {
+
+  def enableOutputFrame  = System.getenv("CI") == null
+  def enableSilentOutput = true
+  def printOutputOnError = true
 
   lazy val testScalaVersion = sys.props.getOrElse(
     "almond.test.scala-version",
@@ -125,7 +130,7 @@ class KernelLauncher(
 
   def isTwoStepStartup = launcherType.isTwoStepStartup
 
-  private def generateLauncher(extraOptions: Seq[String] = Nil): os.Path = {
+  private def generateLauncher(output: TestOutput, extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
     val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
     val (jarDest, extraOpts) =
@@ -170,7 +175,12 @@ class KernelLauncher(
       launcherArgs,
       extraOptions
     )
-      .call(stdin = os.Inherit, stdout = os.Inherit, check = false)
+      .call(
+        stdin = os.Inherit,
+        stdout = output.processOutput,
+        stderr = output.processOutput,
+        check = false
+      )
     if (res.exitCode != 0)
       sys.error(
         s"""Error generating an Almond $almondVersion launcher for Scala $defaultScalaVersion
@@ -187,7 +197,16 @@ class KernelLauncher(
     jarDest
   }
 
-  private lazy val jarLauncher = generateLauncher()
+  private var jarLauncher0: os.Path = null
+  private def jarLauncher(output: TestOutput) = {
+    if (jarLauncher0 == null)
+      synchronized {
+        if (jarLauncher0 == null)
+          jarLauncher0 = generateLauncher(output)
+      }
+
+    jarLauncher0
+  }
 
   private lazy val threads = ZeromqThreads.create("almond-tests")
 
@@ -195,13 +214,13 @@ class KernelLauncher(
   // creates a deadlock (on the CI, at least)
   private def perTestZeroMqContext = !Properties.isWin
 
-  private def stackTracePrinterThread(): Thread =
+  private def stackTracePrinterThread(output: TestOutput): Thread =
     new Thread("stack-trace-printer") {
-      import scala.collection.JavaConverters._
+      import scala.jdk.CollectionConverters._
       setDaemon(true)
       override def run(): Unit =
         try {
-          System.err.println("stack-trace-printer thread starting")
+          output.printStream.println("stack-trace-printer thread starting")
           while (true) {
             Thread.sleep(1.minute.toMillis)
             Thread.getAllStackTraces
@@ -211,22 +230,22 @@ class KernelLauncher(
               .sortBy(_._1.getId)
               .foreach {
                 case (t, stack) =>
-                  System.err.println(s"Thread $t (${t.getState}, ${t.getId})")
+                  output.printStream.println(s"Thread $t (${t.getState}, ${t.getId})")
                   for (e <- stack)
-                    System.err.println(s"  $e")
-                  System.err.println()
+                    output.printStream.println(s"  $e")
+                  output.printStream.println()
               }
           }
         }
         catch {
           case _: InterruptedException =>
-            System.err.println("stack-trace-printer thread interrupted")
+            output.printStream.println("stack-trace-printer thread interrupted")
         }
         finally
-          System.err.println("stack-trace-printer thread exiting")
+          output.printStream.println("stack-trace-printer thread exiting")
     }
 
-  def session(conn: Connection, ctx: ZMQ.Context): Session with AutoCloseable =
+  def session(conn: Connection, ctx: ZMQ.Context, output: TestOutput): Session with AutoCloseable =
     new Session with AutoCloseable {
       def run(streams: ClientStreams): Unit = {
 
@@ -261,17 +280,17 @@ class KernelLauncher(
         }
 
         if (perTestZeroMqContext) {
-          val t = stackTracePrinterThread()
+          val t = stackTracePrinterThread(output)
           try {
             t.start()
-            System.err.println("Closing test ZeroMQ context")
+            output.printStream.println("Closing test ZeroMQ context")
             IO(ctx.close())
               .evalOn(threads.pollingEc)
               .unsafeRunTimed(2.minutes)(IORuntime.global)
               .getOrElse {
                 sys.error("Timeout when closing ZeroMQ context")
               }
-            System.err.println("Test ZeroMQ context closed")
+            output.printStream.println("Test ZeroMQ context closed")
           }
           finally
             t.interrupt()
@@ -279,8 +298,10 @@ class KernelLauncher(
       }
     }
 
-  def runner(): Runner with AutoCloseable =
+  private def runner(output0: TestOutput): Runner with AutoCloseable =
     new Runner with AutoCloseable {
+
+      def output: Option[TestOutput] = Some(output0)
 
       override def differedStartUp = isTwoStepStartup
 
@@ -291,7 +312,8 @@ class KernelLauncher(
       private def setupJupyterDir[T](
         options: Seq[String],
         launcherOptions: Seq[String],
-        extraClassPath: Seq[String]
+        extraClassPath: Seq[String],
+        output: TestOutput
       ): (os.Path => os.Shellable, Map[String, String]) = {
 
         val kernelId = "almond-it"
@@ -300,9 +322,9 @@ class KernelLauncher(
           case LauncherType.Legacy =>
             val jarLauncher0 =
               if (launcherOptions.isEmpty)
-                jarLauncher
+                jarLauncher(output)
               else
-                generateLauncher(launcherOptions)
+                generateLauncher(output, launcherOptions)
             val baseCp = (extraClassPath :+ jarLauncher0.toString)
               .filter(_.nonEmpty)
               .mkString(File.pathSeparator)
@@ -318,7 +340,7 @@ class KernelLauncher(
               "java",
               "-Xmx1g",
               "-cp",
-              jarLauncher,
+              jarLauncher(output),
               "coursier.bootstrap.launcher.Launcher"
             )
         }
@@ -349,7 +371,7 @@ class KernelLauncher(
           twoStepStartupOpts,
           options
         )
-        proc0.call(stdin = os.Inherit, stdout = os.Inherit)
+        proc0.call(stdin = os.Inherit, stdout = output.processOutput, stderr = output.processOutput)
 
         val specFile = dir / kernelId / "kernel.json"
         val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
@@ -374,62 +396,59 @@ class KernelLauncher(
       )(implicit sessionId: SessionId): T =
         withRunnerSession(options, launcherOptions, Nil)(f)
 
-      def apply(options: String*): Session =
-        runnerSession(options, Nil, Nil)
-      def withExtraClassPath(extraClassPath: String*)(options: String*): Session =
-        runnerSession(options, Nil, extraClassPath)
-      def withLauncherOptions(launcherOptions: String*)(options: String*): Session =
-        runnerSession(options, launcherOptions, Nil)
-
       def withRunnerSession[T](
         options: Seq[String],
         launcherOptions: Seq[String],
         extraClassPath: Seq[String]
-      )(f: Session => T)(implicit sessionId: SessionId): T = {
-        implicit val sess = runnerSession(options, launcherOptions, extraClassPath)
-        var running       = true
+      )(f: Session => T)(implicit sessionId: SessionId): T =
+        TestUtil.runWithTimeout(Some(3.minutes)) {
+          implicit val sess = runnerSession(options, launcherOptions, extraClassPath, output0)
+          var running       = true
 
-        val currentThread = Thread.currentThread()
+          val currentThread = Thread.currentThread()
 
-        val t: Thread =
-          new Thread("watch-kernel-proc") {
-            setDaemon(true)
-            override def run(): Unit = {
-              var done = false
-              while (running && !done)
-                done = proc.waitFor(100L)
-              if (running && done) {
-                val retCode = proc.exitCode()
-                System.err.println(s"Kernel process exited with code $retCode, interrupting test")
-                currentThread.interrupt()
+          val t: Thread =
+            new Thread("watch-kernel-proc") {
+              setDaemon(true)
+              override def run(): Unit = {
+                var done = false
+                while (running && !done)
+                  done = proc.waitFor(100L)
+                if (running && done) {
+                  val retCode = proc.exitCode()
+                  output0.printStream.println(
+                    s"Kernel process exited with code $retCode, interrupting test"
+                  )
+                  currentThread.interrupt()
+                }
               }
             }
-          }
 
-        t.start()
-        try {
-          val t = f(sess)
-          if (Properties.isWin)
-            // On Windows, exit the kernel manually from the inside, so that all involved processes
-            // exit cleanly. A call to Process#destroy would only destroy the first kernel process,
-            // not any of its sub-processes (which would stay around, and such processes would end up
-            // filling up memory on Windows).
-            exit()
-          t
+          t.start()
+          try {
+            val t0 = f(sess)
+            if (Properties.isWin)
+              // On Windows, exit the kernel manually from the inside, so that all involved processes
+              // exit cleanly. A call to Process#destroy would only destroy the first kernel process,
+              // not any of its sub-processes (which would stay around, and such processes would end up
+              // filling up memory on Windows).
+              exit()
+            t0
+          }
+          finally {
+            running = false
+            close(Some(output0))
+          }
         }
-        finally {
-          running = false
-          close()
-        }
-      }
 
       private def runnerSession(
         options: Seq[String],
         launcherOptions: Seq[String],
-        extraClassPath: Seq[String]
+        extraClassPath: Seq[String],
+        output: TestOutput
       ): Session = {
 
-        close()
+        close(Some(output))
 
         val dir      = TmpDir.tmpDir()
         val connFile = dir / "connection.json"
@@ -440,11 +459,11 @@ class KernelLauncher(
         os.write(connFile, writeToArray(connDetails))
 
         val (command, specExtraEnv) = {
-          val (f, env0) = setupJupyterDir(options, launcherOptions, extraClassPath)
+          val (f, env0) = setupJupyterDir(options, launcherOptions, extraClassPath, output)
           (f(connFile), env0)
         }
 
-        System.err.println(s"Running ${command.value.mkString(" ")}")
+        output.printStream.println(s"Running ${command.value.mkString(" ")}")
         val extraEnv =
           if (isTwoStepStartup) {
             val baseRepos = sys.env.getOrElse(
@@ -463,14 +482,15 @@ class KernelLauncher(
           cwd = dir,
           env = extraEnv ++ specExtraEnv,
           stdin = os.Inherit,
-          stdout = os.Inherit
+          stdout = output.processOutput,
+          stderr = output.processOutput
         )
 
         if (System.getenv("CI") != null) {
           val delay = 4.seconds
-          System.err.println(s"Waiting $delay for the kernel to start")
+          output.printStream.println(s"Waiting $delay for the kernel to start")
           Thread.sleep(delay.toMillis)
-          System.err.println("Done waiting")
+          output.printStream.println("Done waiting")
         }
 
         val ctx =
@@ -480,7 +500,7 @@ class KernelLauncher(
           bind = false,
           threads.copy(context = ctx),
           lingerPeriod = Some(Duration.Inf),
-          logCtx = TestLogging.logCtx,
+          logCtx = TestLogging.logCtxForOutput(output),
           identityOpt = Some(UUID.randomUUID().toString)
         ).unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
           sys.error("Timeout when creating ZeroMQ connections")
@@ -490,19 +510,25 @@ class KernelLauncher(
           sys.error("Timeout when opening ZeroMQ connections")
         }
 
-        val sess = session(conn, ctx)
+        val sess = session(conn, ctx, output)
         sessions = sess :: sessions
         sess
       }
 
-      def close(): Unit = {
+      def close(): Unit =
+        close(None)
+      def close(output: Option[TestOutput]): Unit = {
+        val ps = output match {
+          case Some(output0) => output0.printStream
+          case None          => System.err
+        }
         sessions.foreach(_.close())
         sessions = Nil
         jupyterDirs.foreach { dir =>
           try os.remove.all(dir)
           catch {
             case e: FileSystemException if Properties.isWin =>
-              System.err.println(s"Ignoring $e while trying to remove $dir")
+              ps.println(s"Ignoring $e while trying to remove $dir")
           }
         }
         jupyterDirs = Nil
@@ -511,7 +537,7 @@ class KernelLauncher(
             proc.close()
             val timeout = 3.seconds
             if (!proc.waitFor(timeout.toMillis)) {
-              System.err.println(
+              ps.println(
                 s"Test kernel still running after $timeout, destroying it forcibly"
               )
               proc.destroyForcibly()
@@ -526,12 +552,23 @@ class KernelLauncher(
 
     var runner0: Runner with AutoCloseable = null
 
+    val output = new TestOutput(
+      enableOutputFrame = enableOutputFrame,
+      enableSilentOutput = enableSilentOutput
+    )
+
+    var success = false
     try {
-      runner0 = runner()
-      f(runner0)
+      output.start()
+      runner0 = runner(output)
+      val res = f(runner0)
+      success = true
+      res
     }
-    finally
+    finally {
       runner0.close()
+      output.close(success = success, printOutputOnError = printOutputOnError)
+    }
   }
 
 }

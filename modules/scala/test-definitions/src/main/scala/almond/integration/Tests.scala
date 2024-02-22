@@ -10,7 +10,7 @@ import com.eed3si9n.expecty.Expecty.expect
 import java.io.File
 import java.util.UUID
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Properties
 
 object Tests {
@@ -431,6 +431,14 @@ object Tests {
 
     val picocliJar = coursierapi.Fetch.create()
       .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
+      .withCache(
+        coursierapi.Cache.create()
+          .withLogger(
+            coursierapi.Logger.progressBars(
+              runner.output.flatMap(_.outputStreamOpt).getOrElse(System.err)
+            )
+          )
+      )
       .fetch()
       .asScala
       .head
@@ -462,7 +470,11 @@ object Tests {
       "--print-class-path",
       "."
     )
-      .call(cwd = tmpDir, stdin = os.Inherit)
+      .call(
+        cwd = tmpDir,
+        stdin = os.Inherit,
+        stderr = runner.output.map(_.processOutput).getOrElse(os.Inherit)
+      )
       .out.trim()
 
     val predef =

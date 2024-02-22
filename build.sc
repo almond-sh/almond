@@ -11,6 +11,7 @@ import $file.project.settings, settings.{
   AlmondRepositories,
   AlmondSimpleModule,
   AlmondTestModule,
+  AlmondUnpublishedModule,
   BootstrapLauncher,
   DependencyListResource,
   ExternalSources,
@@ -389,6 +390,7 @@ trait CoursierLogger extends Cross.Module[String] with AlmondModule {
     shared.logger()
   )
   def ivyDeps = super.ivyDeps() ++ Agg(
+    Deps.collectionCompat,
     Deps.coursierApi,
     Deps.scalatags.applyBinaryVersion213_3(scalaVersion())
   )
@@ -536,7 +538,7 @@ object scala extends Module {
 
 trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.18"
-  private def baseRepoRoot         = os.rel / "out" / "repo"
+  private def baseRepoRoot         = os.sub / "out" / "repo"
   def scalaVersion                 = ScalaVersions.scala3Latest
   object test extends SbtModuleTests {
     def testFramework = "munit.Framework"
@@ -578,11 +580,13 @@ trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.expecty,
     Deps.osLib,
-    Deps.pprint
+    Deps.pprint,
+    Deps.testUtil
   )
 }
 
-trait TestDefinitions extends Cross.Module[String] with CrossSbtModule with Bloop.Module {
+trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule with Bloop.Module {
+  def supports3         = true
   def crossScalaVersion = crossValue
   def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
 
@@ -646,7 +650,8 @@ trait Integration extends SbtModule {
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.munit,
     Deps.osLib,
-    Deps.pprint
+    Deps.pprint,
+    Deps.testUtil
   )
 
   object test extends SbtModuleTests with TestCommand {

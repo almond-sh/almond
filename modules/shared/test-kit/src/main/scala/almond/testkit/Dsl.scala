@@ -8,6 +8,7 @@ import cats.effect.IO
 import com.eed3si9n.expecty.Expecty.expect
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import fs2.Stream
+import io.github.alexarchambault.testutil.TestOutput
 
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -17,10 +18,6 @@ import scala.util.Properties
 object Dsl {
 
   trait Runner {
-    def apply(options: String*): Session
-    def withExtraClassPath(extraClassPath: String*)(options: String*): Session
-    def withLauncherOptions(launcherOptions: String*)(options: String*): Session
-
     def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T
     def withExtraClassPathSession[T](extraClassPath: String*)(options: String*)(f: Session => T)(
       implicit sessionId: SessionId
@@ -30,6 +27,7 @@ object Dsl {
     ): T
 
     def differedStartUp: Boolean = false
+    def output: Option[TestOutput]
   }
 
   trait Session {

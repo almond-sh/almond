@@ -12,9 +12,9 @@ import ammonite.runtime.Frame
 import ammonite.util.Util.newLine
 import metabrowse.server.{MetabrowseServer, Sourcepath}
 
-import scala.collection.JavaConverters._
 import scala.collection.compat._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.meta.dialects
 import scala.tools.nsc.interactive.{Global => Interactive}
 import scala.util.Random

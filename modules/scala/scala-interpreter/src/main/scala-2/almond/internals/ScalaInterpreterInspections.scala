@@ -17,8 +17,8 @@ import scala.meta.pc.SymbolDocumentation
 
 import java.util.Optional
 
-import scala.collection.JavaConverters._
 import scala.collection.compat._
+import scala.jdk.CollectionConverters._
 import scala.tools.nsc.interactive.{Global => Interactive}
 
 final class ScalaInterpreterInspections(

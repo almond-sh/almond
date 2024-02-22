@@ -22,8 +22,8 @@ import cats.effect.IO
 import fs2.Stream
 import utest._
 
-import scala.collection.JavaConverters._
 import scala.collection.compat._
+import scala.jdk.CollectionConverters._
 
 object ScalaKernelTests extends TestSuite {
 
