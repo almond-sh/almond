@@ -567,7 +567,7 @@ trait PropertyFile extends AlmondPublishModule {
   def propertyFilePath: String
   def propertyExtra: T[Seq[(String, String)]] = T(Seq.empty[(String, String)])
 
-  def propResourcesDir = T.persistent {
+  def props = T {
     import sys.process._
 
     val dir = T.dest / "property-resources"
@@ -578,26 +578,26 @@ trait PropertyFile extends AlmondPublishModule {
 
     val f = dir / propertyFilePath.split('/').toSeq
 
-    val contentStr =
-      s"""commit-hash=${Seq("git", "rev-parse", "HEAD").!!.trim}
-         |version=$ver
-         |ammonite-spark-version=$ammSparkVer
-         |""".stripMargin +
-        propertyExtra()
-          .map {
-            case (k, v) =>
-              s"""$k=$v
-                 |""".stripMargin
-          }
-          .mkString
+    s"""commit-hash=${Seq("git", "rev-parse", "HEAD").!!.trim}
+       |version=$ver
+       |ammonite-spark-version=$ammSparkVer
+       |""".stripMargin +
+      propertyExtra()
+        .map {
+          case (k, v) =>
+            s"""$k=$v
+               |""".stripMargin
+        }
+        .mkString
+  }
+  def propResourcesDir = T {
+    val dir = T.dest / "property-resources"
+    val f   = dir / propertyFilePath.split('/').toSeq
 
-    val content           = contentStr.getBytes("UTF-8")
-    val currentContentOpt = if (os.exists(f)) Some(os.read.bytes(f)) else None
+    val content = props().getBytes("UTF-8")
 
-    if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
-      os.write.over(f, content, createFolders = true)
-      System.err.println(s"Wrote $f")
-    }
+    os.write.over(f, content, createFolders = true)
+    System.err.println(s"Wrote $f")
 
     PathRef(dir)
   }
@@ -607,7 +607,7 @@ trait PropertyFile extends AlmondPublishModule {
 }
 
 trait DependencyListResource extends CrossSbtModule {
-  def depResourcesDir = T.persistent {
+  def userDependencies = T {
     val (_, res) = Lib.resolveDependenciesMetadata(
       repositoriesTask(),
       transitiveIvyDeps(),
@@ -615,7 +615,7 @@ trait DependencyListResource extends CrossSbtModule {
       customizer = resolutionCustomizer(),
       coursierCacheCustomizer = coursierCacheCustomizer()
     )
-    val content = res
+    res
       .orderedDependencies
       .map { dep =>
         (dep.module.organization.value, dep.module.name.value, dep.version)
@@ -627,15 +627,15 @@ trait DependencyListResource extends CrossSbtModule {
           s"$org:$name:$ver"
       }
       .mkString("\n")
-      .getBytes("UTF-8")
+  }
+  def depResourcesDir = T {
+    val content = userDependencies().getBytes("UTF-8")
 
     val dir = T.dest / "dependency-resources"
     val f   = dir / "almond" / "almond-user-dependencies.txt"
 
-    if (!os.exists(f) || !Arrays.equals(content, os.read.bytes(f))) {
-      os.write.over(f, content, createFolders = true)
-      System.err.println(s"Wrote $f")
-    }
+    os.write.over(f, content, createFolders = true)
+    System.err.println(s"Wrote $f")
 
     PathRef(dir)
   }
