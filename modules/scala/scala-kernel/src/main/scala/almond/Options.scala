@@ -10,6 +10,7 @@ import almond.kernel.MessageFile
 import almond.kernel.install.{Options => InstallOptions}
 import almond.protocol.KernelInfo
 import caseapp._
+import caseapp.core.Scala3Helpers._
 import caseapp.core.help.Help
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
