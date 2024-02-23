@@ -1,7 +1,6 @@
 //> using scala "2.13"
 //> using dep "com.lihaoyi::os-lib:0.9.1"
 //> using dep "com.lihaoyi::upickle:3.1.0"
-//> using dep "com.lihaoyi::pprint:0.8.1"
 //> using dep "io.get-coursier::coursier-jvm:2.1.4"
 //> using dep "org.graalvm.nativeimage:svm:22.3.1"
 
@@ -21,10 +20,6 @@ object Run {
     val args0 = map("args")
     val cwd   = map("cwd").head
     val env   = sys.env.toVector.sorted.map { case (k, v) => s"$k=$v" } ++ map("env")
-
-    pprint.err.log(args0)
-    pprint.err.log(cwd)
-    pprint.err.log(env)
 
     val cwd0 = os.Path(cwd, os.pwd)
 
