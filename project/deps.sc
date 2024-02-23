@@ -56,7 +56,7 @@ object Deps {
   def fs2(sv: String) =
     if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.4" else ivy"co.fs2:fs2-core_2.13:3.9.4"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.1"
-  def jeromq = ivy"org.zeromq:jeromq:0.5.4"
+  def jeromq = ivy"org.zeromq:jeromq:0.6.0"
   def jsoniterScalaCore =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
