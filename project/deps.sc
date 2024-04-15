@@ -73,7 +73,7 @@ object Deps {
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
+  def scalatags                = ivy"com.lihaoyi::scalatags:0.13.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode               = ivy"com.lihaoyi::sourcecode:0.3.0"
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.3"
