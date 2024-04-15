@@ -52,7 +52,7 @@ object Deps {
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.3"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
-  def fansi               = ivy"com.lihaoyi::fansi:0.4.0"
+  def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
   def fs2(sv: String) =
     if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.4" else ivy"co.fs2:fs2-core_2.13:3.9.4"
   def jansi  = ivy"org.fusesource.jansi:jansi:2.4.1"
