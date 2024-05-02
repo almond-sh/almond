@@ -65,7 +65,7 @@ object Deps {
   def mdoc                     = ivy"org.scalameta::mdoc:2.5.2"
   def munit                    = ivy"org.scalameta::munit:0.7.29"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.12"
-  def osLib                    = ivy"com.lihaoyi::os-lib:0.9.3"
+  def osLib                    = ivy"com.lihaoyi::os-lib:0.10.0"
   def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalameta                = ivy"org.scalameta::scalameta:4.8.3"
