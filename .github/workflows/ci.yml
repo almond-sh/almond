@@ -50,7 +50,7 @@ jobs:
           - OS: windows-latest
             JDK: 8
             SCALA: 2.13.12
-          - OS: macos-latest
+          - OS: macos-12
             JDK: 8
             SCALA: 2.13.12
           - OS: ubuntu-latest
@@ -81,7 +81,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        OS: ["ubuntu-22.04", macos-latest, windows-latest]
+        OS: ["ubuntu-22.04", macos-12, windows-latest]
     steps:
     - name: Don't convert LF to CRLF during checkout
       if: runner.os == 'Windows'
