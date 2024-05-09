@@ -29,6 +29,7 @@ import java.nio.file.FileSystems
 import coursier.getcs.GetCs
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
+import mill.scalalib.api.ZincWorkerUtil.isScala3
 import mill.contrib.bloop.Bloop
 import _root_.scala.concurrent.duration._
 import _root_.scala.util.Properties
@@ -41,16 +42,18 @@ trait LoggerScala2Macros extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
   def ivyDeps = T {
     val sv = scalaVersion()
-    Agg(Deps.scalaReflect(sv))
+    if (isScala3(sv)) Agg.empty[Dep] else Agg(Deps.scalaReflect(sv))
   }
 }
 
 trait Logger extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def supports3         = true
-  def moduleDeps = Seq(
-    shared.`logger-scala2-macros`()
-  )
+  def moduleDeps =
+    if (isScala3(crossScalaVersion)) Seq.empty
+    else
+      Seq(
+        shared.`logger-scala2-macros`()
+      )
   def ivyDeps = T {
     val sv = scalaVersion()
     val scalaReflect =
@@ -67,7 +70,7 @@ trait Channels extends Cross.Module[String] with AlmondModule with Mima {
     shared.logger()
   )
   def ivyDeps = Agg(
-    Deps.fs2(crossScalaVersion),
+    Deps.fs2,
     Deps.jeromq
   )
   object test extends CrossSbtModuleTests with AlmondTestModule
@@ -79,12 +82,16 @@ trait Protocol extends Cross.Module[String] with AlmondModule {
     shared.channels()
   )
   def ivyDeps = Agg(
-    Deps.jsoniterScalaCore.applyBinaryVersion213_3(scalaVersion())
+    Deps.jsoniterScalaCore
   )
-  def compileIvyDeps = Agg(
-    Deps.scalaReflect(scalaVersion()),
-    Deps.jsoniterScalaMacros.withConfiguration("provided")
-  )
+  def compileIvyDeps = {
+    val maybeScalaReflect =
+      if (isScala3(crossScalaVersion)) Agg.empty[Dep]
+      else Agg(Deps.scalaReflect(crossScalaVersion))
+    maybeScalaReflect ++ Agg(
+      Deps.jsoniterScalaMacros.withConfiguration("provided")
+    )
+  }
   object test extends CrossSbtModuleTests with AlmondTestModule
 }
 
@@ -101,7 +108,7 @@ trait Interpreter extends Cross.Module[String] with AlmondModule {
   def ivyDeps = Agg(
     Deps.collectionCompat,
     Deps.fansi,
-    Deps.scalatags.applyBinaryVersion213_3(scalaVersion()),
+    Deps.scalatags,
     Deps.slf4jNop
   )
   object test extends CrossSbtModuleTests with AlmondTestModule
@@ -116,10 +123,10 @@ trait Kernel extends Cross.Module[String] with AlmondModule {
     Deps.jsoniterScalaMacros
   )
   def ivyDeps = Agg(
-    Deps.caseAppAnnotations.withDottyCompat(crossScalaVersion),
+    Deps.caseAppAnnotations,
     Deps.collectionCompat,
     Deps.coursierApi,
-    Deps.fs2(crossScalaVersion)
+    Deps.fs2
   )
   object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
@@ -151,22 +158,13 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
   def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps =
-    if (crossScalaVersion.startsWith("3."))
-      Seq(
-        shared.`interpreter-api`(ScalaVersions.scala3Compat),
-        scala.`jupyter-api`(ScalaVersions.scala3Compat)
-      )
-    else
-      Seq(
-        shared.`interpreter-api`(),
-        scala.`jupyter-api`()
-      )
+  def moduleDeps = Seq(
+    shared.`interpreter-api`(),
+    scala.`jupyter-api`()
+  )
   def ivyDeps = Agg(
-    Deps.ammoniteCompiler(crossScalaVersion)
-      .exclude(("org.slf4j", "slf4j-api")),
-    Deps.ammoniteReplApi(crossScalaVersion)
-      .exclude(("org.slf4j", "slf4j-api")),
+    Deps.ammoniteCompiler.exclude(("org.slf4j", "slf4j-api")),
+    Deps.ammoniteReplApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.jvmRepr,
     Deps.coursierApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.collectionCompat
@@ -200,24 +198,13 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
   def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def supports3             = true
-  def moduleDeps =
-    if (crossScalaVersion.startsWith("3."))
-      Seq(
-        shared.interpreter(ScalaVersions.scala3Compat),
-        scala.`coursier-logger`(ScalaVersions.scala3Compat),
-        scala.`scala-kernel-api-helper`(),
-        scala.`shared-directives`(ScalaVersions.scala3Compat),
-        scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
-      )
-    else
-      Seq(
-        shared.interpreter(),
-        scala.`coursier-logger`(),
-        scala.`scala-kernel-api`(),
-        scala.`shared-directives`(),
-        scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
-      )
+  def moduleDeps = Seq(
+    shared.interpreter(),
+    scala.`coursier-logger`(),
+    scala.`scala-kernel-api`(),
+    scala.`shared-directives`(),
+    scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
+  )
   def ivyDeps = T {
     val metabrowse =
       if (crossScalaVersion.startsWith("2."))
@@ -237,8 +224,8 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
       Deps.dependencyInterface,
       Deps.directiveHandler,
       Deps.jansi,
-      Deps.ammoniteCompiler(crossScalaVersion).exclude(("net.java.dev.jna", "jna")),
-      Deps.ammoniteRepl(crossScalaVersion).exclude(("net.java.dev.jna", "jna"))
+      Deps.ammoniteCompiler.exclude(("net.java.dev.jna", "jna")),
+      Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna"))
     )
   }
   def scalacOptions = super.scalacOptions() ++ {
@@ -252,29 +239,11 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
       val rx =
         if (crossScalaVersion.startsWith("2.12.")) Seq(scala.`almond-rx`())
         else Nil
-      val kernel = Seq(
-        if (crossScalaVersion.startsWith("3."))
-          shared.kernel(ScalaVersions.scala3Compat).test
-        else
-          shared.kernel().test
+      super.moduleDeps ++ rx ++ Seq(
+        shared.`test-kit`(),
+        shared.kernel().test,
+        scala.`test-definitions`()
       )
-      val testKit = Seq(
-        if (crossScalaVersion.startsWith("3."))
-          shared.`test-kit`(ScalaVersions.scala3Compat)
-        else
-          shared.`test-kit`()
-      )
-      val testDefs = Seq(
-        if (crossScalaVersion.startsWith("3."))
-          scala.`test-definitions`(ScalaVersions.scala3Compat)
-        else
-          scala.`test-definitions`()
-      )
-      super.moduleDeps ++
-        testKit ++
-        kernel ++
-        rx ++
-        testDefs
     }
     def ivyDeps = super.ivyDeps() ++ Seq(
       Deps.caseApp
@@ -287,19 +256,12 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps =
-    if (crossScalaVersion.startsWith("3."))
-      Seq(
-        shared.kernel(ScalaVersions.scala3Compat),
-        scala.`scala-interpreter`()
-      )
-    else
-      Seq(
-        shared.kernel(),
-        scala.`scala-interpreter`()
-      )
+  def moduleDeps = Seq(
+    shared.kernel(),
+    scala.`scala-interpreter`()
+  )
   def ivyDeps = Agg(
-    Deps.caseApp.withDottyCompat(crossScalaVersion),
+    Deps.caseApp,
     Deps.classPathUtil,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
@@ -341,9 +303,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
       transitiveSourceJars() ++
       externalSources()
   def launcherSharedClassPath = {
-    val mod: AlmondModule with ExternalSources =
-      if (crossScalaVersion.startsWith("3.")) scala.`scala-kernel-api-helper`()
-      else scala.`scala-kernel-api`()
+    val mod: AlmondModule with ExternalSources = scala.`scala-kernel-api`()
     mod.transitiveJars() ++
       mod.unmanagedClasspath() ++
       mod.resolvedRunIvyDeps() ++
@@ -367,24 +327,8 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   def mainClass = Some("almond.ScalaKernel")
 }
 
-// For Scala 3 only. This publishes modules like scala-kernel_3.0.2 that
-// depend on the more complex 2.13-targeting-scala-3 module like
-// scala-kernel-cross-3.0.2_2.13.7. The former follows the same name pattern
-// as their Scala 2 counterparts, and are more convenient to write down for end users.
-trait ScalaKernelHelper extends Cross.Module[String] with AlmondModule with Bloop.Module {
-  def crossScalaVersion     = crossValue
-  def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
-  def crossFullScalaVersion = true
-  def supports3             = true
-  def artifactName          = super.artifactName().stripSuffix("-helper")
-  def moduleDeps = Seq(
-    scala.`scala-kernel`()
-  )
-}
-
 trait CoursierLogger extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def supports3         = true
   def moduleDeps = super.moduleDeps ++ Seq(
     shared.`interpreter-api`(),
     shared.logger()
@@ -392,16 +336,15 @@ trait CoursierLogger extends Cross.Module[String] with AlmondModule {
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.collectionCompat,
     Deps.coursierApi,
-    Deps.scalatags.applyBinaryVersion213_3(scalaVersion())
+    Deps.scalatags
   )
 }
 
 trait SharedDirectives extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def supports3         = true
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.directiveHandler,
-    Deps.jsoniterScalaCore.applyBinaryVersion213_3(scalaVersion())
+    Deps.jsoniterScalaCore
   )
   def compileIvyDeps = Agg(
     Deps.jsoniterScalaMacros
@@ -410,7 +353,6 @@ trait SharedDirectives extends Cross.Module[String] with AlmondModule {
 
 trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
     with Bloop.Module {
-  def supports3    = true
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
   def moduleDeps = Seq(
@@ -440,18 +382,6 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   }
 }
 
-trait ScalaKernelApiHelper extends Cross.Module[String] with AlmondModule with ExternalSources
-    with Bloop.Module {
-  def crossScalaVersion     = crossValue
-  def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
-  def crossFullScalaVersion = true
-  def supports3             = true
-  def artifactName          = super.artifactName().stripSuffix("-helper")
-  def moduleDeps = Seq(
-    scala.`scala-kernel-api`()
-  )
-}
-
 trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with Mima {
   def crossScalaVersion = crossValue
   def ivyDeps = Agg(
@@ -478,7 +408,7 @@ trait Echo extends Cross.Module[String] with AlmondModule {
     shared.kernel()
   )
   def ivyDeps = Agg(
-    Deps.caseApp.withDottyCompat(crossScalaVersion)
+    Deps.caseApp
   )
   def propertyFilePath = "almond/echo.properties"
   object test extends this.CrossSbtModuleTests with AlmondTestModule {
@@ -490,14 +420,13 @@ trait Echo extends Cross.Module[String] with AlmondModule {
 
 trait ToreeHooks extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def supports3         = true
   def compileModuleDeps = super.compileModuleDeps ++ Seq(
     scala.`scala-kernel-api`(ScalaVersions.binary(crossScalaVersion))
   )
 }
 
 object shared extends Module {
-  object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.binaries)
+  object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.scala2Binaries)
   object logger                 extends Cross[Logger](ScalaVersions.binaries)
   object channels               extends Cross[Channels](ScalaVersions.binaries)
   object protocol               extends Cross[Protocol](ScalaVersions.binaries)
@@ -512,15 +441,11 @@ object shared extends Module {
 object scala extends Module {
   implicit def millModuleBasePath: define.Ctx.BasePath =
     define.Ctx.BasePath(super.millModuleBasePath.value / os.up / "scala")
-  object `jupyter-api`      extends Cross[JupyterApi](ScalaVersions.binaries)
-  object `scala-kernel-api` extends Cross[ScalaKernelApi](ScalaVersions.all)
-  object `scala-kernel-api-helper`
-      extends Cross[ScalaKernelApiHelper](ScalaVersions.all.filter(_.startsWith("3.")))
+  object `jupyter-api`       extends Cross[JupyterApi](ScalaVersions.binaries)
+  object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.all)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all)
-  object `scala-kernel-helper`
-      extends Cross[ScalaKernelHelper](ScalaVersions.all.filter(_.startsWith("3.")))
-  object `coursier-logger` extends Cross[CoursierLogger](ScalaVersions.binaries)
+  object `coursier-logger`   extends Cross[CoursierLogger](ScalaVersions.binaries)
   object `shared-directives`
       extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries)
   object launcher         extends Launcher
@@ -568,15 +493,9 @@ trait Examples extends SbtModule {
 trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module {
   def crossScalaVersion = crossValue
   def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
-  def moduleDeps =
-    if (crossScalaVersion.startsWith("3."))
-      Seq(
-        shared.interpreter(ScalaVersions.scala3Compat)
-      )
-    else
-      Seq(
-        shared.interpreter()
-      )
+  def moduleDeps = Seq(
+    shared.interpreter()
+  )
   def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.expecty,
     Deps.osLib,
@@ -586,7 +505,6 @@ trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module
 }
 
 trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule with Bloop.Module {
-  def supports3         = true
   def crossScalaVersion = crossValue
   def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
 
@@ -596,7 +514,7 @@ trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule 
   def ivyDeps = T {
     Agg(
       Deps.coursierApi,
-      Deps.upickleCompat(scalaVersion())
+      Deps.upickle
     )
   }
 }
@@ -604,13 +522,10 @@ trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule 
 trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
   def testScalaVersion = crossValue
   def stubsModules = {
-    val extra =
-      if (testScalaVersion.startsWith("2.")) Nil
-      else
-        Seq(
-          scala.`scala-kernel-helper`(testScalaVersion),
-          scala.`scala-kernel-api-helper`(testScalaVersion)
-        )
+    val scalaVersionSpecific =
+      if (isScala3(testScalaVersion)) Seq.empty
+      else Seq(shared.`logger-scala2-macros`(ScalaVersions.binary(testScalaVersion)))
+
     Seq(
       shared.kernel(ScalaVersions.binary(testScalaVersion)),
       shared.interpreter(ScalaVersions.binary(testScalaVersion)),
@@ -618,7 +533,6 @@ trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
       shared.protocol(ScalaVersions.binary(testScalaVersion)),
       shared.channels(ScalaVersions.binary(testScalaVersion)),
       shared.logger(ScalaVersions.binary(testScalaVersion)),
-      shared.`logger-scala2-macros`(ScalaVersions.binary(testScalaVersion)),
       scala.`scala-kernel`(testScalaVersion),
       scala.`scala-kernel-api`(testScalaVersion),
       scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
@@ -632,9 +546,8 @@ trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
       shared.`interpreter-api`(ScalaVersions.binary(ScalaVersions.scala3Latest)),
       shared.protocol(ScalaVersions.binary(ScalaVersions.scala3Latest)),
       shared.channels(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.logger(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.`logger-scala2-macros`(ScalaVersions.binary(ScalaVersions.scala3Latest))
-    ) ++ extra
+      shared.logger(ScalaVersions.binary(ScalaVersions.scala3Latest))
+    ) ++ scalaVersionSpecific
   }
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
@@ -713,7 +626,7 @@ object docs extends ScalaModule with AlmondRepositories {
 
     val ver           = scala.`scala-kernel-api`(scalaVersion0).publishVersion()
     val latestRelease = settings.latestTaggedVersion
-    val ammVer        = Deps.ammoniteReplApi(scalaVersion0).dep.version
+    val ammVer        = Deps.ammoniteReplApi.dep.version
     val scalaVer      = scalaVersion0
 
     val isSnapshot = ver.endsWith("SNAPSHOT")

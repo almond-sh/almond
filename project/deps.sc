@@ -4,7 +4,7 @@ import mill.scalalib._
 object Versions {
   def ammonite      = "3.0.0-M1-21-3845491e"
   def caseApp       = "2.1.0-M26"
-  def coursier      = "2.1.9"
+  def coursier      = "2.1.10"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "3.7.15"
 }
@@ -31,16 +31,9 @@ implicit class DepOps(private val dep: Dep) {
 }
 
 object Deps {
-  def ammoniteCompiler(sv: String) =
-    ivy"com.lihaoyi:ammonite-compiler_$sv:${Versions.ammonite}"
-  def ammoniteRepl(sv: String) =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl_$sv:${Versions.ammonite}"
-    else
-      ivy"com.lihaoyi:ammonite-cross-$sv-repl_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
-  def ammoniteReplApi(sv: String) =
-    if (sv.startsWith("2.")) ivy"com.lihaoyi:ammonite-repl-api_$sv:${Versions.ammonite}"
-    else
-      ivy"com.lihaoyi:ammonite-cross-$sv-repl-api_${ScalaVersions.cross2_3Version(sv)}:${Versions.ammonite}"
+  def ammoniteCompiler   = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+  def ammoniteRepl       = ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
+  def ammoniteReplApi    = ivy"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
   def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
@@ -53,10 +46,9 @@ object Deps {
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
-  def fs2(sv: String) =
-    if (sv.startsWith("2.")) ivy"co.fs2::fs2-core:3.9.4" else ivy"co.fs2:fs2-core_2.13:3.9.4"
-  def jansi  = ivy"org.fusesource.jansi:jansi:2.4.1"
-  def jeromq = ivy"org.zeromq:jeromq:0.6.0"
+  def fs2                 = ivy"co.fs2::fs2-core:3.9.4"
+  def jansi               = ivy"org.fusesource.jansi:jansi:2.4.1"
+  def jeromq              = ivy"org.zeromq:jeromq:0.5.4"
   def jsoniterScalaCore =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
@@ -66,7 +58,7 @@ object Deps {
   def munit                    = ivy"org.scalameta::munit:0.7.29"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.12"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.10.0"
-  def pprint                   = ivy"com.lihaoyi::pprint:0.8.1"
+  def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalameta                = ivy"org.scalameta::scalameta:4.8.3"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.1.0"
@@ -76,23 +68,19 @@ object Deps {
   def scalatags                = ivy"com.lihaoyi::scalatags:0.13.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode               = ivy"com.lihaoyi::sourcecode:0.3.0"
-  def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.3"
+  def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.5"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
-  def upickleCompat(sv: String) =
-    // also using the 2.13 version in Scala 3, as that's the one that Ammonite pulls (the Scala 3 one creates bin compat issues too)
-    if (sv.startsWith("2.")) ivy"com.lihaoyi::upickle:3.1.4"
-    else ivy"com.lihaoyi:upickle_2.13:3.1.4"
   def utest = ivy"com.lihaoyi::utest:0.8.3"
 }
 
 object ScalaVersions {
-  def scala3Latest                = "3.3.1"
-  def scala3Compat                = "3.3.0"
-  def cross2_3Version(sv: String) = "2.13.11"
-  def scala213                    = "2.13.12"
-  def scala212                    = "2.12.18"
-  val binaries                    = Seq(scala3Compat, scala213, scala212)
+  def scala3Latest   = "3.3.1"
+  def scala3Compat   = "3.3.0"
+  def scala213       = "2.13.12"
+  def scala212       = "2.12.18"
+  val binaries       = Seq(scala3Compat, scala213, scala212)
+  val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
     scala3Compat,
@@ -110,4 +98,5 @@ object ScalaVersions {
     if (sv.startsWith("2.12.")) scala212
     else if (sv.startsWith("2.13.")) scala213
     else scala3Compat
+
 }
