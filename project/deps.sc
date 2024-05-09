@@ -73,7 +73,7 @@ object Deps {
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = ivy"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = ivy"com.lihaoyi::scalatags:0.12.0"
+  def scalatags                = ivy"com.lihaoyi::scalatags:0.13.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode               = ivy"com.lihaoyi::sourcecode:0.3.0"
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.5"
@@ -83,7 +83,7 @@ object Deps {
     // also using the 2.13 version in Scala 3, as that's the one that Ammonite pulls (the Scala 3 one creates bin compat issues too)
     if (sv.startsWith("2.")) ivy"com.lihaoyi::upickle:3.1.4"
     else ivy"com.lihaoyi:upickle_2.13:3.1.4"
-  def utest = ivy"com.lihaoyi::utest:0.8.2"
+  def utest = ivy"com.lihaoyi::utest:0.8.3"
 }
 
 object ScalaVersions {
