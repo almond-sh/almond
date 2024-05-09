@@ -157,31 +157,6 @@ trait AlmondArtifactName extends SbtModule {
       .mkString("-")
 }
 
-trait AlmondScala2Or3Module extends CrossSbtModule {
-  def crossScalaVersion: String
-  def supports3: Boolean = false
-  private def actualScalaVersion =
-    if (crossScalaVersion.startsWith("3.") && !supports3)
-      ScalaVersions.cross2_3Version(crossScalaVersion)
-    else crossScalaVersion
-  def scalaVersion = T(actualScalaVersion)
-  def useCrossSuffix = T {
-    crossScalaVersion.startsWith("3.") && !scalaVersion().startsWith("3.")
-  }
-  def artifactName = T {
-    val suffix = if (useCrossSuffix()) s"-cross-$crossScalaVersion" else ""
-    super.artifactName() + suffix
-  }
-  def scalacOptions = T {
-    val tastyReaderOptions =
-      if (crossScalaVersion.startsWith("3.") && !supports3) Seq("-Ytasty-reader")
-      else Nil
-    tastyReaderOptions
-  }
-  override def scalaVersionDirectoryNames =
-    ZincWorkerUtil.matchingVersions(actualScalaVersion)
-}
-
 trait AlmondScalacOptions extends ScalaModule {
   def scalacOptions = T {
     // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
@@ -214,7 +189,6 @@ trait AlmondUnpublishedModule
     with AlmondRepositories
     with TransitiveSources
     with AlmondArtifactName
-    with AlmondScala2Or3Module
     with AlmondScalacOptions
 
 trait AlmondModule
@@ -223,7 +197,6 @@ trait AlmondModule
     with AlmondPublishModule
     with TransitiveSources
     with AlmondArtifactName
-    with AlmondScala2Or3Module
     with PublishLocalNoFluff
     with AlmondScalacOptions {
 
@@ -267,7 +240,6 @@ trait AlmondTestModule
     with TestModule
     with AlmondRepositories
     with AlmondScalacOptions {
-  // with AlmondScala2Or3Module {
 
   // originally based on https://github.com/com-lihaoyi/mill/blob/3335d2a2f7f33766a680e30df6a7d0dc0fbe08b3/scalalib/src/mill/scalalib/TestModule.scala#L80-L146
   // goal here is to use a coursier bootstrap rather than a manifest JAR when testUseArgsFile is true
