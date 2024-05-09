@@ -125,7 +125,7 @@ object ScalafmtTests extends TestSuite {
       val expectedCode = formattedSnippet1
 
       val request = Format.Request(ListMap(
-        "cell1" -> initialCode
+        "cmd1" -> initialCode
       ))
       val messages0       = messages(scalafmt, request)
       val processMessages = endsWithFormatReply(messages0)
@@ -134,8 +134,8 @@ object ScalafmtTests extends TestSuite {
       println(formattedCodeMap)
 
       val resp = formattedCodeMap.getOrElse(
-        "cell1",
-        sys.error("No data for key 'cell1' in response")
+        "cmd1",
+        sys.error("No data for key 'cmd1' in response")
       )
       assert(resp.initial_code == initialCode)
       val formattedCode = resp.code.getOrElse {
@@ -146,8 +146,8 @@ object ScalafmtTests extends TestSuite {
 
     test("multiple cells") {
       val request = Format.Request(ListMap(
-        "cell1" -> snippet1,
-        "cell2" -> snippet2
+        "cmd1" -> snippet1,
+        "cmd2" -> snippet2
       ))
       val messages0       = messages(scalafmt, request)
       val processMessages = endsWithFormatReply(messages0)
@@ -156,8 +156,8 @@ object ScalafmtTests extends TestSuite {
       println(formattedCodeMap)
 
       val resp1 = formattedCodeMap.getOrElse(
-        "cell1",
-        sys.error("No data for key 'cell1' in response")
+        "cmd1",
+        sys.error("No data for key 'cmd1' in response")
       )
       assert(resp1.initial_code == snippet1)
       val formattedCode1 = resp1.code.getOrElse {
@@ -166,8 +166,8 @@ object ScalafmtTests extends TestSuite {
       assert(formattedCode1 == formattedSnippet1)
 
       val resp2 = formattedCodeMap.getOrElse(
-        "cell2",
-        sys.error("No data for key 'cell2' in response")
+        "cmd2",
+        sys.error("No data for key 'cmd2' in response")
       )
       assert(resp2.initial_code == snippet2)
       val formattedCode2 = resp2.code.getOrElse {

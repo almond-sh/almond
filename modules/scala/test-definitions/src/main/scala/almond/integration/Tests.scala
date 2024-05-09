@@ -737,30 +737,30 @@ object Tests {
 
     val errorOutput =
       if (scalaVersion.startsWith("2."))
-        """cell1.sc:2: not found: value foo
+        """cmd1.sc:2: not found: value foo
           |  foo
           |  ^
-          |cell1.sc:3: not found: value bar
+          |cmd1.sc:3: not found: value bar
           |  bar
           |  ^
-          |cell1.sc:4: not found: value other
+          |cmd1.sc:4: not found: value other
           |  other
           |  ^
           |Compilation Failed""".stripMargin
       else
-        """-- [E006] Not Found Error: cell1.sc:2:2 ----------------------------------------
+        """-- [E006] Not Found Error: cmd1.sc:2:2 ----------------------------------------
           |2 |  foo
           |  |  ^^^
           |  |  Not found: foo
           |  |
           |  | longer explanation available when compiling with `-explain`
-          |-- [E006] Not Found Error: cell1.sc:3:2 ----------------------------------------
+          |-- [E006] Not Found Error: cmd1.sc:3:2 ----------------------------------------
           |3 |  bar
           |  |  ^^^
           |  |  Not found: bar
           |  |
           |  | longer explanation available when compiling with `-explain`
-          |-- [E006] Not Found Error: cell1.sc:4:2 ----------------------------------------
+          |-- [E006] Not Found Error: cmd1.sc:4:2 ----------------------------------------
           |4 |  other
           |  |  ^^^^^
           |  |  Not found: other
@@ -839,20 +839,20 @@ object Tests {
 
       val errorMessage =
         if (scalaVersion.startsWith("2.13."))
-          """cell2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
+          """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()
             |        ^
             |No warnings can be incurred under -Werror.
             |Compilation Failed""".stripMargin
         else if (scalaVersion.startsWith("2.12."))
-          """cell2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
+          """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()
             |        ^
             |No warnings can be incurred under -Xfatal-warnings.
             |Compilation Failed""".stripMargin
         else
           // FIXME The line number is wrong here
-          """-- Error: cell2.sc:3:8 ---------------------------------------------------------
+          """-- Error: cmd2.sc:3:8 ---------------------------------------------------------
             |3 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
