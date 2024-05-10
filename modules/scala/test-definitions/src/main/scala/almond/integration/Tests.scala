@@ -748,19 +748,19 @@ object Tests {
           |  ^
           |Compilation Failed""".stripMargin
       else
-        """-- [E006] Not Found Error: cmd1.sc:2:2 ----------------------------------------
+        """-- [E006] Not Found Error: cmd1.sc:2:2 -----------------------------------------
           |2 |  foo
           |  |  ^^^
           |  |  Not found: foo
           |  |
           |  | longer explanation available when compiling with `-explain`
-          |-- [E006] Not Found Error: cmd1.sc:3:2 ----------------------------------------
+          |-- [E006] Not Found Error: cmd1.sc:3:2 -----------------------------------------
           |3 |  bar
           |  |  ^^^
           |  |  Not found: bar
           |  |
           |  | longer explanation available when compiling with `-explain`
-          |-- [E006] Not Found Error: cmd1.sc:4:2 ----------------------------------------
+          |-- [E006] Not Found Error: cmd1.sc:4:2 -----------------------------------------
           |4 |  other
           |  |  ^^^^^
           |  |  Not found: other
@@ -852,7 +852,7 @@ object Tests {
             |Compilation Failed""".stripMargin
         else
           // FIXME The line number is wrong here
-          """-- Error: cmd2.sc:3:8 ---------------------------------------------------------
+          """-- Error: cmd2.sc:3:8 ----------------------------------------------------------
             |3 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
