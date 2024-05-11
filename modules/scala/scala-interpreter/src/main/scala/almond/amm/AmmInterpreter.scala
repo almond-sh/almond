@@ -59,7 +59,9 @@ object AmmInterpreter {
 
   /* Spark 3.5.1 expects `cmd` in `org.apache.spark.sql.catalyst.encoders.OuterScopes`.
    * This name is confusing to users and `cell` is more obvious. However, that change depends
-   * on an update to the spark regex.
+   * on customizing the `CodeClassWrapper` so
+   * `org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)`
+   * calls are automatically added. Or, less preferably, changing the regex in Spark.
    */
   private def ammoniteWrapperNamePrefix = "cmd"
 
