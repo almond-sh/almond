@@ -46,7 +46,7 @@ object Deps {
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
-  def fs2                 = ivy"co.fs2::fs2-core:3.9.4"
+  def fs2                 = ivy"co.fs2::fs2-core:3.10.2"
   def jansi               = ivy"org.fusesource.jansi:jansi:2.4.1"
   def jeromq              = ivy"org.zeromq:jeromq:0.5.4"
   def jsoniterScalaCore =
