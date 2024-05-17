@@ -30,7 +30,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
             |""".stripMargin,
           expectError = true,
           stderr =
-            """cell2.sc:6: method foo in class Helper is deprecated
+            """cmd2.sc:6: method foo in class Helper is deprecated
               |val res2_1 = foo()
               |             ^
               |No warnings can be incurred under -Werror.
@@ -63,7 +63,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
             |""".stripMargin,
           expectError = true,
           stderr =
-            """cell2.sc:4: method foo in class Helper is deprecated
+            """cmd2.sc:4: method foo in class Helper is deprecated
               |val res2_1 = foo()
               |             ^
               |No warnings can be incurred under -Werror.
@@ -92,7 +92,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
              |""".stripMargin,
           expectError = true,
           stderr =
-            """cell1.sc:7: method foo in class Helper is deprecated
+            """cmd1.sc:7: method foo in class Helper is deprecated
               |val res1_1 = foo()
               |             ^
               |No warnings can be incurred under -Werror.
@@ -127,7 +127,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
             |""".stripMargin,
           expectError = true,
           stderr =
-            """cell2.sc:6: method foo in class Helper is deprecated
+            """cmd2.sc:6: method foo in class Helper is deprecated
               |val res2_1 = foo()
               |             ^
               |No warnings can be incurred under -Xfatal-warnings.
@@ -162,7 +162,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
             |""".stripMargin,
           expectError = true,
           stderr =
-            """cell2.sc:6: method foo in class Helper is deprecated
+            """cmd2.sc:6: method foo in class Helper is deprecated
               |val res2_1 = foo()
               |             ^
               |No warnings can be incurred under -Xfatal-warnings.

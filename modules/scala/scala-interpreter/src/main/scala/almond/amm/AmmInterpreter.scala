@@ -57,6 +57,14 @@ object AmmInterpreter {
     ImportData("almond.toree.ToreeCompatibility.KernelToreeOps")
   )
 
+  /* Spark 3.5.1 expects `cmd` in `org.apache.spark.sql.catalyst.encoders.OuterScopes`.
+   * This name is confusing to users and `cell` is more obvious. However, that change depends
+   * on customizing the `CodeClassWrapper` so
+   * `org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)`
+   * calls are automatically added. Or, less preferably, changing the regex in Spark.
+   */
+  private def ammoniteWrapperNamePrefix = "cmd"
+
   /** Instantiate an [[ammonite.interp.Interpreter]] to be used from [[ScalaInterpreter]].
     */
   def apply(
@@ -139,7 +147,7 @@ object AmmInterpreter {
         verboseOutput = true, // ???
         alreadyLoadedDependencies =
           ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt"),
-        wrapperNamePrefix = "cell"
+        wrapperNamePrefix = ammoniteWrapperNamePrefix
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)
