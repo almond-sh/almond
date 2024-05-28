@@ -6,6 +6,7 @@ import caseapp._
 
 import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
+import scala.concurrent.duration.{Duration, DurationInt}
 
 // format: off
 final case class LauncherOptions(
@@ -34,7 +35,10 @@ final case class LauncherOptions(
   quiet: Option[Boolean] = None,
   silentImports: Option[Boolean] = None,
   useNotebookCoursierLogger: Option[Boolean] = None,
-  customDirectiveGroup: List[String] = Nil
+  customDirectiveGroup: List[String] = Nil,
+  @HelpMessage("Time given to the client to accept ZeroMQ messages before handing over the connections to the kernel. Parsed with scala.concurrent.duration.Duration, this accepts things like \"Inf\" or \"5 seconds\"")
+  @Hidden
+    linger: Option[String] = None
 ) {
   // format: on
 
@@ -91,6 +95,12 @@ final case class LauncherOptions(
         groups
     }
   }
+
+  lazy val lingerDuration = linger
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .map(Duration(_))
+    .getOrElse(5.seconds)
 }
 
 object LauncherOptions {

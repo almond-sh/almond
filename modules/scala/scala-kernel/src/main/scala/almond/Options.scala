@@ -17,6 +17,7 @@ import coursierapi.{Dependency, Module}
 import coursier.parse.{DependencyParser, ModuleParser}
 
 import scala.collection.compat._
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.jdk.CollectionConverters._
 
 // format: off
@@ -129,7 +130,11 @@ final case class Options(
 
   @HelpMessage("Pass launcher directive groups with this option. These directives will be either ignored (see --ignore-launcher-directives-in), or trigger an unused directive warning")
   @Hidden
-    launcherDirectiveGroup: List[String] = Nil
+    launcherDirectiveGroup: List[String] = Nil,
+
+  @HelpMessage("""Time given to the client to accept ZeroMQ messages before exiting. Parsed with scala.concurrent.duration.Duration, this accepts things like "Inf" or "5 seconds"""")
+  @Hidden
+    linger: Option[String] = None
 ) {
   // format: on
 
@@ -300,6 +305,11 @@ final case class Options(
       readFromArray(bytes)(KernelOptions.AsJson.codec)
     }
 
+  lazy val lingerDuration = linger
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .map(Duration(_))
+    .getOrElse(5.seconds)
 }
 
 object Options {

@@ -12,6 +12,7 @@ import org.zeromq.ZMQ.{PollItem, Poller}
 import zmq.ZError
 
 import scala.concurrent.duration.Duration
+import cats.Parallel
 
 final class ZeromqConnection(
   params: ConnectionParameters,
@@ -203,17 +204,17 @@ final class ZeromqConnection(
         .getOrElse(IO.pure(None))
     }.evalOn(threads.pollingEc).flatMap(identity)
 
-  def close(partial: Boolean): IO[Unit] = {
+  def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
 
     val log0 = IO(log.debug(s"Closing channels for $params"))
 
-    val channels = Seq(
+    val channels = List(
       requests0,
       control0,
       stdin0
-    ) ++ (if (partial) Nil else Seq(publish0))
+    ) ::: (if (partial) Nil else List(publish0))
 
-    val t = channels.foldLeft(IO.unit)((acc, c) => acc *> c.close)
+    val t = Parallel.parTraverse(channels)(_.close(lingerDuration))
 
     val other = IO {
       log.debug(s"Closing things for $params" + (if (partial) " (partial)" else ""))

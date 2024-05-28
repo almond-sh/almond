@@ -13,7 +13,7 @@ trait ZeromqSocket {
   def open: IO[Unit]
   def read: IO[Option[Message]]
   def send(message: Message): IO[Unit]
-  def close: IO[Unit]
+  def close(lingerDuration: Duration): IO[Unit]
 
   def channel: ZMQ.Socket
 }

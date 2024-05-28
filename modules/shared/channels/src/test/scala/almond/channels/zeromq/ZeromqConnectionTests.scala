@@ -43,8 +43,8 @@ object ZeromqConnectionTests extends TestSuite {
           _ = assert(resp._1 == Channel.Requests)
           _ = assert(resp._2.copy(idents = Nil) == msg0)
           // TODO Enforce this is run via bracketing
-          _ <- kernel.close(partial = false)
-          _ <- server.close(partial = false)
+          _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+          _ <- server.close(partial = false, lingerDuration = 2.seconds)
         } yield ()
 
       t.unsafeRunSync()(IORuntime.global)

@@ -4,6 +4,8 @@ import almond.kernel.install.{Options => InstallOptions}
 import caseapp.{HelpMessage, Recurse}
 import caseapp.core.help.Help
 import caseapp.core.parser.Parser
+import caseapp.Hidden
+import scala.concurrent.duration.{Duration, DurationInt}
 
 final case class Options(
   connectionFile: Option[String] = None,
@@ -11,8 +13,20 @@ final case class Options(
   log: String = "warn",
   install: Boolean = false,
   @Recurse
-  installOptions: InstallOptions = InstallOptions()
-)
+  installOptions: InstallOptions = InstallOptions(),
+  @HelpMessage(
+    """Time given to the client to accept ZeroMQ messages before exiting. Parsed with scala.concurrent.duration.Duration, this accepts things like "Inf" or "5 seconds""""
+  )
+  @Hidden
+  linger: Option[String] = None
+) {
+
+  lazy val lingerDuration = linger
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .map(Duration(_))
+    .getOrElse(5.seconds)
+}
 
 object Options {
   implicit lazy val parser: Parser[Options] = Parser.derive

@@ -218,10 +218,16 @@ final class ZeromqSocketImpl(
     }.evalOn(ec)
   )
 
-  val close: IO[Unit] = {
+  def close(lingerDuration: Duration): IO[Unit] = {
 
     val t = IO {
       if (!closed) {
+        val linger = lingerDuration match {
+          case d: FiniteDuration => d.toMillis.toInt
+          case _                 => -1
+        }
+        if (channel.getLinger != linger)
+          channel.setLinger(linger)
         channel.close()
         closed = true
       }

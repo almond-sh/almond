@@ -10,6 +10,7 @@ import org.zeromq.{SocketType, ZMQ}
 import utest._
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 import java.nio.charset.StandardCharsets
 
 object ZeromqSocketTests extends TestSuite {
@@ -86,8 +87,8 @@ object ZeromqSocketTests extends TestSuite {
           readOpt <- rep.read
           _ = assert(readOpt.contains(msg))
           // FIXME Closing should be enforced via bracketing
-          _ <- req.close
-          _ <- rep.close
+          _ <- req.close(lingerDuration = 5.seconds)
+          _ <- rep.close(lingerDuration = 5.seconds)
         } yield ()
 
       t.unsafeRunSync()(IORuntime.global)
@@ -151,8 +152,8 @@ object ZeromqSocketTests extends TestSuite {
           readOpt <- rep.read
           _ = assert(readOpt.contains(msg))
           // FIXME Closing should be enforced via bracketing
-          _ <- req.close
-          _ <- rep.close
+          _ <- req.close(lingerDuration = 5.seconds)
+          _ <- rep.close(lingerDuration = 5.seconds)
         } yield ()
 
       t.unsafeRunSync()(IORuntime.global)
