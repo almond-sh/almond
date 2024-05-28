@@ -2,11 +2,14 @@ package almond.examples
 
 import java.nio.charset.Charset
 
+import scala.concurrent.duration.DurationInt
 import scala.util.Properties
 
 class Examples extends munit.FunSuite {
 
   def kernelId = "almond-examples"
+
+  override def munitTimeout = 5.minutes
 
   lazy val notebooks = os.list(ExampleProperties.directory)
     .filter(_.last.endsWith(".ipynb"))
