@@ -4,11 +4,13 @@ import munit.{Location, TestOptions}
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
 
 abstract class AlmondFunSuite extends munit.FunSuite {
 
-  def mightRetry: Boolean = false
+  def mightRetry: Boolean   = false
+  override def munitTimeout = 5.minutes
 
   override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit =
     super.test(options) {
