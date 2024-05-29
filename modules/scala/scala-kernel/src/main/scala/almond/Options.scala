@@ -17,6 +17,7 @@ import coursierapi.{Dependency, Module}
 import coursier.parse.{DependencyParser, ModuleParser}
 
 import scala.collection.compat._
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.jdk.CollectionConverters._
 
 // format: off
@@ -24,7 +25,7 @@ import scala.jdk.CollectionConverters._
 final case class Options(
   install: Boolean = false,
   @Recurse
-  installOptions: InstallOptions = InstallOptions(),
+    installOptions: InstallOptions = InstallOptions(),
   extraRepository: List[String] = Nil,
   banner: Option[String] = None,
   link: List[String] = Nil,
@@ -35,50 +36,50 @@ final case class Options(
   defaultAutoDependencies: Boolean = true,
   defaultAutoVersions: Boolean = true,
   @HelpMessage("Default almond-spark version to load when Spark is loaded as a library")
-  defaultAlmondSparkVersion: Option[String] = None,
+    defaultAlmondSparkVersion: Option[String] = None,
   @HelpMessage("Default almond-scalapy version to load when ScalaPy is loaded as a library")
-  defaultAlmondScalapyVersion: Option[String] = None,
+    defaultAlmondScalapyVersion: Option[String] = None,
   @HelpMessage("Force Maven properties during dependency resolution")
-  forceProperty: List[String] = Nil,
+    forceProperty: List[String] = Nil,
   @HelpMessage("Enable Maven profile (start with ! to disable)")
-  profile: List[String] = Nil,
+    profile: List[String] = Nil,
   @HelpMessage("Log level (one of none, error, warn, info, debug)")
-  log: Option[String] = None,
+    log: Option[String] = None,
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
-  logTo: Option[String] = None,
+    logTo: Option[String] = None,
   connectionFile: Option[String] = None,
   // For class loader isolation, the user code is loaded from the classloader of the api module.
   // If the right -i / -I options are passed to coursier bootstrap when generating a launcher, that loader
   // only sees the api module and its dependencies, rather than the full classpath of almond.
   @HelpMessage("Use class loader that loaded the api module rather than the context class loader")
-  specificLoader: Boolean = true,
+    specificLoader: Boolean = true,
   @HelpMessage(
     "Start a metabrowse server for go to source navigation (linked from Jupyter inspections, server is started upon first inspection)"
   )
-  metabrowse: Boolean = false,
+    metabrowse: Boolean = false,
   @HelpMessage("Trap what user code sends to stdout and stderr")
-  trapOutput: Boolean = false,
+    trapOutput: Boolean = false,
   @HelpMessage("If false, duplicates stdout/stderr to console, similar to IPKernelApp.quiet")
-  quiet: Boolean = true,
+    quiet: Boolean = true,
   @HelpMessage("Disable ammonite compilation cache")
-  disableCache: Boolean = false,
+    disableCache: Boolean = false,
   @HelpMessage("Whether to automatically update lazy val-s upon computation")
-  autoUpdateLazyVals: Boolean = true,
+    autoUpdateLazyVals: Boolean = true,
   @HelpMessage("Whether to automatically update var-s upon change")
-  autoUpdateVars: Boolean = true,
+    autoUpdateVars: Boolean = true,
   @HelpMessage("Whether to silence imports (not printing them back in output)")
     silentImports: Boolean = false,
   @HelpMessage("Whether to use a notebook-specific coursier logger")
     useNotebookCoursierLogger: Boolean = false,
   @HelpMessage("Whether to enable variable inspector")
-  variableInspector: Option[Boolean] = None,
+    variableInspector: Option[Boolean] = None,
   @HelpMessage("Whether to process format requests with scalafmt")
-  scalafmt: Boolean = true,
+    scalafmt: Boolean = true,
   @HelpMessage(
     "Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel."
   )
-  useThreadInterrupt: Boolean = false,
+    useThreadInterrupt: Boolean = false,
 
   @ExtraName("outputDir")
     outputDirectory: Option[String] = None,
@@ -129,7 +130,11 @@ final case class Options(
 
   @HelpMessage("Pass launcher directive groups with this option. These directives will be either ignored (see --ignore-launcher-directives-in), or trigger an unused directive warning")
   @Hidden
-    launcherDirectiveGroup: List[String] = Nil
+    launcherDirectiveGroup: List[String] = Nil,
+
+  @HelpMessage("""Time given to the client to accept ZeroMQ messages before exiting. Parsed with scala.concurrent.duration.Duration, this accepts things like "Inf" or "5 seconds"""")
+  @Hidden
+    linger: Option[String] = None
 ) {
   // format: on
 
@@ -300,6 +305,11 @@ final case class Options(
       readFromArray(bytes)(KernelOptions.AsJson.codec)
     }
 
+  lazy val lingerDuration = linger
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .map(Duration(_))
+    .getOrElse(5.seconds)
 }
 
 object Options {

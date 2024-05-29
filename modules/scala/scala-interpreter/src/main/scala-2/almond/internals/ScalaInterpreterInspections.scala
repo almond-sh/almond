@@ -141,7 +141,8 @@ final class ScalaInterpreterInspections(
                   try
                     docs.documentation(
                       sym,
-                      () => symbol.allOverriddenSymbols.map(_.toSemantic).toList.asJava
+                      () => symbol.allOverriddenSymbols.map(_.toSemantic).toList.asJava,
+                      scala.meta.pc.ContentType.MARKDOWN
                     )
                   catch {
                     case e: IndexingExceptions.InvalidSymbolException =>

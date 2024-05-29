@@ -26,6 +26,7 @@ import java.nio.channels.ClosedSelectorException
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
+import scala.concurrent.duration.Duration
 
 object Launcher extends CaseApp[LauncherOptions] {
 
@@ -325,7 +326,8 @@ object Launcher extends CaseApp[LauncherOptions] {
         "scala",
         zeromqThreads,
         Nil,
-        autoClose = false
+        autoClose = false,
+        lingerDuration = Duration.Inf // unused here
       ))
       .unsafeRunSync()(IORuntime.global)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)
@@ -410,7 +412,9 @@ object Launcher extends CaseApp[LauncherOptions] {
     for (outputHandler <- outputHandlerOpt)
       outputHandler.done()
 
-    try conn.close(partial = false).unsafeRunSync()(IORuntime.global)
+    try
+      conn.close(partial = false, lingerDuration = options.lingerDuration)
+        .unsafeRunSync()(IORuntime.global)
     catch {
       case NonFatal(e) =>
         throw new Exception(e)

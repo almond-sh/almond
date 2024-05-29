@@ -24,6 +24,7 @@ import fs2.{Pipe, Stream}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.Duration
 
 final case class Kernel(
   interpreter: IOInterpreter,
@@ -186,7 +187,8 @@ final case class Kernel(
     connection: ConnectionParameters,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
-    leftoverMessages: Seq[(Channel, RawMessage)]
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    lingerDuration: Duration
   ): IO[Unit] =
     for {
       t <- runOnConnectionAllowClose0(
@@ -194,7 +196,8 @@ final case class Kernel(
         kernelId,
         zeromqThreads,
         leftoverMessages,
-        autoClose = true
+        autoClose = true,
+        lingerDuration = lingerDuration
       )
       (run, _) = t
       _ <- run
@@ -205,7 +208,8 @@ final case class Kernel(
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    autoClose: Boolean
+    autoClose: Boolean,
+    lingerDuration: Duration
   ): IO[(IO[Unit], Connection)] =
     for {
       c <- connection.channels(
@@ -219,7 +223,11 @@ final case class Kernel(
       val run0 =
         for {
           _ <- c.open
-          _ <- run(c.stream(), c.autoCloseSink(partial = !autoClose), leftoverMessages)
+          _ <- run(
+            c.stream(),
+            c.autoCloseSink(partial = !autoClose, lingerDuration = lingerDuration),
+            leftoverMessages
+          )
         } yield ()
       (run0, c)
     }
@@ -236,14 +244,16 @@ final case class Kernel(
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    autoClose: Boolean
+    autoClose: Boolean,
+    lingerDuration: Duration
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     runOnConnectionAllowClose0(
       connection,
       kernelId,
       zeromqThreads,
       leftoverMessages,
-      autoClose
+      autoClose,
+      lingerDuration
     ).map {
       case (run, conn) =>
         val run0 = run.attempt.flatMap {
@@ -264,7 +274,8 @@ final case class Kernel(
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    autoClose: Boolean
+    autoClose: Boolean,
+    lingerDuration: Duration
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     for {
       _ <- {
@@ -285,7 +296,8 @@ final case class Kernel(
         kernelId,
         zeromqThreads,
         leftoverMessages,
-        autoClose
+        autoClose,
+        lingerDuration
       )
     } yield value
 
@@ -294,7 +306,8 @@ final case class Kernel(
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    autoClose: Boolean
+    autoClose: Boolean,
+    lingerDuration: Duration
   ): IO[Unit] =
     for {
       t <- runOnConnectionFileAllowClose(
@@ -302,7 +315,8 @@ final case class Kernel(
         kernelId,
         zeromqThreads,
         leftoverMessages,
-        autoClose
+        autoClose,
+        lingerDuration
       )
       (run, _) = t
       _ <- run
@@ -313,7 +327,8 @@ final case class Kernel(
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    autoClose: Boolean
+    autoClose: Boolean,
+    lingerDuration: Duration
   ): IO[Unit] =
     for {
       t <- runOnConnectionFileAllowClose(
@@ -321,7 +336,8 @@ final case class Kernel(
         kernelId,
         zeromqThreads,
         leftoverMessages,
-        autoClose
+        autoClose,
+        lingerDuration
       )
       (run, _) = t
       _ <- run
@@ -332,14 +348,16 @@ final case class Kernel(
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    autoClose: Boolean
+    autoClose: Boolean,
+    lingerDuration: Duration
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     runOnConnectionFileAllowClose(
       Paths.get(connectionPath),
       kernelId,
       zeromqThreads,
       leftoverMessages,
-      autoClose
+      autoClose,
+      lingerDuration
     )
 
 }

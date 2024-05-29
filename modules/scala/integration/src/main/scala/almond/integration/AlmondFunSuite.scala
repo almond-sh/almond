@@ -12,7 +12,12 @@ abstract class AlmondFunSuite extends munit.FunSuite {
   def mightRetry: Boolean   = false
   override def munitTimeout = 5.minutes
 
-  override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit =
+  override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
+    val className = getClass.getName
+    val (classNameInit, classNameLast) = {
+      val a = className.split('.')
+      (a.init, a.last)
+    }
     super.test(options) {
 
       def runBody(attempt: Int): Any = {
@@ -33,7 +38,9 @@ abstract class AlmondFunSuite extends munit.FunSuite {
               if (attempt == 1)
                 AlmondFunSuite.retriedTestsCount.incrementAndGet()
               System.err.println(
-                s"Attempt $attempt of ${Console.RED}${options.name}${Console.RESET} failed, trying again"
+                s"Attempt $attempt of ${Console.RED}${classNameInit.mkString(".")}" + "." +
+                  s"${Console.BOLD}$classNameLast${Console.RESET}${Console.RED}" + "." +
+                  s"${Console.BOLD}${options.name}${Console.RESET} failed, trying again"
               )
               e.printStackTrace(System.err)
               runBody(attempt + 1)
@@ -44,7 +51,11 @@ abstract class AlmondFunSuite extends munit.FunSuite {
       }
 
       System.err.println()
-      System.err.println(s"Running ${Console.BLUE}${options.name}${Console.RESET}")
+      System.err.println(
+        s"${Console.BLUE}Running ${classNameInit.mkString(".")}" + "." +
+          s"${Console.BOLD}$classNameLast${Console.RESET}${Console.BLUE}" + "." +
+          s"${Console.BOLD}${options.name}${Console.RESET}"
+      )
       var success = false
       var exOpt   = Option.empty[Throwable]
       try {
@@ -58,15 +69,23 @@ abstract class AlmondFunSuite extends munit.FunSuite {
       }
       finally {
         if (success)
-          System.err.println(s"Done: ${Console.CYAN}${options.name}${Console.RESET}")
+          System.err.println(
+            s"${Console.CYAN}Done: ${classNameInit.mkString(".")}" + "." +
+              s"${Console.BOLD}$classNameLast${Console.RESET}${Console.CYAN}" + "." +
+              s"${Console.BOLD}${options.name}${Console.RESET}"
+          )
         else {
-          System.err.println(s"Failed: ${Console.RED}${options.name}${Console.RESET}")
+          System.err.println(
+            s"${Console.RED}Failed: ${classNameInit.mkString(".")}" + "." +
+              s"${Console.BOLD}$classNameLast${Console.RESET}${Console.RED}" + "." +
+              s"${Console.BOLD}${options.name}${Console.RESET}"
+          )
           exOpt.foreach(_.printStackTrace(System.err))
         }
         System.err.println()
       }
     }(loc)
-
+  }
 }
 
 object AlmondFunSuite {

@@ -34,17 +34,22 @@ final class ScalaInterpreter(
   if (params.extraClassPath.nonEmpty)
     frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
 
-  private val inspections = new ScalaInterpreterInspections(
-    logCtx,
-    params.metabrowse,
-    params.metabrowseHost,
-    params.metabrowsePort,
-    ammonite.compiler.CompilerBuilder.scalaVersion,
-    ammInterp
-      .compilerManager
-      .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
-    frames0()
-  )
+  private var inspectionsInitialized = false
+  private lazy val inspections = {
+    val value = new ScalaInterpreterInspections(
+      logCtx,
+      params.metabrowse,
+      params.metabrowseHost,
+      params.metabrowsePort,
+      ammonite.compiler.CompilerBuilder.scalaVersion,
+      ammInterp
+        .compilerManager
+        .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
+      frames0()
+    )
+    inspectionsInitialized = true
+    value
+  }
 
   private val colors0: Ref[Colors] = Ref(params.initialColors)
 
@@ -306,7 +311,8 @@ final class ScalaInterpreter(
       case NonFatal(e) =>
         log.warn("Caught exception while trying to run exit hooks", e)
     }
-    inspections.shutdown()
+    if (inspectionsInitialized)
+      inspections.shutdown()
   }
 
 }

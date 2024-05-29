@@ -275,9 +275,11 @@ class KernelLauncher(
       }
 
       def close(): Unit = {
-        conn.close(partial = false).unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
-          sys.error("Timeout when closing ZeroMQ connections")
-        }
+        conn.close(partial = false, lingerDuration = 30.seconds)
+          .unsafeRunTimed(2.minutes)(IORuntime.global)
+          .getOrElse {
+            sys.error("Timeout when closing ZeroMQ connections")
+          }
 
         if (perTestZeroMqContext) {
           val t = stackTracePrinterThread(output)

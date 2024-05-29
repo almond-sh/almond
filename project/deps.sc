@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M0-58-9ccdff7c"
+  def ammonite      = "3.0.0-M2-1-3763a1d4"
   def caseApp       = "2.1.0-M26"
   def coursier      = "2.1.10"
   def jsoniterScala = "2.13.5"
@@ -56,11 +56,11 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.5.2"
   def munit                    = ivy"org.scalameta::munit:1.0.0"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.12"
+  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.10.1"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.8.3"
+  def scalameta                = ivy"org.scalameta::scalameta:4.9.4"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.1.0"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
@@ -87,11 +87,9 @@ object ScalaVersions {
     scala213,
     "2.13.11",
     "2.13.10",
-    "2.13.9",
     scala212,
     "2.12.17",
-    "2.12.16",
-    "2.12.15"
+    "2.12.16"
   ).distinct
 
   def binary(sv: String) =
