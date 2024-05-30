@@ -83,6 +83,8 @@ object ScalaVersions {
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
+    "3.3.2",
+    "3.3.1",
     scala3Compat,
     scala213,
     "2.13.13",
