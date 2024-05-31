@@ -21,6 +21,38 @@ object ScalaInterpreterCompletions {
 
   private def newLine = System.lineSeparator()
 
+  private val blacklist = {
+    val scalaList = Seq(
+      "Predef.any2stringadd.+",
+      "Any.##",
+      "<byname>",
+      "<empty>",
+      "<repeated>",
+      "<repeated...>",
+      "Predef.StringFormat.formatted",
+      "Predef.Ensuring.ensuring",
+      "Predef.ArrowAssoc.->",
+      "Predef.ArrowAssoc.→"
+    )
+    val javaLangList = Set(
+      "Object.##",
+      "Object.synchronized",
+      "Object.ne",
+      "Object.eq",
+      "Object.wait",
+      "Object.notifyAll",
+      "Object.notify",
+      "Object.clone",
+      "Object.finalize"
+    )
+    val it =
+      Iterator("", "scala.")
+        .flatMap(prefix => scalaList.iterator.map(prefix + _)) ++
+        Iterator("", "java.lang.")
+          .flatMap(prefix => javaLangList.iterator.map(prefix + _))
+    it.toSet
+  }
+
   def complete(
     compilerManager: ammonite.compiler.iface.CompilerLifecycleManager,
     dependencyCompleteOpt: Option[String => (Int, Seq[String])],
@@ -108,27 +140,6 @@ object ScalaInterpreterCompletions {
 
     def blacklisted(s: Symbol) = {
       given Context = ctx1
-      val blacklist = Set(
-        "scala.Predef.any2stringadd.+",
-        "scala.Any.##",
-        "java.lang.Object.##",
-        "scala.<byname>",
-        "scala.<empty>",
-        "scala.<repeated>",
-        "scala.<repeated...>",
-        "scala.Predef.StringFormat.formatted",
-        "scala.Predef.Ensuring.ensuring",
-        "scala.Predef.ArrowAssoc.->",
-        "scala.Predef.ArrowAssoc.→",
-        "java.lang.Object.synchronized",
-        "java.lang.Object.ne",
-        "java.lang.Object.eq",
-        "java.lang.Object.wait",
-        "java.lang.Object.notifyAll",
-        "java.lang.Object.notify",
-        "java.lang.Object.clone",
-        "java.lang.Object.finalize"
-      )
 
       blacklist(s.showFullName) ||
       s.isOneOf(Flags.GivenOrImplicit) ||
