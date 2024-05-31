@@ -75,7 +75,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest   = "3.3.2"
+  def scala3Latest   = "3.3.3"
   def scala3Compat   = "3.3.0"
   def scala213       = "2.13.14"
   def scala212       = "2.12.19"
@@ -83,6 +83,7 @@ object ScalaVersions {
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
+    "3.3.2",
     "3.3.1",
     scala3Compat,
     scala213,
