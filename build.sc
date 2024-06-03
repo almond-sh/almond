@@ -568,6 +568,23 @@ trait Integration extends SbtModule {
   )
 
   object test extends SbtModuleTests with TestCommand {
+    object helper extends ScalaModule {
+      def scalaVersion = ScalaVersions.scala3Latest
+      def scala213 = T {
+        runClasspath()
+          .map(_.path)
+          .map(_.last)
+          .filter(_.startsWith("scala-library-2.13."))
+          .map(_.stripPrefix("scala-library-"))
+          .filter(_.endsWith(".jar"))
+          .map(_.stripSuffix(".jar"))
+          .filter(!_.contains("-"))
+          .headOption
+          .getOrElse {
+            sys.error(s"Cannot get Scala 2.13 version pulled by Scala ${scalaVersion()}")
+          }
+      }
+    }
     def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()
@@ -581,7 +598,8 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}",
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
-        s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}"
+        s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
+        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}"
       )
     }
     def tmpDirBase = T.persistent {

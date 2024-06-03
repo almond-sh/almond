@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M2-1-3763a1d4"
+  def ammonite      = "3.0.0-M2-8-ba4429a2"
   def caseApp       = "2.1.0-M26"
   def coursier      = "2.1.10"
   def jsoniterScala = "2.13.5"
@@ -57,7 +57,7 @@ object Deps {
   def mdoc                     = ivy"org.scalameta::mdoc:2.5.2"
   def munit                    = ivy"org.scalameta::munit:1.0.0"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
-  def osLib                    = ivy"com.lihaoyi::os-lib:0.10.1"
+  def osLib                    = ivy"com.lihaoyi::os-lib:0.10.2"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalameta                = ivy"org.scalameta::scalameta:4.9.4"
@@ -75,7 +75,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest   = "3.3.1"
+  def scala3Latest   = "3.3.3"
   def scala3Compat   = "3.3.0"
   def scala213       = "2.13.14"
   def scala212       = "2.12.19"
@@ -83,6 +83,8 @@ object ScalaVersions {
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
+    "3.3.2",
+    "3.3.1",
     scala3Compat,
     scala213,
     "2.13.13",
