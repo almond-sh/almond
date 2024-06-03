@@ -127,7 +127,9 @@ final case class Kernel(
 
                   immediateHandlers.handleOrLogError(channel, rawMessage, log) match {
                     case None =>
-                      log.warn(s"Ignoring unhandled message on $channel:\n$rawMessage")
+                      log.warn(
+                        s"Ignoring unhandled message on $channel:${System.lineSeparator()}$rawMessage"
+                      )
                       IO.unit
 
                     case Some(output) =>

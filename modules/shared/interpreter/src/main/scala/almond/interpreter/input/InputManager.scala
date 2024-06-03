@@ -49,7 +49,8 @@ object InputManager {
 
           res match {
             case Success(value) =>
-              val b0 = ByteBuffer.wrap((value + "\n").getBytes(UTF_8)).asReadOnlyBuffer()
+              val b0 =
+                ByteBuffer.wrap((value + System.lineSeparator()).getBytes(UTF_8)).asReadOnlyBuffer()
               bufferOpt = Some(b0)
             case Failure(_: NoMoreInputException) =>
               done = true

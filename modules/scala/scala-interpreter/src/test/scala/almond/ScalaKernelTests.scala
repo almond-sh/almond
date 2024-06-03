@@ -763,8 +763,8 @@ object ScalaKernelTests extends TestSuite {
         "res2: Vector[Int] = " +
           (1 to 38)
             .toVector
-            .map("  " + _ + "," + "\n")
-            .mkString("Vector(" + "\n", "", "...")
+            .map("  " + _ + "," + nl)
+            .mkString("Vector(" + nl, "", "...")
       )
     }
 

@@ -5,8 +5,6 @@ import java.lang.management.ManagementFactory
 
 import almond.logger.Level
 
-import scala.annotation.tailrec
-
 final class PrintStreamLogger(
   val level: Level,
   out: PrintStream,
@@ -33,21 +31,9 @@ final class PrintStreamLogger(
     b += ' '
     b ++= message
 
-    @tailrec
-    def addException(ex: Throwable): Unit =
-      if (ex != null) {
-        b += '\n' // FIXME Not portable
-        b ++= ex.toString
-        for (elem <- ex.getStackTrace) {
-          b ++= "\n  " // FIXME Not portable
-          b ++= elem.toString
-        }
-        addException(ex.getCause)
-      }
-
-    addException(exception)
-
     out.println(b.result())
+    if (exception != null)
+      exception.printStackTrace(out)
   }
 }
 

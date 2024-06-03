@@ -100,34 +100,36 @@ object LoggerTests extends TestSuite {
 
         ps.close()
 
+        val tab = "\t"
+        val bt  = "\\"
         val expectedRes =
           if (scala.util.Properties.versionNumberString.startsWith("2.11."))
-            """ERROR /o\ Errr
-              |java.lang.Exception: nope
-              |  almond.logger.LoggerTests(LoggerTests.scala:94)
-              |  almond.logger.LoggerTests(LoggerTests.scala:10)
-              |java.lang.Exception: first
-              |  almond.logger.LoggerTests(LoggerTests.scala:93)
-              |  almond.logger.LoggerTests(LoggerTests.scala:10)
-              |""".stripMargin
+            s"""ERROR /o$bt Errr
+               |java.lang.Exception: nope
+               |${tab}at almond.logger.LoggerTests(LoggerTests.scala:94)
+               |${tab}at almond.logger.LoggerTests(LoggerTests.scala:10)
+               |Caused by: java.lang.Exception: first
+               |${tab}at almond.logger.LoggerTests(LoggerTests.scala:93)
+               |${tab}at almond.logger.LoggerTests(LoggerTests.scala:10)
+               |""".stripMargin
           else
-            """ERROR /o\ Errr
-              |java.lang.Exception: nope
-              |  almond.logger.LoggerTests(LoggerTests.scala:97)
-              |java.lang.Exception: first
-              |  almond.logger.LoggerTests(LoggerTests.scala:96)
-              |""".stripMargin
+            s"""ERROR /o$bt Errr
+               |java.lang.Exception: nope
+               |${tab}at almond.logger.LoggerTests(LoggerTests.scala:97)
+               |Caused by: java.lang.Exception: first
+               |${tab}at almond.logger.LoggerTests(LoggerTests.scala:96)
+               |""".stripMargin
 
         val res = b
           .toString
           .linesIterator
           .flatMap { s =>
-            if (s.startsWith("  almond."))
+            if (s.startsWith("\tat almond."))
               Iterator(s.replaceFirst(
                 Pattern.quote("LoggerTests$") + ".*" + Pattern.quote("("),
                 "LoggerTests("
               ))
-            else if (s.startsWith("  "))
+            else if (s.startsWith("\t"))
               Iterator.empty
             else
               Iterator(s)

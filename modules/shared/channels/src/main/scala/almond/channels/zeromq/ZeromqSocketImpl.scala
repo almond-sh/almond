@@ -138,20 +138,21 @@ final class ZeromqSocketImpl(
 
         ensureOpened()
 
-        log.debug(
-          "Sending:\n" +
+        log.debug {
+          val nl = System.lineSeparator()
+          "Sending:" + nl +
             "  header: " +
             Try(new String(message.header, "UTF-8"))
               .toOption
               .getOrElse(message.header.toString) +
-            "\n" +
+            nl +
             "  content: " +
             Try(new String(message.content, "UTF-8"))
               .toOption
               .getOrElse(message.content.toString) +
-            "\n" +
+            nl +
             "  idents: " + identsAsStrings(message.idents)
-        )
+        }
 
         for (c <- message.idents)
           channel.send(c.toArray, ZMQ.SNDMORE)
@@ -196,17 +197,18 @@ final class ZeromqSocketImpl(
 
       if (expectedSignature == signature || !enableMac) {
         log.debug {
+          val nl = System.lineSeparator()
           val headerStr = Try(new String(message.header, UTF_8))
             .getOrElse(message.header.toString)
-          s"Received on $uri:\n" +
+          s"Received on $uri:" + nl +
             "  header: " +
             headerStr +
-            "\n" +
+            nl +
             "  content: " +
             Try(new String(message.content, "UTF-8"))
               .toOption
               .getOrElse(message.content.toString) +
-            "\n" +
+            nl +
             "  idents: " + identsAsStrings(message.idents)
         }
         Some(message)
