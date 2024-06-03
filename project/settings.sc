@@ -743,7 +743,7 @@ def publishSonatype(
   publisher.publishAll(isRelease, artifacts: _*)
 }
 
-trait Mima extends com.github.lolgab.mill.mima.Mima {
+trait Mima extends com.github.lolgab.mill.mima.Mima with PublishModule {
   def mimaPreviousVersions = binaryCompatibilityVersions
 
   // same as https://github.com/lolgab/mill-mima/blob/de28f3e9fbe92867f98e35f8dfd3c3a777cc033d/mill-mima/src/com/github/lolgab/mill/mima/Mima.scala#L29-L44
