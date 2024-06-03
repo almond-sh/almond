@@ -36,7 +36,7 @@ final case class ClientStreams(
         case Right((`channel`, m)) =>
           m.decodeAs[T] match {
             case Left(err) =>
-              throw new Exception(s"Error decoding message: $err\n$m")
+              throw new Exception(s"Error decoding message: $err${System.lineSeparator()}$m")
             case Right(m0) =>
               m0
           }
@@ -58,7 +58,7 @@ final case class ClientStreams(
         case Left((`channel`, m)) if m.header.msg_type == msgType.messageType =>
           m.decodeAs[T] match {
             case Left(err) =>
-              throw new Exception(s"Error decoding message: $err\n$m")
+              throw new Exception(s"Error decoding message: $err${System.lineSeparator()}$m")
             case Right(m0) =>
               m0
           }

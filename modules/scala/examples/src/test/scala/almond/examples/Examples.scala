@@ -43,9 +43,89 @@ class Examples extends munit.FunSuite {
     dir
   }
 
+  lazy val inputDir = outputDir / "input"
+
+  private val nl = System.lineSeparator()
+  private lazy val escapedNl =
+    if (nl == "\n") "\\n"
+    else if (nl == "\r\n") "\\r\\n"
+    else ???
+  private val shouldUpdateLineSep = System.lineSeparator() == "\r\n"
+
+  private def traverseAndUpdateLineSep(content: ujson.Value, deep: Boolean = false): Option[ujson.Value] =
+    content.arrOpt match {
+      case Some(arr) =>
+        for ((elem, idx) <- arr.zipWithIndex)
+          for (updatedElem <- traverseAndUpdateLineSep(elem, deep = deep))
+            content(idx) = updatedElem
+        None
+      case None =>
+        content.objOpt match {
+          case Some(obj) =>
+            for ((k, v) <- obj)
+              for (updatedElem <- traverseAndUpdateLineSep(v, deep = deep))
+                content(k) = updatedElem
+            None
+          case None =>
+            content.strOpt.map { str =>
+              if (deep)
+                str
+                  .linesWithSeparators
+                  .map { line =>
+                    if (deep)
+                      line.replace("\\n", escapedNl)
+                    else
+                      line
+                  }
+                  .mkString
+              else
+                str
+                  .linesWithSeparators
+                  .flatMap { line =>
+                    if (line.endsWith("\n") && !line.endsWith(nl))
+                      Iterator(line.stripSuffix("\n"), nl)
+                    else
+                      Iterator(line)
+                  }
+                  .mkString
+            }
+        }
+    }
+
+  private def updateLineSep(content: String): String = {
+
+    val json = ujson.read(content)
+    for (cell <- json("cells").arr if cell("cell_type").str == "code") {
+      if (cell.obj.contains("outputs"))
+        for (output <- cell("outputs").arr if output("output_type").strOpt.exists(s => s == "display_data" || s == "execute_result"))
+          for ((k, v) <- output("data").obj) {
+            val shouldUpdate =
+              (k.startsWith("text/") && !v.arr.exists(_.str.contains("function(Plotly)"))) ||
+                k == "application/vnd.plotly.v1+json"
+            if (shouldUpdate)
+              traverseAndUpdateLineSep(v)
+            if ((k == "text/html" && v.arr.exists(_.str.contains("function(Plotly)"))))
+              traverseAndUpdateLineSep(v, deep = true)
+          }
+      if (cell.obj.contains("source"))
+        traverseAndUpdateLineSep(cell("source"))
+    }
+
+    json.render(1).replace("\n", nl)
+  }
+
   for (notebook <- notebooks)
     test(notebook.last.stripSuffix(".ipynb")) {
 
+      val input =
+        if (shouldUpdateLineSep) {
+          val dest = inputDir / notebook.last
+          val updatedContent = updateLineSep(os.read(notebook))
+          os.write.over(dest, updatedContent, createFolders = true)
+          dest
+        }
+        else
+          notebook
       val output = outputDir / notebook.last
       val res = os.proc(
         "jupyter",
@@ -54,7 +134,7 @@ class Examples extends munit.FunSuite {
         "notebook",
         "--execute",
         s"--ExecutePreprocessor.kernel_name=$kernelId",
-        notebook,
+        input,
         s"--output=$output"
       ).call(
         cwd = ExampleProperties.directory,
@@ -72,8 +152,6 @@ class Examples extends munit.FunSuite {
       val rawOutput = os.read(output, Charset.defaultCharset())
 
       var updatedOutput = rawOutput
-      if (Properties.isWin)
-        updatedOutput = updatedOutput.replace("\r\n", "\n").replace("\\r\\n", "\\n")
 
       // Clear metadata, that usually looks like
       // "metadata": {
@@ -89,19 +167,34 @@ class Examples extends munit.FunSuite {
         cell("metadata") = ujson.Obj()
       updatedOutput = json.render(1)
 
-      // writing the updated notebook on disk for the diff below
-      os.write.over(output, updatedOutput.getBytes(Charset.defaultCharset()))
+      if (Properties.isWin)
+        updatedOutput = updatedOutput.replace("\n", "\r\n")
 
-      val result   = os.read(output, Charset.defaultCharset())
-      val expected = os.read(notebook)
+      val result = updatedOutput
+
+      // writing the updated notebook on disk for the diff below
+      os.write.over(output, result.getBytes(Charset.defaultCharset()))
+
+      val expected = os.read(input)
 
       if (result != expected) {
+        def explicitCrLf(input: String): String =
+          input
+            .replace("\r", "\\r\r")
+            .replace("\n", "\\n\n")
+            .replace("\\r\r\\n\n", "\\r\\n\r\n")
         System.err.println(s"${notebook.last} differs:")
+        System.err.println(s"Expected ${expected.length} chars, got ${result.length}")
         System.err.println()
-        os.proc("diff", "-u", notebook, output)
+        os.proc("diff", "-u", input, output)
           .call(cwd = ExampleProperties.directory, check = false, stdin = os.Inherit, stdout = os.Inherit)
         if (update) {
           System.err.println(s"Updating ${notebook.last}")
+          if (shouldUpdateLineSep)
+            System.err.println(
+              "Warning: the current system uses CRLF as line separator, " +
+              "only notebooks using LF as line separator should be committed."
+            )
           os.copy.over(output, notebook)
         }
         sys.error("Output notebook differs from original")

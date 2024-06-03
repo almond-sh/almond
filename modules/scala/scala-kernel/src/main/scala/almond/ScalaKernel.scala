@@ -115,7 +115,7 @@ object ScalaKernel extends CaseApp[Options] {
             case (trigger, auto) =>
               Seq("Auto dependency:", s"  Trigger: $trigger") ++ auto.map(dep => s"  Adds: $dep")
           }
-          .mkString("\n")
+          .mkString(System.lineSeparator())
       )
 
     val interpreterEc               = singleThreadedExecutionContext("scala-interpreter")

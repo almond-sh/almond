@@ -256,9 +256,10 @@ final class Execute(
             log.warn("Received SIGINT, but no execution is running")
           case Some(t) =>
             interruptedStackTraceOpt0 = Some(t.getStackTrace)
-            log.debug(
-              s"Received SIGINT, stopping thread $t\n${interruptedStackTraceOpt0.map("  " + _).mkString("\n")}"
-            )
+            log.debug {
+              val nl = System.lineSeparator()
+              s"Received SIGINT, stopping thread $t$nl${interruptedStackTraceOpt0.map("  " + _).mkString(nl)}"
+            }
             if (useThreadInterrupt) {
               log.debug(s"Calling 'Thread.interrupt'")
               t.interrupt()
@@ -283,9 +284,10 @@ final class Execute(
       case None =>
         log.warn("Interrupt asked, but no execution is running")
       case Some(t) =>
-        log.debug(
-          s"Interrupt asked, stopping thread $t\n${t.getStackTrace.map("  " + _).mkString("\n")}"
-        )
+        log.debug {
+          val nl = System.lineSeparator()
+          s"Interrupt asked, stopping thread $t$nl${t.getStackTrace.map("  " + _).mkString(nl)}"
+        }
         if (useThreadInterrupt) {
           log.debug(s"Calling 'Thread.interrupt'")
           t.interrupt()

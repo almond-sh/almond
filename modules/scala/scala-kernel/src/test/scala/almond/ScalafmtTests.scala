@@ -163,6 +163,16 @@ object ScalafmtTests extends TestSuite {
       val formattedCode1 = resp1.code.getOrElse {
         sys.error(s"Formatting failed (no formatted code in response for input '$snippet1')")
       }
+      if (formattedCode1 != formattedSnippet1) {
+        def explicitCrLf(input: String): String =
+          input
+            .replace("\r", "\\r\r")
+            .replace("\n", "\\n\n")
+            .replace("\\r\r\\n\n", "\\r\\n\r\n")
+        pprint.err.log(explicitCrLf(snippet1))
+        pprint.err.log(explicitCrLf(formattedCode1))
+        pprint.err.log(explicitCrLf(formattedSnippet1))
+      }
       assert(formattedCode1 == formattedSnippet1)
 
       val resp2 = formattedCodeMap.getOrElse(

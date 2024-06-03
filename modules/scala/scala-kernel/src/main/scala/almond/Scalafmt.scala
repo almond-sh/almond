@@ -49,10 +49,35 @@ final class Scalafmt(
       s"runner.dialect=$defaultDialect"
     ).map(_ + System.lineSeparator).mkString
 
-  private def format(code: String): String =
+  private def usesCrlf(code: String): Boolean = {
+    var hasLines = false
+    val onlyCrlf = code
+      .linesWithSeparators
+      .forall { line =>
+        hasLines = true
+        line.endsWith("\r\n")
+      }
+    hasLines && onlyCrlf
+  }
+
+  private def format(code: String): String = {
     // TODO Get version via build.sbt
-    interface.format(confFile(defaultConfFile), defaultDummyPath, code)
-      .stripSuffix("\n") // System.lineSeparator() instead?
+    val rawResult = interface.format(confFile(defaultConfFile), defaultDummyPath, code)
+    // Seems scalafmt discards crlf line endings
+    if (usesCrlf(code))
+      rawResult
+        .linesWithSeparators
+        .flatMap { line =>
+          if (line.endsWith("\n") && !line.endsWith("\r\n"))
+            Iterator(line.stripSuffix("\n"), "\r\n")
+          else
+            Iterator(line)
+        }
+        .mkString
+        .stripSuffix("\r\n")
+    else
+      rawResult.stripSuffix("\n")
+  }
 
   def messageHandler: MessageHandler =
     MessageHandler.blocking(Channel.Requests, Format.requestType, queueEc, logCtx) {

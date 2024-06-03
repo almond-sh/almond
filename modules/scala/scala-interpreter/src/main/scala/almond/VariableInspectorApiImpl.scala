@@ -106,9 +106,9 @@ private object VariableInspectorApiImpl {
                 )
                 .map(_.render)
                 .mkString
-                .replaceAll(java.util.regex.Pattern.quote("(") + "\n\\s+", "(")
-                .replaceAll("\n\\s+", " ")
-                .replaceAll("\n", " ")
+                .replaceAll(java.util.regex.Pattern.quote("(") + "\r?\n\\s+", "(")
+                .replaceAll("\r?\n\\s+", " ")
+                .replaceAll("\r?\n", " ")
           },
         varType = tprint.render(TPrintColors.BlackWhite).render,
         isMatrix = false,

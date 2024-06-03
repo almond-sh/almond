@@ -53,7 +53,7 @@ final case class MessageHandler(
   ): Option[Stream[IO, (Channel, RawMessage)]] =
     handle(channel, message).map {
       case Left(e) =>
-        log.error(s"Ignoring error decoding message\n$message", e)
+        log.error(s"Ignoring error decoding message${System.lineSeparator()}$message", e)
         Stream.empty
       case Right(s) => s
     }

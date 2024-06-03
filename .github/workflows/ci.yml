@@ -15,11 +15,6 @@ jobs:
       matrix:
         OS: ["ubuntu-latest", "windows-latest"]
     steps:
-    - name: Don't convert LF to CRLF during checkout
-      if: runner.os == 'Windows'
-      run: |
-        git config --global core.autocrlf false
-        git config --global core.eol lf
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -57,11 +52,6 @@ jobs:
             JDK: 17
             SCALA: 2.12.19
     steps:
-    - name: Don't convert LF to CRLF during checkout
-      if: runner.os == 'Windows'
-      run: |
-        git config --global core.autocrlf false
-        git config --global core.eol lf
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -83,11 +73,6 @@ jobs:
       matrix:
         OS: ["ubuntu-22.04", macos-12, windows-latest]
     steps:
-    - name: Don't convert LF to CRLF during checkout
-      if: runner.os == 'Windows'
-      run: |
-        git config --global core.autocrlf false
-        git config --global core.eol lf
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -102,11 +87,6 @@ jobs:
   bincompat:
     runs-on: ubuntu-latest
     steps:
-    - name: Don't convert LF to CRLF during checkout
-      if: runner.os == 'Windows'
-      run: |
-        git config --global core.autocrlf false
-        git config --global core.eol lf
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0

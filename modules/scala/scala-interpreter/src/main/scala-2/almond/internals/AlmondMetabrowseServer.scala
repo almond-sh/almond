@@ -93,12 +93,14 @@ final class AlmondMetabrowseServer(
     val sourcePath = AlmondMetabrowseServer.sourcePath(frames, log)
 
     log.info(s"Starting metabrowse server at http://$metabrowseHost:$port")
-    log.info(
-      "Initial source path\n  Classpath\n" +
-        sourcePath.classpath.map("    " + _).mkString("\n") +
-        "\n  Sources\n" +
-        sourcePath.sources.map("    " + _).mkString("\n")
-    )
+    log.info {
+      val nl = System.lineSeparator()
+      "Initial source path" + nl +
+        "  Classpath" + nl +
+        sourcePath.classpath.map("    " + _).mkString(nl) + nl +
+        "  Sources" + nl +
+        sourcePath.sources.map("    " + _).mkString(nl)
+    }
     server.start(sourcePath)
 
     (server, port, windowName)
@@ -181,11 +183,11 @@ object AlmondMetabrowseServer {
       .map(Paths.get)
       .toList
 
-    log.info(
-      "Found base JARs:\n" +
-        baseJars.sortBy(_.toString).map("  " + _).mkString("\n") +
-        "\n"
-    )
+    log.info {
+      val nl = System.lineSeparator()
+      "Found base JARs:" + nl +
+        baseJars.sortBy(_.toString).map("  " + _).mkString(nl) + nl
+    }
 
     // When using a "hybrid" launcher, and users decided to end its name with ".jar",
     // we still want to use it as a source JAR too. So we check if it contains sources here.
