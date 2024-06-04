@@ -485,6 +485,7 @@ class KernelLauncher(
           else
             Map.empty[String, String]
 
+        assert(proc == null)
         proc = os.proc(command).spawn(
           cwd = dir,
           env = extraEnv ++ specExtraEnv,
@@ -573,7 +574,8 @@ class KernelLauncher(
       res
     }
     finally {
-      runner0.close()
+      if (runner0 != null)
+        runner0.close()
       output.close(success = success, printOutputOnError = printOutputOnError)
     }
   }
