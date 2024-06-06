@@ -3,7 +3,7 @@ import mill.scalalib._
 
 object Versions {
   def ammonite      = "3.0.0-M2-8-ba4429a2"
-  def caseApp       = "2.1.0-M26"
+  def caseApp       = "2.1.0-M28"
   def coursier      = "2.1.10"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "3.7.15"
