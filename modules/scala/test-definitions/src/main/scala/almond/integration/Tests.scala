@@ -851,12 +851,20 @@ object Tests {
             |        ^
             |No warnings can be incurred under -Xfatal-warnings.
             |Compilation Failed""".stripMargin
-        else
+        else if ((0 to 3).exists(min => scalaVersion.startsWith(s"3.$min.")))
           // FIXME The line number is wrong here
           """-- Error: cmd2.sc:3:8 ----------------------------------------------------------
             |3 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
+            |Compilation Failed""".stripMargin
+        else
+          // FIXME The line number is wrong here
+          """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
+            |3 |val n = getValue()
+            |  |        ^^^^^^^^
+            |  |        method getValue in class Helper is deprecated since 0.1: foo
+            |No warnings can be incurred under -Werror (or -Xfatal-warnings)
             |Compilation Failed""".stripMargin
 
       execute(

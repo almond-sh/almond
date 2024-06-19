@@ -234,6 +234,9 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
       else Nil
     scala213Options
   }
+  def sources = T.sources {
+    super.sources() ++ CrossSources.extraSourcesDirs(scalaVersion(), millSourcePath)
+  }
   object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = {
       val rx =
@@ -855,5 +858,18 @@ object dummy extends Module {
     def ivyDeps = super.ivyDeps() ++ Agg(
       Deps.ammoniteSpark
     )
+  }
+}
+
+object CrossSources {
+  def extraSourcesDirs(sv: String, millSourcePath: os.Path): Seq[PathRef] = {
+    val (maj, min) = sv.split('.') match {
+      case Array(maj0, min0, _*) if min0.nonEmpty && min0.forall(_.isDigit) =>
+        (maj0, min0.toInt)
+      case _ =>
+        sys.error(s"Malformed Scala version: $sv")
+    }
+    val baseDir = millSourcePath / "src" / "main"
+    (0 to min).map(min0 => PathRef(baseDir / s"scala-$maj.$min0+"))
   }
 }
