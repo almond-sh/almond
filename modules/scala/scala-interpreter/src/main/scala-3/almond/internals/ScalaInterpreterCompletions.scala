@@ -196,9 +196,7 @@ object ScalaInterpreterCompletions {
     )
     implicit val ctx: Context = run.runContext.withSource(sourceFile)
 
-    val unit =
-      new CompilationUnit(ctx.source):
-        override def isSuspendable: Boolean = false
+    val unit = Helper.nonSuspendableCompilationUnit(ctx.source)
     ctx
       .run
       .compileUnits(unit :: Nil, ctx)
