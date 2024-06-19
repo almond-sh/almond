@@ -50,7 +50,7 @@ jobs:
             SCALA: 2.13.14
           - OS: ubuntu-latest
             JDK: 17
-            SCALA: 2.12.19
+            SCALA: 2.13.14
     steps:
     - uses: actions/checkout@v4
       with:
