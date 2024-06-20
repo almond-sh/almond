@@ -659,8 +659,28 @@ object Tests {
     val sbv      = scalaVersion.split('.').take(2).mkString(".")
     val isScala2 = scalaVersion.startsWith("2.")
 
-    val kernelShapelessVersion = "2.3.10" // might need to be updated when bumping case-app
-    val testShapelessVersion   = "2.3.3"  // no need to bump that one
+    val caseAppVersion = sys.props.getOrElse(
+      "almond.test.case-app-version",
+      sys.error("almond.test.case-app-version Java property not set")
+    )
+
+    val kernelShapelessVersion: String = {
+      val res = coursierapi.Fetch.create()
+        .addDependencies(
+          coursierapi.Dependency.of("com.github.alexarchambault", "case-app_" + sbv, caseAppVersion)
+        )
+        .fetchResult()
+      res.getDependencies.asScala
+        .find { dep =>
+          dep.getModule.getOrganization == "com.chuusai" &&
+          dep.getModule.getName == "shapeless_" + sbv
+        }
+        .map(_.getVersion)
+        .getOrElse {
+          sys.error(s"Cannot get shapeless version pulled by case-app $caseAppVersion")
+        }
+    }
+    val testShapelessVersion = "2.3.3" // no need to bump that one
 
     assert(kernelShapelessVersion != testShapelessVersion)
 

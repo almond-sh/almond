@@ -602,7 +602,8 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
         s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
-        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}"
+        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}",
+        s"-Dalmond.test.case-app-version=${Versions.caseApp}"
       )
     }
     def tmpDirBase = T.persistent {
