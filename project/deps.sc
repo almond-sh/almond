@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M2-10-f6e2c001"
+  def ammonite      = "3.0.0-M2-15-9bed9700"
   def caseApp       = "2.1.0-M26"
   def coursier      = "2.1.10"
   def jsoniterScala = "2.13.5"
@@ -54,13 +54,13 @@ object Deps {
   def jsoniterScalaMacros =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.5.2"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.5.4"
   def munit                    = ivy"org.scalameta::munit:1.0.0"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
-  def osLib                    = ivy"com.lihaoyi::os-lib:0.10.2"
+  def osLib                    = ivy"com.lihaoyi::os-lib:0.10.3"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.9.4"
+  def scalameta                = ivy"org.scalameta::scalameta:4.9.8"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.1.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
