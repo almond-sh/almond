@@ -10,6 +10,12 @@ import cats.effect.unsafe.IORuntime
 
 object EchoKernel extends CaseApp[Options] {
 
+  private var allArgs = Option.empty[Array[String]]
+  override def main(args: Array[String]): Unit = {
+    allArgs = Some(args)
+    super.main(args)
+  }
+
   def run(options: Options, args: RemainingArgs): Unit = {
 
     val logCtx = Level.fromString(options.log) match {
@@ -28,6 +34,7 @@ object EchoKernel extends CaseApp[Options] {
         defaultDisplayName = "Echo",
         language = "echo",
         options = options.installOptions,
+        allArgs = allArgs.getOrElse(Array.empty[String]).toSeq,
         extraStartupClassPath = Nil
       ) match {
         case Left(e) =>
