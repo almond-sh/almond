@@ -4,7 +4,7 @@ import mill.scalalib._
 object Versions {
   def ammonite      = "3.0.0-M2-15-9bed9700"
   def caseApp       = "2.1.0-M26"
-  def coursier      = "2.1.10"
+  def coursier      = "2.1.14"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "3.7.15"
 }
@@ -40,9 +40,9 @@ object Deps {
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.12.0"
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.19"
+  def coursierApi        = ivy"io.get-coursier:interface:1.0.22"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
-  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.3"
+  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.4"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
@@ -54,7 +54,7 @@ object Deps {
   def jsoniterScalaMacros =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.5.4"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.6.1"
   def munit                    = ivy"org.scalameta::munit:1.0.2"
   def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.10.3"
