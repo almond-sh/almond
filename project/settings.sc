@@ -275,7 +275,7 @@ trait AlmondTestModule
         sysProps = props,
         outputPath = outputPath,
         colored = T.log.colored,
-        testCp = compile().classes.path,
+        testCp = Seq(compile().classes.path),
         home = T.home,
         globSelectors = globSelectors()
       )
@@ -808,7 +808,7 @@ trait TestCommand extends TestModule {
         sysProps = props,
         outputPath = outputPath,
         colored = T.log.colored,
-        testCp = compile().classes.path,
+        testCp = Seq(compile().classes.path),
         home = T.home,
         globSelectors = globSelectors
       )
