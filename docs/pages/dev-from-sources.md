@@ -63,7 +63,7 @@ Once done building, this should print the path to the kernel launcher, like
 
 Optionally, pass a Scala version, like
 ```text
-$ ./mill dev.launcherFast 2.12.13
+$ ./mill dev.launcherFast --scalaVersion 2.12.13
 ```
 
 You can then run that launcher to install it on your system:
