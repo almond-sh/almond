@@ -770,7 +770,7 @@ object dev extends Module {
   }
   def scalaVersions() = T.command {
     for (sv <- ScalaVersions.all)
-      println(sv)
+      mill.api.SystemStreams.original.out.println(sv)
   }
 
   def launcher(scalaVersion: String = ScalaVersions.scala213) = T.command {
