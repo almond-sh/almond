@@ -47,7 +47,7 @@ trait CrossSbtModule extends mill.scalalib.SbtModule with mill.scalalib.CrossMod
       PathRef(millSourcePath / "src" / "main" / s"scala-$s")
     )
   }
-  trait CrossSbtModuleTests extends SbtModuleTests {
+  trait CrossSbtModuleTests extends SbtTests {
     override def millSourcePath = outer.millSourcePath
     def sources = T.sources {
       super.sources() ++ scalaVersionDirectoryNames.map(s =>
@@ -275,7 +275,7 @@ trait AlmondTestModule
         sysProps = props,
         outputPath = outputPath,
         colored = T.log.colored,
-        testCp = compile().classes.path,
+        testCp = Seq(compile().classes.path),
         home = T.home,
         globSelectors = globSelectors()
       )
@@ -808,7 +808,7 @@ trait TestCommand extends TestModule {
         sysProps = props,
         outputPath = outputPath,
         colored = T.log.colored,
-        testCp = compile().classes.path,
+        testCp = Seq(compile().classes.path),
         home = T.home,
         globSelectors = globSelectors
       )
