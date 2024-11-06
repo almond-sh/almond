@@ -32,7 +32,7 @@ jobs:
           ./mill -i '__['"$SV"'].publishLocal'
         done
         ./mill -i __.publishLocal
-        ./mill -i ci.publishSonatype __.publishArtifacts
+        ./mill -i ci.publishSonatype --tasks __.publishArtifacts
       shell: bash
       env:
         PGP_PASSWORD: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
