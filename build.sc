@@ -468,7 +468,7 @@ trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.19"
   private def baseRepoRoot         = os.sub / "out" / "repo"
   def scalaVersion                 = ScalaVersions.scala3Latest
-  object test extends SbtModuleTests {
+  object test extends SbtTests {
     def testFramework = "munit.Framework"
     def ivyDeps = T {
       super.ivyDeps() ++ Agg(
@@ -570,7 +570,7 @@ trait Integration extends SbtModule {
     Deps.testUtil
   )
 
-  object test extends SbtModuleTests with TestCommand {
+  object test extends SbtTests with TestCommand {
     object helper extends ScalaModule {
       def scalaVersion = ScalaVersions.scala3Latest
       def scala213 = T {
