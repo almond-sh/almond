@@ -20,7 +20,7 @@ final class Scalafmt(
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
   defaultDialect: String,
-  defaultVersion: String = almond.api.Properties.defaultScalafmtVersionOpt.getOrElse("2.7.5")
+  defaultVersion: String = almond.api.Properties.defaultScalafmtVersion().getOrElse("3.7.15")
 ) {
 
   private val log = logCtx(getClass)
