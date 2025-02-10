@@ -42,7 +42,7 @@ object Deps {
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
   def coursierApi        = ivy"io.get-coursier:interface:1.0.22"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
-  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.4"
+  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.5"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
