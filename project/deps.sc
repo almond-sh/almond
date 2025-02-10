@@ -44,7 +44,7 @@ object Deps {
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.5"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
-  def expecty             = ivy"com.eed3si9n.expecty::expecty:0.16.0"
+  def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
   def fs2                 = ivy"co.fs2::fs2-core:3.11.0"
   def jansi               = ivy"org.fusesource.jansi:jansi:2.4.1"
