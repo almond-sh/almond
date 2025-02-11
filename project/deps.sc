@@ -4,7 +4,7 @@ import mill.scalalib._
 object Versions {
   def ammonite      = "3.0.0-M2-30-486378af"
   def caseApp       = "2.1.0-M26"
-  def coursier      = "2.1.14"
+  def coursier      = "2.1.25-M2"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "3.7.15"
 }
@@ -39,10 +39,11 @@ object Deps {
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.12.0"
-  def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.22"
-  def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
-  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.5"
+  def coursier =
+    ivy"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
+  def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M1"
+  def coursierLauncher    = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
+  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
