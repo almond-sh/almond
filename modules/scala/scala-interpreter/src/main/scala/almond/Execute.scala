@@ -164,7 +164,7 @@ final class Execute(
     val compatParams = ScalaParameters(scala.util.Properties.versionNumberString)
     val deps = options.dependencies.map { dep =>
       val params0 =
-        if (dep.userParams.get("compat").nonEmpty) compatParams
+        if (dep.userParams.exists(_._1 == "compat")) compatParams
         else params
       dep.applyParams(params0).toCs
     }
