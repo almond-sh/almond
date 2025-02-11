@@ -14,7 +14,9 @@ import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
 import ammonite.util.{Frame => _, _}
-import coursier.cache.shaded.dirs.{GetWinDirs, ProjectDirectories}
+import coursier.cache.shaded.dirs.ProjectDirectories
+import coursier.cache.shaded.dirs.impl.Windows
+import coursier.cache.shaded.dirs.jni.WindowsJni
 import fastparse.Parsed
 
 import java.nio.charset.StandardCharsets
@@ -61,12 +63,12 @@ final class ScalaInterpreter(
     if (params.disableCache)
       Storage.InMemory()
     else {
-      val getWinDirs: GetWinDirs =
+      val windows =
         if (coursier.paths.Util.useJni())
-          new JniGetWinDirs
+          WindowsJni.getJdkAwareSupplier()
         else
-          GetWinDirs.powerShellBased
-      val projDirs = ProjectDirectories.from(null, null, "Almond", getWinDirs)
+          Windows.getDefaultSupplier()
+      val projDirs = ProjectDirectories.from(null, null, "Almond", windows)
       new Storage.Folder(
         os.Path(projDirs.cacheDir) / "ammonite"
       )
