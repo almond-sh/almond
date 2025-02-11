@@ -45,7 +45,7 @@ jobs:
           - OS: windows-latest
             JDK: 8
             SCALA: 2.13.14
-          - OS: macos-12
+          - OS: macos-13
             JDK: 8
             SCALA: 2.13.14
           - OS: ubuntu-latest
@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        OS: ["ubuntu-22.04", macos-12, windows-latest]
+        OS: ["ubuntu-22.04", macos-13, windows-latest]
     steps:
     - uses: actions/checkout@v4
       with:
