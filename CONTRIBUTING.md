@@ -29,5 +29,3 @@ After you've forked and cloned our repo, you can find issues to work on by headi
 
 ### Rules of the discussions
 Remember to be very clear and transparent when discussing any issue in the discussions boards. We ask that you keep the language to English and keep on track with the issue at hand. Lastly, please be respectful of our fellow contributors and keep an exemplary level of professionalism at all times.  
-
-
