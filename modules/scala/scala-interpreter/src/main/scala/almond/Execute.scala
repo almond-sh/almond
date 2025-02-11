@@ -288,7 +288,7 @@ final class Execute(
           val nl = System.lineSeparator()
           s"Interrupt asked, stopping thread $t$nl${t.getStackTrace.map("  " + _).mkString(nl)}"
         }
-        if (useThreadInterrupt) {
+        if (useThreadInterrupt || Execute.isJdk20OrHigher) {
           log.debug(s"Calling 'Thread.interrupt'")
           t.interrupt()
         }
@@ -584,4 +584,13 @@ final class Execute(
 object Execute {
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteResult.Error.error(colors.error(), colors.literal(), exOpt, msg)
+  private lazy val isJdk20OrHigher =
+    sys.props
+      .get("java.version")
+      .flatMap { ver =>
+        val ver0 = ver.stripPrefix("1.").takeWhile(_.isDigit)
+        if (ver0.isEmpty) None
+        else Some(ver0.toInt)
+      }
+      .exists(_ >= 20)
 }

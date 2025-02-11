@@ -449,10 +449,9 @@ object scala extends Module {
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all)
   object `coursier-logger`   extends Cross[CoursierLogger](ScalaVersions.binaries)
-  object `shared-directives`
-      extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries)
-  object launcher         extends Launcher
-  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries)
+  object `shared-directives` extends Cross[SharedDirectives](ScalaVersions.binaries)
+  object launcher            extends Launcher
+  object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx` extends Cross[AlmondRx](Seq(ScalaVersions.scala212, ScalaVersions.scala213))
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
