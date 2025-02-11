@@ -66,7 +66,7 @@ trait AlmondRepositories extends CoursierModule {
   }
 }
 
-trait AlmondPublishModule extends PublishModule {
+trait AlmondPublishModule extends PublishModule with ScalaModule {
   import mill.scalalib.publish._
   def pomSettings = PomSettings(
     description = artifactName(),
@@ -79,6 +79,19 @@ trait AlmondPublishModule extends PublishModule {
     )
   )
   def publishVersion = T(buildVersion)
+  def javacOptions = super.javacOptions() ++ Seq(
+    "--release",
+    "8"
+  )
+  def scalacOptions = T {
+    val sv = scalaVersion()
+    val extraOptions =
+      if (sv.startsWith("2.12.") && sv.stripPrefix("2.12.").toIntOption.exists(_ <= 18))
+        Seq("-target:8")
+      else
+        Seq("--release", "8")
+    super.scalacOptions() ++ extraOptions
+  }
 }
 
 trait ExternalSources extends CrossSbtModule {
