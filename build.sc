@@ -483,11 +483,11 @@ trait Examples extends SbtModule {
       scala.`almond-scalapy`(ScalaVersions.scala212)
         .publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${os.pwd / "examples"}",
+        s"-Dalmond.examples.dir=${T.workspace / "examples"}",
         s"-Dalmond.examples.output-dir=${T.dest / "output"}",
         s"-Dalmond.examples.jupyter-path=${T.dest / "jupyter"}",
         s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
-        s"-Dalmond.examples.repo-root=${baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
+        s"-Dalmond.examples.repo-root=${T.workspace / baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
       )
     }
   }
@@ -596,7 +596,7 @@ trait Integration extends SbtModule {
       val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.local-repo=${(T.workspace / scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot).toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}",
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
@@ -685,7 +685,7 @@ object docs extends ScalaModule with AlmondRepositories {
 
     // TODO Run yarn run thing right after, add --watch mode
 
-    val websiteDir = os.pwd / "docs" / "website"
+    val websiteDir = T.workspace / "docs" / "website"
 
     if (npmInstall)
       Util.run(Seq("npm", "install"), dir = websiteDir.toIO)
@@ -706,7 +706,7 @@ object docs extends ScalaModule with AlmondRepositories {
         Util.withBgProcess(
           Seq("yarn", "run", "start"),
           dir = websiteDir.toIO,
-          waitFor = () => Util.waitForDir((os.pwd / outputDir.split('/').toSeq).toIO)
+          waitFor = () => Util.waitForDir((T.workspace / outputDir.split('/').toSeq).toIO)
         ) {
           runMdoc()
         }
@@ -741,9 +741,9 @@ object dev extends Module {
       val launcher0        = launcher().path.toNIO
       val specialLauncher0 = specialLauncher().path.toNIO
       if (console)
-        jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
+        jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0, T.workspace)
       else
-        jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
+        jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0, T.workspace)
     }
   }
 
@@ -846,7 +846,8 @@ object ci extends Module {
         pgpPassword = pgpPassword,
         data = data,
         timeout = timeout,
-        log = T.ctx().log
+        log = T.ctx().log,
+        workspace = T.workspace
       )
     }
 }

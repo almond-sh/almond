@@ -130,7 +130,7 @@ trait PublishLocalNoFluff extends PublishModule {
     val publisher = localIvyRepo match {
       case null => LocalIvyPublisher
       case repo =>
-        new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), os.pwd))
+        new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), T.workspace))
     }
 
     publisher.publishLocal(
@@ -698,7 +698,8 @@ def publishSonatype(
   pgpPassword: String,
   data: Seq[PublishModule.PublishData],
   timeout: Duration,
-  log: mill.api.Logger
+  log: mill.api.Logger,
+  workspace: os.Path
 ): Unit = {
 
   val artifacts = data.map {
@@ -734,7 +735,7 @@ def publishSonatype(
     readTimeout = timeout.toMillis.toInt,
     connectTimeout = timeout.toMillis.toInt,
     log = log,
-    workspace = os.pwd,
+    workspace = workspace,
     env = sys.env,
     awaitTimeout = timeout.toMillis.toInt,
     stagingRelease = isRelease
@@ -765,7 +766,7 @@ trait LocalRepo extends Module {
   def stubsModules: Seq[PublishLocalNoFluff]
   def version: T[String]
 
-  def repoRoot = os.rel / "out" / "repo" / "{VERSION}"
+  def repoRoot = os.sub / "out" / "repo" / "{VERSION}"
 
   def localRepo = T {
     val tasks = stubsModules.map(_.publishLocalNoFluff(repoRoot.toString))
@@ -781,7 +782,7 @@ trait TestCommand extends TestModule {
       import mill.testrunner.TestRunner
 
       val globSelectors = Nil
-      val outputPath    = os.pwd / "test-output.json"
+      val outputPath    = T.workspace / "test-output.json"
       val useArgsFile   = testUseArgsFile()
 
       val (jvmArgs, props: Map[String, String]) =
