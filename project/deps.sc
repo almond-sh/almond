@@ -56,7 +56,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.6.1"
   def munit                    = ivy"org.scalameta::munit:1.0.2"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
+  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.15"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.11.3"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
@@ -78,7 +78,7 @@ object ScalaVersions {
   def scala3Latest   = "3.4.2"
   def scala3Compat   = "3.3.0"
   def scala213       = "2.13.14"
-  def scala212       = "2.12.19"
+  def scala212       = "2.12.20"
   val binaries       = Seq(scala3Compat, scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
