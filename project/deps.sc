@@ -89,11 +89,8 @@ object ScalaVersions {
     "2.13.13",
     "2.13.12",
     "2.13.11",
-    "2.13.10",
     scala212,
-    "2.12.18",
-    "2.12.17",
-    "2.12.16"
+    "2.12.18"
   ).distinct
 
   def binary(sv: String) =
