@@ -308,14 +308,11 @@ final class ScalaInterpreter(
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
 
-  override def shutdown(): Unit = {
+  override def shutdown(): Unit =
     try Function.chain(ammInterp.beforeExitHooks).apply(())
     catch {
       case NonFatal(e) =>
         log.warn("Caught exception while trying to run exit hooks", e)
     }
-    if (inspectionsInitialized)
-      inspections.shutdown()
-  }
 
 }
