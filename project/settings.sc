@@ -146,15 +146,22 @@ trait PublishLocalNoFluff extends PublishModule {
         new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), T.workspace))
     }
 
-    publisher.publishLocal(
-      jar = jar().path,
-      sourcesJar = sourceJar().path,
-      docJar = emptyZip().path,
-      pom = pom().path,
-      ivy = ivy().path,
-      artifact = artifactMetadata(),
-      extras = extraPublish()
-    )
+    def proceed(): Unit =
+      publisher.publishLocal(
+        jar = jar().path,
+        sourcesJar = sourceJar().path,
+        docJar = emptyZip().path,
+        pom = pom().path,
+        ivy = ivy().path,
+        artifact = artifactMetadata(),
+        extras = extraPublish()
+      )
+
+    try proceed()
+    catch {
+      case _: java.nio.file.FileAlreadyExistsException =>
+      // ignored
+    }
 
     jar()
   }
@@ -779,10 +786,10 @@ trait LocalRepo extends Module {
   def stubsModules: Seq[PublishLocalNoFluff]
   def version: T[String]
 
-  def repoRoot = os.sub / "out" / "repo" / "{VERSION}"
+  def repoRoot = os.sub / "out/repo/{VERSION}"
 
   def localRepo = T {
-    val tasks = stubsModules.map(_.publishLocalNoFluff(repoRoot.toString))
+    val tasks = stubsModules.distinct.map(_.publishLocalNoFluff(repoRoot.toString))
     define.Target.sequence(tasks)
   }
 }
