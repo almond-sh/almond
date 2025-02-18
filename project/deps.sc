@@ -2,9 +2,9 @@ import mill._
 import mill.scalalib._
 
 object Versions {
-  def ammonite      = "3.0.0-M2-30-486378af"
+  def ammonite      = "3.0.2"
   def caseApp       = "2.1.0-M26"
-  def coursier      = "2.1.14"
+  def coursier      = "2.1.25-M1"
   def jsoniterScala = "2.13.5"
   def scalafmt      = "3.7.15"
 }
@@ -40,9 +40,9 @@ object Deps {
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.12.0"
   def coursier           = ivy"io.get-coursier::coursier:${Versions.coursier}"
-  def coursierApi        = ivy"io.get-coursier:interface:1.0.22"
+  def coursierApi        = ivy"io.get-coursier:interface:1.0.29-M1"
   def coursierLauncher   = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
-  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.2.5"
+  def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
@@ -55,12 +55,11 @@ object Deps {
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.6.4"
+  def mtags                    = ivy"org.scalameta:::mtags:1.5.1"
   def munit                    = ivy"org.scalameta::munit:1.0.4"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.11.4"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.11.0"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.1.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
@@ -76,26 +75,21 @@ object Deps {
 
 object ScalaVersions {
   def scala3Latest   = "3.4.2"
-  def scala3Compat   = "3.3.0"
+  def scala3Compat   = "3.3.4"
   def scala213       = "2.13.14"
   def scala212       = "2.12.19"
   val binaries       = Seq(scala3Compat, scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
-    "3.3.3",
-    "3.3.2",
-    "3.3.1",
+    "3.3.5",
     scala3Compat,
     scala213,
     "2.13.13",
     "2.13.12",
     "2.13.11",
-    "2.13.10",
     scala212,
-    "2.12.18",
-    "2.12.17",
-    "2.12.16"
+    "2.12.18"
   ).distinct
 
   def binary(sv: String) =
