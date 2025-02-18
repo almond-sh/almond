@@ -146,15 +146,36 @@ trait PublishLocalNoFluff extends PublishModule {
         new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), T.workspace))
     }
 
-    publisher.publishLocal(
-      jar = jar().path,
-      sourcesJar = sourceJar().path,
-      docJar = emptyZip().path,
-      pom = pom().path,
-      ivy = ivy().path,
-      artifact = artifactMetadata(),
-      extras = extraPublish()
-    )
+    def proceed(): Unit =
+      publisher.publishLocal(
+        jar = jar().path,
+        sourcesJar = sourceJar().path,
+        docJar = emptyZip().path,
+        pom = pom().path,
+        ivy = ivy().path,
+        artifact = artifactMetadata(),
+        extras = extraPublish()
+      )
+
+    @tailrec
+    def helper(): Unit = {
+      val success =
+        try {
+          proceed()
+          true
+        }
+        catch {
+          case _: java.nio.file.FileAlreadyExistsException =>
+            false
+          case _: java.nio.file.NoSuchFileException =>
+            false
+        }
+
+      if (!success)
+        helper()
+    }
+
+    helper()
 
     jar()
   }
