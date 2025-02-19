@@ -56,7 +56,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.6.4"
   def munit                    = ivy"org.scalameta::munit:1.1.0"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
+  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.15-1"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.11.4"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
