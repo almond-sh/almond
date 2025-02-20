@@ -31,8 +31,10 @@ implicit class DepOps(private val dep: Dep) {
 }
 
 object Deps {
-  def ammoniteCompiler   = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
-  def ammoniteRepl       = ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
+  def ammoniteCompiler = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+  def ammoniteRepl =
+    ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
+      .exclude(("org.scalameta", "semanticdb-shared_*"))
   def ammoniteReplApi    = ivy"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
   def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
@@ -55,12 +57,11 @@ object Deps {
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.6.4"
+  def mtags                    = ivy"org.scalameta:::mtags:1.5.1"
   def munit                    = ivy"org.scalameta::munit:1.1.0"
-  def metabrowseServer         = ivy"org.scalameta:::metabrowse-server:0.2.13"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.11.4"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
-  def scalameta                = ivy"org.scalameta::scalameta:4.11.0"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.1.1"
   def scalapy                  = ivy"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = ivy"org.scala-lang:scala-reflect:$sv"
