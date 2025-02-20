@@ -66,7 +66,7 @@ trait AlmondRepositories extends CoursierModule {
   }
 }
 
-trait AlmondPublishModule extends PublishModule {
+trait AlmondPublishModule extends PublishModule with ScalaModule {
   import mill.scalalib.publish._
   def pomSettings = PomSettings(
     description = artifactName(),
@@ -79,6 +79,19 @@ trait AlmondPublishModule extends PublishModule {
     )
   )
   def publishVersion = T(buildVersion)
+  def javacOptions = super.javacOptions() ++ Seq(
+    "--release",
+    "8"
+  )
+  def scalacOptions = T {
+    val sv = scalaVersion()
+    val extraOptions =
+      if (sv.startsWith("2.12.") && sv.stripPrefix("2.12.").toIntOption.exists(_ <= 18))
+        Seq("-target:8")
+      else
+        Seq("--release", "8")
+    super.scalacOptions() ++ extraOptions
+  }
 }
 
 trait ExternalSources extends CrossSbtModule {
@@ -133,15 +146,36 @@ trait PublishLocalNoFluff extends PublishModule {
         new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), T.workspace))
     }
 
-    publisher.publishLocal(
-      jar = jar().path,
-      sourcesJar = sourceJar().path,
-      docJar = emptyZip().path,
-      pom = pom().path,
-      ivy = ivy().path,
-      artifact = artifactMetadata(),
-      extras = extraPublish()
-    )
+    def proceed(): Unit =
+      publisher.publishLocal(
+        jar = jar().path,
+        sourcesJar = sourceJar().path,
+        docJar = emptyZip().path,
+        pom = pom().path,
+        ivy = ivy().path,
+        artifact = artifactMetadata(),
+        extras = extraPublish()
+      )
+
+    @tailrec
+    def helper(): Unit = {
+      val success =
+        try {
+          proceed()
+          true
+        }
+        catch {
+          case _: java.nio.file.FileAlreadyExistsException =>
+            false
+          case _: java.nio.file.NoSuchFileException =>
+            false
+        }
+
+      if (!success)
+        helper()
+    }
+
+    helper()
 
     jar()
   }
