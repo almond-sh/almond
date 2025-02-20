@@ -31,8 +31,10 @@ implicit class DepOps(private val dep: Dep) {
 }
 
 object Deps {
-  def ammoniteCompiler   = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
-  def ammoniteRepl       = ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
+  def ammoniteCompiler = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+  def ammoniteRepl =
+    ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
+      .exclude(("org.scalameta", "semanticdb-shared_*"))
   def ammoniteReplApi    = ivy"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
   def ammoniteSpark      = ivy"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
