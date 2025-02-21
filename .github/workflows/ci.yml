@@ -40,14 +40,14 @@ jobs:
       matrix:
         OS: [ubuntu-latest]
         JDK: [21]
-        SCALA: [2.12.18, 2.12.19, 2.13.13, 2.13.14, 3.4.2]
+        SCALA: [2.12.18, 2.12.19, 2.13.13, 2.13.16, 3.4.2]
         include:
           - OS: windows-latest
             JDK: 21
-            SCALA: 2.13.14
+            SCALA: 2.13.16
           - OS: macos-13
             JDK: 21
-            SCALA: 2.13.14
+            SCALA: 2.13.16
     steps:
     - uses: actions/checkout@v4
       with:
