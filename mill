@@ -4,17 +4,24 @@
 # You can give the required mill version with --mill-version parameter
 # If no version is given, it falls back to the value of DEFAULT_MILL_VERSION
 #
-# Project page: https://github.com/lefou/millw
-# Script Version: 0.4.2
+# Original Project page: https://github.com/lefou/millw
+# Script Version: 0.4.12
 #
 # If you want to improve this script, please also contribute your changes back!
 #
 # Licensed under the Apache License, Version 2.0
 
-
-DEFAULT_MILL_VERSION=0.10.0
-
 set -e
+
+if [ -z "${DEFAULT_MILL_VERSION}" ] ; then
+  DEFAULT_MILL_VERSION="0.11.4"
+fi
+
+
+if [ -z "${GITHUB_RELEASE_CDN}" ] ; then
+  GITHUB_RELEASE_CDN=""
+fi
+
 
 MILL_REPO_URL="https://github.com/com-lihaoyi/mill"
 
@@ -42,14 +49,16 @@ fi
 # If not already set, read .mill-version file
 if [ -z "${MILL_VERSION}" ] ; then
   if [ -f ".mill-version" ] ; then
-    MILL_VERSION="$(head -n 1 .mill-version 2> /dev/null)"
+    MILL_VERSION="$(tr '\r' '\n' < .mill-version | head -n 1 2> /dev/null)"
+  elif [ -f ".config/mill-version" ] ; then
+    MILL_VERSION="$(tr '\r' '\n' < .config/mill-version | head -n 1 2> /dev/null)"
   fi
 fi
 
-if [ -n "${XDG_CACHE_HOME}" ] ; then
-  MILL_DOWNLOAD_PATH="${XDG_CACHE_HOME}/mill/download"
-else
-  MILL_DOWNLOAD_PATH="${HOME}/.cache/mill/download"
+MILL_USER_CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/mill"
+
+if [ -z "${MILL_DOWNLOAD_PATH}" ] ; then
+  MILL_DOWNLOAD_PATH="${MILL_USER_CACHE_DIR}/download"
 fi
 
 # If not already set, try to fetch newest from Github
@@ -92,37 +101,98 @@ if [ -z "${MILL_VERSION}" ] ; then
   fi
 fi
 
-MILL="${MILL_DOWNLOAD_PATH}/${MILL_VERSION}"
+MILL_NATIVE_SUFFIX="-native"
+FULL_MILL_VERSION=$MILL_VERSION
+ARTIFACT_SUFFIX=""
+case "$MILL_VERSION" in
+    *"$MILL_NATIVE_SUFFIX")
+  MILL_VERSION=${MILL_VERSION%"$MILL_NATIVE_SUFFIX"}
+  if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" = "Linux" ]; then
+    if [ "$(uname -m)" = "aarch64" ]; then
+      ARTIFACT_SUFFIX="-native-linux-aarch64"
+    else
+      ARTIFACT_SUFFIX="-native-linux-amd64"
+    fi
+  elif [ "$(uname)" = "Darwin" ]; then
+    if [ "$(uname -m)" = "arm64" ]; then
+      ARTIFACT_SUFFIX="-native-mac-aarch64"
+    else
+      ARTIFACT_SUFFIX="-native-mac-amd64"
+    fi
+  else
+     echo "This native mill launcher supports only Linux and macOS." 1>&2
+     exit 1
+  fi
+esac
+
+MILL="${MILL_DOWNLOAD_PATH}/${FULL_MILL_VERSION}"
 
 try_to_use_system_mill() {
+  if [ "$(uname)" != "Linux" ]; then
+    return 0
+  fi
+
   MILL_IN_PATH="$(command -v mill || true)"
 
   if [ -z "${MILL_IN_PATH}" ]; then
-    return
+    return 0
   fi
 
-  UNIVERSAL_SCRIPT_MAGIC="@ 2>/dev/null # 2>nul & echo off & goto BOF"
+  SYSTEM_MILL_FIRST_TWO_BYTES=$(head --bytes=2 "${MILL_IN_PATH}")
+  if [ "${SYSTEM_MILL_FIRST_TWO_BYTES}" = "#!" ]; then
+	  # MILL_IN_PATH is (very likely) a shell script and not the mill
+	  # executable, ignore it.
+	  return 0
+  fi
 
-  if ! head -c 128 "${MILL_IN_PATH}" | grep -qF "${UNIVERSAL_SCRIPT_MAGIC}"; then
-    if [ -n "${MILLW_VERBOSE}" ]; then
-      echo "Could not determine mill version of ${MILL_IN_PATH}, as it does not start with the universal script magic2" 1>&2
+  SYSTEM_MILL_PATH=$(readlink -e "${MILL_IN_PATH}")
+  SYSTEM_MILL_SIZE=$(stat --format=%s "${SYSTEM_MILL_PATH}")
+  SYSTEM_MILL_MTIME=$(stat --format=%y "${SYSTEM_MILL_PATH}")
+
+  if [ ! -d "${MILL_USER_CACHE_DIR}" ]; then
+    mkdir -p "${MILL_USER_CACHE_DIR}"
+  fi
+
+  SYSTEM_MILL_INFO_FILE="${MILL_USER_CACHE_DIR}/system-mill-info"
+  if [ -f "${SYSTEM_MILL_INFO_FILE}" ]; then
+    parseSystemMillInfo() {
+        LINE_NUMBER="${1}"
+        # Select the line number of the SYSTEM_MILL_INFO_FILE, cut the
+        # variable definition in that line in two halves and return
+        # the value, and finally remove the quotes.
+        sed -n "${LINE_NUMBER}p" "${SYSTEM_MILL_INFO_FILE}" |\
+            cut -d= -f2 |\
+            sed 's/"\(.*\)"/\1/'
+    }
+
+    CACHED_SYSTEM_MILL_PATH=$(parseSystemMillInfo 1)
+    CACHED_SYSTEM_MILL_VERSION=$(parseSystemMillInfo 2)
+    CACHED_SYSTEM_MILL_SIZE=$(parseSystemMillInfo 3)
+    CACHED_SYSTEM_MILL_MTIME=$(parseSystemMillInfo 4)
+
+    if [ "${SYSTEM_MILL_PATH}" = "${CACHED_SYSTEM_MILL_PATH}" ] \
+           && [ "${SYSTEM_MILL_SIZE}" = "${CACHED_SYSTEM_MILL_SIZE}" ] \
+           && [ "${SYSTEM_MILL_MTIME}" = "${CACHED_SYSTEM_MILL_MTIME}" ]; then
+      if [ "${CACHED_SYSTEM_MILL_VERSION}" = "${MILL_VERSION}" ]; then
+          MILL="${SYSTEM_MILL_PATH}"
+          return 0
+      else
+          return 0
+      fi
     fi
-    return
   fi
 
-  # Roughly the size of the universal script.
-  MILL_VERSION_SEARCH_RANGE="2403"
-  MILL_IN_PATH_VERSION=$(head -c "${MILL_VERSION_SEARCH_RANGE}" "${MILL_IN_PATH}" |\
-                         sed -n 's/^.*-DMILL_VERSION=\([^\s]*\) .*$/\1/p' |\
-                         head -n 1)
+  SYSTEM_MILL_VERSION=$(${SYSTEM_MILL_PATH} --version | head -n1 | sed -n 's/^Mill.*version \(.*\)/\1/p')
 
-  if [ -z "${MILL_IN_PATH_VERSION}" ]; then
-    echo "Could not determine mill version, even though ${MILL_IN_PATH} has the universal script magic" 1>&2
-    return
-  fi
+  cat <<EOF > "${SYSTEM_MILL_INFO_FILE}"
+CACHED_SYSTEM_MILL_PATH="${SYSTEM_MILL_PATH}"
+CACHED_SYSTEM_MILL_VERSION="${SYSTEM_MILL_VERSION}"
+CACHED_SYSTEM_MILL_SIZE="${SYSTEM_MILL_SIZE}"
+CACHED_SYSTEM_MILL_MTIME="${SYSTEM_MILL_MTIME}"
+EOF
 
-  if [ "${MILL_IN_PATH_VERSION}" = "${MILL_VERSION}" ]; then
-    MILL="${MILL_IN_PATH}"
+  if [ "${SYSTEM_MILL_VERSION}" = "${MILL_VERSION}" ]; then
+    MILL="${SYSTEM_MILL_PATH}"
   fi
 }
 try_to_use_system_mill
@@ -136,22 +206,34 @@ if [ ! -s "${MILL}" ] ; then
   if [ -x "${OLD_MILL}" ] ; then
     MILL="${OLD_MILL}"
   else
-    VERSION_PREFIX="$(echo $MILL_VERSION | cut -b -4)"
-    case $VERSION_PREFIX in
-      0.0. | 0.1. | 0.2. | 0.3. | 0.4. )
+    case $MILL_VERSION in
+      0.0.* | 0.1.* | 0.2.* | 0.3.* | 0.4.* )
         DOWNLOAD_SUFFIX=""
+        DOWNLOAD_FROM_MAVEN=0
+        ;;
+      0.5.* | 0.6.* | 0.7.* | 0.8.* | 0.9.* | 0.10.* | 0.11.0-M* )
+        DOWNLOAD_SUFFIX="-assembly"
+        DOWNLOAD_FROM_MAVEN=0
         ;;
       *)
         DOWNLOAD_SUFFIX="-assembly"
+        DOWNLOAD_FROM_MAVEN=1
         ;;
     esac
-    unset VERSION_PREFIX
 
     DOWNLOAD_FILE=$(mktemp mill.XXXXXX)
+
+    if [ "$DOWNLOAD_FROM_MAVEN" = "1" ] ; then
+      DOWNLOAD_URL="https://repo1.maven.org/maven2/com/lihaoyi/mill-dist${ARTIFACT_SUFFIX}/${MILL_VERSION}/mill-dist${ARTIFACT_SUFFIX}-${MILL_VERSION}.jar"
+    else
+      MILL_VERSION_TAG=$(echo "$MILL_VERSION" | sed -E 's/([^-]+)(-M[0-9]+)?(-.*)?/\1\2/')
+      DOWNLOAD_URL="${GITHUB_RELEASE_CDN}${MILL_REPO_URL}/releases/download/${MILL_VERSION_TAG}/${MILL_VERSION}${DOWNLOAD_SUFFIX}"
+      unset MILL_VERSION_TAG
+    fi
+
     # TODO: handle command not found
-    echo "Downloading mill ${MILL_VERSION} from ${MILL_REPO_URL}/releases ..." 1>&2
-    MILL_VERSION_TAG=$(echo $MILL_VERSION | sed -E 's/([^-]+)(-M[0-9]+)?(-.*)?/\1\2/')
-    ${CURL_CMD} -f -L -o "${DOWNLOAD_FILE}" "${MILL_REPO_URL}/releases/download/${MILL_VERSION_TAG}/${MILL_VERSION}${DOWNLOAD_SUFFIX}"
+    echo "Downloading mill ${MILL_VERSION} from ${DOWNLOAD_URL} ..." 1>&2
+    ${CURL_CMD} -f -L -o "${DOWNLOAD_FILE}" "${DOWNLOAD_URL}"
     chmod +x "${DOWNLOAD_FILE}"
     mkdir -p "${MILL_DOWNLOAD_PATH}"
     mv "${DOWNLOAD_FILE}" "${MILL}"
@@ -161,11 +243,23 @@ if [ ! -s "${MILL}" ] ; then
   fi
 fi
 
+if [ -z "$MILL_MAIN_CLI" ] ; then
+  MILL_MAIN_CLI="${0}"
+fi
+
+MILL_FIRST_ARG=""
+if [ "$1" = "--bsp" ] || [ "$1" = "-i" ] || [ "$1" = "--interactive" ] || [ "$1" = "--no-server" ] || [ "$1" = "--repl" ] || [ "$1" = "--help" ] ; then
+  # Need to preserve the first position of those listed options
+  MILL_FIRST_ARG=$1
+  shift
+fi
+
 unset MILL_DOWNLOAD_PATH
 unset MILL_OLD_DOWNLOAD_PATH
 unset OLD_MILL
 unset MILL_VERSION
-unset MILL_VERSION_TAG
 unset MILL_REPO_URL
 
-exec "${MILL}" "$@"
+# We don't quote MILL_FIRST_ARG on purpose, so we can expand the empty value without quotes
+# shellcheck disable=SC2086
+exec "${MILL}" $MILL_FIRST_ARG -D "mill.main.cli=${MILL_MAIN_CLI}" "$@"

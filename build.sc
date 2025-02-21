@@ -209,12 +209,8 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
     val metabrowse =
       if (crossScalaVersion.startsWith("2."))
         Agg(
-          Deps.metabrowseServer
-            // don't let metabrowse bump our slf4j version (switching to v2 can be quite sensitive when Spark is involved)
-            .exclude(("org.slf4j", "slf4j-api")),
-          // bump the scalameta version, so that all scalameta JARs have the same version as the few scalameta
-          // dependencies of Ammonite
-          Deps.scalameta
+          // The scalameta versions of mtags (Metals) and Ammonite may clash here :\
+          Deps.mtags
         )
       else
         Agg.empty
@@ -449,10 +445,9 @@ object scala extends Module {
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.all)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all)
   object `coursier-logger`   extends Cross[CoursierLogger](ScalaVersions.binaries)
-  object `shared-directives`
-      extends Cross[SharedDirectives]("2.12.15" +: ScalaVersions.binaries)
-  object launcher         extends Launcher
-  object `almond-scalapy` extends Cross[AlmondScalaPy](ScalaVersions.binaries)
+  object `shared-directives` extends Cross[SharedDirectives](ScalaVersions.binaries)
+  object launcher            extends Launcher
+  object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx` extends Cross[AlmondRx](Seq(ScalaVersions.scala212, ScalaVersions.scala213))
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
@@ -468,7 +463,7 @@ trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.20"
   private def baseRepoRoot         = os.sub / "out" / "repo"
   def scalaVersion                 = ScalaVersions.scala3Latest
-  object test extends SbtModuleTests {
+  object test extends SbtTests {
     def testFramework = "munit.Framework"
     def ivyDeps = T {
       super.ivyDeps() ++ Agg(
@@ -483,11 +478,11 @@ trait Examples extends SbtModule {
       scala.`almond-scalapy`(ScalaVersions.scala212)
         .publishLocalNoFluff((baseRepoRoot / "{VERSION}").toString)()
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${os.pwd / "examples"}",
+        s"-Dalmond.examples.dir=${T.workspace / "examples"}",
         s"-Dalmond.examples.output-dir=${T.dest / "output"}",
         s"-Dalmond.examples.jupyter-path=${T.dest / "jupyter"}",
         s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
-        s"-Dalmond.examples.repo-root=${baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
+        s"-Dalmond.examples.repo-root=${T.workspace / baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
       )
     }
   }
@@ -570,7 +565,7 @@ trait Integration extends SbtModule {
     Deps.testUtil
   )
 
-  object test extends SbtModuleTests with TestCommand {
+  object test extends SbtTests with TestCommand {
     object helper extends ScalaModule {
       def scalaVersion = ScalaVersions.scala3Latest
       def scala213 = T {
@@ -596,7 +591,7 @@ trait Integration extends SbtModule {
       val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot.toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.local-repo=${(T.workspace / scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot).toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}",
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
@@ -685,7 +680,7 @@ object docs extends ScalaModule with AlmondRepositories {
 
     // TODO Run yarn run thing right after, add --watch mode
 
-    val websiteDir = os.pwd / "docs" / "website"
+    val websiteDir = T.workspace / "docs" / "website"
 
     if (npmInstall)
       Util.run(Seq("npm", "install"), dir = websiteDir.toIO)
@@ -706,7 +701,7 @@ object docs extends ScalaModule with AlmondRepositories {
         Util.withBgProcess(
           Seq("yarn", "run", "start"),
           dir = websiteDir.toIO,
-          waitFor = () => Util.waitForDir((os.pwd / outputDir.split('/').toSeq).toIO)
+          waitFor = () => Util.waitForDir((T.workspace / outputDir.split('/').toSeq).toIO)
         ) {
           runMdoc()
         }
@@ -741,9 +736,9 @@ object dev extends Module {
       val launcher0        = launcher().path.toNIO
       val specialLauncher0 = specialLauncher().path.toNIO
       if (console)
-        jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
+        jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0, T.workspace)
       else
-        jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0)
+        jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0, T.workspace)
     }
   }
 
@@ -846,7 +841,8 @@ object ci extends Module {
         pgpPassword = pgpPassword,
         data = data,
         timeout = timeout,
-        log = T.ctx().log
+        log = T.ctx().log,
+        workspace = T.workspace
       )
     }
 }
