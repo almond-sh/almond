@@ -80,7 +80,7 @@ object ScalaVersions {
   def scala3Latest   = "3.4.2"
   def scala3Compat   = "3.4.2" // go back to 3.3.4 we we can?
   def scala213       = "2.13.14"
-  def scala212       = "2.12.19"
+  def scala212       = "2.12.20"
   val binaries       = Seq(scala3Compat, scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
@@ -90,6 +90,7 @@ object ScalaVersions {
     "2.13.13",
     "2.13.12",
     scala212,
+    "2.12.19",
     "2.12.18"
   ).distinct
 
