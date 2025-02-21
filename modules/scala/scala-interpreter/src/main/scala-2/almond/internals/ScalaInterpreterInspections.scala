@@ -15,11 +15,15 @@ import scala.meta.internal.semanticdb.scalac.SemanticdbOps
 import scala.meta.io.AbsolutePath
 import scala.meta.pc.SymbolDocumentation
 
+import java.io.File
+import java.net.URI
 import java.util.Optional
 
 import scala.collection.compat._
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.tools.nsc.interactive.{Global => Interactive}
+import java.util.zip.ZipFile
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,
@@ -31,20 +35,11 @@ final class ScalaInterpreterInspections(
   frames: => List[Frame]
 ) {
 
-  private val metabrowseServer = new AlmondMetabrowseServer(
-    logCtx,
-    metabrowse,
-    metabrowseHost,
-    metabrowsePort,
-    scalaVersion,
-    frames
-  )
-
   private val log = logCtx(getClass)
 
   private lazy val docs: Docstrings = {
 
-    val sourcePaths = AlmondMetabrowseServer.sourcePath(frames, log).sources
+    val sourcePaths = ScalaInterpreterInspections.sourcePath(frames, log)
 
     val symbolIndex = {
       // FIXME In 2.13 and 3, the actual dialect might be one or the other,
@@ -70,7 +65,7 @@ final class ScalaInterpreterInspections(
       index
     }
 
-    new Docstrings(symbolIndex)
+    new Docstrings(symbolIndex)(EmptyReportContext)
   }
 
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
@@ -113,8 +108,6 @@ final class ScalaInterpreterInspections(
             )
             None
           case Right(tree) =>
-            val urlOpt = metabrowseServer.urlFor(pressy)(code, pos, detailLevel, tree)
-
             val typeStr = ScalaInterpreterInspections.typeOfTree(pressy)(tree)
               .get
               .fold(
@@ -159,11 +152,8 @@ final class ScalaInterpreterInspections(
 
             import scalatags.Text.all._
 
-            val typeHtml0 = pre(typeStr)
-            val typeHtml: Frag = urlOpt.fold(typeHtml0) {
-              case (url, metabrowseWindowId) =>
-                a(href := url, target := metabrowseWindowId, typeHtml0)
-            }
+            val typeHtml0      = pre(typeStr)
+            val typeHtml: Frag = typeHtml0
 
             val wholeHtml = div(
               typeHtml,
@@ -178,10 +168,6 @@ final class ScalaInterpreterInspections(
         }
     }
   }
-
-  def shutdown(): Unit =
-    metabrowseServer.shutdown()
-
 }
 
 object ScalaInterpreterInspections {
@@ -207,4 +193,115 @@ object ScalaInterpreterInspections {
       }
     }
 
+  def sourcePath(frames: List[Frame], log: Logger): Seq[Path] = {
+    val baseSourcepath = baseSourcePath(
+      frames
+        .last
+        .classloader
+        .getParent,
+      log
+    )
+
+    val sessionJars = frames
+      .flatMap(_.classpath)
+      .collect {
+        // FIXME We're ignoring jars-in-jars of standalone bootstraps of coursier in particular
+        case p if p.getProtocol == "file" =>
+          Paths.get(p.toURI)
+      }
+
+    sourcePathFromJars(sessionJars) ++ baseSourcepath
+  }
+
+  private def baseSourcePath(loader: ClassLoader, log: Logger): Seq[Path] = {
+
+    lazy val javaDirs = {
+      val l = Seq(sys.props("java.home")) ++
+        sys.props.get("java.ext.dirs")
+          .toSeq
+          .flatMap(_.split(File.pathSeparator))
+          .filter(_.nonEmpty) ++
+        sys.props.get("java.endorsed.dirs")
+          .toSeq
+          .flatMap(_.split(File.pathSeparator))
+          .filter(_.nonEmpty)
+      l.map(_.stripSuffix("/") + "/")
+    }
+
+    def isJdkJar(uri: URI): Boolean =
+      uri.getScheme == "file" && {
+        val path = new File(uri).getAbsolutePath
+        javaDirs.exists(path.startsWith)
+      }
+
+    def classpath(cl: ClassLoader): immutable.LazyList[java.net.URL] =
+      if (cl == null)
+        immutable.LazyList()
+      else {
+        val cp = cl match {
+          case u: java.net.URLClassLoader => u.getURLs.to(immutable.LazyList)
+          case cl0 if cl0.toString.startsWith("jdk.internal.loader.ClassLoaders$AppClassLoader") =>
+            Option(sys.props("java.class.path"))
+              .map(_.split(File.pathSeparator).map(Paths.get(_).toUri.toURL).to(immutable.LazyList))
+              .getOrElse(immutable.LazyList())
+          case _ => immutable.LazyList()
+        }
+
+        cp #::: classpath(cl.getParent)
+      }
+
+    val baseJars = classpath(loader)
+      .map(_.toURI)
+      // assuming the JDK on the YARN machines already have those
+      .filter(u => !isJdkJar(u))
+      .map(Paths.get)
+      .toList
+
+    log.info {
+      val nl = System.lineSeparator()
+      "Found base JARs:" + nl +
+        baseJars.sortBy(_.toString).map("  " + _).mkString(nl) + nl
+    }
+
+    // When using a "hybrid" launcher, and users decided to end its name with ".jar",
+    // we still want to use it as a source JAR too. So we check if it contains sources here.
+    val checkForSources =
+      baseJars.exists(_.getFileName.toString.endsWith(".jar")) &&
+      !baseJars.exists(_.getFileName.toString.endsWith("-sources.jar"))
+    sourcePathFromJars(baseJars, checkForSources = checkForSources)
+  }
+
+  private def sourcePathFromJars(jars: Seq[Path], checkForSources: Boolean = false): Seq[Path] = {
+
+    val sources = new mutable.ListBuffer[Path]
+
+    for (jar <- jars) {
+      val name = jar.getFileName.toString
+      if (name.endsWith("-sources.jar"))
+        sources += jar
+      else if (name.endsWith(".jar")) {
+        if (checkForSources) {
+          val foundSources = {
+            var zf: ZipFile = null
+            try {
+              zf = new ZipFile(jar.toFile)
+              zf.entries().asScala.exists { ent =>
+                val name = ent.getName
+                name.endsWith(".scala") || name.endsWith(".java")
+              }
+            }
+            finally
+              if (zf != null)
+                zf.close()
+          }
+          if (foundSources)
+            sources += jar
+        }
+      }
+      else
+        sources += jar
+    }
+
+    sources.toList
+  }
 }
