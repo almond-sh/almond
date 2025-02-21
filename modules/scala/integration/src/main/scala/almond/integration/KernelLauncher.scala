@@ -51,7 +51,7 @@ object KernelLauncher {
   )
 
   lazy val localRepoRoot = sys.props.get("almond.test.local-repo")
-    .map(os.Path(_, os.pwd))
+    .map(os.Path(_))
     .getOrElse {
       sys.error("almond.test.local-repo Java property not set")
     }
@@ -72,7 +72,7 @@ object KernelLauncher {
       Option(System.getenv("ALMOND_INTEGRATION_TMP")).getOrElse {
         sys.error("ALMOND_INTEGRATION_TMP not set")
       }
-      val base = os.Path(System.getenv("ALMOND_INTEGRATION_TMP"), os.pwd)
+      val base = os.Path(System.getenv("ALMOND_INTEGRATION_TMP"))
       val rng  = new SecureRandom
       val d    = base / s"run-${math.abs(rng.nextInt().toLong)}"
       os.makeDir.all(d)

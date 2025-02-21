@@ -40,7 +40,8 @@ def jupyterServer(
   launcher: Path,
   specialLauncher: Path,
   jupyterDir: Path,
-  args: Seq[String]
+  args: Seq[String],
+  workspace: os.Path
 ): Unit = {
 
   writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
@@ -52,7 +53,7 @@ def jupyterServer(
     "--quiet=false"
   )
 
-  os.makeDir.all(os.pwd / "notebooks")
+  os.makeDir.all(workspace / "notebooks")
   val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
   val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
   val env            = b.environment()
@@ -74,15 +75,16 @@ def jupyterConsole(
   launcher: Path,
   specialLauncher: Path,
   jupyterDir: Path,
-  args: Seq[String]
+  args: Seq[String],
+  workspace: os.Path
 ): Unit = {
 
   writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
   writeKernelJson(specialLauncher, jupyterDir, specialKernelId, "Scala (special, sources)")
 
   val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
-  val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
-  val env            = b.environment()
+  val b   = new ProcessBuilder(jupyterCommand ++ args: _*).directory(workspace.toIO).inheritIO()
+  val env = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
   val p = b.start()
   val hook: Thread = new Thread("jupyter-stop") {
