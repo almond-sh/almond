@@ -29,7 +29,7 @@ jobs:
         pip install -r examples/requirements.txt --no-dependencies
     - uses: coursier/setup-action@v1.3
       with:
-        jvm: 8
+        jvm: 21
     - run: ./mill -i scala.examples.test
       shell: bash
 
@@ -39,17 +39,14 @@ jobs:
       fail-fast: false
       matrix:
         OS: [ubuntu-latest]
-        JDK: [8]
-        SCALA: [2.12.18, 2.12.19, 2.13.13, 2.13.14, 3.3.3, 3.4.2]
+        JDK: [21]
+        SCALA: [2.12.18, 2.12.19, 2.13.13, 2.13.14, 3.4.2]
         include:
           - OS: windows-latest
-            JDK: 8
+            JDK: 21
             SCALA: 2.13.14
-          - OS: macos-12
-            JDK: 8
-            SCALA: 2.13.14
-          - OS: ubuntu-latest
-            JDK: 17
+          - OS: macos-13
+            JDK: 21
             SCALA: 2.13.14
     steps:
     - uses: actions/checkout@v4
@@ -71,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        OS: ["ubuntu-22.04", macos-12, windows-latest]
+        OS: ["ubuntu-22.04", macos-13, windows-latest]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -79,7 +76,7 @@ jobs:
         submodules: true
     - uses: coursier/setup-action@v1.3
       with:
-        jvm: 8
+        jvm: 21
         apps: scala-cli
     - run: .github/scripts/run/run-its.sh
       shell: bash
@@ -93,7 +90,7 @@ jobs:
         submodules: true
     - uses: coursier/setup-action@v1.3
       with:
-        jvm: 8
+        jvm: 21
     - run: ./mill __.mimaReportBinaryIssues
       shell: bash
 
@@ -106,7 +103,7 @@ jobs:
         submodules: true
     - uses: coursier/setup-action@v1.3
       with:
-        jvm: 17
+        jvm: 21
         apps: cs
     - run: ./mill docs.generate
       shell: bash
@@ -121,7 +118,7 @@ jobs:
         submodules: true
     - uses: coursier/setup-action@v1.3
       with:
-        jvm: "temurin:17"
+        jvm: 21
         apps: scalafmt
     - run: scalafmt --check
 
@@ -134,7 +131,7 @@ jobs:
         submodules: true
     - uses: coursier/setup-action@v1.3
       with:
-        jvm: 8
+        jvm: 21
         apps:
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
