@@ -45,6 +45,7 @@ object Deps {
     ivy"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
   def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M1"
   def coursierLauncher    = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
+  def coursierVersions    = ivy"io.get-coursier::versions:0.5.1"
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
