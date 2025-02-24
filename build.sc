@@ -188,8 +188,9 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = T {
     Seq(
-      "default-scalafmt-version" -> Deps.scalafmtDynamic.dep.version,
-      "scala-version"            -> crossScalaVersion
+      "default-scalafmt-version"        -> Deps.scalafmtDynamic.dep.version,
+      "default-scalafmt-version-java-8" -> Versions.scalafmtJava8,
+      "scala-version"                   -> crossScalaVersion
     )
   }
 }
