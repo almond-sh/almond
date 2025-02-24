@@ -841,7 +841,7 @@ object Tests {
 
       val scalaVersion0 = Version(scalaVersion)
       val errorMessage =
-        if (scalaVersion.startsWith("2.13.")) {
+        if (scalaVersion.startsWith("2.13."))
           if (scalaVersion0 >= Version("2.13.15"))
             """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
               |No warnings can be incurred under -Werror.
@@ -852,7 +852,6 @@ object Tests {
               |        ^
               |No warnings can be incurred under -Werror.
               |Compilation Failed""".stripMargin
-        }
         else if (scalaVersion.startsWith("2.12."))
           """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()
