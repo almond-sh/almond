@@ -513,7 +513,7 @@ trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule 
   def ivyDeps = T {
     Agg(
       Deps.coursierApi,
-      Deps.coursierVersions,
+      Deps.coursierVersions.withDottyCompat(crossScalaVersion),
       Deps.upickle
     )
   }
