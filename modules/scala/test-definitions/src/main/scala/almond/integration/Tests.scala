@@ -6,6 +6,7 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.Dsl._
 import com.eed3si9n.expecty.Expecty.expect
+import coursier.version.Version
 
 import java.io.File
 import java.util.UUID
@@ -838,13 +839,19 @@ object Tests {
         ignoreStreams = true
       )
 
+      val scalaVersion0 = Version(scalaVersion)
       val errorMessage =
         if (scalaVersion.startsWith("2.13."))
-          """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
-            |val n = getValue()
-            |        ^
-            |No warnings can be incurred under -Werror.
-            |Compilation Failed""".stripMargin
+          if (scalaVersion0 >= Version("2.13.15"))
+            """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
+              |No warnings can be incurred under -Werror.
+              |Compilation Failed""".stripMargin
+          else
+            """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
+              |val n = getValue()
+              |        ^
+              |No warnings can be incurred under -Werror.
+              |Compilation Failed""".stripMargin
         else if (scalaVersion.startsWith("2.12."))
           """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()

@@ -1,6 +1,7 @@
 package almond.integration
 
 import almond.testkit.Dsl._
+import coursier.version.Version
 
 import scala.util.Properties
 
@@ -10,6 +11,17 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     new KernelLauncher(KernelLauncher.LauncherType.Jvm, KernelLauncher.testScala213Version)
 
   test("mixed directives") {
+    val expectedError =
+      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
+        """1 deprecation; re-run enabling -deprecation for details, or try -help
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
+      else
+        """cmd2.sc:6: method foo in class Helper is deprecated
+          |val res2_1 = foo()
+          |             ^
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -29,12 +41,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
             |foo()
             |""".stripMargin,
           expectError = true,
-          stderr =
-            """cmd2.sc:6: method foo in class Helper is deprecated
-              |val res2_1 = foo()
-              |             ^
-              |No warnings can be incurred under -Werror.
-              |Compilation Failed""".stripMargin,
+          stderr = expectedError,
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           )
@@ -44,6 +51,17 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
   }
 
   test("mixed directives in first cell") {
+    val expectedError =
+      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
+        """1 deprecation; re-run enabling -deprecation for details, or try -help
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
+      else
+        """cmd2.sc:4: method foo in class Helper is deprecated
+          |val res2_1 = foo()
+          |             ^
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -62,12 +80,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
             |foo()
             |""".stripMargin,
           expectError = true,
-          stderr =
-            """cmd2.sc:4: method foo in class Helper is deprecated
-              |val res2_1 = foo()
-              |             ^
-              |No warnings can be incurred under -Werror.
-              |Compilation Failed""".stripMargin,
+          stderr = expectedError,
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           )
@@ -77,6 +90,17 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
   }
 
   test("mixed directives single cell") {
+    val expectedError =
+      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
+        """1 deprecation; re-run enabling -deprecation for details, or try -help
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
+      else
+        """cmd1.sc:7: method foo in class Helper is deprecated
+          |val res1_1 = foo()
+          |             ^
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -91,12 +115,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
              |foo()
              |""".stripMargin,
           expectError = true,
-          stderr =
-            """cmd1.sc:7: method foo in class Helper is deprecated
-              |val res1_1 = foo()
-              |             ^
-              |No warnings can be incurred under -Werror.
-              |Compilation Failed""".stripMargin,
+          stderr = expectedError,
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           )

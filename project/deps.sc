@@ -46,6 +46,7 @@ object Deps {
     ivy"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
   def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M1"
   def coursierLauncher    = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
+  def coursierVersions    = ivy"io.get-coursier::versions:0.5.1"
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
@@ -80,7 +81,7 @@ object Deps {
 object ScalaVersions {
   def scala3Latest   = "3.4.3"
   def scala3Compat   = "3.3.4"
-  def scala213       = "2.13.14"
+  def scala213       = "2.13.16"
   def scala212       = "2.12.20"
   val binaries       = Seq(scala3Compat, scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
@@ -89,6 +90,8 @@ object ScalaVersions {
     "3.3.5",
     scala3Compat,
     scala213,
+    "2.13.15",
+    "2.13.14",
     "2.13.13",
     "2.13.12",
     scala212,
