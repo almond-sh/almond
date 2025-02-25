@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charSet="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Installing from sources · almond</title>
+  <meta name="viewport" content="width=device-width">
+  <meta name="generator" content="Docusaurus">
+  <meta name="description" content="## Prerequisites">
+  <meta name="docsearch:version" content="0.14.0-RC15">
+  <meta name="docsearch:language" content="en">
+  <meta property="og:title" content="Installing from sources · almond">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
+  <meta property="og:description" content="## Prerequisites">
+  <meta name="twitter:card" content="summary">
+  <link rel="shortcut icon" href="../../../undefined">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+  <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
+  <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
+  <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <link rel="stylesheet" href="../../../css/main.css">
+ </head>
+ <body class="sideNavVisible separateOnPageNav">
+  <div class="fixedHeaderContainer">
+   <div class="headerWrapper wrapper">
+    <header>
+     <a href="../../.."><img class="logo" src="../../../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
+     <a href="../../../versions"><h3>0.14.0-RC15</h3></a>
+     <div class="navigationWrapper navigationSlider">
+      <nav class="slidingNav">
+       <ul class="nav-site nav-site-internal">
+        <li class="siteNavGroupActive"><a href="../intro" target="_self">Docs</a></li>
+        <li class=""><a href="../../../blog" target="_self">Blog</a></li>
+        <li class=""><a href="https://github.com/almond-sh/almond" target="_self">GitHub</a></li>
+        <li class="navSearchWrapper reactNavSearchWrapper"><input type="text" id="search_input_react" placeholder="Search" title="Search"></li>
+       </ul>
+      </nav>
+     </div>
+    </header>
+   </div>
+  </div>
+  <div class="navPusher">
+   <div class="docMainWrapper wrapper">
+    <div class="container docsNavContainer" id="docsNav">
+     <nav class="toc">
+      <div class="toggleNav">
+       <section class="navWrapper wrapper">
+        <div class="navBreadcrumb wrapper">
+         <div class="navToggle" id="navToggler">
+          <i></i>
+         </div>
+         <h2><i>›</i><span>Development</span></h2>
+         <div class="tocToggler" id="tocToggler">
+          <i class="icon-toc"></i>
+         </div>
+        </div>
+        <div class="navGroups">
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Intro</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../intro">Overview</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Try it</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../try-mybinder">mybinder</a></li>
+           <li class="navListItem"><a class="navItem" href="../try-docker">docker</a></li>
+           <li class="navListItem"><a class="navItem" href="../try-deepnote">deepnote</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Installation</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../quick-start-install">Installation</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-options">Options</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-multiple">Multiple kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-versions">Versions</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-other">Other</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-advanced">Advanced</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Usage</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../usage-plotting">Plotting</a></li>
+           <li class="navListItem"><a class="navItem" href="../usage-spark">Spark</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">User API</h3>
+          <ul>
+           <li class="navListItem"><a class="navItem" href="../api">Intro</a></li>
+           <li class="navListItem"><a class="navItem" href="../api-ammonite">Ammonite API</a></li>
+           <li class="navListItem"><a class="navItem" href="../api-jupyter">Almond Jupyter API</a></li>
+           <li class="navListItem"><a class="navItem" href="../api-access-instances">Access API instances</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Development</h3>
+          <ul>
+           <li class="navListItem navListItemActive"><a class="navItem" href="">Installing from sources</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-custom-kernel">Writing custom kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-libraries">Writing libraries interacting with Jupyter</a></li>
+           <li class="navListItem"><a class="navItem" href="../dev-website">Generate the website</a></li>
+          </ul>
+         </div>
+        </div>
+       </section>
+      </div>
+      <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              const headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                if (event.target.tagName === 'A') {
+                  document.body.classList.remove('tocActive');
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script>
+     </nav>
+    </div>
+    <div class="container mainContainer docMainContainer">
+     <div class="wrapper">
+      <div class="post">
+       <header class="postHeader">
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/docs/pages/dev-from-sources.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <h1 class="postHeaderTitle">Installing from sources</h1>
+       </header>
+       <article>
+        <div>
+         <span><h2><a class="anchor" aria-hidden="true" id="prerequisites"></a><a href="index.html#prerequisites" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Prerequisites</h2> <p>Ensure a JDK (Java Development Kit) is installed on your machine. Java versions 8 or 11 are recommended, with 8 as minimum version. If you don't already have a JDK installed, you can install one by following the instructions on the <a href="https://adoptopenjdk.net">AdoptOpenJDK website</a>, or by grabbing the <a href="https://get-coursier.io/docs/cli-installation.html#native-launcher">coursier</a> command-line and using its <a href="https://get-coursier.io/docs/cli-java.html#setting-a-default-jvm-version"><code>cs java</code> command</a>. Your OS package manager (<code>brew</code>, <code>apt</code>, …) may also offer to install a JDK for you.</p> <p>Once a JDK is installed, you should be able to run the <code>java</code> command, like</p> <pre><code class="hljs css language-text">$ java -version
+java version "1.8.0_121"
+Java(TM) SE Runtime Environment (build 1.8.0_121-b13)
+Java HotSpot(TM) 64-Bit Server VM (build 25.121-b13, mixed mode)
+$ javac -version
+javac 1.8.0_121
+</code></pre> <p>Check-out the sources with git:</p> <pre><code class="hljs css language-text">$ git clone https://github.com/almond-sh/almond.git
+$ cd almond
+</code></pre> <p>Almond is built with <a href="https://com-lihaoyi.github.io/mill">mill</a>. A mill launcher ships with almond, so that you don't need to install mill yourself. We list below useful commands, to help get you started using mill to build almond.</p> <h2><a class="anchor" aria-hidden="true" id="run-a-jupyter-notebook-server-without-installing-a-kernel"></a><a href="index.html#run-a-jupyter-notebook-server-without-installing-a-kernel" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Run a Jupyter notebook server without installing a kernel</h2> <pre><code class="hljs css language-text">$ ./mill -i dev.jupyterFast
+</code></pre> <p>This should</p> 
+          <ul> 
+           <li>build an almond launcher, then</li> 
+           <li>start JupyterLab in the current directory.</li> 
+          </ul> <p>From the JupyterLab instance, select the kernel "Scala (sources)".</p> <p>Optionally, pass a Scala version and / or JupyterLab options, like</p> <pre><code class="hljs css language-text">$ ./mill -i dev.jupyterFast 2.12.13
+$ ./mill -i dev.jupyterFast --ip=192.168.0.1
+$ ./mill -i dev.jupyterFast 2.12.13 --ip=192.168.0.1
+</code></pre> <p>(If specified, the Scala version needs to be passed first.)</p> <h2><a class="anchor" aria-hidden="true" id="build-a-kernel-launcher"></a><a href="index.html#build-a-kernel-launcher" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Build a kernel launcher</h2> <pre><code class="hljs css language-text">$ ./mill dev.launcherFast
+</code></pre> <p>Once done building, this should print the path to the kernel launcher, like <code>out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher</code>.</p> <p>Optionally, pass a Scala version, like</p> <pre><code class="hljs css language-text">$ ./mill dev.launcherFast 2.12.13
+</code></pre> <p>You can then run that launcher to install it on your system:</p> <pre><code class="hljs css language-text">$ out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher --install
+</code></pre> <p>Pass <code>--help</code> or see <a href="../install-options">this page</a> for the available options.</p> <h2><a class="anchor" aria-hidden="true" id="watch-for-source-changes"></a><a href="index.html#watch-for-source-changes" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Watch for source changes</h2> <p>You can re-build a launcher upon source changes with</p> <pre><code class="hljs css language-text">$ ./mill -w dev.launcherFast
+</code></pre> <p>If you <a href="index.html#run-a-jupyter-notebook-server-without-installing-a-kernel">ran a JupyterLab server from the almond sources</a>, you can restart the kernel from a notebook via JupyterLab to pick a newly built launcher. If you passed a Scala version to <code>./mill dev.jupyter</code>, beware to pass the same version to <code>./mill -w dev.launcher</code>.</p> <h2><a class="anchor" aria-hidden="true" id="useful-commands"></a><a href="index.html#useful-commands" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Useful commands</h2> <h3><a class="anchor" aria-hidden="true" id="list-available-scala-versions"></a><a href="index.html#list-available-scala-versions" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>List available Scala versions</h3> <pre><code class="hljs css language-text">$ ./mill dev.scalaVersions
+2.13.4
+2.13.3
+…
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="print-the-latest-supported-scala-213-version"></a><a href="index.html#print-the-latest-supported-scala-213-version" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Print the latest supported Scala 2.13 version</h3> <pre><code class="hljs css language-text">$ ./mill dev.scala213
+2.13.4
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="print-the-latest-supported-scala-212-version"></a><a href="index.html#print-the-latest-supported-scala-212-version" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Print the latest supported Scala 2.12 version</h3> <pre><code class="hljs css language-text">$ ./mill dev.scala212
+2.12.13
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="compile-all-modules-for-a-scala-version"></a><a href="index.html#compile-all-modules-for-a-scala-version" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Compile all modules for a Scala version</h3> <pre><code class="hljs css language-text">$ ./mill '__[2.13.4].compile'
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="compile-all-modules-for-a-scala-version-and-watch-source-changes"></a><a href="index.html#compile-all-modules-for-a-scala-version-and-watch-source-changes" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Compile all modules for a Scala version and watch source changes</h3> <pre><code class="hljs css language-text">$ ./mill -w '__[2.13.4].compile'
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="compile-all-tests-for-a-scala-version"></a><a href="index.html#compile-all-tests-for-a-scala-version" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Compile all tests for a Scala version</h3> <pre><code class="hljs css language-text">$ ./mill '__[2.13.4].test.compile'
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="compile-all-tests-for-a-scala-version-and-watch-source-changes"></a><a href="index.html#compile-all-tests-for-a-scala-version-and-watch-source-changes" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Compile all tests for a Scala version and watch source changes</h3> <pre><code class="hljs css language-text">$ ./mill -w '__[2.13.4].test.compile'
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="run-all-tests-for-a-scala-version-and-watch-source-changes"></a><a href="index.html#run-all-tests-for-a-scala-version-and-watch-source-changes" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Run all tests for a Scala version and watch source changes</h3> <pre><code class="hljs css language-text">$ ./mill -w '__[2.13.4].test'
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="compile-specific-modules"></a><a href="index.html#compile-specific-modules" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Compile specific modules</h3> <pre><code class="hljs css language-text">$ ./mill 'scala.scala-kernel[2.13.4].compile'
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="generate-metals-configuration-files"></a><a href="index.html#generate-metals-configuration-files" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Generate Metals configuration files</h3> <p>It is recommended to generate Metals configuration files manually, rather than letting Metals load the project itself. In order to do that, run</p> <pre><code class="hljs css language-text">$ ./mill mill.contrib.Bloop/install
+</code></pre> <p>If you're using Metals from VSCode, you can then run the "Metals: Connect to build server" command to take into account the newly generated files.</p> <p>If the command above takes too long to run, comment out Scala versions in <code>deps.sc</code>. If no 2.12 versions are left, also comment out the few 2.12-specific projects in <code>build.sc</code> (look for <code>212</code> to find them). Same if no 2.13 versions are left (look for <code>213</code> to spot 2.13-specific projects).</p> <h3><a class="anchor" aria-hidden="true" id="generate-intellij-idea-configuration-files"></a><a href="index.html#generate-intellij-idea-configuration-files" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Generate IntelliJ IDEA configuration files</h3> <p>It is recommended to <a href="https://com-lihaoyi.github.io/mill/mill/Installation_IDE_Support.html#_intellij_idea_support">manually generate IntelliJ configuration files</a>, rather than letting IntelliJ load the project itself. In order to do that, run</p> <pre><code class="hljs css language-text">$ ./mill mill.scalalib.GenIdea/idea
+</code></pre> <p>You can then open the project in IntelliJ. IntelliJ should also automatically pick those files when they are overwritten.</p> <p>Just like for Metals above, you may benefit from disabling all but one Scala version (see above for more details).</p> <h2><a class="anchor" aria-hidden="true" id="validate-the-example-notebooks"></a><a href="index.html#validate-the-example-notebooks" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Validate the example notebooks</h2> <p>Example notebooks live under <code>examples/</code>. These are run on the CI using nbconvert, and the resulting outputs are compared to the committed ones. Any difference results in the examples job on the CI to fail.</p> <p>To validate the examples locally, run</p> <pre><code class="hljs css language-text">$ ./mill -i scala.examples.test
+</code></pre> <p>Optionally, you can pass a glob to filter notebook names:</p> <pre><code class="hljs css language-text">$ ./mill -i scala.examples.test 'almond.examples.Examples.scalapy*'
+</code></pre> </span>
+        </div>
+       </article>
+      </div>
+      <div class="docs-prevnext">
+       <a class="docs-prev button" href="../api-access-instances"><span class="arrow-prev">← </span><span>Previous</span></a>
+       <a class="docs-next button" href="../dev-custom-kernel"><span>Next</span><span class="arrow-next"> →</span></a>
+      </div>
+     </div>
+    </div>
+    <nav class="onPageNav docOnPageNav">
+     <ul class="toc-headings">
+      <li><a href="index.html#prerequisites">Prerequisites</a></li>
+      <li><a href="index.html#run-a-jupyter-notebook-server-without-installing-a-kernel">Run a Jupyter notebook server without installing a kernel</a></li>
+      <li><a href="index.html#build-a-kernel-launcher">Build a kernel launcher</a></li>
+      <li><a href="index.html#watch-for-source-changes">Watch for source changes</a></li>
+      <li><a href="index.html#useful-commands">Useful commands</a>
+       <ul class="toc-headings">
+        <li><a href="index.html#list-available-scala-versions">List available Scala versions</a></li>
+        <li><a href="index.html#print-the-latest-supported-scala-213-version">Print the latest supported Scala 2.13 version</a></li>
+        <li><a href="index.html#print-the-latest-supported-scala-212-version">Print the latest supported Scala 2.12 version</a></li>
+        <li><a href="index.html#compile-all-modules-for-a-scala-version">Compile all modules for a Scala version</a></li>
+        <li><a href="index.html#compile-all-modules-for-a-scala-version-and-watch-source-changes">Compile all modules for a Scala version and watch source changes</a></li>
+        <li><a href="index.html#compile-all-tests-for-a-scala-version">Compile all tests for a Scala version</a></li>
+        <li><a href="index.html#compile-all-tests-for-a-scala-version-and-watch-source-changes">Compile all tests for a Scala version and watch source changes</a></li>
+        <li><a href="index.html#run-all-tests-for-a-scala-version-and-watch-source-changes">Run all tests for a Scala version and watch source changes</a></li>
+        <li><a href="index.html#compile-specific-modules">Compile specific modules</a></li>
+        <li><a href="index.html#generate-metals-configuration-files">Generate Metals configuration files</a></li>
+        <li><a href="index.html#generate-intellij-idea-configuration-files">Generate IntelliJ IDEA configuration files</a></li>
+       </ul></li>
+      <li><a href="index.html#validate-the-example-notebooks">Validate the example notebooks</a></li>
+     </ul>
+    </nav>
+   </div>
+   <footer class="nav-footer" id="footer">
+    <section class="sitemap">
+     <a href="../../.." class="nav-home"></a>
+     <div>
+      <h5>Docs</h5>
+      <a href="../../intro.html">Quick start</a>
+     </div>
+     <div>
+      <h5>Community</h5>
+      <a href="https://gitter.im/alexarchambault/jupyter-scala">Gitter room</a>
+     </div>
+     <div>
+      <h5>More</h5>
+      <a href="https://github.com/almond-sh/almond">GitHub</a>
+      <a class="github-button" data-icon="octicon-star" data-count-href="/almond-sh/almond/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a>
+     </div>
+    </section>
+    <section class="copyright">
+     Copyright © 2025 almond contributors
+    </section>
+   </footer>
+  </div>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.js"></script>
+  <script>
+              var search = docsearch({
+                
+                apiKey: '2cf058a89a451066357a2eece168e7af',
+                indexName: 'almond',
+                inputSelector: '#search_input_react'
+              });
+            </script>
+ </body>
+</html>
