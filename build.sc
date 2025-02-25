@@ -585,6 +585,20 @@ trait Integration extends SbtModule {
           }
       }
     }
+    def shapelessVersion = T {
+      scala.`scala-kernel`(ScalaVersions.scala213)
+        .compileClasspath()
+        .map(_.path)
+        .map(_.last)
+        .filter(_.startsWith("shapeless_2.13-"))
+        .map(_.stripPrefix("shapeless_2.13-"))
+        .filter(_.endsWith(".jar"))
+        .map(_.stripSuffix(".jar"))
+        .headOption
+        .getOrElse {
+          sys.error("Cannot get shapeless version pulled by scala-kernel")
+        }
+    }
     def testFramework = "munit.Framework"
     def forkArgs = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()
@@ -599,7 +613,8 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
         s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
-        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}"
+        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}",
+        s"-Dalmond.test.shapeless-version-pulled-by-kernel=${shapelessVersion()}"
       )
     }
     def tmpDirBase = T.persistent {

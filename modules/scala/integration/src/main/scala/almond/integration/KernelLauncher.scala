@@ -50,6 +50,11 @@ object KernelLauncher {
     sys.error("almond.test.scala213-pulled-by-3-version Java property not set")
   )
 
+  lazy val kernelShapelessVersion = sys.props.getOrElse(
+    "almond.test.shapeless-version-pulled-by-kernel",
+    sys.error("almond.test.shapeless-version-pulled-by-kernel Java property not set")
+  )
+
   lazy val localRepoRoot = sys.props.get("almond.test.local-repo")
     .map(os.Path(_))
     .getOrElse {

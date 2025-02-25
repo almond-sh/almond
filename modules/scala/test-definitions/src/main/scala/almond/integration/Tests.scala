@@ -655,13 +655,15 @@ object Tests {
       )
     }
 
-  def extraCp(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
+  def extraCp(scalaVersion: String, kernelShapelessVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
 
     val sbv      = scalaVersion.split('.').take(2).mkString(".")
     val isScala2 = scalaVersion.startsWith("2.")
 
-    val kernelShapelessVersion = "2.3.10" // might need to be updated when bumping case-app
-    val testShapelessVersion   = "2.3.3"  // no need to bump that one
+    val testShapelessVersion = "2.3.3" // no need to bump that one
 
     assert(kernelShapelessVersion != testShapelessVersion)
 
