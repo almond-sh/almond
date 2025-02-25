@@ -1,9 +1,10 @@
 import $ivy.`com.lihaoyi::mill-contrib-bloop:$MILL_VERSION`
 import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.1.1`
+import $ivy.`io.github.alexarchambault.mill::mill-native-image::0.1.26`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.26`
 
-import $file.project.deps, deps.{Deps, DepOps, ScalaVersions, Versions}
+import $file.project.deps, deps.{Deps, DepOps, ScalaVersions, Versions, graalVmVersion}
 import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
 import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{
@@ -27,6 +28,7 @@ import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
 import coursier.getcs.GetCs
+import io.github.alexarchambault.millnativeimage.NativeImage
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
 import mill.scalalib.api.ZincWorkerUtil.isScala3
@@ -120,7 +122,8 @@ trait Kernel extends Cross.Module[String] with AlmondModule {
     shared.interpreter()
   )
   def compileIvyDeps = Agg(
-    Deps.jsoniterScalaMacros
+    Deps.jsoniterScalaMacros,
+    Deps.svm
   )
   def ivyDeps = Agg(
     Deps.caseAppAnnotations,
@@ -352,7 +355,7 @@ trait SharedDirectives extends Cross.Module[String] with AlmondModule {
 }
 
 trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
-    with Bloop.Module {
+    with Bloop.Module { launcherModule =>
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
   def moduleDeps = Seq(
@@ -360,12 +363,17 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     scala.`shared-directives`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
   )
-  def ivyDeps = Agg(
+  def compileIvyDeps = super.compileIvyDeps() ++ Agg(
+    Deps.svm
+  )
+  def ivyDeps = super.ivyDeps() ++ Agg(
     Deps.caseApp,
     Deps.coursierLauncher,
     Deps.fansi,
+    Deps.scala3Graal,
     Deps.scalaparse
   )
+  def mainClass = Some("almond.launcher.Launcher")
 
   def propertyFilePath = "almond/launcher/launcher.properties"
   def propertyExtra = T {
@@ -380,6 +388,69 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
       "default-scala-version"    -> ScalaVersions.scala3Latest
     )
   }
+
+  trait LauncherNativeImage extends NativeImage {
+    def nativeImageName = "almond"
+    def nativeImageMainClass = T {
+      launcherModule.mainClass().getOrElse(sys.error("Expected a main class"))
+    }
+    def nativeImageClassPath = T {
+      val classPath = launcherModule.runClasspath().map(_.path).mkString(java.io.File.pathSeparator)
+      val cache     = T.dest / "native-cp"
+      val res = os.proc(
+        nativeImageCsCommand(),
+        "launch",
+        "--jvm",
+        "17",
+        "-M",
+        "scala.cli.graal.CoursierCacheProcessor",
+        s"org.virtuslab.scala-cli:scala3-graal-processor_3:${Deps.scala3Graal.dep.version}",
+        "--",
+        cache.toNIO.toString,
+        classPath
+      ).call()
+      val cp = res.out.trim()
+      cp.split(java.io.File.pathSeparator).toSeq.map(p => mill.PathRef(os.Path(p)))
+    }
+
+    def nativeImageGraalVmJvmId = s"graalvm-java17:$graalVmVersion"
+    def nativeImagePersist      = System.getenv("CI") != null
+    def nativeImageCsCommand    = Seq(GetCs.cs(Deps.coursier.dep.version, "2.1.2"))
+  }
+
+  object image extends LauncherNativeImage
+
+  private def maybePassNativeImageJpmsOption =
+    Option(System.getenv("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM"))
+      .fold("") { value =>
+        "export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=" + value + System.lineSeparator()
+      }
+
+  object `linux-docker-image` extends LauncherNativeImage {
+    def nativeImageDockerParams = Some(
+      NativeImage.DockerParams(
+        imageName = "ubuntu:18.04",
+        prepareCommand =
+          maybePassNativeImageJpmsOption +
+            """apt-get update -q -y &&\
+              |apt-get install -q -y build-essential libz-dev locales
+              |locale-gen en_US.UTF-8
+              |export LANG=en_US.UTF-8
+              |export LANGUAGE=en_US:en
+              |export LC_ALL=en_US.UTF-8""".stripMargin,
+        csUrl =
+          s"https://github.com/coursier/coursier/releases/download/v${Versions.coursier}/cs-x86_64-pc-linux.gz",
+        extraNativeImageArgs = Nil
+      )
+    )
+  }
+
+  def nativeImage =
+    if (Properties.isLinux && System.getenv("CI") != null)
+      `linux-docker-image`.nativeImage
+    else
+      image.nativeImage
+
 }
 
 trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with Mima {
@@ -455,7 +526,9 @@ object scala extends Module {
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
   object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all)
-  object integration        extends Integration
+  object integration extends Integration {
+    object native extends IntegrationNative
+  }
 
   object examples extends Examples
 }
@@ -626,6 +699,39 @@ trait Integration extends SbtModule {
   }
 }
 
+trait IntegrationNative extends SbtModule {
+  private def scalaVersion0 = ScalaVersions.scala213
+  def scalaVersion          = scalaVersion0
+  def moduleDeps = super.moduleDeps ++ Seq(
+    scala.integration
+  )
+
+  object test extends SbtModuleTests with TestCommand {
+    def testFramework = "munit.Framework"
+    def forkArgs = T {
+      scala.`local-repo`(ScalaVersions.scala212).localRepo()
+      scala.`local-repo`(ScalaVersions.scala213).localRepo()
+      scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
+      val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
+      super.forkArgs() ++ Seq(
+        "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
+        s"-Dalmond.test.local-repo=${(T.workspace / scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot).toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.version=$version",
+        s"-Dalmond.test.native-launcher=${scala.launcher.nativeImage().path}",
+        s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
+        s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
+        s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}"
+      )
+    }
+    def tmpDirBase = T.persistent {
+      PathRef(T.dest / "working-dir")
+    }
+    def forkEnv = super.forkEnv() ++ Seq(
+      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
+    )
+  }
+}
+
 object echo extends Cross[Echo](ScalaVersions.binaries)
 
 object docs extends ScalaModule with AlmondRepositories {
@@ -747,7 +853,7 @@ object dev extends Module {
       else scala.`scala-kernel`(sv).launcher
     val specialLauncher =
       if (fast) scala.launcher.fastLauncher
-      else scala.launcher.launcher
+      else scala.launcher.nativeImage
     T.command {
       val jupyterDir       = T.ctx().dest / "jupyter"
       val launcher0        = launcher().path.toNIO
@@ -862,6 +968,30 @@ object ci extends Module {
         workspace = T.workspace
       )
     }
+
+  def uploadNativeLaunchers(directory: String = "artifacts", almondVersion: String = buildVersion) =
+    T.command {
+      def ghToken() = Option(System.getenv("UPLOAD_GH_TOKEN")).getOrElse {
+        sys.error("UPLOAD_GH_TOKEN not set")
+      }
+      val launchers = os.list(os.Path(directory, os.pwd)).map(p => (p, p.last))
+      val (tag, overwriteAssets) =
+        if (almondVersion.endsWith("-SNAPSHOT")) ("nightly", true)
+        else ("v" + almondVersion, false)
+      Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
+        launchers: _*
+      )
+    }
+
+  def copyNativeLauncher(directory: String = "artifacts") = T.command {
+    val nativeLauncher = scala.launcher.nativeImage().path
+    Upload.copyLauncher(
+      nativeLauncher,
+      directory,
+      "almond",
+      compress = true
+    )
+  }
 }
 
 object dummy extends Module {

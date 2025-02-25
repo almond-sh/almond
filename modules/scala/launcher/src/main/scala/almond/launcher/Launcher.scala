@@ -231,6 +231,25 @@ object Launcher extends CaseApp[LauncherOptions] {
       sys.exit(exitCode)
   }
 
+  private var allArgs = Option.empty[Array[String]]
+
+  override def main(args: Array[String]): Unit = {
+    allArgs = Some(args)
+
+    val propArgs  = args.takeWhile(_.startsWith("-D")).map(_.stripPrefix("-D"))
+    val remaining = args.drop(propArgs.length)
+
+    for (arg <- propArgs) {
+      val (k, v) = arg.split("=", 2) match {
+        case Array(k0, v0) => (k0, v0)
+        case Array(k0)     => (k0, "")
+      }
+      System.setProperty(k, v)
+    }
+
+    super.main(remaining)
+  }
+
   def run(options: LauncherOptions, remainingArgs: RemainingArgs): Unit = {
 
     // FIXME We'd need coursier-interface to allow us to do these:
@@ -289,6 +308,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           else
             None,
         env = options.installOptions.envMap(),
+        allArgs = allArgs.getOrElse(Array.empty[String]).toSeq,
         extraStartupClassPath = Nil
       ) match {
         case Left(e) =>
