@@ -236,12 +236,12 @@ final class ReplApiImpl(
         tcolors: TPrintColors,
         classTagT: ClassTag[T]
       ): Iterator[String] =
-        printSpecial(value, ident, custom, None, None, pprinter, None)(
+        printSpecial(value, ident, custom, None, None, pprinter, None)(using
           tprint,
           tcolors,
           classTagT
         ).getOrElse {
-          super.print(value, ident, custom)(tprint, tcolors, classTagT)
+          super.print(value, ident, custom)(using tprint, tcolors, classTagT)
         }
     }
 }

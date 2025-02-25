@@ -53,7 +53,7 @@ final class JupyterApiImpl(
       replApi.pprinter,
       Some(updatableResults)
     )(tprint, tcolors, classTagT).getOrElse {
-      replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
+      replApi.Internal.print(value, ident, custom)(using tprint, tcolors, classTagT)
     }
 
   override def silent(s: Boolean): Unit = silent0.update(s)
