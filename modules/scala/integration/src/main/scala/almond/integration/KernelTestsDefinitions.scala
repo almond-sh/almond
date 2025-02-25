@@ -105,7 +105,10 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     test("extra class path") {
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
-        almond.integration.Tests.extraCp(kernelLauncher.defaultScalaVersion)
+        almond.integration.Tests.extraCp(
+          kernelLauncher.defaultScalaVersion,
+          KernelLauncher.kernelShapelessVersion
+        )
       }
     }
 
