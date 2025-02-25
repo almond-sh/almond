@@ -10,6 +10,6 @@ object ScalaParser {
   def AllWS[X: P] = Start ~ WS ~ End
 
   def hasActualCode(code: String): Boolean =
-    !parse(code, AllWS(_)).isSuccess
+    !parse(code, AllWS(using _)).isSuccess
 
 }
