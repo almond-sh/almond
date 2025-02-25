@@ -57,9 +57,8 @@ object AlmondCompilerLifecycleManager {
 
   private[almond] val isAtLeast_2_12_7 = {
     val v = scala.util.Properties.versionNumberString
-    !v.startsWith("2.11.") && (!v.startsWith("2.12.") || {
-      v.stripPrefix("2.12.").takeWhile(_.isDigit).toInt >= 7
-    })
+    !v.startsWith("2.11.") && (!v.startsWith("2.12.") ||
+    v.stripPrefix("2.12.").takeWhile(_.isDigit).toInt >= 7)
   }
 
 }
