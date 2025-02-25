@@ -78,7 +78,7 @@ object Deps {
 }
 
 object ScalaVersions {
-  def scala3Latest   = "3.4.3"
+  def scala3Latest   = "3.6.3"
   def scala3Compat   = "3.3.4"
   def scala213       = "2.13.14"
   def scala212       = "2.12.20"
