@@ -59,7 +59,7 @@ object Deps {
   def jsoniterScalaMacros =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = ivy"org.scalameta::mdoc:2.6.4"
+  def mdoc                     = ivy"org.scalameta::mdoc:2.6.5"
   def mtags                    = ivy"org.scalameta:::mtags:1.5.1"
   def munit                    = ivy"org.scalameta::munit:1.1.0"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.11.4"
