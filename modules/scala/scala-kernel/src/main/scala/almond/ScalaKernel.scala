@@ -21,6 +21,13 @@ import scala.util.Properties
 
 object ScalaKernel extends CaseApp[Options] {
 
+  private var allArgs = Option.empty[Array[String]]
+
+  override def main(args: Array[String]): Unit = {
+    allArgs = Some(args)
+    super.main(args)
+  }
+
   def run(options: Options, args: RemainingArgs): Unit = {
 
     coursier.Resolve.proxySetup()
@@ -78,6 +85,7 @@ object ScalaKernel extends CaseApp[Options] {
           else
             None,
         env = options.installOptions.envMap(),
+        allArgs = allArgs.getOrElse(Array.empty[String]).toSeq,
         extraStartupClassPath = options.extraStartupClassPath
       ) match {
         case Left(e) =>

@@ -1,0 +1,14 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\Qlibrary.properties\\E"
+      },
+      {
+        "pattern": ".*scala3RuntimeFixes.jar$"
+      }
+    ]
+  },
+  "bundles": [
+  ]
+}
