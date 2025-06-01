@@ -45,7 +45,7 @@ class LauncherInterpreter(
   var kernelOptions = KernelOptions()
   var params        = LauncherParameters()
 
-  val customDirectiveGroups = options.customDirectiveGroupsOrExit()
+  val customDirectiveGroups      = options.customDirectiveGroupsOrExit()
   val launcherParametersHandlers =
     LauncherInterpreter.launcherParametersHandlers.addCustomHandler { key =>
       customDirectiveGroups.find(_.matches(key)).map { group =>
@@ -107,8 +107,8 @@ class LauncherInterpreter(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult = {
-    val path      = Left(s"cell$lineCount0.sc")
-    val scopePath = ScopePath(Left("."), os.sub)
+    val path              = Left(s"cell$lineCount0.sc")
+    val scopePath         = ScopePath(Left("."), os.sub)
     val maybeParamsUpdate =
       launcherParametersHandlers.parse(code, path, scopePath)
         .map { res =>

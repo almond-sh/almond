@@ -136,7 +136,7 @@ object Display {
       connection.setConnectTimeout(5000)
       connection.connect()
       val contentType = format.map(_.contentType).getOrElse(connection.getContentType)
-      val data = if (embed) {
+      val data        = if (embed) {
         if (!imageTypes.contains(contentType))
           throw new IOException("Unknown or unsupported content type: " + contentType)
         val input    = new BufferedInputStream(connection.getInputStream)

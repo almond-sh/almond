@@ -42,8 +42,8 @@ object ScalafmtTests extends TestSuite {
       RawJson(writeToArray(request))
     )
     val messages = scalafmt.messageHandler.handle(Channel.Requests, msg) match {
-      case None          => sys.error("format request left untouched")
-      case Some(Left(e)) => throw new Exception("Error testing format request", e)
+      case None                => sys.error("format request left untouched")
+      case Some(Left(e))       => throw new Exception("Error testing format request", e)
       case Some(Right(stream)) =>
         stream
           .compile

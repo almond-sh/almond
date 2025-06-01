@@ -42,7 +42,7 @@ object History {
   def replyType   = MessageType[Reply]("history_reply")
 
   implicit val accessTypeCodec: JsonValueCodec[AccessType] = new JsonValueCodec[AccessType] {
-    val stringCodec = JsonCodecMaker.make[String]
+    val stringCodec                                                  = JsonCodecMaker.make[String]
     def decodeValue(in: JsonReader, default: AccessType): AccessType = {
       val name = stringCodec.decodeValue(in, default.name)
       AccessType.map.getOrElse(
@@ -68,7 +68,7 @@ object History {
 
     new JsonValueCodec[Reply] {
       def decodeValue(in: JsonReader, default: Reply): Reply = ???
-      def encodeValue(reply: Reply, out: JsonWriter): Unit =
+      def encodeValue(reply: Reply, out: JsonWriter): Unit   =
         reply match {
           case s: Reply.Simple =>
             simpleReplyCodec.encodeValue(s, out)
