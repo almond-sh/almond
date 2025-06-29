@@ -447,7 +447,7 @@ object Tests {
     val pkg               = "almond.test.custom"
     val tmpDir            = os.temp.dir(prefix = "almond.add-jar-test")
     val escapedPicocliJar = picocliJar.toString.replace("\\", "\\\\")
-    val code =
+    val code              =
       s"""//> using scala "$scalaVersion"
          |package $pkg.foo
          |
@@ -722,8 +722,8 @@ object Tests {
           // In two step start up, we need the actual kernel to have started to get inspection results
           execute("val n = 2", "n: Int = 2")
 
-        val code   = "os.read"
-        val result = inspect(code, code.length - 3, detailed = true)
+        val code     = "os.read"
+        val result   = inspect(code, code.length - 3, detailed = true)
         val expected = Seq(
           """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
             |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
@@ -842,7 +842,7 @@ object Tests {
       )
 
       val scalaVersion0 = Version(scalaVersion)
-      val errorMessage =
+      val errorMessage  =
         if (scalaVersion.startsWith("2.13."))
           if (scalaVersion0 >= Version("2.13.15"))
             """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
@@ -1921,7 +1921,7 @@ object Tests {
 
       val metadata = ujson.read(res.head.metadata.value)
       val types    = metadata.obj("_jupyter_types_experimental")
-      val types0 = types.arr.map { entry =>
+      val types0   = types.arr.map { entry =>
         val entry0 = entry.obj
         (entry0("text").str, entry0("type").str)
       }

@@ -13,7 +13,7 @@ abstract class AlmondFunSuite extends munit.FunSuite {
   override def munitTimeout = 5.minutes
 
   override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
-    val className = getClass.getName
+    val className                      = getClass.getName
     val (classNameInit, classNameLast) = {
       val a = className.split('.')
       (a.init, a.last)
@@ -34,7 +34,7 @@ abstract class AlmondFunSuite extends munit.FunSuite {
             }
           resOpt match {
             case Right(res) => res
-            case Left(e) =>
+            case Left(e)    =>
               if (attempt == 1)
                 AlmondFunSuite.retriedTestsCount.incrementAndGet()
               System.err.println(

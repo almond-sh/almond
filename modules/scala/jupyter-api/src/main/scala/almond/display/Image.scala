@@ -72,7 +72,7 @@ final class Image private (
       case Left(url) =>
         if (embed) {
           val (contentTypeOpt, b) = Image.urlContent(url)
-          val contentType = format
+          val contentType         = format
             .map(_.contentType)
             .orElse(contentTypeOpt)
             .orElse(Option(URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(b))))
@@ -147,12 +147,12 @@ object Image extends Display.Builder[Array[Byte], Image] {
 
   private def urlContent(url: URL): (Option[String], Array[Byte]) = {
 
-    var conn: URLConnection = null
+    var conn: URLConnection          = null
     val (rawContent, contentTypeOpt) =
       try {
         conn = url.openConnection()
         conn.setConnectTimeout(5000) // allow users to tweak that?
-        val b = TextDisplay.readFully(conn.getInputStream)
+        val b               = TextDisplay.readFully(conn.getInputStream)
         val contentTypeOpt0 = conn match {
           case conn0: HttpURLConnection =>
             Option(conn0.getContentType)

@@ -17,7 +17,7 @@ lazy val latestTaggedVersion = os.proc("git", "describe", "--abbrev=0", "--tags"
   .call().out
   .trim()
 lazy val buildVersion = {
-  val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim()
+  val gitHead       = os.proc("git", "rev-parse", "HEAD").call().out.trim()
   val maybeExactTag = scala.util.Try {
     os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
       .call().out
@@ -49,7 +49,7 @@ trait CrossSbtModule extends mill.scalalib.SbtModule with mill.scalalib.CrossMod
   }
   trait CrossSbtModuleTests extends SbtTests {
     override def millSourcePath = outer.millSourcePath
-    def sources = T.sources {
+    def sources                 = T.sources {
       super.sources() ++ scalaVersionDirectoryNames.map(s =>
         PathRef(millSourcePath / "src" / "test" / s"scala-$s")
       )
@@ -79,12 +79,12 @@ trait AlmondPublishModule extends PublishModule with ScalaModule {
     )
   )
   def publishVersion = T(buildVersion)
-  def javacOptions = super.javacOptions() ++ Seq(
+  def javacOptions   = super.javacOptions() ++ Seq(
     "--release",
     "8"
   )
   def scalacOptions = T {
-    val sv = scalaVersion()
+    val sv           = scalaVersion()
     val extraOptions =
       if (sv.startsWith("2.12.") && sv.stripPrefix("2.12.").toIntOption.exists(_ <= 18))
         Seq("-target:8")
@@ -173,7 +173,7 @@ trait AlmondArtifactName extends SbtModule {
 trait AlmondScalacOptions extends ScalaModule {
   def scalacOptions = T {
     // see http://tpolecat.github.io/2017/04/25/scalac-flags.html
-    val sv = scalaVersion()
+    val sv            = scalaVersion()
     val scala2Options =
       if (sv.startsWith("2.")) Seq("-explaintypes")
       else Nil
@@ -267,7 +267,7 @@ trait AlmondTestModule
       val (jvmArgs, props: Map[String, String]) =
         if (useArgsFile) {
           val (props, jvmArgs) = forkArgs().partition(_.startsWith("-D"))
-          val sysProps =
+          val sysProps         =
             props
               .map(_.drop(2).split("[=]", 2))
               .map {
@@ -314,7 +314,7 @@ trait AlmondTestModule
       if (!os.exists(outputPath)) mill.api.Result.Failure("Test execution failed.")
       else
         try {
-          val jsonOutput = ujson.read(outputPath.toIO)
+          val jsonOutput         = ujson.read(outputPath.toIO)
           val (doneMsg, results) =
             upickle.default.read[(String, Seq[mill.testrunner.TestResult])](jsonOutput)
           TestModule.handleResults(doneMsg, results, Some(T.ctx()))
@@ -801,7 +801,7 @@ trait TestCommand extends TestModule {
       val (jvmArgs, props: Map[String, String]) =
         if (useArgsFile) {
           val (props, jvmArgs) = forkArgs().partition(_.startsWith("-D"))
-          val sysProps =
+          val sysProps         =
             props
               .map(_.drop(2).split("[=]", 2))
               .map {

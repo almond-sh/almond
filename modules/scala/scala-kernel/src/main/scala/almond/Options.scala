@@ -227,7 +227,7 @@ final case class Options(
         else {
           val before = s.substring(0, idx)
           val ver    = s.substring(idx + 1)
-          val mod = ModuleParser.javaOrScalaModule(before) match {
+          val mod    = ModuleParser.javaOrScalaModule(before) match {
             case Left(err) =>
               sys.error(s"Malformed module '$before' in --auto-version argument '$s': $err")
             case Right(m) =>
@@ -315,7 +315,7 @@ final case class Options(
 object Options {
 
   implicit lazy val parser: Parser[Options] = Parser.derive
-  implicit lazy val help: Help[Options] = Help.derive
+  implicit lazy val help: Help[Options]     = Help.derive
     // not sure why the @ProgName annotation above isn't picked here
     .withProgName("almond")
 
