@@ -40,7 +40,7 @@ implicit def millModuleBasePath: define.Ctx.BasePath =
 
 trait LoggerScala2Macros extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def ivyDeps = T {
+  def ivyDeps           = T {
     val sv = scalaVersion()
     if (isScala3(sv)) Agg.empty[Dep] else Agg(Deps.scalaReflect(sv))
   }
@@ -48,14 +48,14 @@ trait LoggerScala2Macros extends Cross.Module[String] with AlmondModule {
 
 trait Logger extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps =
+  def moduleDeps        =
     if (isScala3(crossScalaVersion)) Seq.empty
     else
       Seq(
         shared.`logger-scala2-macros`()
       )
   def ivyDeps = T {
-    val sv = scalaVersion()
+    val sv           = scalaVersion()
     val scalaReflect =
       if (sv.startsWith("2.")) Agg(Deps.scalaReflect(sv))
       else Agg(ivy"org.scala-lang:scala3-library_3:${scalaVersion()}")
@@ -66,7 +66,7 @@ trait Logger extends Cross.Module[String] with AlmondModule {
 
 trait Channels extends Cross.Module[String] with AlmondModule with Mima {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.logger()
   )
   def ivyDeps = Agg(
@@ -78,7 +78,7 @@ trait Channels extends Cross.Module[String] with AlmondModule with Mima {
 
 trait Protocol extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.channels()
   )
   def ivyDeps = Agg(
@@ -101,7 +101,7 @@ trait InterpreterApi extends Cross.Module[String] with AlmondModule with Mima {
 
 trait Interpreter extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.`interpreter-api`(),
     shared.protocol()
   )
@@ -116,7 +116,7 @@ trait Interpreter extends Cross.Module[String] with AlmondModule {
 
 trait Kernel extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.interpreter()
   )
   def compileIvyDeps = Agg(
@@ -138,14 +138,14 @@ trait Kernel extends Cross.Module[String] with AlmondModule {
 
 trait Test extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.`interpreter-api`()
   )
 }
 
 trait JupyterApi extends Cross.Module[String] with AlmondModule with Mima {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.`interpreter-api`()
   )
   def ivyDeps = Agg(
@@ -158,7 +158,7 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
   def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps = Seq(
+  def moduleDeps            = Seq(
     shared.`interpreter-api`(),
     scala.`jupyter-api`()
   )
@@ -174,7 +174,7 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     // Ensure we don't depend on slf4j-api
     // As no logger implem would be loaded alongside it by default, slf4j would fail to initialize,
     // complain in stderr, and default to NOP logging.
-    val value = super.resolvedIvyDeps()
+    val value    = super.resolvedIvyDeps()
     val jarNames = value
       .map(_.path.last)
       .filter(_.endsWith(".jar"))
@@ -186,7 +186,7 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
   }
 
   def propertyFilePath = "almond/almond.properties"
-  def propertyExtra = T {
+  def propertyExtra    = T {
     Seq(
       "default-scalafmt-version"        -> Deps.scalafmtDynamic.dep.version,
       "default-scalafmt-version-java-8" -> Versions.scalafmtJava8,
@@ -199,7 +199,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
   def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps = Seq(
+  def moduleDeps            = Seq(
     shared.interpreter(),
     scala.`coursier-logger`(),
     scala.`scala-kernel-api`(),
@@ -256,7 +256,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   def crossScalaVersion     = crossValue
   def skipBloop             = !ScalaVersions.binaries.contains(crossScalaVersion)
   def crossFullScalaVersion = true
-  def moduleDeps = Seq(
+  def moduleDeps            = Seq(
     shared.kernel(),
     scala.`scala-interpreter`()
   )
@@ -275,7 +275,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     // Ensure we stay on slf4j 1.x
     // Kind of unnecessary now that scala-kernel-api doesn't bring slf4j-api any more,
     // but keeping that just in case…
-    val value = super.resolvedIvyDeps()
+    val value    = super.resolvedIvyDeps()
     val jarNames = value
       .map(_.path.last)
       .filter(_.endsWith(".jar"))
@@ -329,7 +329,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
 
 trait CoursierLogger extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps = super.moduleDeps ++ Seq(
+  def moduleDeps        = super.moduleDeps ++ Seq(
     shared.`interpreter-api`(),
     shared.logger()
   )
@@ -342,7 +342,7 @@ trait CoursierLogger extends Cross.Module[String] with AlmondModule {
 
 trait SharedDirectives extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def ivyDeps = super.ivyDeps() ++ Agg(
+  def ivyDeps           = super.ivyDeps() ++ Agg(
     Deps.directiveHandler,
     Deps.jsoniterScalaCore
   )
@@ -355,7 +355,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     with Bloop.Module {
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
-  def moduleDeps = Seq(
+  def moduleDeps   = Seq(
     scala.`coursier-logger`(ScalaVersions.scala3Compat),
     scala.`shared-directives`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
@@ -368,7 +368,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   )
 
   def propertyFilePath = "almond/launcher/launcher.properties"
-  def propertyExtra = T {
+  def propertyExtra    = T {
     val mainClass = scala.`scala-kernel`(ScalaVersions.scala3Latest).mainClass().getOrElse {
       sys.error("No main class found")
     }
@@ -384,7 +384,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
 
 trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with Mima {
   def crossScalaVersion = crossValue
-  def ivyDeps = Agg(
+  def ivyDeps           = Agg(
     Deps.jvmRepr
   )
   def compileIvyDeps = Agg(
@@ -404,7 +404,7 @@ trait AlmondRx extends Cross.Module[String] with AlmondModule with Mima {
 
 trait Echo extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.kernel()
   )
   def ivyDeps = Agg(
@@ -466,7 +466,7 @@ trait Examples extends SbtModule {
   def scalaVersion                 = ScalaVersions.scala3Latest
   object test extends SbtTests {
     def testFramework = "munit.Framework"
-    def ivyDeps = T {
+    def ivyDeps       = T {
       super.ivyDeps() ++ Agg(
         Deps.expecty,
         Deps.munit,
@@ -492,7 +492,7 @@ trait Examples extends SbtModule {
 trait TestKit extends Cross.Module[String] with CrossSbtModule with Bloop.Module {
   def crossScalaVersion = crossValue
   def skipBloop         = !ScalaVersions.binaries.contains(crossScalaVersion)
-  def moduleDeps = Seq(
+  def moduleDeps        = Seq(
     shared.interpreter()
   )
   def ivyDeps = super.ivyDeps() ++ Agg(
@@ -521,7 +521,7 @@ trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule 
 
 trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
   def testScalaVersion = crossValue
-  def stubsModules = {
+  def stubsModules     = {
     val scalaVersionSpecific =
       if (isScala3(testScalaVersion)) Seq.empty
       else Seq(shared.`logger-scala2-macros`(ScalaVersions.binary(testScalaVersion)))
@@ -570,7 +570,7 @@ trait Integration extends SbtModule {
   object test extends SbtTests with TestCommand {
     object helper extends ScalaModule {
       def scalaVersion = ScalaVersions.scala3Latest
-      def scala213 = T {
+      def scala213     = T {
         runClasspath()
           .map(_.path)
           .map(_.last)
@@ -600,7 +600,7 @@ trait Integration extends SbtModule {
         }
     }
     def testFramework = "munit.Framework"
-    def forkArgs = T {
+    def forkArgs      = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()
       scala.`local-repo`(ScalaVersions.scala213).localRepo()
       scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
@@ -631,13 +631,13 @@ object echo extends Cross[Echo](ScalaVersions.binaries)
 object docs extends ScalaModule with AlmondRepositories {
   private def scalaVersion0 = ScalaVersions.scala213
   def scalaVersion          = scalaVersion0
-  def moduleDeps = Seq(
+  def moduleDeps            = Seq(
     scala.`scala-kernel-api`(scalaVersion0)
   )
   def ivyDeps = Agg(
     Deps.mdoc
   )
-  def mainClass = Some("mdoc.Main")
+  def mainClass               = Some("mdoc.Main")
   def generate(args: String*) = T.command {
 
     def processArgs(
@@ -663,7 +663,7 @@ object docs extends ScalaModule with AlmondRepositories {
     val scalaVer      = scalaVersion0
 
     val isSnapshot = ver.endsWith("SNAPSHOT")
-    val extraSbt =
+    val extraSbt   =
       if (isSnapshot) """resolvers += Resolver.sonatypeRepo("snapshots")""" + "\n"
       else ""
     val extraCoursierArgs =
@@ -868,7 +868,7 @@ object dummy extends Module {
   // dummy module to get Scala Steward updates for ammonite-spark
   object `amm-spark` extends ScalaModule {
     def scalaVersion = ScalaVersions.scala212
-    def ivyDeps = super.ivyDeps() ++ Agg(
+    def ivyDeps      = super.ivyDeps() ++ Agg(
       Deps.ammoniteSpark
     )
   }

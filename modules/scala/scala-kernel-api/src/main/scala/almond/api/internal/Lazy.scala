@@ -1,7 +1,7 @@
 package almond.api.internal
 
 final class Lazy[T](private var compute: () => T) {
-  private var listeners = List.empty[Either[Throwable, T] => Unit]
+  private var listeners                                = List.empty[Either[Throwable, T] => Unit]
   def onChange: (Either[Throwable, T] => Unit) => Unit = { f =>
     listeners = f :: listeners
   }

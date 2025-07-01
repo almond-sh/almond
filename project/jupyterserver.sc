@@ -28,7 +28,7 @@ def writeKernelJson(
   val kernelJson = ujson.Obj(
     "language"     -> ujson.Str("scala"),
     "display_name" -> ujson.Str(name),
-    "argv" -> ujson.Arr(
+    "argv"         -> ujson.Arr(
       (baseArgs ++ extraArgs).map(ujson.Str(_)): _*
     )
   ).render()
@@ -58,7 +58,7 @@ def jupyterServer(
   val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
   val env            = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
-  val p = b.start()
+  val p            = b.start()
   val hook: Thread = new Thread("jupyter-stop") {
     override def run() =
       if (p.isAlive)
@@ -86,7 +86,7 @@ def jupyterConsole(
   val b   = new ProcessBuilder(jupyterCommand ++ args: _*).directory(workspace.toIO).inheritIO()
   val env = b.environment()
   env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
-  val p = b.start()
+  val p            = b.start()
   val hook: Thread = new Thread("jupyter-stop") {
     override def run() =
       if (p.isAlive)

@@ -59,7 +59,7 @@ object ExecuteResult {
       val prefix :+ clsName = f.getClassName.split('.').toSeq
       val prefixString      = prefix.map(_ + '.').mkString("")
       val clsNameString     = clsName // .replace("$", error("$"))
-      val method =
+      val method            =
         fansi.Str(prefixString) ++ highlightError(clsNameString) ++ "." ++
           highlightError(f.getMethodName)
 

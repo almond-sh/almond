@@ -197,7 +197,7 @@ final class ZeromqSocketImpl(
 
       if (expectedSignature == signature || !enableMac) {
         log.debug {
-          val nl = System.lineSeparator()
+          val nl        = System.lineSeparator()
           val headerStr = Try(new String(message.header, UTF_8))
             .getOrElse(message.header.toString)
           s"Received on $uri:" + nl +

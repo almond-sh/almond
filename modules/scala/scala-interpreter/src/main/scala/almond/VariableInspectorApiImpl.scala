@@ -97,7 +97,7 @@ private object VariableInspectorApiImpl {
         varContent =
           value() match {
             case Left(str) => str
-            case Right(t) =>
+            case Right(t)  =>
               pprinter
                 .tokenize(
                   t,

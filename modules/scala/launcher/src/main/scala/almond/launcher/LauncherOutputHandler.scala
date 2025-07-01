@@ -34,8 +34,8 @@ class LauncherOutputHandler(
     stdout(stdoutPoisonPill)
     thread.join()
   }
-  private val poisonPill = Stdout(stdoutPoisonPill)
-  private val queue      = new LinkedBlockingQueue[Value]
+  private val poisonPill     = Stdout(stdoutPoisonPill)
+  private val queue          = new LinkedBlockingQueue[Value]
   private val thread: Thread =
     new Thread("publish-queue") {
       setDaemon(true)

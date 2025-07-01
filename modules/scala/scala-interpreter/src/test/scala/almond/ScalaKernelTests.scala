@@ -361,7 +361,7 @@ object ScalaKernelTests extends TestSuite {
 
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-        val lastMsgId = UUID.randomUUID().toString
+        val lastMsgId                                            = UUID.randomUUID().toString
         val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
             IO.pure(
@@ -461,7 +461,7 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-      val lastMsgId = UUID.randomUUID().toString
+      val lastMsgId                                            = UUID.randomUUID().toString
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(
