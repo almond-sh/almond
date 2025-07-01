@@ -434,11 +434,13 @@ trait BootstrapLauncher extends SbtModule {
     }
     else default
   }
-  private def toResourceEntry(jar: Path): ClassPathEntry.Resource = {
-    val lastModified = Files.getLastModifiedTime(jar)
-    val content      = Files.readAllBytes(jar)
-    ClassPathEntry.Resource(jar.getFileName.toString, lastModified.toMillis, content)
-  }
+  private def toResourceEntry(jar: Path): ClassPathEntry =
+    if (Files.isDirectory(jar)) ClassPathEntry.Url(jar.toUri.toASCIIString)
+    else {
+      val lastModified = Files.getLastModifiedTime(jar)
+      val content      = Files.readAllBytes(jar)
+      ClassPathEntry.Resource(jar.getFileName.toString, lastModified.toMillis, content)
+    }
   private def createLauncher(
     sharedCp: Seq[Path],
     cp: Seq[Path],
@@ -447,13 +449,15 @@ trait BootstrapLauncher extends SbtModule {
     windows: Boolean,
     fast: Boolean // !fast means standalone (can be copied to another machine, …)
   ): Unit = {
+    val sharedCp0 = sharedCp.filter(Files.exists(_))
+    val cp0       = cp.filter(Files.exists(_))
     val sharedClassLoaderContent =
       if (fast)
-        ClassLoaderContent(sharedCp.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
-      else ClassLoaderContent(sharedCp.distinct.map(toResourceEntry))
+        ClassLoaderContent(sharedCp0.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
+      else ClassLoaderContent(sharedCp0.distinct.filter(Files.exists(_)).map(toResourceEntry))
     val classLoaderContent =
-      if (fast) ClassLoaderContent(cp.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
-      else ClassLoaderContent(cp.distinct.map(toEntry(_)))
+      if (fast) ClassLoaderContent(cp0.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
+      else ClassLoaderContent(cp0.distinct.map(toEntry(_)))
     val preamble =
       if (windows) Preamble().withKind(Preamble.Kind.Bat)
       else Preamble()

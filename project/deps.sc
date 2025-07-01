@@ -52,7 +52,7 @@ object Deps {
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
   def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
   def fs2                 = ivy"co.fs2::fs2-core:3.12.0"
-  def jansi               = ivy"org.fusesource.jansi:jansi:2.4.1"
+  def jansi               = ivy"org.fusesource.jansi:jansi:2.4.2"
   def jeromq              = ivy"org.zeromq:jeromq:0.5.4"
   def jsoniterScalaCore =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
@@ -61,7 +61,7 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.6.4"
   def mtags                    = ivy"org.scalameta:::mtags:1.5.1"
-  def munit                    = ivy"org.scalameta::munit:1.1.0"
+  def munit                    = ivy"org.scalameta::munit:1.1.1"
   def osLib                    = ivy"com.lihaoyi::os-lib:0.11.4"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
@@ -75,7 +75,7 @@ object Deps {
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.6"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
-  def utest = ivy"com.lihaoyi::utest:0.8.5"
+  def utest = ivy"com.lihaoyi::utest:0.8.8"
 }
 
 object ScalaVersions {
