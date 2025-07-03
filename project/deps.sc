@@ -75,7 +75,7 @@ object Deps {
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.6"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
-  def utest = ivy"com.lihaoyi::utest:0.8.8"
+  def utest = ivy"com.lihaoyi::utest:0.8.9"
 }
 
 object ScalaVersions {
