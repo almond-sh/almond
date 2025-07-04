@@ -262,6 +262,7 @@ trait AlmondTestModule
   ): Task[(String, Seq[mill.testrunner.TestResult])] =
     T.task {
       val outputPath  = T.dest / "out.json"
+      val resultPath  = T.dest / "results.log"
       val useArgsFile = testUseArgsFile()
 
       val (jvmArgs, props: Map[String, String]) =
@@ -287,10 +288,11 @@ trait AlmondTestModule
         arguments = args(),
         sysProps = props,
         outputPath = outputPath,
+        resultPath = resultPath,
         colored = T.log.colored,
         testCp = Seq(compile().classes.path),
         home = T.home,
-        globSelectors = globSelectors()
+        globSelectors = Left(globSelectors())
       )
 
       val testRunnerClasspathArg = zincWorker().scalalibClasspath()
@@ -796,6 +798,7 @@ trait TestCommand extends TestModule {
 
       val globSelectors = Nil
       val outputPath    = T.workspace / "test-output.json"
+      val resultPath    = T.dest / "results.log"
       val useArgsFile   = testUseArgsFile()
 
       val (jvmArgs, props: Map[String, String]) =
@@ -821,10 +824,11 @@ trait TestCommand extends TestModule {
         arguments = args,
         sysProps = props,
         outputPath = outputPath,
+        resultPath = resultPath,
         colored = T.log.colored,
         testCp = Seq(compile().classes.path),
         home = T.home,
-        globSelectors = globSelectors
+        globSelectors = Left(globSelectors)
       )
 
       val testRunnerClasspathArg = zincWorker().scalalibClasspath()

@@ -25,7 +25,7 @@ jobs:
         mv .mill-jvm-opts .mill-jvm-opts.bak
         cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts
         # sometimes running into memory issues when attempting __.publishLocal or __.publishArtifacts upfront
-        for SV in $(./mill dev.scalaVersions); do
+        for SV in $(./mill -i dev.scalaVersions); do
           ./mill -i '__['"$SV"'].compile'
           ./mill -i '__['"$SV"'].docJar'
           ./mill -i '__['"$SV"'].publishLocal'
