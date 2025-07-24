@@ -1,12 +1,12 @@
-import mill._
-import mill.runner.MillBuildRootModule
-import mill.scalalib._
+import mill.*
+import mill.meta.MillBuildRootModule
+import mill.scalalib.*
 
 object `package` extends MillBuildRootModule {
-  def ivyDeps = Agg(
-    mvn"com.github.lolgab::mill-mima::0.1.1",
+  def mvnDeps = Seq(
+    mvn"com.github.lolgab::mill-mima::0.2.0",
     mvn"io.get-coursier.util:get-cs_2.13:0.1.1",
-    mvn"io.github.alexarchambault.mill::mill-native-image-upload:0.1.31-1",
+    mvn"io.github.alexarchambault.mill::mill-native-image-upload:0.2.0",
     mvn"io.get-coursier:coursier-launcher_2.13:2.1.25-M13",
     mvn"org.jsoup:jsoup:1.10.3"
   )

@@ -1,7 +1,8 @@
 package almondbuild.modules
 
-import mill._
-import mill.scalalib._
+import mill.*
+import mill.api.*
+import mill.scalalib.*
 
 // Adapted from https://github.com/lihaoyi/mill/blob/0.9.3/scalalib/src/MiscModule.scala/#L80-L100
 // and https://github.com/com-lihaoyi/mill/blob/c75e29c78cfc3c1e04776978bfc8e5697f8ca1aa/scalalib/src/mill/scalalib/CrossSbtModule.scala#L7
@@ -12,19 +13,19 @@ import mill.scalalib._
 trait AlmondCrossSbtModule extends SbtModule with CrossModuleBase {
   outer =>
 
-  def extraScalaSources = Task.Sources {
+  def extraScalaSources = Task.Sources(
     scalaVersionDirectoryNames.map(s =>
-      PathRef(moduleDir / "src" / "main" / s"scala-$s")
-    )
-  }
+      os.sub / "src" / "main" / s"scala-$s"
+    )*
+  )
   def sources = Task {
     super.sources() ++ extraScalaSources()
   }
-  def extraTestScalaSources = Task.Sources {
+  def extraTestScalaSources = Task.Sources(
     scalaVersionDirectoryNames.map(s =>
-      PathRef(moduleDir / "src" / "test" / s"scala-$s")
-    )
-  }
+      os.sub / "src" / "test" / s"scala-$s"
+    )*
+  )
   trait CrossSbtModuleTests extends SbtTests {
     def sources = Task {
       super.sources() ++ extraTestScalaSources()
