@@ -1,7 +1,7 @@
 package almondbuild.modules
 
-import mill._
-import mill.scalalib.CrossVersion
+import mill.*
+import mill.api.*
 
 trait AlmondModule
     extends AlmondCrossSbtModule
@@ -13,8 +13,8 @@ trait AlmondModule
 
   // from https://github.com/VirtusLab/scala-cli/blob/cf77234ab981332531cbcb0d6ae565de009ae252/build.sc#L501-L522
   // pin scala3-library suffix, so that 2.13 modules can have us as moduleDep fine
-  def mandatoryIvyDeps = Task {
-    super.mandatoryIvyDeps().map { dep =>
+  def mandatoryMvnDeps = Task {
+    super.mandatoryMvnDeps().map { dep =>
       val isScala3Lib =
         dep.dep.module.organization.value == "org.scala-lang" &&
         dep.dep.module.name.value == "scala3-library" &&
