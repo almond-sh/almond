@@ -14,9 +14,9 @@ import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
 import ammonite.util.{Frame => _, _}
-import coursier.cache.shaded.dirs.ProjectDirectories
-import coursier.cache.shaded.dirs.impl.Windows
-import coursier.cache.shaded.dirs.jni.WindowsJni
+import coursier.paths.shaded.dirs.ProjectDirectories
+import coursier.paths.shaded.dirs.impl.Windows
+import coursier.paths.shaded.dirs.jni.WindowsJni
 import fastparse.Parsed
 
 import java.nio.charset.StandardCharsets
