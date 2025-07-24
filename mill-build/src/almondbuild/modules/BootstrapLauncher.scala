@@ -1,8 +1,8 @@
 package almondbuild.modules
 
-import mill._
-import mill.api.{PathRef => _, _}
-import mill.scalalib._
+import mill.*
+import mill.api.*
+import mill.scalalib.*
 
 trait BootstrapLauncher extends SbtModule {
 
