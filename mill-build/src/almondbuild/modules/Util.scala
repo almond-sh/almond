@@ -1,6 +1,7 @@
 package almondbuild.modules
 
-import mill._
+import mill.*
+import mill.api.*
 
 import java.io.File
 
@@ -18,7 +19,7 @@ object Util {
   }
 
   def run(cmd: Seq[String], dir: File = null) = {
-    val b = new ProcessBuilder(cmd: _*)
+    val b = new ProcessBuilder(cmd*)
     b.inheritIO()
     for (d <- Option(dir))
       b.directory(d)
@@ -35,7 +36,7 @@ object Util {
     waitFor: () => Unit = null
   )(f: => T): T = {
 
-    val b = new ProcessBuilder(cmd: _*)
+    val b = new ProcessBuilder(cmd*)
     b.inheritIO()
     b.directory(dir)
     var p: Process = null

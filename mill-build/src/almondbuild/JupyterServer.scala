@@ -1,6 +1,6 @@
 package almondbuild
 
-import java.nio.file._
+import java.nio.file.*
 
 object JupyterServer {
 
@@ -37,7 +37,7 @@ object JupyterServer {
       "language"     -> ujson.Str("scala"),
       "display_name" -> ujson.Str(name),
       "argv" -> ujson.Arr(
-        (baseArgs ++ extraArgs).map(ujson.Str(_)): _*
+        (baseArgs ++ extraArgs).map(ujson.Str(_))*
       )
     ).render()
     Files.write(dir.resolve("kernel.json"), kernelJson.getBytes("UTF-8"))
@@ -66,7 +66,7 @@ object JupyterServer {
 
     os.makeDir.all(workspace / "notebooks")
     val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
-    val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
+    val b              = new ProcessBuilder((jupyterCommand ++ args)*).inheritIO()
     val env            = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
     b.directory(workspace.toIO)
@@ -103,7 +103,7 @@ object JupyterServer {
     )
 
     val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
-    val b   = new ProcessBuilder(jupyterCommand ++ args: _*).directory(workspace.toIO).inheritIO()
+    val b   = new ProcessBuilder((jupyterCommand ++ args)*).directory(workspace.toIO).inheritIO()
     val env = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
     val p = b.start()

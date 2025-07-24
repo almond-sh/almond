@@ -200,7 +200,11 @@ final case class Options(
                 sys.error(s"Malformed dependency '$auto' in --auto-dependency argument '$s': $err")
               case Right((d, _)) =>
                 val dep = d.dependency(scala.util.Properties.versionNumberString)
-                Dependency.of(dep.module.organization.value, dep.module.name.value, dep.version)
+                Dependency.of(
+                  dep.module.organization.value,
+                  dep.module.name.value,
+                  dep.versionConstraint.asString
+                )
                   .withConfiguration(dep.configuration.value)
                   .withClassifier(dep.attributes.classifier.value)
                   .withType(dep.attributes.`type`.value)
