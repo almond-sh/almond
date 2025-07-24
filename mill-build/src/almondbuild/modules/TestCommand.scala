@@ -1,7 +1,8 @@
 package almondbuild.modules
 
-import mill._
-import mill.javalib._
+import mill.*
+import mill.api.*
+import mill.javalib.*
 
 trait TestCommand extends TestModule {
 
@@ -11,7 +12,7 @@ trait TestCommand extends TestModule {
       import mill.testrunner.TestRunner
 
       val globSelectors = Nil
-      val outputPath    = Task.workspace / "test-output.json"
+      val outputPath    = BuildCtx.workspaceRoot / "test-output.json"
       val resultPath    = Task.dest / "results.log"
       val useArgsFile   = testUseArgsFile()
 
@@ -45,7 +46,7 @@ trait TestCommand extends TestModule {
         globSelectors = Left(globSelectors)
       )
 
-      val testRunnerClasspathArg = jvmWorker().scalalibClasspath()
+      val testRunnerClasspathArg = zincWorker().scalalibClasspath()
         .map(_.path.toNIO.toUri.toURL)
         .mkString(",")
 
@@ -57,7 +58,7 @@ trait TestCommand extends TestModule {
 
       val args0 = jvmSubprocessCommand(
         mainClass = "mill.testrunner.entrypoint.TestRunnerMain",
-        classPath = (runClasspath() ++ jvmWorker().testrunnerEntrypointClasspath()).map(_.path),
+        classPath = (runClasspath() ++ zincWorker().testrunnerEntrypointClasspath()).map(_.path),
         jvmArgs = jvmArgs,
         envArgs = envArgs,
         mainArgs = mainArgs,

@@ -1,6 +1,6 @@
 package almondbuild
 
-import java.nio.file._
+import java.nio.file.*
 
 object JupyterServer {
 
@@ -93,14 +93,7 @@ object JupyterServer {
   ): Unit = {
 
     writeKernelJson(launcher, jupyterDir, workspace, publishVersion, kernelId, "Scala (sources)")
-    writeKernelJson(
-      specialLauncher,
-      jupyterDir,
-      workspace,
-      publishVersion,
-      specialKernelId,
-      "Scala (special, sources)"
-    )
+    writeKernelJson(specialLauncher, jupyterDir, workspace, publishVersion, specialKernelId, "Scala (special, sources)")
 
     val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
     val b   = new ProcessBuilder(jupyterCommand ++ args: _*).directory(workspace.toIO).inheritIO()

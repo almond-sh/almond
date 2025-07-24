@@ -1,6 +1,6 @@
 package almondbuild.modules
 
-import mill.scalalib._
+import mill.scalalib.*
 
 trait AlmondSimpleModule
     extends SbtModule

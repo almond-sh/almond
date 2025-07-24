@@ -1,9 +1,9 @@
 package almondbuild.modules
 
-import mill._
-import mill.define.{Discover, ExternalModule}
-import mill.javalib.publish._
-import mill.scalalib._
+import mill.*
+import mill.api.*
+import mill.javalib.publish.*
+import mill.scalalib.*
 
 trait AlmondPublishModule extends PublishModule with ScalaModule {
   import mill.scalalib.publish._
@@ -42,7 +42,7 @@ object AlmondPublishModule extends ExternalModule {
 
   def compileBuildVersion(): String = {
     val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim()
-    val maybeExactTag: scala.util.Try[String] = scala.util.Try {
+    val maybeExactTag = scala.util.Try {
       os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
         .call().out
         .trim()
@@ -61,6 +61,4 @@ object AlmondPublishModule extends ExternalModule {
   def buildVersion: T[String] = Task.Input {
     compileBuildVersion()
   }
-
-  lazy val millDiscover: Discover = Discover[this.type]
 }

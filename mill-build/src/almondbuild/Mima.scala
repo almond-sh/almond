@@ -1,8 +1,8 @@
 package almondbuild
 
-import com.github.lolgab.mill.mima._
-import mill._
-import mill.define.{Discover, ExternalModule}
+import com.github.lolgab.mill.mima.*
+import mill.*
+import mill.api.*
 
 object Mima extends ExternalModule {
   private def stable(ver: String): Boolean =
@@ -23,6 +23,4 @@ object Mima extends ExternalModule {
   //   .filter(_ != "0.8.3") // Preserving compatibility right after it
   //   .filter(stable)
   //   .toVector
-
-  lazy val millDiscover: Discover = Discover[this.type]
 }
