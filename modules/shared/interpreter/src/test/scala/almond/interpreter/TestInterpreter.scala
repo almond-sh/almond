@@ -165,8 +165,8 @@ final class TestInterpreter extends Interpreter {
   override def isComplete(code: String) =
     sys.error("should not be called")
 
-  private var commHandlerOpt0 = Option.empty[CommHandler]
-  override def supportComm    = true
+  private var commHandlerOpt0                                 = Option.empty[CommHandler]
+  override def supportComm                                    = true
   override def setCommHandler(commHandler: CommHandler): Unit =
     commHandlerOpt0 = Some(commHandler)
 

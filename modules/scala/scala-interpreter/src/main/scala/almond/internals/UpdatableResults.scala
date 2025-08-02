@@ -42,8 +42,8 @@ final class UpdatableResults(
   def update(k: String, v: String, last: Boolean): Unit = {
 
     def updateRef(data: DisplayData, ref: Ref[Map[String, String]]): Unit = {
-      val m0 = ref()
-      val m  = m0 + (k -> v)
+      val m0    = ref()
+      val m     = m0 + (k -> v)
       val data0 =
         UpdatableResults.substituteVariables(data, m, isFirst = false, onlyHighlightOpt = Some(k))
       log.debug(s"Updating variable $k with $v: $data0")
