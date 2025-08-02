@@ -67,7 +67,7 @@ final case class InterpreterMessageHandlers(
             Some(handler)
           )
           countAfter <- interpreter.executionCount
-          _ <- res match {
+          _          <- res match {
             case v: ExecuteResult.Success if v.data.isEmpty =>
               IO.unit
             case v: ExecuteResult.Success =>
@@ -168,7 +168,7 @@ final case class InterpreterMessageHandlers(
 
       for {
         res <- interpreter.isComplete(message.content.code)
-        _ <- message
+        _   <- message
           .reply(
             IsComplete.replyType,
             res.fold(IsComplete.Reply("unknown"))(c => IsComplete.Reply(c.status))
@@ -215,7 +215,7 @@ final case class InterpreterMessageHandlers(
 
       for {
         info <- interpreter.kernelInfo
-        _ <- message
+        _    <- message
           .reply(KernelInfo.replyType, info)
           .enqueueOn(Channel.Requests, queue)
       } yield ()

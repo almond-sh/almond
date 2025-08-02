@@ -125,7 +125,7 @@ final class Execute(
 
   private val resultVariables = new mutable.HashMap[String, String]
   private val resultOutput    = new StringBuilder
-  private val resultStream =
+  private val resultStream    =
     new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
   private var currentLine0          = initialCellCount
@@ -162,7 +162,7 @@ final class Execute(
 
     val params       = ScalaParameters(ammInterp.scalaVersion)
     val compatParams = ScalaParameters(scala.util.Properties.versionNumberString)
-    val deps = options.dependencies.map { dep =>
+    val deps         = options.dependencies.map { dep =>
       val params0 =
         if (dep.userParams.exists(_._1 == "compat")) compatParams
         else params
@@ -183,7 +183,7 @@ final class Execute(
   def printer: Printer =
     printer0
 
-  def currentLine: Int = currentLine0
+  def currentLine: Int           = currentLine0
   def incrementLineCount(): Unit = {
     currentLine0 += 1
   }
