@@ -1,7 +1,8 @@
 package almondbuild.modules
 
-import mill._
-import mill.javalib._
+import mill.*
+import mill.api.*
+import mill.javalib.*
 
 trait LocalRepo extends Module {
 

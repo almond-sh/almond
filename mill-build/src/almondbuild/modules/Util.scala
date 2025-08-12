@@ -1,6 +1,7 @@
 package almondbuild.modules
 
-import mill._
+import mill.*
+import mill.api.*
 
 import java.io.File
 

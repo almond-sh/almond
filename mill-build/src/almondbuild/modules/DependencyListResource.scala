@@ -1,17 +1,17 @@
 package almondbuild.modules
 
-import mill._
-import mill.scalalib.Lib
+import mill.*
+import mill.api.*
 
 trait DependencyListResource extends AlmondCrossSbtModule {
   def userDependencies = Task {
     val res = mill.scalalib.Lib.resolveDependenciesMetadataSafe(
       repositoriesTask(),
-      transitiveIvyDeps(),
+      transitiveMvnDeps(),
       Some(mapDependencies()),
       customizer = resolutionCustomizer(),
       coursierCacheCustomizer = coursierCacheCustomizer()
-    ).getOrThrow
+    ).get
     res
       .orderedDependencies
       .map { dep =>

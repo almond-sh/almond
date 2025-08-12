@@ -1,7 +1,8 @@
 package almondbuild
 
-import mill._
-import mill.scalalib._
+import mill.*
+import mill.api.*
+import mill.scalalib.*
 
 object Deps {
 

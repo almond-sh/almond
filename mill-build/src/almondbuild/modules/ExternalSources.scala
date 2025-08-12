@@ -1,10 +1,11 @@
 package almondbuild.modules
 
-import mill._
+import mill.*
+import mill.api.*
 
 trait ExternalSources extends AlmondCrossSbtModule {
-  // def allMvnDeps = Task((transitiveIvyDeps(): Seq[Dep]) ++ (scalaLibraryMvnDeps(): Seq[Dep]))
+  // def allMvnDeps = Task((transitiveMvnDeps(): Seq[Dep]) ++ (scalaLibraryMvnDeps(): Seq[Dep]))
   def externalSources = Task {
-    resolveDeps(Task.Anon(transitiveCompileIvyDeps() ++ transitiveIvyDeps()), sources = true)()
+    resolveDeps(Task.Anon(transitiveCompileMvnDeps() ++ transitiveMvnDeps()), sources = true)()
   }
 }
