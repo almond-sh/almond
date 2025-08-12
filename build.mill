@@ -445,6 +445,7 @@ def baseRepoRoot = os.sub / "out/repo"
 trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.20"
   def scalaVersion                 = ScalaVersions.scala3Latest
+  def examplesDir                  = Task.Source(Task.workspace / "examples")
   object test extends SbtTests {
     def testFramework = "munit.Framework"
     def ivyDeps = Task {
@@ -463,7 +464,7 @@ trait Examples extends SbtModule {
           doc = false
         )()
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${Task.workspace / "examples"}",
+        s"-Dalmond.examples.dir=${examplesDir().path}",
         s"-Dalmond.examples.output-dir=${Task.dest / "output"}",
         s"-Dalmond.examples.jupyter-path=${Task.dest / "jupyter"}",
         s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
