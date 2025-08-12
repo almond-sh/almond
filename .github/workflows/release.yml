@@ -18,10 +18,6 @@ jobs:
     - uses: coursier/setup-action@v1.3
       with:
         jvm: 21
-    - run: echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
-      shell: bash
-      env:
-        PGP_SECRET: ${{ secrets.PUBLISH_SECRET_KEY }}
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
         cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts
@@ -32,12 +28,13 @@ jobs:
           ./mill -i '__['"$SV"'].publishLocal'
         done
         ./mill -i __.publishLocal
-        ./mill -i ci.publishSonatype --tasks __.publishArtifacts
+        ./mill -i mill.scalalib.SonatypeCentralPublishModule/
       shell: bash
       env:
-        PGP_PASSWORD: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
-        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY }}
+        MILL_PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
+        MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
 
   upload-launcher:
     needs: release
