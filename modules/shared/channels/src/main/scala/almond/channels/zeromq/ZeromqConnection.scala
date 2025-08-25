@@ -1,5 +1,6 @@
 package almond.channels.zeromq
 
+import java.net.URI
 import java.nio.channels.{ClosedByInterruptException, Selector}
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -12,6 +13,7 @@ import org.zeromq.{SocketType, ZMQ, ZMQException}
 import org.zeromq.ZMQ.{PollItem, Poller}
 import zmq.ZError
 
+import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
 
 final class ZeromqConnection(
@@ -20,7 +22,8 @@ final class ZeromqConnection(
   identityOpt: Option[String],
   threads: ZeromqThreads,
   lingerPeriod: Option[Duration],
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  bindToRandomPorts: Boolean
 ) extends Connection {
 
   import ZeromqConnection._
@@ -51,7 +54,8 @@ final class ZeromqConnection(
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
-    logCtx
+    logCtx,
+    bindToRandomPort = bindToRandomPorts
   )
 
   private val control0 = ZeromqSocket(
@@ -65,7 +69,8 @@ final class ZeromqConnection(
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
-    logCtx
+    logCtx,
+    bindToRandomPort = bindToRandomPorts
   )
 
   private val publish0 = ZeromqSocket(
@@ -79,7 +84,8 @@ final class ZeromqConnection(
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
-    logCtx
+    logCtx,
+    bindToRandomPort = bindToRandomPorts
   )
 
   private val stdin0 = ZeromqSocket(
@@ -93,9 +99,17 @@ final class ZeromqConnection(
     params.key,
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
-    logCtx
+    logCtx,
+    bindToRandomPort = bindToRandomPorts
   )
 
+  private val heartBeatPortPromiseAndUri = {
+    lazy val parsedUri = new URI(params.heartbeatUri)
+    if (bind && bindToRandomPorts && parsedUri.getPort <= 0)
+      Some((Promise[Int](), ZeromqSocketImpl.removePort(parsedUri).toASCIIString))
+    else
+      None
+  }
   private val heartBeatThreadOpt: Option[Thread] =
     if (bind)
       Some(
@@ -112,7 +126,13 @@ final class ZeromqConnection(
             val heartbeat = threads.context.socket(repReq)
 
             heartbeat.setLinger(1000)
-            heartbeat.bind(params.heartbeatUri)
+            heartBeatPortPromiseAndUri match {
+              case Some((promise, uri0)) =>
+                val port = heartbeat.bindToRandomPort(uri0)
+                promise.success(port)
+              case None =>
+                heartbeat.bind(params.heartbeatUri)
+            }
 
             try
               while (true) {
@@ -147,18 +167,24 @@ final class ZeromqConnection(
         throw new Exception("Channel not opened")
     }
 
-  val open: IO[Unit] = {
+  val open: IO[Map[Option[Channel], Int]] = {
 
     val log0 = IO(log.debug(s"Opening channels for $params"))
 
-    val channels = Seq(
-      requests0,
-      control0,
-      publish0,
-      stdin0
+    val channels = Seq[(Channel, ZeromqSocket)](
+      Channel.Requests -> requests0,
+      Channel.Control  -> control0,
+      Channel.Publish  -> publish0,
+      Channel.Input    -> stdin0
     )
 
-    val t = channels.foldLeft(IO.unit)((acc, c) => acc *> c.open)
+    val t = channels.foldLeft(IO.pure(Map.empty[Option[Channel], Int])) {
+      case (acc, (channel, socket)) =>
+        for {
+          map     <- acc
+          portOpt <- socket.open
+        } yield map ++ portOpt.map((Some(channel), _)).toSeq
+    }
 
     val other = IO {
       synchronized {
@@ -169,7 +195,19 @@ final class ZeromqConnection(
       }
     }.evalOn(threads.selectorOpenCloseEc)
 
-    log0 *> t *> other
+    val maybeHeartBeatPort = heartBeatPortPromiseAndUri match {
+      case Some((promise, _)) =>
+        IO.fromFuture(IO.pure(promise.future)).map(port => Seq(None -> port))
+      case None =>
+        IO.pure(Nil)
+    }
+
+    for {
+      _          <- log0
+      ports      <- t
+      _          <- other
+      extraPorts <- maybeHeartBeatPort
+    } yield ports ++ extraPorts
   }
 
   def send(channel: Channel, message: Message): IO[Unit] = {
@@ -243,7 +281,8 @@ object ZeromqConnection {
     identityOpt: Option[String],
     threads: ZeromqThreads,
     lingerPeriod: Option[Duration],
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    bindToRandomPorts: Boolean
   ): IO[ZeromqConnection] =
     IO(
       new ZeromqConnection(
@@ -252,7 +291,8 @@ object ZeromqConnection {
         identityOpt,
         threads,
         lingerPeriod,
-        logCtx
+        logCtx,
+        bindToRandomPorts = bindToRandomPorts
       )
     ).evalOn(threads.selectorOpenCloseEc)
 

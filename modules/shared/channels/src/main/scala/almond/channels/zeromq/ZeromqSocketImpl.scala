@@ -11,6 +11,8 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import org.zeromq.{SocketType, ZMQ}
 
+import java.net.URI
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
@@ -26,7 +28,8 @@ final class ZeromqSocketImpl(
   key: Secret[String],
   algorithm: String,
   lingerPeriod: Option[Duration],
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  bindToRandomPort: Boolean
 ) extends ZeromqSocket {
 
   import ZeromqSocketImpl._
@@ -72,15 +75,25 @@ final class ZeromqSocketImpl(
   @volatile private var opened = false
   @volatile private var closed = false
 
-  val open: IO[Unit] = {
+  private var pickedRandomPort = Option.empty[Int]
+
+  val open: IO[Option[Int]] = {
 
     def connectOrBind = IO {
-      if (bind)
-        channel.bind(uri)
+      if (bind) {
+        lazy val parsedUri = new URI(uri)
+        if (bindToRandomPort && parsedUri.getPort <= 0) {
+          val uri0 = ZeromqSocketImpl.removePort(parsedUri).toASCIIString
+          val port = channel.bindToRandomPort(uri0)
+          (true, Some(port))
+        }
+        else
+          (channel.bind(uri), None)
+      }
       else
-        channel.connect(uri)
+        (channel.connect(uri), None)
     }.flatMap {
-      case true =>
+      case (true, portOpt) =>
         IO {
           log.debug {
             if (bind)
@@ -89,8 +102,10 @@ final class ZeromqSocketImpl(
               s"Connected to $uri"
           }
           opened = true
+          pickedRandomPort = portOpt
+          portOpt
         }
-      case false =>
+      case (false, _) =>
         IO.raiseError(new Exception(s"Cannot bind / connect channel $uri"))
     }
 
@@ -115,9 +130,12 @@ final class ZeromqSocketImpl(
 
     val t = IO {
       if (opened)
-        IO.unit
+        IO.pure(pickedRandomPort)
       else
-        connectOrBind.flatMap(_ => maybeSubscribe)
+        for {
+          portOpt <- connectOrBind
+          _       <- maybeSubscribe
+        } yield portOpt
     }
 
     delayedCondition(!closed, "Channel is closed")(
@@ -263,4 +281,14 @@ object ZeromqSocketImpl {
   private def delayedCondition[T](cond: => Boolean, msg: String)(t: IO[T]): IO[T] =
     IO(assert(cond, msg)) *> t
 
+  private[zeromq] def removePort(uri: URI): URI =
+    new URI(
+      uri.getScheme,
+      uri.getUserInfo,
+      uri.getHost,
+      -1, // clear port
+      uri.getPath,
+      uri.getQuery,
+      uri.getFragment
+    )
 }
