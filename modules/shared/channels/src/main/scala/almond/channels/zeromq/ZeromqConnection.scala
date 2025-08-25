@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.channels._
 import almond.logger.LoggerContext
+import cats.Parallel
 import cats.effect.IO
 import cats.syntax.apply._
 import org.zeromq.{SocketType, ZMQ, ZMQException}
@@ -12,7 +13,6 @@ import org.zeromq.ZMQ.{PollItem, Poller}
 import zmq.ZError
 
 import scala.concurrent.duration.Duration
-import cats.Parallel
 
 final class ZeromqConnection(
   params: ConnectionParameters,
@@ -162,8 +162,8 @@ final class ZeromqConnection(
 
     val other = IO {
       synchronized {
-        for (t <- heartBeatThreadOpt if t.getState == Thread.State.NEW)
-          t.start()
+        for (thread <- heartBeatThreadOpt if thread.getState == Thread.State.NEW)
+          thread.start()
         if (selectorOpt.isEmpty)
           selectorOpt = Some(Selector.open())
       }
