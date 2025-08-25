@@ -162,8 +162,8 @@ final class ZeromqConnection(
 
     val other = IO {
       synchronized {
-        for (t <- heartBeatThreadOpt if t.getState == Thread.State.NEW)
-          t.start()
+        for (thread <- heartBeatThreadOpt if thread.getState == Thread.State.NEW)
+          thread.start()
         if (selectorOpt.isEmpty)
           selectorOpt = Some(Selector.open())
       }
