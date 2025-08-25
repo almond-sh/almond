@@ -38,7 +38,12 @@ final case class LauncherOptions(
   customDirectiveGroup: List[String] = Nil,
   @HelpMessage("Time given to the client to accept ZeroMQ messages before handing over the connections to the kernel. Parsed with scala.concurrent.duration.Duration, this accepts things like \"Inf\" or \"5 seconds\"")
   @Hidden
-    linger: Option[String] = None
+    linger: Option[String] = None,
+  @HelpMessage(
+    "If zero-d ports are passed by Jupyter in connection file, bind to random available ports, " +
+    "and update the connection file with the actually used ports"
+  )
+    bindToRandomPorts: Option[Boolean] = None
 ) {
   // format: on
 

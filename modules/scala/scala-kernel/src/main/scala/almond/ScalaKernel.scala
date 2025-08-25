@@ -15,6 +15,8 @@ import caseapp._
 import cats.effect.unsafe.IORuntime
 import coursier.cputil.ClassPathUtil
 
+import java.nio.file.Paths
+
 import scala.language.reflectiveCalls
 import scala.concurrent.ExecutionContext
 import scala.util.Properties
@@ -253,7 +255,10 @@ object ScalaKernel extends CaseApp[Options] {
           zeromqThreads,
           options.leftoverMessages0(),
           autoClose = true,
-          lingerDuration = options.lingerDuration
+          lingerDuration = options.lingerDuration,
+          bindToRandomPorts =
+            if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
+            else None
         ))
         .unsafeRunSync()(IORuntime.global)
     finally
