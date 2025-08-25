@@ -31,11 +31,13 @@ object ZeromqConnectionTests extends TestSuite {
 
       val t =
         for {
-          kernel <- params.channels(bind = true, kernelThreads, None, logCtx)
-          server <- params.channels(bind = false, serverThreads, None, logCtx)
-          _      <- kernel.open
-          _      <- server.open
-          _      <- server.send(Channel.Requests, msg0)
+          kernel <-
+            params.channels(bind = true, kernelThreads, None, logCtx, bindToRandomPorts = false)
+          server <-
+            params.channels(bind = false, serverThreads, None, logCtx, bindToRandomPorts = false)
+          _ <- kernel.open
+          _ <- server.open
+          _ <- server.send(Channel.Requests, msg0)
           resp <- kernel.tryRead(Seq(Channel.Requests), 1.second).flatMap {
             case Some(r) => IO.pure(r)
             case None    => IO.raiseError(new Exception("no message"))

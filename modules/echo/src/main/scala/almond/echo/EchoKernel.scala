@@ -8,6 +8,8 @@ import almond.logger.{Level, LoggerContext}
 import caseapp._
 import cats.effect.unsafe.IORuntime
 
+import java.nio.file.Paths
+
 object EchoKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
@@ -59,7 +61,10 @@ object EchoKernel extends CaseApp[Options] {
         zeromqThreads,
         Nil,
         autoClose = true,
-        lingerDuration = options.lingerDuration
+        lingerDuration = options.lingerDuration,
+        bindToRandomPorts =
+          if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
+          else None
       ))
       .unsafeRunSync()(IORuntime.global)
   }
