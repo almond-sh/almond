@@ -104,4 +104,7 @@ class LauncherOutputHandler(
   def canOutput(): Boolean = true
 
   def messageIdOpt: Option[String] = None
+
+  def addPayload(payload: String): Unit =
+    sys.error("Payloads not supported at that point")
 }

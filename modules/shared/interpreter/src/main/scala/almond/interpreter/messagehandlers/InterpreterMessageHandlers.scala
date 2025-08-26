@@ -16,6 +16,7 @@ import cats.syntax.apply._
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
 final case class InterpreterMessageHandlers(
@@ -36,7 +37,13 @@ final case class InterpreterMessageHandlers(
     blocking0(Channel.Requests, Execute.requestType, queueEc, logCtx) {
       (rawMessage, message, queue) =>
 
-        val handler = new QueueOutputHandler(message, queue, commHandlerOpt)
+        val payloads = new ListBuffer[String]
+        val handler  = new QueueOutputHandler(message, queue, commHandlerOpt, payloads)
+
+        def payloadsAsJson(): List[RawJson] =
+          payloads.toList.map { str =>
+            readFromString(str)(RawJson.codec)
+          }
 
         lazy val inputManagerOpt = inputHandlerOpt.map { h =>
           h.inputManager(message, (c, m) => queue.offer(Right((c, m))))
@@ -101,7 +108,7 @@ final case class InterpreterMessageHandlers(
           }
           respOpt = res match {
             case v: ExecuteResult.Success =>
-              Right(Execute.Reply.Success(countAfter, v.data.jsonData))
+              Right(Execute.Reply.Success(countAfter, v.data.jsonData, payload = payloadsAsJson()))
             case ex: ExecuteResult.Error =>
               val traceBack =
                 Seq(ex.name, ex.message)
@@ -112,7 +119,8 @@ final case class InterpreterMessageHandlers(
                 ex.name,
                 ex.message,
                 traceBack /* or just stackTrace? */,
-                countAfter
+                countAfter,
+                payload = payloadsAsJson()
               )
               Right(r)
             case ExecuteResult.Abort =>
@@ -256,7 +264,8 @@ object InterpreterMessageHandlers {
   private final class QueueOutputHandler(
     message: Message[_],
     queue: Queue[IO, Either[Throwable, (Channel, RawMessage)]],
-    commHandlerOpt: Option[CommHandler]
+    commHandlerOpt: Option[CommHandler],
+    payloads: ListBuffer[String]
   ) extends OutputHandler {
 
     private def print(on: String, s: String): Unit =
@@ -293,6 +302,9 @@ object InterpreterMessageHandlers {
     def canOutput(): Boolean = true
 
     def messageIdOpt: Option[String] = Some(message.header.msg_id)
+
+    def addPayload(payload: String): Unit =
+      payloads += payload
   }
 
 }
