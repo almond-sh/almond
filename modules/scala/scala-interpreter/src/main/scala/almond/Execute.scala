@@ -325,7 +325,7 @@ final class Execute(
     outputHandler: Option[OutputHandler],
     storeHistory: Boolean,
     jupyterApi: JupyterApi
-  ) =
+  ): Res[DisplayData] =
     withOutputHandler(outputHandler) {
       val code0 = {
         val ls = System.lineSeparator()
@@ -410,7 +410,7 @@ final class Execute(
                             DisplayData.empty
                         }
                     }
-                r.map((_, data))
+                r.map(_ => data)
               }
             }
           }
@@ -536,7 +536,7 @@ final class Execute(
                       storeHistory,
                       jupyterApi
                     ) match {
-                      case Res.Success((_, data)) =>
+                      case Res.Success(data) =>
                         ExecuteResult.Success(data)
                       case Res.Failure(msg) =>
                         interruptedStackTraceOpt0 match {

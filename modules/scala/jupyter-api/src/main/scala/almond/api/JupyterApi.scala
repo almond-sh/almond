@@ -11,6 +11,8 @@ import scala.reflect.{ClassTag, classTag}
 
 abstract class JupyterApi { api =>
 
+  import JupyterApi.ExecuteHook
+
   /** Request input from the the Jupyter UI */
   final def stdin(prompt: String = "", password: Boolean = false): String =
     stdinOpt(prompt, password).getOrElse {
@@ -61,7 +63,7 @@ abstract class JupyterApi { api =>
     * @return
     *   true if the hook was freshly added, false it was already added before this call
     */
-  def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
+  def addExecuteHook(hook: ExecuteHook): Boolean
 
   /** Remove a hook that can preprocess cell code right before it's executed
     *
@@ -70,7 +72,7 @@ abstract class JupyterApi { api =>
     * @return
     *   true if the hook was removed, false it wasn't found in the current hook list
     */
-  def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
+  def removeExecuteHook(hook: ExecuteHook): Boolean
 
   /** Add a hook to be run right after a cell is interrupted
     *

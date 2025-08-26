@@ -541,7 +541,7 @@ object ScalaKernelTests extends TestSuite {
       else "disabled"
     }
 
-    test("hooks") {
+    test("execute hooks") {
 
       val predef =
         """private val foos0 = new scala.collection.mutable.ListBuffer[String]
