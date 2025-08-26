@@ -54,12 +54,48 @@ abstract class JupyterApi { api =>
       }
     )
 
+  /** Add a hook that can preprocess cell code right before it's executed
+    *
+    * @param hook
+    *   the hook to add
+    * @return
+    *   true if the hook was freshly added, false it was already added before this call
+    */
   def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
+
+  /** Remove a hook that can preprocess cell code right before it's executed
+    *
+    * @param hook
+    *   the hook to remove
+    * @return
+    *   true if the hook was removed, false it wasn't found in the current hook list
+    */
   def removeExecuteHook(hook: JupyterApi.ExecuteHook): Boolean
 
+  /** Add a hook to be run right after a cell is interrupted
+    *
+    * @param name
+    *   name to identify the hook (see `removePostInterruptHook`)
+    * @param hook
+    *   the hook to add
+    * @return
+    *   true if the hook was freshly added, false it was already added before this call
+    */
   def addPostInterruptHook(name: String, hook: Any => Any): Boolean
+
+  /** Remove a hook to be run right after a cell is interrupted
+    *
+    * @param name
+    *   name that identifies the hook (see `addPostInterruptHook`)
+    * @return
+    *   true if the hook was removed, false it wasn't found in the current hook list
+    */
   def removePostInterruptHook(name: String): Boolean
+
+  /** List of hooks to be run right after a cell is interrupted */
   def postInterruptHooks(): Seq[(String, Any => Any)]
+
+  /** Runs hooks meant to be run right after a cell is interrupted */
   def runPostInterruptHooks(): Unit
 
   def consoleOut: PrintStream
