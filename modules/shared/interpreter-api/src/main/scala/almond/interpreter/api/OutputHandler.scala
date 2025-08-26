@@ -28,6 +28,16 @@ abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.Up
     */
   def display(displayData: DisplayData): Unit
 
+  /** Adds a payload to be sent in the execute reply message
+    *
+    * This method can be called multiple times. All the passed payloads will be added in the execute
+    * reply message.
+    *
+    * @param payload
+    *   payload to add to the reply message, should be a stringifi-ed JSON object
+    */
+  def addPayload(payload: String): Unit
+
   def canOutput(): Boolean
 
   def messageIdOpt: Option[String]
@@ -83,6 +93,9 @@ object OutputHandler {
     def canOutput(): Boolean =
       false
 
+    def addPayload(payload: String): Unit =
+      unsupported()
+
     def messageIdOpt: Option[String] = None
   }
 
@@ -100,6 +113,9 @@ object OutputHandler {
 
     def messageIdOpt: Option[String] =
       underlying.messageIdOpt
+
+    def addPayload(payload: String): Unit =
+      underlying.addPayload(payload)
   }
 
   object NopOutputHandler extends OutputHandler {
@@ -110,6 +126,8 @@ object OutputHandler {
     def canOutput(): Boolean                          = false
 
     def messageIdOpt: Option[String] = None
+
+    def addPayload(payload: String): Unit = ()
   }
 
 }
