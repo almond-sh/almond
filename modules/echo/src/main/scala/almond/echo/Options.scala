@@ -20,7 +20,13 @@ final case class Options(
     """Time given to the client to accept ZeroMQ messages before exiting. Parsed with scala.concurrent.duration.Duration, this accepts things like "Inf" or "5 seconds""""
   )
   @Hidden
-    linger: Option[String] = None
+    linger: Option[String] = None,
+
+  @HelpMessage(
+    "If zero-d ports are passed by Jupyter in connection file, bind to random available ports, " +
+    "and update the connection file with the actually used ports"
+  )
+    bindToRandomPorts: Option[Boolean] = None
 ) {
   // format: on
 
