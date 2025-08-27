@@ -14,8 +14,8 @@ import almond.internals.{
   HtmlAnsiOutputStream,
   UpdatableResults
 }
-import almond.interpreter.{ExecuteError, ExecuteResult}
-import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
+import almond.interpreter.ExecuteError
+import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext

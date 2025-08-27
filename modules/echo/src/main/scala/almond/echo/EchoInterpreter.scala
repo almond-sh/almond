@@ -2,8 +2,8 @@ package almond.echo
 
 import java.util.Properties
 
-import almond.interpreter.{Completion, ExecuteResult, Inspection, Interpreter}
-import almond.interpreter.api.{DisplayData, OutputHandler}
+import almond.interpreter.{Completion, Inspection, Interpreter}
+import almond.interpreter.api.{DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
 import java.nio.charset.StandardCharsets

@@ -1,7 +1,7 @@
 package almond.echo
 
-import almond.interpreter.{Completion, ExecuteResult, Interpreter, TestOutputHandler}
-import almond.interpreter.api.DisplayData
+import almond.interpreter.{Completion, Interpreter, TestOutputHandler}
+import almond.interpreter.api.{DisplayData, ExecuteResult}
 import utest._
 
 object EchoInterpreterTests extends TestSuite {

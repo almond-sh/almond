@@ -2,8 +2,8 @@ package almond
 
 import java.nio.file.{Path, Paths}
 
-import almond.interpreter.api.DisplayData
-import almond.interpreter.{Completion, ExecuteResult, Interpreter}
+import almond.interpreter.api.{DisplayData, ExecuteResult}
+import almond.interpreter.{Completion, Interpreter}
 import almond.protocol.RawJson
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil._

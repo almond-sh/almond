@@ -1,5 +1,7 @@
 package almond.interpreter
 
+import almond.interpreter.api.ExecuteResult
+
 object ExecuteError {
 
   // these come from Ammonite
