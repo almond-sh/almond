@@ -19,6 +19,7 @@ import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import cats.effect.IO
 import cats.effect.std.Queue
+import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
 
@@ -185,12 +186,23 @@ final case class Kernel(
   ): IO[Unit] =
     sink(replies(Stream(leftoverMessages: _*) ++ stream)).compile.drain
 
+  /** @param connection
+    * @param kernelId
+    * @param zeromqThreads
+    * @param leftoverMessages
+    * @param lingerDuration
+    * @param bindToRandomPorts
+    *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
+    *   Should contain the path to the connection file to overwrite.
+    * @return
+    */
   def runOnConnection(
     connection: ConnectionParameters,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[Unit] =
     for {
       t <- runOnConnectionAllowClose0(
@@ -199,11 +211,35 @@ final case class Kernel(
         zeromqThreads,
         leftoverMessages,
         autoClose = true,
-        lingerDuration = lingerDuration
+        lingerDuration = lingerDuration,
+        bindToRandomPorts = bindToRandomPorts
       )
       (run, _) = t
       _ <- run
     } yield ()
+
+  private def overwriteConnectionFile(
+    path: Path,
+    params: ConnectionParameters,
+    ports: Map[Option[Channel], Int]
+  ): Unit = {
+    val params0 = {
+      var p = params
+      for (port <- ports.get(Some(Channel.Requests)))
+        p = p.copy(shell_port = port)
+      for (port <- ports.get(Some(Channel.Control)))
+        p = p.copy(control_port = port)
+      for (port <- ports.get(Some(Channel.Publish)))
+        p = p.copy(iopub_port = port)
+      for (port <- ports.get(Some(Channel.Input)))
+        p = p.copy(stdin_port = port)
+      for (port <- ports.get(None))
+        p = p.copy(hb_port = port)
+      p
+    }
+    val b = writeToArray(JsonConnection.fromParams(params0))(JsonConnection.codec)
+    Files.write(path, b)
+  }
 
   private def runOnConnectionAllowClose0(
     connection: ConnectionParameters,
@@ -211,7 +247,8 @@ final case class Kernel(
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[(IO[Unit], Connection)] =
     for {
       c <- connection.channels(
@@ -219,12 +256,22 @@ final case class Kernel(
         zeromqThreads,
         lingerPeriod = Some(5.minutes),
         logCtx = logCtx,
-        identityOpt = Some(kernelId)
+        identityOpt = Some(kernelId),
+        bindToRandomPorts = bindToRandomPorts.nonEmpty
       )
     } yield {
       val run0 =
         for {
-          _ <- c.open
+          ports <- c.open
+          _ <- {
+            assert(bindToRandomPorts.nonEmpty || ports.isEmpty)
+            bindToRandomPorts match {
+              case Some(connectionFile) if ports.nonEmpty =>
+                IO(overwriteConnectionFile(connectionFile, connection, ports))
+              case _ =>
+                IO.unit
+            }
+          }
           _ <- run(
             c.stream(),
             c.autoCloseSink(partial = !autoClose, lingerDuration = lingerDuration),
@@ -241,13 +288,25 @@ final case class Kernel(
       .compile
       .toVector
 
+  /** @param connection
+    * @param kernelId
+    * @param zeromqThreads
+    * @param leftoverMessages
+    * @param autoClose
+    * @param lingerDuration
+    * @param bindToRandomPorts
+    *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
+    *   Should contain the path to the connection file to overwrite.
+    * @return
+    */
   def runOnConnectionAllowClose(
     connection: ConnectionParameters,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     runOnConnectionAllowClose0(
       connection,
@@ -255,7 +314,8 @@ final case class Kernel(
       zeromqThreads,
       leftoverMessages,
       autoClose,
-      lingerDuration
+      lingerDuration,
+      bindToRandomPorts = bindToRandomPorts
     ).map {
       case (run, conn) =>
         val run0 = run.attempt.flatMap {
@@ -271,13 +331,25 @@ final case class Kernel(
         (run0, conn)
     }
 
+  /** @param connectionPath
+    * @param kernelId
+    * @param zeromqThreads
+    * @param leftoverMessages
+    * @param autoClose
+    * @param lingerDuration
+    * @param bindToRandomPorts
+    *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
+    *   Should contain the path to the connection file to overwrite.
+    * @return
+    */
   def runOnConnectionFileAllowClose(
     connectionPath: Path,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     for {
       _ <- {
@@ -299,17 +371,30 @@ final case class Kernel(
         zeromqThreads,
         leftoverMessages,
         autoClose,
-        lingerDuration
+        lingerDuration,
+        bindToRandomPorts = bindToRandomPorts
       )
     } yield value
 
+  /** @param connectionPath
+    * @param kernelId
+    * @param zeromqThreads
+    * @param leftoverMessages
+    * @param autoClose
+    * @param lingerDuration
+    * @param bindToRandomPorts
+    *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
+    *   Should contain the path to the connection file to overwrite.
+    * @return
+    */
   def runOnConnectionFile(
     connectionPath: Path,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[Unit] =
     for {
       t <- runOnConnectionFileAllowClose(
@@ -318,19 +403,32 @@ final case class Kernel(
         zeromqThreads,
         leftoverMessages,
         autoClose,
-        lingerDuration
+        lingerDuration,
+        bindToRandomPorts = bindToRandomPorts
       )
       (run, _) = t
       _ <- run
     } yield ()
 
+  /** @param connectionPath
+    * @param kernelId
+    * @param zeromqThreads
+    * @param leftoverMessages
+    * @param autoClose
+    * @param lingerDuration
+    * @param bindToRandomPorts
+    *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
+    *   Should contain the path to the connection file to overwrite.
+    * @return
+    */
   def runOnConnectionFile(
     connectionPath: String,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[Unit] =
     for {
       t <- runOnConnectionFileAllowClose(
@@ -339,19 +437,32 @@ final case class Kernel(
         zeromqThreads,
         leftoverMessages,
         autoClose,
-        lingerDuration
+        lingerDuration,
+        bindToRandomPorts = bindToRandomPorts
       )
       (run, _) = t
       _ <- run
     } yield ()
 
+  /** @param connectionPath
+    * @param kernelId
+    * @param zeromqThreads
+    * @param leftoverMessages
+    * @param autoClose
+    * @param lingerDuration
+    * @param bindToRandomPorts
+    *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
+    *   Should contain the path to the connection file to overwrite.
+    * @return
+    */
   def runOnConnectionFileAllowClose(
     connectionPath: String,
     kernelId: String,
     zeromqThreads: ZeromqThreads,
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
-    lingerDuration: Duration
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path]
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     runOnConnectionFileAllowClose(
       Paths.get(connectionPath),
@@ -359,7 +470,8 @@ final case class Kernel(
       zeromqThreads,
       leftoverMessages,
       autoClose,
-      lingerDuration
+      lingerDuration,
+      bindToRandomPorts = bindToRandomPorts
     )
 
 }
