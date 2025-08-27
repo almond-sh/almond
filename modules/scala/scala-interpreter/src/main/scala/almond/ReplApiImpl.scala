@@ -1,7 +1,7 @@
 package almond
 
 import almond.api.JupyterApi
-import almond.interpreter.ExecuteResult
+import almond.interpreter.ExecuteError
 import almond.interpreter.api.DisplayData
 import ammonite.repl.api.{FrontEnd, ReplLoad}
 import ammonite.repl.{FullReplAPI, SessionApiImpl}
@@ -138,7 +138,7 @@ final class ReplApiImpl(
                       .getOrElse(fansi.Color.LightGray)
 
                     val err =
-                      ExecuteResult.Error.showException(
+                      ExecuteError.showException(
                         ex,
                         colors0().error(),
                         Attr.Reset,

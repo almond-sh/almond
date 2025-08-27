@@ -14,7 +14,7 @@ import almond.internals.{
   HtmlAnsiOutputStream,
   UpdatableResults
 }
-import almond.interpreter.ExecuteResult
+import almond.interpreter.{ExecuteError, ExecuteResult}
 import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{CustomGroup, LauncherParameters}
@@ -570,7 +570,7 @@ final class Execute(
                               "",
                               List("Interrupted!") ++ st
                                 .takeWhile(x => !cutoff(x.getMethodName))
-                                .map(ExecuteResult.Error.highlightFrame(
+                                .map(ExecuteError.highlightFrame(
                                   _,
                                   fansi.Attr.Reset,
                                   colors0().literal()
@@ -601,7 +601,7 @@ final class Execute(
 
 object Execute {
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error.error(colors.error(), colors.literal(), exOpt, msg)
+    ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
   private lazy val isJdk20OrHigher =
     sys.props
       .get("java.version")
