@@ -116,4 +116,19 @@ final class JupyterApiImpl(
         log.warn("Caught exception while running post-interrupt hooks", e)
     }
 
+  private val exceptionHandlers0 = new mutable.ListBuffer[JupyterApi.ExceptionHandler]
+  def addExceptionHandler(handler: JupyterApi.ExceptionHandler): Boolean =
+    !exceptionHandlers0.contains(handler) && {
+      exceptionHandlers0.append(handler)
+      true
+    }
+  def removeExceptionHandler(handler: JupyterApi.ExceptionHandler): Boolean = {
+    val idx = exceptionHandlers0.indexOf(handler)
+    idx >= 0 && {
+      exceptionHandlers0.remove(idx)
+      true
+    }
+  }
+  def exceptionHandlers(): Seq[JupyterApi.ExceptionHandler] =
+    exceptionHandlers0.toList
 }

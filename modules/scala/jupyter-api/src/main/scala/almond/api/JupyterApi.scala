@@ -11,7 +11,7 @@ import scala.reflect.{ClassTag, classTag}
 
 abstract class JupyterApi { api =>
 
-  import JupyterApi.ExecuteHook
+  import JupyterApi.{ExceptionHandler, ExecuteHook}
 
   /** Request input from the the Jupyter UI */
   final def stdin(prompt: String = "", password: Boolean = false): String =
@@ -100,6 +100,50 @@ abstract class JupyterApi { api =>
   /** Runs hooks meant to be run right after a cell is interrupted */
   def runPostInterruptHooks(): Unit
 
+  /** Registers an exception handler, that can process exceptions thrown by user code
+    *
+    * @param handler
+    *   the `ExceptionHandler` to register
+    * @return
+    *   true if the handler was freshly registered, false it was already registered before this call
+    */
+  def addExceptionHandler(handler: ExceptionHandler): Boolean
+
+  /** Unregisters an exception handler
+    *
+    * @param handler
+    *   the `ExceptionHandler` to unregister
+    * @return
+    *   true if the handler was unregistered, false it wasn't found in the current handler list
+    */
+  def removeExceptionHandler(handler: ExceptionHandler): Boolean
+
+  /** List of exception handlers that should process exceptions thrown in user code */
+  def exceptionHandlers(): Seq[ExceptionHandler]
+
+  /** Helper to add simple exception handlers
+    *
+    * Match on the exception class or classes you'd like to handle, like
+    * {{{
+    *   kernel.handleExceptions {
+    *     case ex: MyException => // ...
+    *     case other: OtherException if other.thing == 2 => // ...
+    *   }
+    * }}}
+    *
+    * These handlers don't modify the exception class. The original exception will still be reported
+    * to users.
+    *
+    * @param pf
+    *   partial function defined for exceptions you'd like to handle
+    */
+  final def handleExceptions(pf: PartialFunction[Throwable, Unit]): Unit =
+    addExceptionHandler { ex =>
+      if (pf.isDefinedAt(ex))
+        pf(ex)
+      Some(ex)
+    }
+
   def consoleOut: PrintStream
   def consoleErr: PrintStream
 }
@@ -185,6 +229,32 @@ object JupyterApi {
     }
     def update(k: String, v: String, last: Boolean): Unit = {
       // temporary dummy implementation for binary compatibility
+    }
+  }
+
+  /** A handler that's given exceptions thrown by user code, and can change it or discard it */
+  @FunctionalInterface
+  abstract class ExceptionHandler {
+
+    /** Handles the passed exception
+      *
+      * @param exception
+      *   exception to handle
+      * @return
+      *   `None` if the exception should be discarded, or the passed exception or a new one wrapped
+      *   in `Some(...)`
+      */
+    def handle(exception: Throwable): Option[Throwable]
+  }
+
+  object ExceptionHandler {
+
+    /** Exception reported to users when an `ExceptionHandler` returned `None` */
+    class NoException extends Exception
+    def noException(): Throwable = {
+      val ex = new NoException
+      ex.setStackTrace(Array.empty)
+      ex
     }
   }
 

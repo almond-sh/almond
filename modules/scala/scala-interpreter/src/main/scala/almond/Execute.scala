@@ -362,9 +362,27 @@ final class Execute(
                   incrementLine = () => incrementLine(storeHistory)
                 )
 
+                val updatedRes = r match {
+                  case ex: Res.Exception =>
+                    val exOpt =
+                      jupyterApi.exceptionHandlers().foldLeft[Option[Throwable]](Some(ex.t)) {
+                        (exOpt, handler) =>
+                          exOpt.flatMap(handler.handle)
+                      }
+                    exOpt match {
+                      case Some(ex0) =>
+                        if (ex0 == ex.t) ex
+                        else ex.copy(t = ex0)
+                      case None =>
+                        ex.copy(t = JupyterApi.ExceptionHandler.noException())
+                    }
+                  case _ =>
+                    r
+                }
+
                 log.debug(s"Handling output of '$code0'")
-                Repl.handleOutput(ammInterp, r)
-                r match {
+                Repl.handleOutput(ammInterp, updatedRes)
+                updatedRes match {
                   case Res.Exception(ex, _) =>
                     lastExceptionOpt0 = Some(ex)
                   case _ =>
@@ -410,7 +428,7 @@ final class Execute(
                             DisplayData.empty
                         }
                     }
-                r.map(_ => data)
+                updatedRes.map(_ => data)
               }
             }
           }
