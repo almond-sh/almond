@@ -181,6 +181,7 @@ final class ScalaInterpreter(
       colors0,
       storeHistory,
       jupyterApi.executeHooks,
+      jupyterApi.postRunHooks(),
       jupyterApi
     )
 

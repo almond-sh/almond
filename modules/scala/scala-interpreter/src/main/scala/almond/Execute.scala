@@ -204,7 +204,7 @@ final class Execute(
         }
     }
 
-  private def withInputManager[T](m: Option[InputManager], done: Boolean = true)(f: => T): T = {
+  private def withInputManager[T](m: Option[InputManager], done: Boolean)(f: => T): T = {
     val previous = currentInputManagerOpt0
     try {
       currentInputManagerOpt0 = m
@@ -348,7 +348,7 @@ final class Execute(
         }
         _ = log.debug(s"splitted '$code0'")
         ev <- interruptible(jupyterApi) {
-          withInputManager(inputManager) {
+          withInputManager(inputManager, done = false) {
             withClientStdin {
               capturingOutput {
                 resultOutput.clear()
@@ -444,6 +444,7 @@ final class Execute(
     colors0: Ref[Colors],
     storeHistory: Boolean,
     executeHooks: Seq[JupyterApi.ExecuteHook],
+    postRunHooks: Seq[JupyterApi.PostRunHook],
     jupyterApi: JupyterApi
   ): ExecuteResult = {
 
@@ -485,7 +486,7 @@ final class Execute(
           }
         }
 
-    finalCodeOrResult match {
+    val result = finalCodeOrResult match {
       case Failure(ex) =>
         log.error(s"exception when running hooks (${ex.getMessage})", ex)
         Execute.error(colors0(), Some(ex), "")
@@ -597,6 +598,38 @@ final class Execute(
                 }
             }
         }
+    }
+
+    if (postRunHooks.isEmpty) {
+      withInputManager(inputManager, done = true)(())
+      result
+    }
+    else {
+      val maybeRes = withOutputHandler(outputHandler) {
+        interruptible(jupyterApi) {
+          withInputManager(inputManager, done = true) {
+            withClientStdin {
+              capturingOutput {
+                postRunHooks.foldLeft[Try[ExecuteResult]](Success(result)) {
+                  (res, hook) =>
+                    res.flatMap { res0 =>
+                      Try {
+                        hook.process(res0)
+                      }
+                    }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      maybeRes match {
+        case Success(res) => res
+        case Failure(ex) =>
+          log.error(s"exception when running post run hooks (${ex.getMessage})", ex)
+          Execute.error(colors0(), Some(ex), "")
+      }
     }
   }
 }

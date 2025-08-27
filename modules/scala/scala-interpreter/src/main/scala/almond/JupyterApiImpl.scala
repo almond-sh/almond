@@ -95,6 +95,22 @@ final class JupyterApiImpl(
     }
   }
 
+  private val postRunHooks0 = new mutable.ListBuffer[JupyterApi.PostRunHook]
+  def postRunHooks(): Seq[JupyterApi.PostRunHook] =
+    postRunHooks0.toList
+  def addPostRunHook(hook: JupyterApi.PostRunHook): Boolean =
+    !postRunHooks0.contains(hook) && {
+      postRunHooks0.append(hook)
+      true
+    }
+  def removePostRunHook(hook: JupyterApi.PostRunHook): Boolean = {
+    val idx = postRunHooks0.indexOf(hook)
+    idx >= 0 && {
+      postRunHooks0.remove(idx)
+      true
+    }
+  }
+
   private val postInterruptHooks0 = new mutable.ListBuffer[(String, Any => Any)]
   def addPostInterruptHook(name: String, hook: Any => Any): Boolean =
     !postInterruptHooks0.map(_._1).contains(name) && {
