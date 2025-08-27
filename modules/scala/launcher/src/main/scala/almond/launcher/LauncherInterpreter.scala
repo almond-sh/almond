@@ -3,7 +3,7 @@ package almond.launcher
 import almond.directives.{HasKernelOptions, KernelOptions}
 import almond.directives.HasKernelOptions.ops._
 import almond.interpreter.api.OutputHandler
-import almond.interpreter.{ExecuteResult, Interpreter}
+import almond.interpreter.{ExecuteError, ExecuteResult, Interpreter}
 import almond.interpreter.api.DisplayData
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{HasLauncherParameters, LauncherParameters}
@@ -171,7 +171,7 @@ object LauncherInterpreter {
       LauncherParameters.handlers.map(_ => HasKernelOptions.Ignore)
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error.error(colors.error, colors.literal, exOpt, msg)
+    ExecuteError.error(colors.error, colors.literal, exOpt, msg)
 
   // from Model.scala in Ammonite
   object Ex {

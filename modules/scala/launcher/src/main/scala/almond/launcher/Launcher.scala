@@ -4,7 +4,7 @@ import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
 import almond.directives.KernelOptions
-import almond.interpreter.ExecuteResult
+import almond.interpreter.ExecuteError
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
@@ -402,7 +402,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       catch {
         case NonFatal(e) if firstMessageOpt.nonEmpty =>
           val firstMessage = firstMessageOpt.getOrElse(sys.error("Cannot happen"))
-          val err = ExecuteResult.Error.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
+          val err          = ExecuteError.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
           val errMsg = firstMessage.publish(
             Execute.errorType,
             Execute.Error("", "", List(err.message))
