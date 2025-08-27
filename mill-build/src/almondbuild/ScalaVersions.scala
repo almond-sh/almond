@@ -10,6 +10,7 @@ object ScalaVersions {
   val all = Seq(
     scala3Latest,
     "3.4.3",
+    "3.3.6",
     "3.3.5",
     scala3Compat,
     scala213,
