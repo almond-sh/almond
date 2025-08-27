@@ -1,37 +1,33 @@
+package almondbuild
+
 import mill._
 import mill.scalalib._
 
-object Versions {
-  def ammonite      = "3.0.2"
-  def caseApp       = "2.1.0-M30"
-  def coursier      = "2.1.25-M2"
-  def jsoniterScala = "2.13.5"
-  def scalafmt      = "3.9.2"
-  def scalafmtJava8 = "3.7.15"
-}
-
-implicit class DepOps(private val dep: Dep) {
-  def applyBinaryVersion213_3(scalaVersion: String): Dep =
-    dep.cross match {
-      case cross: CrossVersion.Binary
-          if scalaVersion.startsWith("3.") || scalaVersion.startsWith("2.13.") =>
-        val compatSuffix =
-          if (scalaVersion.startsWith("3.")) "_3"
-          else "_" + scalaVersion.split('.').take(2).mkString(".")
-        dep.copy(cross =
-          CrossVersion.Constant(value = compatSuffix, platformed = dep.cross.platformed)
-        )
-      case _ => dep
-    }
-  def withDottyCompat(scalaVersion: String): Dep =
-    dep.cross match {
-      case cross: CrossVersion.Binary if scalaVersion.startsWith("3.") =>
-        dep.copy(cross = CrossVersion.Constant(value = "_2.13", platformed = dep.cross.platformed))
-      case _ => dep
-    }
-}
-
 object Deps {
+
+  implicit class DepOps(private val dep: Dep) {
+    def applyBinaryVersion213_3(scalaVersion: String): Dep =
+      dep.cross match {
+        case cross: CrossVersion.Binary
+            if scalaVersion.startsWith("3.") || scalaVersion.startsWith("2.13.") =>
+          val compatSuffix =
+            if (scalaVersion.startsWith("3.")) "_3"
+            else "_" + scalaVersion.split('.').take(2).mkString(".")
+          dep.copy(cross =
+            CrossVersion.Constant(value = compatSuffix, platformed = dep.cross.platformed)
+          )
+        case _ => dep
+      }
+    def withDottyCompat(scalaVersion: String): Dep =
+      dep.cross match {
+        case cross: CrossVersion.Binary if scalaVersion.startsWith("3.") =>
+          dep.copy(cross =
+            CrossVersion.Constant(value = "_2.13", platformed = dep.cross.platformed)
+          )
+        case _ => dep
+      }
+  }
+
   def ammoniteCompiler = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
     ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
@@ -50,9 +46,9 @@ object Deps {
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = ivy"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = ivy"com.eed3si9n.expecty::expecty:0.17.0"
-  def fansi               = ivy"com.lihaoyi::fansi:0.5.0"
-  def fs2                 = ivy"co.fs2::fs2-core:3.11.0"
-  def jansi               = ivy"org.fusesource.jansi:jansi:2.4.1"
+  def fansi               = ivy"com.lihaoyi::fansi:0.5.1"
+  def fs2                 = ivy"co.fs2::fs2-core:3.12.0"
+  def jansi               = ivy"org.fusesource.jansi:jansi:2.4.2"
   def jeromq              = ivy"org.zeromq:jeromq:0.5.4"
   def jsoniterScalaCore =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
@@ -61,8 +57,8 @@ object Deps {
   def jvmRepr                  = ivy"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = ivy"org.scalameta::mdoc:2.6.4"
   def mtags                    = ivy"org.scalameta:::mtags:1.5.1"
-  def munit                    = ivy"org.scalameta::munit:1.1.0"
-  def osLib                    = ivy"com.lihaoyi::os-lib:0.11.4"
+  def munit                    = ivy"org.scalameta::munit:1.1.1"
+  def osLib                    = ivy"com.lihaoyi::os-lib:0.11.5"
   def pprint                   = ivy"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = ivy"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaparse               = ivy"com.lihaoyi::scalaparse:3.1.1"
@@ -75,34 +71,5 @@ object Deps {
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.6"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
-  def utest = ivy"com.lihaoyi::utest:0.8.5"
-}
-
-object ScalaVersions {
-  def scala3Latest   = "3.6.3"
-  def scala3Compat   = "3.3.4"
-  def scala213       = "2.13.16"
-  def scala212       = "2.12.20"
-  val binaries       = Seq(scala3Compat, scala213, scala212)
-  val scala2Binaries = Seq(scala213, scala212)
-  val all = Seq(
-    scala3Latest,
-    "3.4.3",
-    "3.3.5",
-    scala3Compat,
-    scala213,
-    "2.13.15",
-    "2.13.14",
-    "2.13.13",
-    "2.13.12",
-    scala212,
-    "2.12.19",
-    "2.12.18"
-  ).distinct
-
-  def binary(sv: String) =
-    if (sv.startsWith("2.12.")) scala212
-    else if (sv.startsWith("2.13.")) scala213
-    else scala3Compat
-
+  def utest = ivy"com.lihaoyi::utest:0.8.9"
 }
