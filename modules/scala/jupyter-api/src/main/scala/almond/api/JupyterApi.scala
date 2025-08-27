@@ -1,6 +1,6 @@
 package almond.api
 
-import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
+import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import jupyter.{Displayer, Displayers}
 
 import java.io.PrintStream
@@ -73,6 +73,27 @@ abstract class JupyterApi { api =>
     *   true if the hook was removed, false it wasn't found in the current hook list
     */
   def removeExecuteHook(hook: ExecuteHook): Boolean
+
+  /** Add a hook that runs after each cell, and can alter the cell's result
+    *
+    * @param hook
+    *   the hook to add
+    * @return
+    *   true if the hook was freshly added, false it was already added before this call
+    */
+  def addPostRunHook(hook: JupyterApi.PostRunHook): Boolean
+
+  /** Remove a hook that runs after each cell, and can alter the cell's result
+    *
+    * @param hook
+    *   the hook to remove
+    * @return
+    *   true if the hook was removed, false it wasn't found in the current hook list
+    */
+  def removePostRunHook(hook: JupyterApi.PostRunHook): Boolean
+
+  /** List of hooks to run after each cell that can alter the cell's result */
+  def postRunHooks(): Seq[JupyterApi.PostRunHook]
 
   /** Add a hook to be run right after a cell is interrupted
     *
@@ -171,6 +192,20 @@ object JupyterApi {
       *   Either code to be executed (right), or an `ExecuteHookResult` (left)
       */
     def hook(code: String): Either[ExecuteHookResult, String]
+  }
+
+  /** A hook, that can be run after each cell and can alter the cell's result */
+  @FunctionalInterface
+  abstract class PostRunHook {
+
+    /** Processes a cell's result
+      *
+      * @param result
+      *   the input cell result
+      * @return
+      *   the cell result, can be a new one or the input one as is
+      */
+    def process(result: ExecuteResult): ExecuteResult
   }
 
   /** Can be returned by `ExecuteHook.hook` to stop code execution.
