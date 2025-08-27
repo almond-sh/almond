@@ -4,7 +4,7 @@ import almond.amm.AmmInterpreter
 import almond.api.JupyterApi
 import almond.internals._
 import almond.interpreter._
-import almond.interpreter.api.{CommHandler, OutputHandler}
+import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext

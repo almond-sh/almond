@@ -2,7 +2,7 @@ package almond.interpreter
 
 import java.nio.charset.StandardCharsets
 
-import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
+import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
 

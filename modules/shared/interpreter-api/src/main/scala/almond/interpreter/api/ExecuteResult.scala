@@ -1,6 +1,4 @@
-package almond.interpreter
-
-import almond.interpreter.api.DisplayData
+package almond.interpreter.api
 
 sealed abstract class ExecuteResult(val success: Boolean) extends Product with Serializable {
 

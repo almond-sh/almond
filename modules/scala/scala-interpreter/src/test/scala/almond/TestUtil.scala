@@ -3,8 +3,9 @@ package almond
 import java.util.UUID
 
 import almond.channels.Channel
+import almond.interpreter.api.ExecuteResult
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.interpreter.{ExecuteResult, Message}
+import almond.interpreter.Message
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.kernel.{Kernel, KernelThreads}
 import almond.testkit.{ClientStreams, Dsl}

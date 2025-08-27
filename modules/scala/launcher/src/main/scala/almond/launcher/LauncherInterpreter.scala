@@ -3,8 +3,8 @@ package almond.launcher
 import almond.directives.{HasKernelOptions, KernelOptions}
 import almond.directives.HasKernelOptions.ops._
 import almond.interpreter.api.OutputHandler
-import almond.interpreter.{ExecuteError, ExecuteResult, Interpreter}
-import almond.interpreter.api.DisplayData
+import almond.interpreter.{ExecuteError, Interpreter}
+import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{HasLauncherParameters, LauncherParameters}
 import almond.protocol.KernelInfo

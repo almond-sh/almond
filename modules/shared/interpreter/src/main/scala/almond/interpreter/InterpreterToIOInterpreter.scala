@@ -1,6 +1,6 @@
 package almond.interpreter
 
-import almond.interpreter.api.{CommHandler, OutputHandler}
+import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.Cancellable
 import almond.logger.LoggerContext
