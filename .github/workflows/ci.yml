@@ -15,7 +15,7 @@ jobs:
       matrix:
         OS: ["ubuntu-latest", "windows-latest"]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -46,7 +46,7 @@ jobs:
           - OS: macos-13
             SCALA: 2.13.16
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -67,7 +67,7 @@ jobs:
       matrix:
         OS: ["ubuntu-22.04", macos-13, windows-latest]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -81,7 +81,7 @@ jobs:
   bincompat:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -94,7 +94,7 @@ jobs:
   website:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -109,7 +109,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -122,7 +122,7 @@ jobs:
   publishLocal:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: true
@@ -135,7 +135,7 @@ jobs:
         echo "-Xmx2g" > .mill-jvm-opts
         cat .mill-jvm-opts.bak | grep -v Xmx >> .mill-jvm-opts
         # sometimes running into memory issues when attempting __.publishLocal upfront
-        for SV in $(./mill dev.scalaVersions); do
+        for SV in $(./mill -i dev.scalaVersions); do
           ./mill -i '__['"$SV"'].compile'
           ./mill -i '__['"$SV"'].docJar'
           ./mill -i '__['"$SV"'].publishLocal'

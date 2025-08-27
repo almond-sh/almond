@@ -10,8 +10,11 @@ abstract class Connection {
   /** Open the channels.
     *
     * Must be run prior to [[send]], [[tryRead]], [[stream]], [[sink]].
+    *
+    * @return
+    *   map of ports that were chosen randomly. None key is for heartbeat port.
     */
-  def open: IO[Unit]
+  def open: IO[Map[Option[Channel], Int]]
 
   /** Send a message through a channel.
     *

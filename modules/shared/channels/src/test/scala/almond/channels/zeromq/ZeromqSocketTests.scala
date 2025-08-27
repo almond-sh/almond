@@ -54,7 +54,8 @@ object ZeromqSocketTests extends TestSuite {
         key,
         "hmac-sha256",
         None,
-        logCtx
+        logCtx,
+        bindToRandomPort = false
       )
 
       val req = ZeromqSocket(
@@ -68,7 +69,8 @@ object ZeromqSocketTests extends TestSuite {
         key,
         "hmac-sha256",
         None,
-        logCtx
+        logCtx,
+        bindToRandomPort = false
       )
 
       val msg = Message(
@@ -119,7 +121,8 @@ object ZeromqSocketTests extends TestSuite {
         key,
         "hmac-sha256",
         None,
-        logCtx
+        logCtx,
+        bindToRandomPort = false
       )
 
       val req = ZeromqSocket(
@@ -133,7 +136,8 @@ object ZeromqSocketTests extends TestSuite {
         key,
         "hmac-sha256",
         None,
-        logCtx
+        logCtx,
+        bindToRandomPort = false
       )
 
       val msg = Message(

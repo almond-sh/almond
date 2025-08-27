@@ -87,7 +87,7 @@ version to `./mill dev.jupyter`, beware to pass the same version to `./mill -w d
 
 ### List available Scala versions
 ```text
-$ ./mill dev.scalaVersions
+$ ./mill -i dev.scalaVersions
 2.13.4
 2.13.3
 …
