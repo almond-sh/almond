@@ -458,30 +458,32 @@ final class Execute(
     }
 
     val finalCodeOrResult =
-      withOutputHandler(outputHandler) {
-        interruptible(jupyterApi) {
-          withInputManager(inputManager, done = false) {
-            withClientStdin {
-              capturingOutput {
-                executeHooks.foldLeft[Try[Either[JupyterApi.ExecuteHookResult, String]]](
-                  Success(Right(code))
-                ) {
-                  (codeOrDisplayDataAttempt, hook) =>
-                    codeOrDisplayDataAttempt.flatMap { codeOrDisplayData =>
-                      try Success(codeOrDisplayData.flatMap { value =>
-                          hook.hook(value)
-                        })
-                      catch {
-                        case e: Throwable => // kind of meh, but Ammonite does the same it seems…
-                          Failure(e)
+      if (executeHooks.isEmpty) Success(Right(code))
+      else
+        withOutputHandler(outputHandler) {
+          interruptible(jupyterApi) {
+            withInputManager(inputManager, done = false) {
+              withClientStdin {
+                capturingOutput {
+                  executeHooks.foldLeft[Try[Either[JupyterApi.ExecuteHookResult, String]]](
+                    Success(Right(code))
+                  ) {
+                    (codeOrDisplayDataAttempt, hook) =>
+                      codeOrDisplayDataAttempt.flatMap { codeOrDisplayData =>
+                        try Success(codeOrDisplayData.flatMap { value =>
+                            hook.hook(value)
+                          })
+                        catch {
+                          case e: Throwable => // kind of meh, but Ammonite does the same it seems…
+                            Failure(e)
+                        }
                       }
-                    }
+                  }
                 }
               }
             }
           }
         }
-      }
 
     finalCodeOrResult match {
       case Failure(ex) =>
