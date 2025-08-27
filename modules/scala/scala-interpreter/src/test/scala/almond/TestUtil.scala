@@ -375,6 +375,10 @@ object TestUtil {
       for (k <- expectedReplies.keySet.--(replies0.keySet))
         System.err.println(s"At line $k: expected ${expectedReplies(k)}, got nothing")
 
+      if (replies0.view.mapValues(noCrLf).toMap != expectedReplies.view.mapValues(noCrLf).toMap) {
+        pprint.err.log(expectedReplies.view.mapValues(noCrLf).toMap.toVector.sortBy(_._1))
+        pprint.err.log(replies0.view.mapValues(noCrLf).toMap.toVector.sortBy(_._1))
+      }
       expect(replies0.view.mapValues(noCrLf).toMap == expectedReplies.view.mapValues(noCrLf).toMap)
       expect(publish0.map(noCrLf) == publish.map(noCrLf))
     }
