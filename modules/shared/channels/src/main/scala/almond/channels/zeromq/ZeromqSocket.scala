@@ -10,7 +10,11 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 trait ZeromqSocket {
-  def open: IO[Unit]
+
+  /** @return
+    *   Randomly chosen port, if the port was picked this way
+    */
+  def open: IO[Option[Int]]
   def read: IO[Option[Message]]
   def send(message: Message): IO[Unit]
   def close(lingerDuration: Duration): IO[Unit]
@@ -34,7 +38,8 @@ object ZeromqSocket {
     key: Secret[String],
     algorithm: String,
     lingerPeriod: Option[Duration],
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    bindToRandomPort: Boolean
   ): ZeromqSocket =
     new ZeromqSocketImpl(
       ec,
@@ -47,7 +52,8 @@ object ZeromqSocket {
       key,
       algorithm,
       lingerPeriod,
-      logCtx
+      logCtx,
+      bindToRandomPort = bindToRandomPort
     )
 
 }
