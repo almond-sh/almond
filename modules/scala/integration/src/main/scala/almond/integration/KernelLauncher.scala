@@ -17,8 +17,10 @@ import java.nio.channels.ClosedSelectorException
 import java.nio.file.FileSystemException
 import java.security.SecureRandom
 import java.util.UUID
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.annotation.tailrec
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.util.control.NonFatal
@@ -129,6 +131,19 @@ object KernelLauncher {
       def isTwoStepStartup = true
     }
   }
+
+  @tailrec
+  private def retryPeriodicallyUntil[T](retryUntil: Long, period: Long)(f: => Option[T]): T = {
+    val now = System.currentTimeMillis()
+    if (now > retryUntil) throw new TimeoutException
+    else
+      f match {
+        case Some(t) => t
+        case None =>
+          Thread.sleep(math.min(period, retryUntil - now))
+          retryPeriodicallyUntil(retryUntil, period)(f)
+      }
+  }
 }
 
 class KernelLauncher(
@@ -139,6 +154,8 @@ class KernelLauncher(
   import KernelLauncher._
 
   def isTwoStepStartup = launcherType.isTwoStepStartup
+
+  def kernelBindToRandomPorts: Boolean = true
 
   private def generateLauncher(output: TestOutput, extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
@@ -465,10 +482,17 @@ class KernelLauncher(
         val dir      = TmpDir.tmpDir()
         val connFile = dir / "connection.json"
 
-        val params      = ConnectionParameters.randomLocal()
+        val params =
+          if (kernelBindToRandomPorts) ConnectionParameters.randomZeroPorts()
+          else ConnectionParameters.randomLocal()
         val connDetails = ConnectionSpec.fromParams(params)
 
         os.write(connFile, writeToArray(connDetails))
+        val initialConnFileLastModified = os.mtime(connFile)
+        if (kernelBindToRandomPorts)
+          // just in case, to be sure the the mtime is newer when the kernel
+          // updates the connection file
+          Thread.sleep(2L)
 
         val (command, specExtraEnv) = {
           val (f, env0) = setupJupyterDir(options, launcherOptions, extraClassPath, output)
@@ -499,28 +523,60 @@ class KernelLauncher(
           stderr = output.processOutput
         )
 
-        if (System.getenv("CI") != null) {
-          val delay = 4.seconds
-          output.printStream.println(s"Waiting $delay for the kernel to start")
-          Thread.sleep(delay.toMillis)
-          output.printStream.println("Done waiting")
-        }
-
         val ctx =
           if (perTestZeroMqContext) ZMQ.context(4)
           else threads.context
-        val conn = params.channels(
-          bind = false,
-          threads.copy(context = ctx),
-          lingerPeriod = Some(Duration.Inf),
-          logCtx = TestLogging.logCtxForOutput(output),
-          identityOpt = Some(UUID.randomUUID().toString)
-        ).unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
-          sys.error("Timeout when creating ZeroMQ connections")
-        }
 
-        conn.open.unsafeRunTimed(2.minutes)(IORuntime.global).getOrElse {
-          sys.error("Timeout when opening ZeroMQ connections")
+        val conn = {
+          val updatedParams =
+            if (kernelBindToRandomPorts) {
+              retryPeriodicallyUntil(
+                System.currentTimeMillis() + 2.minutes.toMillis,
+                500.millis.toMillis
+              ) {
+                val connFileLastModified = os.mtime(connFile)
+                if (connFileLastModified > initialConnFileLastModified) Some(())
+                else None
+              }
+              val conn = readFromArray(os.read.bytes(connFile))(ConnectionSpec.codec)
+              conn.connectionParameters
+            }
+            else {
+              if (System.getenv("CI") != null) {
+                val delay = 4.seconds
+                output.printStream.println(s"Waiting $delay for the kernel to start")
+                Thread.sleep(delay.toMillis)
+                output.printStream.println("Done waiting")
+              }
+              params
+            }
+
+          val delay =
+            if (kernelBindToRandomPorts)
+              // we already waited for the connection file to be updated, the kernel should already be
+              // listening for connections at that time
+              20.seconds
+            else
+              2.minutes
+          val conn0 = updatedParams
+            .channels(
+              bind = false,
+              threads.copy(context = ctx),
+              lingerPeriod = Some(Duration.Inf),
+              logCtx = TestLogging.logCtxForOutput(output),
+              identityOpt = Some(UUID.randomUUID().toString),
+              bindToRandomPorts = false
+            )
+            .unsafeRunTimed(delay)(IORuntime.global)
+            .getOrElse {
+              sys.error("Timeout when creating ZeroMQ connections")
+            }
+
+          conn0.open.unsafeRunTimed(delay)(IORuntime.global).getOrElse {
+            sys.error("Timeout when opening ZeroMQ connections")
+          }
+
+          conn0
         }
 
         val sess = session(conn, ctx, output)

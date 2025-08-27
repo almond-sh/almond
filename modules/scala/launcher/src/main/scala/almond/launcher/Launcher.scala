@@ -22,6 +22,7 @@ import dependency.ScalaParameters
 
 import java.io.{File, FileOutputStream, PrintStream}
 import java.nio.channels.ClosedSelectorException
+import java.nio.file.Paths
 
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
@@ -329,7 +330,10 @@ object Launcher extends CaseApp[LauncherOptions] {
         zeromqThreads,
         Nil,
         autoClose = false,
-        lingerDuration = Duration.Inf // unused here
+        lingerDuration = Duration.Inf, // unused here
+        bindToRandomPorts =
+          if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
+          else None
       ))
       .unsafeRunSync()(IORuntime.global)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)

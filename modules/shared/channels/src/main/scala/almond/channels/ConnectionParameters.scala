@@ -42,9 +42,18 @@ final case class ConnectionParameters(
     threads: ZeromqThreads,
     lingerPeriod: Option[Duration],
     logCtx: LoggerContext,
+    bindToRandomPorts: Boolean,
     identityOpt: Option[String] = None
   ): IO[ZeromqConnection] =
-    ZeromqConnection(this, bind, identityOpt, threads, lingerPeriod, logCtx)
+    ZeromqConnection(
+      this,
+      bind,
+      identityOpt,
+      threads,
+      lingerPeriod,
+      logCtx,
+      bindToRandomPorts = bindToRandomPorts
+    )
 
 }
 
@@ -83,5 +92,25 @@ object ConnectionParameters {
       Some("hmac-sha256")
     )
   }
+
+  /** Creates fresh connection parameters with a random key and zero-d ports
+    *
+    * Ports to zero are meant to be picked randomly by the kernel when it starts (see
+    * --bind-to-random-ports option)
+    *
+    * @return
+    */
+  def randomZeroPorts(): ConnectionParameters =
+    ConnectionParameters(
+      ip = "localhost",
+      transport = "tcp",
+      stdin_port = 0,
+      control_port = 0,
+      hb_port = 0,
+      shell_port = 0,
+      iopub_port = 0,
+      key = Secret.randomUuid(),
+      signature_scheme = Some("hmac-sha256")
+    )
 
 }

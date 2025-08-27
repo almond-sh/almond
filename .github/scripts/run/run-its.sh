@@ -20,10 +20,15 @@ checkResults() {
 
 trap "jps -mlv" EXIT
 
+# The -j 1 is temporary. When run in parallel, several localRepo tasks might try to publish
+# a module twice in parallel, which triggers FileAlreadyExistsException-s on Windows.
+# Refactoring localRepo with the newer Mill publishStage stuff should help address that, and
+# allow to drop the -j 1.
+
 if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "MINGW" ]; then
-  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup212.*" > test-args-212.json
-  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup213.*" > test-args-213.json
-  ./mill -i show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup3.*" > test-args-3.json
+  ./mill -i -j 1 show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup212.*" > test-args-212.json
+  ./mill -i -j 1 show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup213.*" > test-args-213.json
+  ./mill -i -j 1 show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup3.*" > test-args-3.json
 
   cat test-args-212.json
   "$RUN_APP" test-args-212.json
@@ -37,7 +42,7 @@ if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "MINGW" ]; then
   "$RUN_APP" test-args-3.json
   checkResults
 else
-  ./mill -i show "scala.integration.test.testCommand" > test-args.json
+  ./mill -i -j 1 show "scala.integration.test.testCommand" > test-args.json
   cat test-args.json
   "$RUN_APP" test-args.json
   checkResults
