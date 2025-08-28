@@ -32,6 +32,9 @@ jobs:
         jvm: 21
     - run: ./mill -i scala.examples.test
       shell: bash
+      if: runner.os == 'Windows'
+    - run: ./mill -i scala.examples.test
+      if: runner.os != 'Windows'
 
   test:
     runs-on: ${{ matrix.OS }}
@@ -56,6 +59,11 @@ jobs:
         apps:
     - run: ./mill -i "__[$SCALA].test"
       shell: bash
+      if: runner.os != 'Windows'
+      env:
+        SCALA: ${{ matrix.SCALA }}
+    - run: ./mill -i "__[$SCALA].test"
+      if: runner.os == 'Windows'
       env:
         SCALA: ${{ matrix.SCALA }}
 
