@@ -2,12 +2,12 @@ package almond.echo
 
 import java.util.Properties
 
-import almond.interpreter.{Completion, Inspection, Interpreter}
+import almond.interpreter.{Completion, Inspection, Interpreter, Message}
 import almond.interpreter.api.{DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
-import almond.protocol.KernelInfo
+import almond.protocol.{Execute, KernelInfo, RawJson}
+
 import java.nio.charset.StandardCharsets
-import almond.protocol.RawJson
 
 final class EchoInterpreter extends Interpreter {
 
@@ -32,7 +32,8 @@ final class EchoInterpreter extends Interpreter {
     code: String,
     storeHistory: Boolean,
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    messageOpt: Option[Message[Execute.Request]]
   ): ExecuteResult =
     if (code.startsWith("print "))
       outputHandler match {

@@ -71,7 +71,8 @@ final case class InterpreterMessageHandlers(
             message.content.code,
             message.content.store_history.getOrElse(true),
             if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
-            Some(handler)
+            Some(handler),
+            Some(message)
           )
           countAfter <- interpreter.executionCount
           _ <- res match {

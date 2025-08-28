@@ -9,6 +9,7 @@ import com.eed3si9n.expecty.Expecty.expect
 import coursier.version.Version
 
 import java.io.File
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 import scala.jdk.CollectionConverters._
@@ -2024,6 +2025,34 @@ object Tests {
         """2 / 0""",
         expectError = true,
         stderr = "Division by 0 detected" + System.lineSeparator()
+      )
+    }
+  }
+
+  // several exception handlers, and one that uses stderr
+  def metadata()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val predef =
+      s"""kernel.handleExceptions {
+         |  case ex: ArithmeticException =>
+         |    System.err.println(s"Detected division by 0 with metadata $${kernel.currentExecuteRequest().map(_.metadata)}")
+         |}
+         |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.exception-handler-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    runner.withSession("--predef", predefPath.toString) { implicit session =>
+      execute(
+        "2 / 0",
+        metadata = RawJson("""{"foo": "thing"}""".getBytes(StandardCharsets.UTF_8)),
+        expectError = true,
+        stderr =
+          """Detected division by 0 with metadata Some({"foo": "thing"})""" + System.lineSeparator()
       )
     }
   }
