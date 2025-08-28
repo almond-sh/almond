@@ -1931,4 +1931,100 @@ object Tests {
       }
       expect(types0 == expectedTypes)
     }
+
+  def exceptionHandler()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val predef =
+      """class CustomException(val value: String) extends Exception
+        |
+        |var customExceptionValues = List.empty[String]
+        |
+        |kernel.handleExceptions {
+        |  case ex: CustomException =>
+        |    customExceptionValues = ex.value :: customExceptionValues
+        |}
+        |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.exception-handler-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    runner.withSession("--predef", predefPath.toString) { implicit session =>
+      execute(
+        "customExceptionValues.reverse",
+        "res1: List[String] = List()"
+      )
+      execute(
+        """throw new CustomException("foo")""",
+        expectError = true
+      )
+      execute(
+        "customExceptionValues.reverse",
+        """res3: List[String] = List("foo")"""
+      )
+      execute(
+        """throw new CustomException("bar")""",
+        expectError = true
+      )
+      execute(
+        "customExceptionValues.reverse",
+        """res5: List[String] = List("foo", "bar")"""
+      )
+    }
+  }
+
+  // several exception handlers, and one that uses stderr
+  def moreExceptionHandlers()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val predef =
+      """class CustomException(val value: String) extends Exception
+        |
+        |var customExceptionValues = List.empty[String]
+        |
+        |kernel.handleExceptions {
+        |  case ex: CustomException =>
+        |    customExceptionValues = ex.value :: customExceptionValues
+        |  case ex: ArithmeticException =>
+        |    System.err.println("Division by 0 detected")
+        |}
+        |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.exception-handler-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    runner.withSession("--predef", predefPath.toString) { implicit session =>
+      execute(
+        "customExceptionValues.reverse",
+        "res1: List[String] = List()"
+      )
+      execute(
+        """throw new CustomException("foo")""",
+        expectError = true
+      )
+      execute(
+        "customExceptionValues.reverse",
+        """res3: List[String] = List("foo")"""
+      )
+      execute(
+        """throw new CustomException("bar")""",
+        expectError = true
+      )
+      execute(
+        "customExceptionValues.reverse",
+        """res5: List[String] = List("foo", "bar")"""
+      )
+      execute(
+        """2 / 0""",
+        expectError = true,
+        stderr = "Division by 0 detected" + System.lineSeparator()
+      )
+    }
+  }
 }
