@@ -914,6 +914,40 @@ object ScalaKernelTests extends TestSuite {
         expectError = true
       )
     }
+
+    test("payload from exception handler") {
+
+      val tq = "\"\"\""
+      val predef =
+        s"""class CustomException(val value: String) extends Exception
+           |
+           |kernel.handleExceptions {
+           |  case ex: CustomException =>
+           |    publish.addPayload(s$tq{"source": "foo", "value": "$${ex.value}"}$tq)
+           |}
+           |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        """throw new CustomException("thing")""",
+        expectError = true,
+        replyPayloads = Seq(
+          """{"source": "foo", "value": "thing"}"""
+        )
+      )
+    }
   }
 
 }
