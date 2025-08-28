@@ -155,4 +155,18 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  test("simple exception handler") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.exceptionHandler()
+    }
+  }
+
+  test("more exception handlers") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.moreExceptionHandlers()
+    }
+  }
+
 }
