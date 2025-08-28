@@ -3,7 +3,7 @@ package almond.interpreter
 import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
-import almond.protocol.KernelInfo
+import almond.protocol.{Execute, KernelInfo}
 
 trait Interpreter {
 
@@ -37,7 +37,8 @@ trait Interpreter {
     code: String,
     storeHistory: Boolean = true,
     inputManager: Option[InputManager] = None,
-    outputHandler: Option[OutputHandler] = None
+    outputHandler: Option[OutputHandler] = None,
+    messageOpt: Option[Message[Execute.Request]] = None
   ): ExecuteResult
 
   /** Current line count.
