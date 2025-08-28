@@ -541,7 +541,7 @@ object ScalaKernelTests extends TestSuite {
       else "disabled"
     }
 
-    test("hooks") {
+    test("execute hooks") {
 
       val predef =
         """private val foos0 = new scala.collection.mutable.ListBuffer[String]
@@ -622,6 +622,110 @@ object ScalaKernelTests extends TestSuite {
           |val b = "b"
           |""".stripMargin,
         ""
+      )
+    }
+
+    test("simple exception handler") {
+
+      val predef =
+        """class CustomException(val value: String) extends Exception
+          |
+          |var customExceptionValues = List.empty[String]
+          |
+          |kernel.handleExceptions {
+          |  case ex: CustomException =>
+          |    customExceptionValues = ex.value :: customExceptionValues
+          |}
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        "customExceptionValues.reverse",
+        "res1: List[String] = List()"
+      )
+      kernel.execute(
+        """throw new CustomException("foo")""",
+        expectError = true
+      )
+      kernel.execute(
+        "customExceptionValues.reverse",
+        """res3: List[String] = List("foo")"""
+      )
+      kernel.execute(
+        """throw new CustomException("bar")""",
+        expectError = true
+      )
+      kernel.execute(
+        "customExceptionValues.reverse",
+        """res5: List[String] = List("foo", "bar")"""
+      )
+    }
+
+    // several exception handlers, and one that uses stderr
+    test("more exception handlers") {
+
+      val predef =
+        """class CustomException(val value: String) extends Exception
+          |
+          |var customExceptionValues = List.empty[String]
+          |
+          |kernel.handleExceptions {
+          |  case ex: CustomException =>
+          |    customExceptionValues = ex.value :: customExceptionValues
+          |  case ex: ArithmeticException =>
+          |    System.err.println("Division by 0 detected")
+          |}
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        "customExceptionValues.reverse",
+        "res1: List[String] = List()"
+      )
+      kernel.execute(
+        """throw new CustomException("foo")""",
+        expectError = true
+      )
+      kernel.execute(
+        "customExceptionValues.reverse",
+        """res3: List[String] = List("foo")"""
+      )
+      kernel.execute(
+        """throw new CustomException("bar")""",
+        expectError = true
+      )
+      kernel.execute(
+        "customExceptionValues.reverse",
+        """res5: List[String] = List("foo", "bar")"""
+      )
+      kernel.execute(
+        """2 / 0""",
+        expectError = true,
+        stderr = "Division by 0 detected" + System.lineSeparator()
       )
     }
 
