@@ -910,6 +910,11 @@ object ScalaKernelTests extends TestSuite {
             "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65420)))" + System.lineSeparator()
       )
     }
+
+    test("metadata") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.metadata()
+    }
   }
 
 }
