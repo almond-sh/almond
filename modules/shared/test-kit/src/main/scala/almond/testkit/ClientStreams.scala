@@ -147,6 +147,8 @@ final case class ClientStreams(
       .collect {
         case s: Execute.Reply.Success if s.payload.nonEmpty =>
           s.execution_count -> s.payload
+        case err: Execute.Reply.Error if err.payload.nonEmpty =>
+          err.execution_count -> err.payload
       }
       .toMap
 

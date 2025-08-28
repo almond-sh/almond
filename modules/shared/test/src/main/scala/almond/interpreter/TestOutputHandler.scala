@@ -37,6 +37,8 @@ final class TestOutputHandler extends OutputHandler {
     output.result()
 
   def messageIdOpt: Option[String] = None
+
+  def addPayload(payload: String): Unit = ()
 }
 
 object TestOutputHandler {
