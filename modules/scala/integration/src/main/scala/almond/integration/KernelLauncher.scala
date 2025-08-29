@@ -500,19 +500,16 @@ class KernelLauncher(
         }
 
         output.printStream.println(s"Running ${command.value.mkString(" ")}")
-        val extraEnv =
-          if (isTwoStepStartup) {
-            val baseRepos = sys.env.getOrElse(
-              "COURSIER_REPOSITORIES",
-              "ivy2Local|central"
-            )
-            Map(
-              "COURSIER_REPOSITORIES" ->
-                s"$baseRepos|ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]"
-            )
-          }
-          else
-            Map.empty[String, String]
+        val extraEnv = {
+          val baseRepos = sys.env.getOrElse(
+            "COURSIER_REPOSITORIES",
+            "ivy2Local|central"
+          )
+          Map(
+            "COURSIER_REPOSITORIES" ->
+              s"$baseRepos|ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]"
+          )
+        }
 
         assert(proc == null)
         proc = os.proc(command).spawn(
