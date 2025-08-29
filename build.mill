@@ -8,6 +8,7 @@ import almondbuild.modules._
 import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
+import com.github.lolgab.mill.mima._
 import coursier.getcs.GetCs
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._
@@ -79,6 +80,13 @@ trait Protocol extends Cross.Module[String] with AlmondModule {
 
 trait InterpreterApi extends Cross.Module[String] with AlmondModule with AlmondMima {
   def crossScalaVersion = crossValue
+
+  def mimaBinaryIssueFilters = Seq(
+    // abstract class not meant to be implemented by users
+    ProblemFilter.exclude[ReversedMissingMethodProblem](
+      "almond.interpreter.api.OutputHandler.*"
+    )
+  )
 }
 
 trait Interpreter extends Cross.Module[String] with AlmondModule {
@@ -132,6 +140,11 @@ trait JupyterApi extends Cross.Module[String] with AlmondModule with AlmondMima 
   )
   def ivyDeps = Agg(
     Deps.jvmRepr
+  )
+
+  def mimaBinaryIssueFilters = Seq(
+    // abstract class not meant to be implemented by users
+    ProblemFilter.exclude[ReversedMissingMethodProblem]("almond.api.JupyterApi.*")
   )
 }
 

@@ -43,7 +43,7 @@ final case class ConnectionParameters(
     lingerPeriod: Option[Duration],
     logCtx: LoggerContext,
     bindToRandomPorts: Boolean,
-    identityOpt: Option[String] = None
+    identityOpt: Option[String]
   ): IO[ZeromqConnection] =
     ZeromqConnection(
       this,
@@ -53,6 +53,24 @@ final case class ConnectionParameters(
       lingerPeriod,
       logCtx,
       bindToRandomPorts = bindToRandomPorts
+    )
+
+  // bin-compat stub
+  def channels(
+    bind: Boolean,
+    threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    // keeping the default value here to make MiMA happy
+    identityOpt: Option[String] = None
+  ): IO[ZeromqConnection] =
+    channels(
+      bind,
+      threads,
+      lingerPeriod,
+      logCtx,
+      bindToRandomPorts = true,
+      identityOpt = identityOpt
     )
 
 }

@@ -56,4 +56,32 @@ object ZeromqSocket {
       bindToRandomPort = bindToRandomPort
     )
 
+  @deprecated("Use the override accepting bindToRandomPort", "0.14.2")
+  def apply(
+    ec: ExecutionContext,
+    socketType: SocketType,
+    bind: Boolean,
+    uri: String,
+    identityOpt: Option[Array[Byte]],
+    subscribeOpt: Option[Array[Byte]],
+    context: ZMQ.Context,
+    key: Secret[String],
+    algorithm: String,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext
+  ): ZeromqSocket =
+    apply(
+      ec,
+      socketType,
+      bind,
+      uri,
+      identityOpt,
+      subscribeOpt,
+      context,
+      key,
+      algorithm,
+      lingerPeriod,
+      logCtx,
+      bindToRandomPort = true
+    )
 }
