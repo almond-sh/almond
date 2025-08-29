@@ -2027,4 +2027,57 @@ object Tests {
       )
     }
   }
+
+  def almondJackson()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val predef =
+      """import $ivy.`sh.almond::json-api-jackson:_`
+        |import almond.api.AlmondJackson.Extensions._
+        |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.jackson-api-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    val launcherOptions =
+      if (runner.differedStartUp)
+        Seq("--shared-dependencies", "sh.almond::json-api-jackson:_")
+      else
+        Seq("--shared", "sh.almond::json-api-jackson")
+
+    runner.withLauncherOptionsSession(launcherOptions: _*)("--predef", predefPath.toString) {
+      implicit session =>
+        execute(
+          """case class Data(foo: String, ok: Boolean)
+            |val data = Seq(
+            |  Data("thing", true),
+            |  Data("other", false)
+            |)
+            |""".stripMargin,
+          """defined class Data
+            |data: Seq[Data] = List(
+            |  Data(foo = "thing", ok = true),
+            |  Data(foo = "other", ok = false)
+            |)""".stripMargin
+        )
+        execute(
+          """publish.displayData("application/thing", data)""",
+          "",
+          displays = Seq(
+            "application/thing" ->
+              """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+        execute(
+          "publish.addPayloadObject(data)",
+          "",
+          replyPayloads = Seq(
+            """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+    }
+  }
 }

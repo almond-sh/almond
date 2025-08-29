@@ -8,10 +8,13 @@ import almond.interpreter.api.{DisplayData, OutputHandler}
 trait UpdatableDisplay extends Display {
   def displayId: String
   override def displayData(): DisplayData =
-    DisplayData(data(), metadata = metadata(), idOpt = Some(displayId))
+    DisplayData()
+      .withDetailedData(data().map { case (k, v) => (k, DisplayData.Value.String(v)) })
+      .withDetailedMetadata(metadata().map { case (k, v) => (k, DisplayData.Value.String(v)) })
+      .withId(displayId)
   protected def emptyDisplayData(): DisplayData = {
     val data = displayData()
-    data.copy(data = data.data.mapValues(_ => "").toMap)
+    data.withDetailedData(data.detailedData.mapValues(_ => DisplayData.Value.String("")).toMap)
   }
 
   def update()(implicit output: OutputHandler): Unit =

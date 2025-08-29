@@ -68,7 +68,11 @@ final class ReplApiImpl(
             .asScala
           if (m == null) None
           else {
-            p.display(DisplayData(m.toMap))
+            p.display(
+              DisplayData().withDetailedData(
+                m.map { case (k, v) => (k, DisplayData.Value.String(v)) }.toMap
+              )
+            )
             Some(Iterator())
           }
         }

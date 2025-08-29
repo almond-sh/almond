@@ -14,7 +14,9 @@ trait Display {
   def data(): Map[String, String]
   def metadata(): Map[String, String] = Map()
   def displayData(): DisplayData =
-    DisplayData(data(), metadata = metadata())
+    DisplayData()
+      .withDetailedData(data().map { case (k, v) => (k, DisplayData.Value.String(v)) })
+      .withDetailedMetadata(metadata().map { case (k, v) => (k, DisplayData.Value.String(v)) })
 
   def display()(implicit output: OutputHandler): Unit =
     output.display(displayData())

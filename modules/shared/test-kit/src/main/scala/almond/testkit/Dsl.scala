@@ -76,6 +76,7 @@ object Dsl {
     errors: Seq[(String, String, List[String])] = null,
     displaysText: Seq[String] = null,
     displaysHtml: Seq[String] = null,
+    displays: Seq[(String, String)] = null,
     displaysTextUpdates: Seq[String] = null,
     displaysHtmlUpdates: Seq[String] = null,
     replyPayloads: Seq[String] = null,
@@ -127,7 +128,8 @@ object Dsl {
     val expectedPublishMessageTypes = {
       val displayDataCount = Seq(
         Option(displaysText).fold(0)(_.length),
-        Option(displaysHtml).fold(0)(_.length)
+        Option(displaysHtml).fold(0)(_.length),
+        Option(displays).fold(0)(_.length)
       ).max
       val updateDisplayDataCount = Seq(
         Option(displaysTextUpdates).fold(0)(_.length),
@@ -251,6 +253,25 @@ object Dsl {
       }
 
       expect(htmlDisplay == expectedHtmlDisplay)
+    }
+
+    for (expectedDisplays <- Option(displays)) {
+      import ClientStreams.RawJsonOps
+
+      val gotDisplays = streams.displayData
+        .collect {
+          case (data, false) =>
+            data.data.toSeq
+              .map { case (k, v) => (k, new String(v.value, StandardCharsets.UTF_8)) }
+              .sortBy(_._1)
+        }
+        .flatten
+
+      if (gotDisplays != expectedDisplays) {
+        pprint.err.log(expectedDisplays)
+        pprint.err.log(gotDisplays)
+      }
+      expect(gotDisplays == expectedDisplays)
     }
 
     for (expectedTextDisplayUpdates <- Option(displaysTextUpdates)) {

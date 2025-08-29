@@ -13,7 +13,8 @@ import almond.interpreter.api.{DisplayData, OutputHandler}
 final class Display(id: String, contentType: String) {
   def update(content: String)(implicit outputHandler: OutputHandler): Unit =
     outputHandler.updateDisplay(
-      DisplayData(Map(contentType -> content))
+      DisplayData()
+        .add(contentType, content)
         .withId(id)
     )
 
@@ -104,10 +105,10 @@ object Display {
     private def dimensionMetadata(
       width: Option[String],
       height: Option[String]
-    ): Map[String, String] =
+    ): Map[String, DisplayData.Value] =
       Map() ++
-        width.map("width" -> _) ++
-        height.map("height" -> _)
+        width.map(DisplayData.Value.String(_)).map("width" -> _) ++
+        height.map(DisplayData.Value.String(_)).map("height" -> _)
 
     def fromArray(
       content: Array[Byte],
@@ -116,11 +117,11 @@ object Display {
       height: Option[String] = None,
       id: String = UpdatableDisplay.generateId()
     )(implicit outputHandler: OutputHandler): Display = {
-      DisplayData(
-        data = Map(format.contentType -> Base64.getEncoder.encodeToString(content)),
-        metadata = dimensionMetadata(width, height),
-        idOpt = Some(id)
-      ).show()
+      DisplayData()
+        .add(format.contentType, Base64.getEncoder.encodeToString(content))
+        .withDetailedMetadata(dimensionMetadata(width, height))
+        .withId(id)
+        .show()
       new Display(id, format.contentType)
     }
 
@@ -136,7 +137,7 @@ object Display {
       connection.setConnectTimeout(5000)
       connection.connect()
       val contentType = format.map(_.contentType).getOrElse(connection.getContentType)
-      val data = if (embed) {
+      val (mimeType, value) = if (embed) {
         if (!imageTypes.contains(contentType))
           throw new IOException("Unknown or unsupported content type: " + contentType)
         val input    = new BufferedInputStream(connection.getInputStream)
@@ -149,11 +150,11 @@ object Display {
         }.mkString(" ")
         ContentType.html -> s"<img src='$url' $dimensionAttrs/>"
       }
-      DisplayData(
-        data = Map(data),
-        metadata = dimensionMetadata(width, height),
-        idOpt = Some(id)
-      ).show()
+      DisplayData()
+        .add(mimeType, value)
+        .withDetailedMetadata(dimensionMetadata(width, height))
+        .withId(id)
+        .show()
       new Display(id, contentType)
     }
 
@@ -170,11 +171,11 @@ object Display {
         throw new IOException("Unknown or unsupported content type: " + contentType)
       val imgPath = Paths.get(path)
       val content = Files.readAllBytes(imgPath)
-      DisplayData(
-        data = Map(contentType -> Base64.getEncoder.encodeToString(content)),
-        metadata = dimensionMetadata(width, height),
-        idOpt = Some(id)
-      ).show()
+      DisplayData()
+        .add(contentType, Base64.getEncoder.encodeToString(content))
+        .withDetailedMetadata(dimensionMetadata(width, height))
+        .withId(id)
+        .show()
       new Display(id, contentType)
     }
   }

@@ -58,19 +58,19 @@ object OutputHandler {
   abstract class Helpers extends UpdateDisplay {
     def display(displayData: DisplayData): Unit
     final def html(html0: String): Unit =
-      display(DisplayData(Map("text/html" -> html0)))
+      display(DisplayData().add("text/html", html0))
     final def html(html0: String, id: String): Unit =
-      display(DisplayData(Map("text/html" -> html0), idOpt = Some(id)))
+      display(DisplayData().add("text/html", html0).withId(id))
 
     final def js(js0: String): Unit =
-      display(DisplayData(Map("application/javascript" -> js0)))
+      display(DisplayData().add("application/javascript", js0))
     final def js(js0: String, id: String): Unit =
-      display(DisplayData(Map("application/javascript" -> js0), idOpt = Some(id)))
+      display(DisplayData().add("application/javascript", js0).withId(id))
   }
 
   trait UpdateHelpers extends UpdateDisplay {
     final def updateHtml(html0: String, id: String): Unit =
-      updateDisplay(DisplayData(Map("text/html" -> html0), idOpt = Some(id)))
+      updateDisplay(DisplayData().add("text/html", html0).withId(id))
   }
 
   final class OnlyUpdateVia(commHandlerOpt: => Option[CommHandler]) extends OutputHandler {
