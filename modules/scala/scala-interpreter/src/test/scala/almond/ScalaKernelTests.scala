@@ -854,6 +854,62 @@ object ScalaKernelTests extends TestSuite {
         )
       )
     }
+
+    test("post-run hooks") {
+
+      val predef =
+        """
+          |kernel.addPostRunHook { res =>
+          |  System.err.println(res)
+          |  res
+          |}
+          |
+          |import almond.interpreter.api._
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        "val n = 2",
+        "n: Int = 2",
+        stderr =
+          "Success(DisplayData(Map(text/plain -> n: Int = 2),Map(),None))" + System.lineSeparator()
+      )
+      kernel.execute(
+        """kernel.addPostRunHook { res =>
+          |  if (res.asError.exists(_.message.contains("THE ERROR")))
+          |    ExecuteResult.Success(DisplayData.text("avoided THE ERROR"))
+          |  else
+          |    res
+          |}
+          |""".stripMargin,
+        "res2: Boolean = true",
+        stderr =
+          "Success(DisplayData(Map(text/plain -> res2: Boolean = true),Map(),None))" + System.lineSeparator()
+      )
+      kernel.execute(
+        """throw new Exception("THE ERROR")""",
+        "avoided THE ERROR",
+        stderr =
+          if (scalaVersion.startsWith("2.12."))
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<init>(cmd3.sc:7),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:-1)))" + System.lineSeparator()
+          else if (scalaVersion.startsWith("2.13."))
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:7)))" + System.lineSeparator()
+          else
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65420)))" + System.lineSeparator()
+      )
+    }
   }
 
 }

@@ -1,11 +1,11 @@
 package almond.interpreter.messagehandlers
 
 import almond.channels.{Channel, Message => RawMessage}
-import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
+import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0}
 import almond.interpreter.util.DisplayDataOps._
-import almond.interpreter.{ExecuteResult, IOInterpreter, Message}
+import almond.interpreter.{IOInterpreter, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
 import almond.protocol.Codecs.unitCodec
