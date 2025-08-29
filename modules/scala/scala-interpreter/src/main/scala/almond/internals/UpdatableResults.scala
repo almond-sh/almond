@@ -80,17 +80,18 @@ object UpdatableResults {
     isFirst: Boolean,
     onlyHighlightOpt: Option[String] = None
   ): DisplayData =
-    d.copy(
-      data = d.data.map {
-        case ("text/plain", t) =>
-          "text/plain" -> m.foldLeft(t) {
+    d.withDetailedData(
+      d.detailedData.map {
+        case ("text/plain", DisplayData.Value.String(t)) =>
+          val updatedValue = m.foldLeft(t) {
             case (acc, (k, v)) =>
               // ideally, we should keep the pprint tree instead of plain text here, for things to get reflowed if
               // needed
               acc.replace(k, v)
           }
-        case ("text/html", t) =>
-          "text/html" -> m.foldLeft(t) {
+          "text/plain" -> DisplayData.Value.String(updatedValue)
+        case ("text/html", DisplayData.Value.String(t)) =>
+          val updatedValue = m.foldLeft(t) {
             case (acc, (k, v)) =>
               val baos = new ByteArrayOutputStream
               val haos = new HtmlAnsiOutputStream(baos)
@@ -105,6 +106,7 @@ object UpdatableResults {
                 )
               acc.replace(k, prefix + baos.toString("UTF-8") + suffix)
           }
+          "text/html" -> DisplayData.Value.String(updatedValue)
         case kv =>
           kv
       }

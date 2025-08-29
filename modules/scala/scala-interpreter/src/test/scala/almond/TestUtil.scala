@@ -3,7 +3,7 @@ package almond
 import java.util.UUID
 
 import almond.channels.Channel
-import almond.interpreter.api.ExecuteResult
+import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.Message
 import almond.protocol.{Execute => ProtocolExecute, _}
@@ -34,9 +34,11 @@ object TestUtil {
     res match {
       case s: ExecuteResult.Success =>
         ExecuteResult.Success(
-          s.data.copy(data = s.data.data.map {
-            case ("text/plain", v) => ("text/plain", noCrLf(v))
-            case (k, v)            => (k, v)
+          s.data.withDetailedData(s.data.detailedData.map {
+            case ("text/plain", DisplayData.Value.String(v)) =>
+              ("text/plain", DisplayData.Value.String(noCrLf(v)))
+            case (k, v) =>
+              (k, v)
           })
         )
       case other => other
