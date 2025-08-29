@@ -440,7 +440,6 @@ object shared extends Module {
   object `test-kit`             extends Cross[TestKit](ScalaVersions.all)
 }
 
-// FIXME Can't use 'scala' because of macro hygiene issues in some mill macros
 object scala extends Module {
   implicit def millModuleBasePath: define.Ctx.BasePath =
     define.Ctx.BasePath(super.millModuleBasePath.value / os.up / "scala")
