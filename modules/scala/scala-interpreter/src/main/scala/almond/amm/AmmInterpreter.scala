@@ -209,35 +209,6 @@ object AmmInterpreter {
         (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
       )
 
-      log.debug("Initializing interpreter predef")
-
-      val imports = ammonite.main.Defaults.replImports ++
-        ammonite.interp.Interpreter.predefImports ++
-        almondImports ++
-        (if (addToreeApiCompatibilityImport0) toreeApiCompatibilityImports else Imports())
-      for ((e, _) <- ammInterp0.initializePredef(Nil, customPredefs, extraBridges, imports))
-        e match {
-          case Res.Failure(msg) =>
-            throw new PredefException(msg, None)
-          case Res.Exception(t, msg) =>
-            throw new PredefException(msg, Some(t))
-          case Res.Skip =>
-          case Res.Exit(v) =>
-            log.warn(s"Ignoring exit request from predef (exit value: $v)")
-        }
-
-      log.debug("Loading base dependencies")
-
-      // TODO: remove jitpack once jvm-repr is published to central
-      val allExtraRepos = extraRepos ++ Seq(coursier.Repositories.jitpack.root)
-      ammInterp0.repositories() = ammInterp0.repositories() ++
-        allExtraRepos.map { r =>
-          if (r.startsWith("ivy:"))
-            coursierapi.IvyRepository.of(r.stripPrefix("ivy:"))
-          else
-            coursierapi.MavenRepository.of(r)
-        }
-
       ammInterp0.resolutionHooks += { f =>
         val extraDependencies = f.getDependencies
           .asScala
@@ -280,16 +251,15 @@ object AmmInterpreter {
           f0
       }
 
-      log.debug("Initializing Ammonite interpreter")
-
-      ammInterp0.compilerManager.init()
-
-      log.debug("Processing scalac args")
-
-      ammInterp0
-        .compilerManager
-        .asInstanceOf[AlmondCompilerLifecycleManager]
-        .preConfigure()
+      // TODO: remove jitpack once jvm-repr is published to central
+      val allExtraRepos = extraRepos ++ Seq(coursier.Repositories.jitpack.root)
+      ammInterp0.repositories() = ammInterp0.repositories() ++
+        allExtraRepos.map { r =>
+          if (r.startsWith("ivy:"))
+            coursierapi.IvyRepository.of(r.stripPrefix("ivy:"))
+          else
+            coursierapi.MavenRepository.of(r)
+        }
 
       log.debug("Processing dependency-related params")
 
@@ -312,6 +282,34 @@ object AmmInterpreter {
             mavenProfiles0.foldLeft(fetch.getResolutionParams)(_.addProfile(_))
           )
         }
+
+      log.debug("Initializing interpreter predef")
+
+      val imports = ammonite.main.Defaults.replImports ++
+        ammonite.interp.Interpreter.predefImports ++
+        almondImports ++
+        (if (addToreeApiCompatibilityImport0) toreeApiCompatibilityImports else Imports())
+      for ((e, _) <- ammInterp0.initializePredef(Nil, customPredefs, extraBridges, imports))
+        e match {
+          case Res.Failure(msg) =>
+            throw new PredefException(msg, None)
+          case Res.Exception(t, msg) =>
+            throw new PredefException(msg, Some(t))
+          case Res.Skip =>
+          case Res.Exit(v) =>
+            log.warn(s"Ignoring exit request from predef (exit value: $v)")
+        }
+
+      log.debug("Initializing Ammonite interpreter")
+
+      ammInterp0.compilerManager.init()
+
+      log.debug("Processing scalac args")
+
+      ammInterp0
+        .compilerManager
+        .asInstanceOf[AlmondCompilerLifecycleManager]
+        .preConfigure()
 
       log.info("Ammonite interpreter initialized")
 
