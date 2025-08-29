@@ -27,6 +27,7 @@ import java.nio.charset.Charset
 import java.nio.file.FileSystems
 
 import coursier.getcs.GetCs
+import coursier.version.Version
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._, scalalib._
 import mill.scalalib.api.ZincWorkerUtil.isScala3
@@ -418,6 +419,16 @@ trait AlmondRx extends Cross.Module[String] with AlmondModule with Mima {
   )
 }
 
+trait JsonApiJackson extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+  def moduleDeps = Seq(
+    scala.`jupyter-api`()
+  )
+  def ivyDeps = Agg(
+    ivy"com.fasterxml.jackson.module::jackson-module-scala:2.19.0"
+  )
+}
+
 trait Echo extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
@@ -465,6 +476,7 @@ object scala extends Module {
   object launcher            extends Launcher
   object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx` extends Cross[AlmondRx](Seq(ScalaVersions.scala212, ScalaVersions.scala213))
+  object `json-api-jackson` extends Cross[JsonApiJackson](ScalaVersions.binaries)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
 
@@ -553,6 +565,7 @@ trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
       scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
       scala.`scala-interpreter`(testScalaVersion),
       scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
+      scala.`json-api-jackson`(ScalaVersions.binary(testScalaVersion)),
       scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
       scala.`shared-directives`(ScalaVersions.binary(testScalaVersion)),
       scala.launcher,

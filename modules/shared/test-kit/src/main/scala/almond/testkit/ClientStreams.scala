@@ -160,8 +160,8 @@ final case class ClientStreams(
             if m.header.msg_type == "display_data" || m.header.msg_type == "update_display_data" =>
           val isUpdate = m.header.msg_type == "update_display_data"
           m.decodeAs[Execute.DisplayData] match {
-            case Left(_)  => Nil
-            case Right(m) => Seq(m.content -> isUpdate)
+            case Left(_)   => Nil
+            case Right(m0) => Seq(m0.content -> isUpdate)
           }
       }
       .flatten
