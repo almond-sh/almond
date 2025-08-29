@@ -6,6 +6,7 @@ import almond.interpreter.api.DisplayData
 import almond.protocol.Codecs.{stringCodec, unitCodec}
 import almond.protocol.RawJson
 
+import scala.collection.immutable.ListMap
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -13,31 +14,27 @@ final class DisplayDataOps(val displayData: DisplayData) extends AnyVal {
 
   import DisplayDataOps._
 
-  def jsonData: Map[String, RawJson] =
+  def jsonData: ListMap[String, RawJson] =
     displayData
-      .data
+      .detailedData
       .map {
-        case (mimeType, content) =>
-          val json =
-            if (isJsonMimeType(mimeType) && isJson(content))
-              content.getBytes(StandardCharsets.UTF_8)
-            else
-              asJsonString(content)
-
-          mimeType -> RawJson(json)
+        case (mimeType, content: DisplayData.Value.String)
+            if isJsonMimeType(mimeType) && isJson(content.value) =>
+          mimeType -> RawJson(content.value.getBytes(StandardCharsets.UTF_8))
+        case (mimeType, content: DisplayData.Value.String) =>
+          mimeType -> RawJson(asJsonString(content.value))
+        case (mimeType, content: DisplayData.Value.Json) =>
+          mimeType -> RawJson(content.value.getBytes(StandardCharsets.UTF_8))
       }
 
-  def jsonMetadata: Map[String, RawJson] =
+  def jsonMetadata: ListMap[String, RawJson] =
     displayData
-      .metadata
+      .detailedMetadata
       .map {
-        case (key, content) =>
-          val json = if (isJson(content))
-            content.getBytes(StandardCharsets.UTF_8)
-          else
-            asJsonString(content)
-
-          key -> RawJson(json)
+        case (key, content: DisplayData.Value.String) =>
+          key -> RawJson(asJsonString(content.value))
+        case (key, content: DisplayData.Value.Json) =>
+          key -> RawJson(content.value.getBytes(StandardCharsets.UTF_8))
       }
 }
 
