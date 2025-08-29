@@ -146,15 +146,36 @@ trait PublishLocalNoFluff extends PublishModule {
         new LocalIvyPublisher(os.Path(repo.replace("{VERSION}", publishVersion()), T.workspace))
     }
 
-    publisher.publishLocal(
-      jar = jar().path,
-      sourcesJar = sourceJar().path,
-      docJar = emptyZip().path,
-      pom = pom().path,
-      ivy = ivy().path,
-      artifact = artifactMetadata(),
-      extras = extraPublish()
-    )
+    def proceed(): Unit =
+      publisher.publishLocal(
+        jar = jar().path,
+        sourcesJar = sourceJar().path,
+        docJar = emptyZip().path,
+        pom = pom().path,
+        ivy = ivy().path,
+        artifact = artifactMetadata(),
+        extras = extraPublish()
+      )
+
+    @tailrec
+    def helper(): Unit = {
+      val success =
+        try {
+          proceed()
+          true
+        }
+        catch {
+          case _: java.nio.file.FileAlreadyExistsException =>
+            false
+          case _: java.nio.file.NoSuchFileException =>
+            false
+        }
+
+      if (!success)
+        helper()
+    }
+
+    helper()
 
     jar()
   }
@@ -262,6 +283,7 @@ trait AlmondTestModule
   ): Task[(String, Seq[mill.testrunner.TestResult])] =
     T.task {
       val outputPath  = T.dest / "out.json"
+      val resultPath  = T.dest / "results.log"
       val useArgsFile = testUseArgsFile()
 
       val (jvmArgs, props: Map[String, String]) =
@@ -287,10 +309,11 @@ trait AlmondTestModule
         arguments = args(),
         sysProps = props,
         outputPath = outputPath,
+        resultPath = resultPath,
         colored = T.log.colored,
         testCp = Seq(compile().classes.path),
         home = T.home,
-        globSelectors = globSelectors()
+        globSelectors = Left(globSelectors())
       )
 
       val testRunnerClasspathArg = zincWorker().scalalibClasspath()
@@ -796,6 +819,7 @@ trait TestCommand extends TestModule {
 
       val globSelectors = Nil
       val outputPath    = T.workspace / "test-output.json"
+      val resultPath    = T.dest / "results.log"
       val useArgsFile   = testUseArgsFile()
 
       val (jvmArgs, props: Map[String, String]) =
@@ -821,10 +845,11 @@ trait TestCommand extends TestModule {
         arguments = args,
         sysProps = props,
         outputPath = outputPath,
+        resultPath = resultPath,
         colored = T.log.colored,
         testCp = Seq(compile().classes.path),
         home = T.home,
-        globSelectors = globSelectors
+        globSelectors = Left(globSelectors)
       )
 
       val testRunnerClasspathArg = zincWorker().scalalibClasspath()
