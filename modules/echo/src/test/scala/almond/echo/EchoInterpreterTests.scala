@@ -14,7 +14,10 @@ object EchoInterpreterTests extends TestSuite {
 
       val res = interpreter.execute("foo")
 
-      val textOutputOpt      = res.asSuccess.flatMap(_.data.data.get(DisplayData.ContentType.text))
+      val textOutputOpt = res
+        .asSuccess
+        .flatMap(_.data.detailedData.get(DisplayData.ContentType.text))
+        .flatMap(_.asString)
       val expectedTextOutput = Option("> foo")
 
       assert {

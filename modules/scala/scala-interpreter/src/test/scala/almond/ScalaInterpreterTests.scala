@@ -176,14 +176,16 @@ object ScalaInterpreterTests extends TestSuite {
         val interpreter = newInterpreter()
         val noHistoryTextOpt = interpreter.execute("2", storeHistory = false)
           .asSuccess
-          .flatMap(_.data.data.get("text/plain"))
+          .flatMap(_.data.detailedData.get("text/plain"))
+          .flatMap(_.asString)
           .map(_.dropWhile(_ != ':'))
         val expectedNoHistoryTextOpt = Option(": Int = 2")
         assert(noHistoryTextOpt == expectedNoHistoryTextOpt)
 
         val textOpt = interpreter.execute("3")
           .asSuccess
-          .flatMap(_.data.data.get("text/plain"))
+          .flatMap(_.data.detailedData.get("text/plain"))
+          .flatMap(_.asString)
         val expectedTextOpt = Option("res1: Int = 3")
         assert(textOpt == expectedTextOpt)
       }
@@ -420,9 +422,9 @@ object ScalaInterpreterTests extends TestSuite {
         }
       }
 
-      implicit class DisplayDataOps(private val data: DisplayData) {
+      implicit class TestDisplayDataOps(private val data: DisplayData) {
         def text: String =
-          data.data.getOrElse("text/plain", "")
+          data.detailedData.get("text/plain").flatMap(_.asString).getOrElse("")
       }
 
       def initCode     = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"

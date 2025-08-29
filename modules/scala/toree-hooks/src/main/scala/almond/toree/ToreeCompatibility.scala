@@ -16,7 +16,7 @@ object ToreeCompatibility {
     def display: ToreeDisplayMethodsLike =
       new ToreeDisplayMethodsLike {
         def content(mimeType: String, data: String) =
-          kernel.publish.display(DisplayData(Map(mimeType -> data)))
+          kernel.publish.display(DisplayData().add(mimeType, data))
         def clear(wait: Boolean = false) =
           // no-op, not sure what we're supposed to do here…
           ()

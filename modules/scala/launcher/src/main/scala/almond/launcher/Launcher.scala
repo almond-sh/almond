@@ -388,12 +388,9 @@ object Launcher extends CaseApp[LauncherOptions] {
               s"Launching Scala <code>$scalaVersion</code> kernel" +
                 jvmOpt.fold("")(jvm => s" with JVM <code>$jvm</code>")
             outputHandler.display(
-              DisplayData(
-                Map(
-                  DisplayData.ContentType.text -> toPrint,
-                  DisplayData.ContentType.html -> toPrintHtml
-                )
-              )
+              DisplayData()
+                .add(DisplayData.ContentType.text, toPrint)
+                .add(DisplayData.ContentType.html, toPrintHtml)
             )
           }
 
