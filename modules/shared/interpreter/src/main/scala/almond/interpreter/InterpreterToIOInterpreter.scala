@@ -4,7 +4,7 @@ import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.Cancellable
 import almond.logger.LoggerContext
-import almond.protocol.KernelInfo
+import almond.protocol.{Execute, KernelInfo}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.apply._
@@ -54,7 +54,8 @@ final class InterpreterToIOInterpreter(
     line: String,
     storeHistory: Boolean,
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    messageOpt: Option[Message[Execute.Request]]
   ): IO[ExecuteResult] =
     cancellable {
       case true =>
@@ -63,7 +64,14 @@ final class InterpreterToIOInterpreter(
         IO {
           log.debug(s"Executing $line")
           val res =
-            try interpreter.execute(line, storeHistory, inputManager, outputHandler)
+            try
+              interpreter.execute(
+                line,
+                storeHistory,
+                inputManager,
+                outputHandler,
+                messageOpt = messageOpt
+              )
             catch {
               case t: Throwable =>
                 log.error(s"Error when executing $line", t)

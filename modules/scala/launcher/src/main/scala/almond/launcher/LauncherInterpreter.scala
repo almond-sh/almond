@@ -3,11 +3,11 @@ package almond.launcher
 import almond.directives.{HasKernelOptions, KernelOptions}
 import almond.directives.HasKernelOptions.ops._
 import almond.interpreter.api.OutputHandler
-import almond.interpreter.{ExecuteError, Interpreter}
+import almond.interpreter.{ExecuteError, Interpreter, Message}
 import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{HasLauncherParameters, LauncherParameters}
-import almond.protocol.KernelInfo
+import almond.protocol.{Execute, KernelInfo}
 
 import java.io.File
 
@@ -105,7 +105,8 @@ class LauncherInterpreter(
     code: String,
     storeHistory: Boolean,
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    messageOpt: Option[Message[Execute.Request]]
   ): ExecuteResult = {
     val path      = Left(s"cell$lineCount0.sc")
     val scopePath = ScopePath(Left("."), os.sub)

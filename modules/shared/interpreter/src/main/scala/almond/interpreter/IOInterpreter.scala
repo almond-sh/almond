@@ -2,7 +2,7 @@ package almond.interpreter
 
 import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
-import almond.protocol.KernelInfo
+import almond.protocol.{Execute, KernelInfo}
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
@@ -15,7 +15,8 @@ trait IOInterpreter {
     code: String,
     storeHistory: Boolean,
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    messageOpt: Option[Message[Execute.Request]]
   ): IO[ExecuteResult]
 
   def interruptSupported: Boolean =

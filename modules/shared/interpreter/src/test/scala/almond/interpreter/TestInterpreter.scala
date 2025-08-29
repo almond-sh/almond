@@ -5,11 +5,11 @@ import java.nio.charset.StandardCharsets
 import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
+import almond.protocol.{Execute, RawJson}
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
 import scala.util.Success
-import almond.protocol.RawJson
 
 final class TestInterpreter extends Interpreter {
   import TestInterpreter._
@@ -17,7 +17,8 @@ final class TestInterpreter extends Interpreter {
     code: String,
     storeHistory: Boolean,
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    messageOpt: Option[Message[Execute.Request]]
   ): ExecuteResult =
     if (code.startsWith("input:"))
       inputManager match {

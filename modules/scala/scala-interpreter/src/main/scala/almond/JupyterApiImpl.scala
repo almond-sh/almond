@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets
 
 import almond.api.{FullJupyterApi, JupyterApi}
 import almond.internals.HtmlAnsiOutputStream
+import almond.interpreter.Message
 import almond.interpreter.api.CommHandler
 import almond.logger.LoggerContext
+import almond.protocol.{Execute => ProtocolExecute, Header}
 import ammonite.util.Ref
 import pprint.{TPrint, TPrintColors}
 
@@ -26,7 +28,8 @@ final class JupyterApiImpl(
   val kernelClassLoader: ClassLoader,
   val consoleOut: PrintStream,
   val consoleErr: PrintStream,
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  currentExecuteRequest0: => Option[Message[ProtocolExecute.Request]]
 ) extends FullJupyterApi with VariableInspectorApiImpl {
 
   private val log = logCtx(getClass)
@@ -147,4 +150,27 @@ final class JupyterApiImpl(
   }
   def exceptionHandlers(): Seq[JupyterApi.ExceptionHandler] =
     exceptionHandlers0.toList
+
+  def currentExecuteRequest(): Option[JupyterApi.ExecuteRequest] =
+    currentExecuteRequest0.map(JupyterApiImpl.executeRequest)
+}
+
+object JupyterApiImpl {
+  private def messageHeader(header: Header): JupyterApi.MessageHeader =
+    new JupyterApi.MessageHeader {
+      def msgId: String           = header.msg_id
+      def userName: String        = header.username
+      def session: String         = header.session
+      def msgType: String         = header.msg_type
+      def version: Option[String] = header.version
+    }
+  private def executeRequest(msg: Message[ProtocolExecute.Request]): JupyterApi.ExecuteRequest =
+    new JupyterApi.ExecuteRequest {
+      def metadata: String =
+        new String(msg.metadata.value, StandardCharsets.UTF_8)
+      def header: JupyterApi.MessageHeader =
+        messageHeader(msg.header)
+      def parentHeader: Option[JupyterApi.MessageHeader] =
+        msg.parent_header.map(messageHeader)
+    }
 }

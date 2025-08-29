@@ -14,11 +14,12 @@ import almond.internals.{
   HtmlAnsiOutputStream,
   UpdatableResults
 }
-import almond.interpreter.ExecuteError
+import almond.interpreter.{ExecuteError, Message}
 import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
+import almond.protocol.{Execute => ProtocolExecute}
 import ammonite.compiler.Parsers
 import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
