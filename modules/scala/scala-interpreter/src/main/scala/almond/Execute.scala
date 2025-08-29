@@ -23,7 +23,7 @@ import ammonite.compiler.Parsers
 import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
-import ammonite.util.{Colors, Ex, Printer, Ref, Res}
+import ammonite.util.{Colors, Evaluated, Ex, Printer, Ref, Res}
 import coursierapi.{IvyRepository, MavenRepository}
 import dependency.ScalaParameters
 import dependency.api.ops._

@@ -876,6 +876,78 @@ object ScalaKernelTests extends TestSuite {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.toreeCustomCellMagic()
     }
+
+    test("payloads") {
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      val tq = "\"\"\""
+
+      // simple payload
+      kernel.execute(
+        """publish.addPayload("{}")""",
+        "",
+        replyPayloads = Seq("{}")
+      )
+
+      // multiple payloads
+      kernel.execute(
+        s"""publish.addPayload($tq{"source": "foo"}$tq); publish.addPayload($tq{"source": "thing"}$tq)""",
+        "",
+        replyPayloads = Seq("""{"source": "foo"}""", """{"source": "thing"}""")
+      )
+
+      // payload in cell that throws an exception
+      kernel.execute(
+        s"""publish.addPayload($tq{"source": "other"}$tq); throw new Exception("foo")""",
+        replyPayloads = Seq("""{"source": "other"}"""),
+        expectError = true
+      )
+    }
+
+    test("payload from exception handler") {
+
+      val tq = "\"\"\""
+      val predef =
+        s"""class CustomException(val value: String) extends Exception
+           |
+           |kernel.handleExceptions {
+           |  case ex: CustomException =>
+           |    publish.addPayload(s$tq{"source": "foo", "value": "$${ex.value}"}$tq)
+           |}
+           |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = ScalaInterpreterParams(
+          initialColors = Colors.BlackWhite,
+          predefCode = predef
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        .unsafeRunTimedOrThrow()
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        """throw new CustomException("thing")""",
+        expectError = true,
+        replyPayloads = Seq(
+          """{"source": "foo", "value": "thing"}"""
+        )
+      )
+    }
   }
 
 }

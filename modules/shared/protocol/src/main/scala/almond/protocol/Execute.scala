@@ -38,7 +38,7 @@ object Execute {
       def apply(
         execution_count: Int,
         user_expressions: Map[String, RawJson], // value type?
-        payload: List[RawJson] = List[RawJson]()
+        payload: List[RawJson]
       ): Success =
         Success(
           execution_count,
@@ -54,7 +54,9 @@ object Execute {
       traceback: List[String],
       status: String, // no default value here for the value not to be swallowed by the JSON encoder
       execution_count: Int =
-        -1 // required in some context (e.g. errored execute_reply from jupyter console)
+        -1, // required in some context (e.g. errored execute_reply from jupyter console)
+      // having this one here doesn't follow the Jupyter messaging specification
+      payload: List[RawJson]
     ) extends Reply {
       assert(status == "error")
     }
@@ -63,27 +65,31 @@ object Execute {
       def apply(
         ename: String,
         evalue: String,
-        traceback: List[String]
-      ): Error =
-        Error(
-          ename,
-          evalue,
-          traceback,
-          "error"
-        )
-
-      def apply(
-        ename: String,
-        evalue: String,
         traceback: List[String],
-        execution_count: Int
+        payload: List[RawJson]
       ): Error =
         Error(
           ename,
           evalue,
           traceback,
           "error",
-          execution_count
+          payload = payload
+        )
+
+      def apply(
+        ename: String,
+        evalue: String,
+        traceback: List[String],
+        execution_count: Int,
+        payload: List[RawJson]
+      ): Error =
+        Error(
+          ename,
+          evalue,
+          traceback,
+          "error",
+          execution_count,
+          payload = payload
         )
     }
 
