@@ -32,6 +32,34 @@ final class ZeromqSocketImpl(
   bindToRandomPort: Boolean
 ) extends ZeromqSocket {
 
+  @deprecated("Use the override accepting bindToRandomPort", "0.14.2")
+  def this(
+    ec: ExecutionContext,
+    socketType: SocketType,
+    bind: Boolean,
+    uri: String,
+    identityOpt: Option[Array[Byte]],
+    subscribeOpt: Option[Array[Byte]],
+    context: ZMQ.Context,
+    key: Secret[String],
+    algorithm: String,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext
+  ) = this(
+    ec = ec,
+    socketType = socketType,
+    bind = bind,
+    uri = uri,
+    identityOpt = identityOpt,
+    subscribeOpt = subscribeOpt,
+    context = context,
+    key = key,
+    algorithm = algorithm,
+    lingerPeriod = lingerPeriod,
+    logCtx = logCtx,
+    bindToRandomPort = true
+  )
+
   import ZeromqSocketImpl._
 
   private val log = logCtx(getClass)

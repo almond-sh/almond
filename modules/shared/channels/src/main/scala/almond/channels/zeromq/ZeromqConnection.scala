@@ -28,6 +28,24 @@ final class ZeromqConnection(
 
   import ZeromqConnection._
 
+  @deprecated("Use the override accepting bindToRandomPorts", "0.14.2")
+  def this(
+    params: ConnectionParameters,
+    bind: Boolean,
+    identityOpt: Option[String],
+    threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext
+  ) = this(
+    params,
+    bind,
+    identityOpt,
+    threads,
+    lingerPeriod,
+    logCtx,
+    bindToRandomPorts = true
+  )
+
   private val log = logCtx(getClass)
 
   private def routerDealer =
@@ -293,6 +311,27 @@ object ZeromqConnection {
         lingerPeriod,
         logCtx,
         bindToRandomPorts = bindToRandomPorts
+      )
+    ).evalOn(threads.selectorOpenCloseEc)
+
+  @deprecated("Use override accepting bindToRandomPorts", "0.14.2")
+  def apply(
+    connection: ConnectionParameters,
+    bind: Boolean,
+    identityOpt: Option[String],
+    threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext
+  ): IO[ZeromqConnection] =
+    IO(
+      new ZeromqConnection(
+        connection,
+        bind,
+        identityOpt,
+        threads,
+        lingerPeriod,
+        logCtx,
+        bindToRandomPorts = true
       )
     ).evalOn(threads.selectorOpenCloseEc)
 
