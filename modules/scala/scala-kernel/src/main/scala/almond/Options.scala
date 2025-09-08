@@ -144,7 +144,13 @@ final case class Options(
 ) {
   // format: on
 
-  private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+  private lazy val sbv = {
+    val sv = almond.internal.Constants.actualScalaVersion
+    if (sv.startsWith("2."))
+      sv.split('.').take(2).mkString(".")
+    else
+      sv.split('.').head
+  }
 
   private lazy val ammSparkVersion = defaultAlmondSparkVersion
     .map(_.trim)

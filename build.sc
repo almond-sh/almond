@@ -328,6 +328,19 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     )
   }
   def mainClass = Some("almond.ScalaKernel")
+
+  def generatedSources: T[Seq[PathRef]] = Task {
+    val constantsFileContent =
+      s"""package almond.internal
+         |
+         |object Constants {
+         |  def almondVersion = "${publishVersion()}"
+         |  def actualScalaVersion = "${scalaVersion()}"
+         |}
+         |""".stripMargin
+    os.write(Task.dest / "Constants.scala", constantsFileContent)
+    Seq(PathRef(Task.dest)) ++ super.generatedSources()
+  }
 }
 
 trait CoursierLogger extends Cross.Module[String] with AlmondModule {
