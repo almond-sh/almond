@@ -500,13 +500,59 @@ object scala extends Module {
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
-  object `local-repo`       extends Cross[KernelLocalRepo](ScalaVersions.all)
   object integration        extends Integration
 
   object examples extends Examples
 }
 
-def baseRepoRoot = os.sub / "out/repo"
+object `local-repo` extends Module {
+  def allModules: Seq[PublishModule] = {
+    val binaryModules = ScalaVersions.binaries.flatMap { sv =>
+      Seq(
+        scala.`almond-scalapy`(sv),
+        shared.kernel(sv),
+        shared.interpreter(sv),
+        shared.`interpreter-api`(sv),
+        shared.protocol(sv),
+        shared.channels(sv),
+        shared.logger(sv),
+        scala.`jupyter-api`(sv),
+        scala.`toree-hooks`(sv),
+        scala.`json-api-jackson`(sv),
+        scala.`coursier-logger`(sv),
+        scala.`shared-directives`(sv)
+      )
+    }
+    val binary2Modules = ScalaVersions.scala2Binaries.flatMap { sv =>
+      Seq(
+        shared.`logger-scala2-macros`(sv)
+      )
+    }
+    val allVersionsModules = (ScalaVersions.scala2Binaries :+ ScalaVersions.scala3Latest).flatMap {
+      sv =>
+        Seq(
+          scala.`scala-kernel`(sv),
+          scala.`scala-kernel-api`(sv),
+          scala.`scala-interpreter`(sv)
+        )
+    }
+    val simpleModules = Seq(
+      scala.launcher
+    )
+
+    binaryModules ++ binary2Modules ++ allVersionsModules ++ simpleModules
+  }
+  def localRepo: T[PathRef] = {
+    val allRepos = Task.sequence(allModules.map(_.publishLocalTestRepo))
+
+    Task {
+      val allRepos0 = allRepos()
+      for (repo <- allRepos0; elem <- os.list(repo.path))
+        os.copy.into(elem, Task.dest, mergeFolders = true)
+      PathRef(Task.dest)
+    }
+  }
+}
 
 trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.20"
@@ -524,17 +570,12 @@ trait Examples extends SbtModule {
       )
     }
     def forkArgs = Task {
-      scala.`almond-scalapy`(ScalaVersions.scala212)
-        .publishLocal(
-          (baseRepoRoot / AlmondPublishModule.computeBuildVersion()).toString,
-          doc = false
-        )()
       super.forkArgs() ++ Seq(
         s"-Dalmond.examples.dir=${examplesDir().path}",
         s"-Dalmond.examples.output-dir=${Task.dest / "output"}",
         s"-Dalmond.examples.jupyter-path=${Task.dest / "jupyter"}",
         s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
-        s"-Dalmond.examples.repo-root=${BuildCtx.workspaceRoot / baseRepoRoot / scala.`scala-kernel`(examplesScalaVersion).publishVersion()}"
+        s"-Dalmond.examples.repo-root=${`local-repo`.localRepo().path}"
       )
     }
   }
@@ -566,49 +607,6 @@ trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule 
       Deps.upickle
     )
   }
-}
-
-trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
-  def testScalaVersion = crossValue
-  def stubsModules = {
-    val scalaVersionSpecific =
-      if (isScala3(testScalaVersion)) Seq.empty
-      else Seq(shared.`logger-scala2-macros`(ScalaVersions.binary(testScalaVersion)))
-
-    val scala3Modules =
-      if (
-        ScalaVersions.binary(ScalaVersions.scala3Latest) == ScalaVersions.binary(testScalaVersion)
-      )
-        Nil
-      else
-        Seq(
-          shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-          shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-          shared.`interpreter-api`(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-          shared.protocol(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-          shared.channels(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-          shared.logger(ScalaVersions.binary(ScalaVersions.scala3Latest))
-        )
-
-    Seq(
-      shared.kernel(ScalaVersions.binary(testScalaVersion)),
-      shared.interpreter(ScalaVersions.binary(testScalaVersion)),
-      shared.`interpreter-api`(ScalaVersions.binary(testScalaVersion)),
-      shared.protocol(ScalaVersions.binary(testScalaVersion)),
-      shared.channels(ScalaVersions.binary(testScalaVersion)),
-      shared.logger(ScalaVersions.binary(testScalaVersion)),
-      scala.`scala-kernel`(testScalaVersion),
-      scala.`scala-kernel-api`(testScalaVersion),
-      scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
-      scala.`scala-interpreter`(testScalaVersion),
-      scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
-      scala.`json-api-jackson`(ScalaVersions.binary(testScalaVersion)),
-      scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
-      scala.`shared-directives`(ScalaVersions.binary(testScalaVersion)),
-      scala.launcher
-    ) ++ scala3Modules ++ scalaVersionSpecific
-  }
-  def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
 }
 
 trait Integration extends SbtModule {
@@ -660,13 +658,10 @@ trait Integration extends SbtModule {
     }
     def testFramework = "munit.Framework"
     def forkArgs = Task {
-      scala.`local-repo`(ScalaVersions.scala212).localRepo()
-      scala.`local-repo`(ScalaVersions.scala213).localRepo()
-      scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
-      val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
+      val version = scala.`scala-kernel`(ScalaVersions.scala3Latest).publishVersion()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${(BuildCtx.workspaceRoot / scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot).toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.local-repo=${`local-repo`.localRepo().path}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.versionConstraint.asString, "2.1.2")}",
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
@@ -808,26 +803,11 @@ object dev extends Module {
       if (fast) scala.launcher.fastLauncher
       else scala.launcher.launcher
     Task.Command {
-      scala.`almond-scalapy`(ScalaVersions.scala212)
-        .publishLocal(
-          (baseRepoRoot / AlmondPublishModule.computeBuildVersion()).toString,
-          doc = false
-        )()
-      scala.`almond-scalapy`(ScalaVersions.scala213)
-        .publishLocal(
-          (baseRepoRoot / AlmondPublishModule.computeBuildVersion()).toString,
-          doc = false
-        )()
-      scala.`almond-scalapy`(ScalaVersions.scala3Compat)
-        .publishLocal(
-          (baseRepoRoot / AlmondPublishModule.computeBuildVersion()).toString,
-          doc = false
-        )()
-
       val jupyterDir       = Task.dest / "jupyter"
       val launcher0        = launcher().path.toNIO
       val specialLauncher0 = specialLauncher().path.toNIO
       val version          = scala.`scala-kernel`(sv).publishVersion()
+      val localRepoRoot    = `local-repo`.localRepo().path
       if (console)
         JupyterServer.jupyterConsole(
           launcher0,
@@ -835,7 +815,8 @@ object dev extends Module {
           jupyterDir.toNIO,
           args0,
           BuildCtx.workspaceRoot,
-          version
+          version,
+          localRepoRoot
         )
       else
         JupyterServer.jupyterServer(
@@ -844,7 +825,8 @@ object dev extends Module {
           jupyterDir.toNIO,
           args0,
           BuildCtx.workspaceRoot,
-          version
+          version,
+          localRepoRoot
         )
     }
   }

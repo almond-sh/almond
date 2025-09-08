@@ -11,6 +11,7 @@ object JupyterServer {
     launcher: Path,
     jupyterDir: Path,
     workspace: os.Path,
+    localRepoRoot: os.Path,
     publishVersion: String,
     kernelId: String,
     name: String,
@@ -31,7 +32,7 @@ object JupyterServer {
       "--silent-imports",
       "--use-notebook-coursier-logger",
       "--extra-repository",
-      s"ivy:${(workspace / "out/repo" / publishVersion).toNIO.toUri.toASCIIString}/[defaultPattern]"
+      localRepoRoot.toNIO.toUri.toASCIIString
     )
     val kernelJson = ujson.Obj(
       "language"     -> ujson.Str("scala"),
@@ -50,14 +51,24 @@ object JupyterServer {
     jupyterDir: Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String
+    publishVersion: String,
+    localRepoRoot: os.Path
   ): Unit = {
 
-    writeKernelJson(launcher, jupyterDir, workspace, publishVersion, kernelId, "Scala (sources)")
+    writeKernelJson(
+      launcher,
+      jupyterDir,
+      workspace,
+      localRepoRoot,
+      publishVersion,
+      kernelId,
+      "Scala (sources)"
+    )
     writeKernelJson(
       specialLauncher,
       jupyterDir,
       workspace,
+      localRepoRoot,
       publishVersion,
       specialKernelId,
       "Scala (special, sources)",
@@ -89,14 +100,24 @@ object JupyterServer {
     jupyterDir: Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String
+    publishVersion: String,
+    localRepoRoot: os.Path
   ): Unit = {
 
-    writeKernelJson(launcher, jupyterDir, workspace, publishVersion, kernelId, "Scala (sources)")
+    writeKernelJson(
+      launcher,
+      jupyterDir,
+      workspace,
+      localRepoRoot,
+      publishVersion,
+      kernelId,
+      "Scala (sources)"
+    )
     writeKernelJson(
       specialLauncher,
       jupyterDir,
       workspace,
+      localRepoRoot,
       publishVersion,
       specialKernelId,
       "Scala (special, sources)"

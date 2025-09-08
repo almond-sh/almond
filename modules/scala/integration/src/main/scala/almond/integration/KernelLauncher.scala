@@ -179,7 +179,7 @@ class KernelLauncher(
     val repoArgs = Seq(
       "--no-default",
       "-r",
-      s"ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]",
+      localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/"),
       "-r",
       "ivy2Local",
       "-r",
@@ -222,8 +222,6 @@ class KernelLauncher(
         s"""Error generating an Almond $almondVersion launcher for Scala $defaultScalaVersion
            |
            |If that error is unexpected, you might want to:
-           |- remove out/repo
-           |    rm -rf out/repo
            |- remove cached version computation in the build:
            |    find out -name "*publishVersion*" -print0 | xargs -0 rm -f
            |
@@ -522,7 +520,7 @@ class KernelLauncher(
           )
           Map(
             "COURSIER_REPOSITORIES" ->
-              s"$baseRepos|ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]"
+              s"$baseRepos|${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}"
           )
         }
 
