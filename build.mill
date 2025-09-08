@@ -41,7 +41,7 @@ trait Logger extends Cross.Module[String] with AlmondModule {
     val sv = scalaVersion()
     val scalaReflect =
       if (sv.startsWith("2.")) Agg(Deps.scalaReflect(sv))
-      else Agg(ivy"org.scala-lang:scala3-library_3:${scalaVersion()}")
+      else Agg(ivy"org.scala-lang:scala3-library_3:$sv")
     scalaReflect
   }
   object test extends CrossSbtModuleTests with AlmondTestModule
