@@ -31,10 +31,10 @@ jobs:
         ./mill -i mill.scalalib.SonatypeCentralPublishModule/
       shell: bash
       env:
-        MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY }}
+        MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY_BASE64 }}
         MILL_PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
-        MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-        MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        MILL_SONATYPE_USERNAME: ${{ secrets.PUBLISH_USER }}
+        MILL_SONATYPE_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
 
   upload-launcher:
     needs: release
