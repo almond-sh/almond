@@ -326,6 +326,9 @@ object JupyterApi {
 
     /** Message protocol version */
     def version: Option[String]
+
+    /** All message header object key-values */
+    def entries: Map[String, String]
   }
 
 }

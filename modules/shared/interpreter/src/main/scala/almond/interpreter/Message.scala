@@ -118,6 +118,12 @@ final case class Message[T](
         .withMsgType(msgType.messageType),
       content = newContent
     )
+
+  def clearRawHeaderContent: Message[T] =
+    copy(
+      header = header.clearRawContent(),
+      parent_header = parent_header.map(_.clearRawContent())
+    )
 }
 
 object Message {

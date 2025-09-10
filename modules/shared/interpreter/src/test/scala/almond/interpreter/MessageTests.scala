@@ -20,7 +20,7 @@ object MessageTests extends TestSuite {
           """{"silent":false,"store_history":true}""".bytes
         )
 
-        val res = Message.parse[RawJson](rawMsg)
+        val res = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
         val expectedRes = Right(
           Message(
             Header(
@@ -46,7 +46,7 @@ object MessageTests extends TestSuite {
           """{"silent":false,"store_history":true}""".bytes
         )
 
-        val res = Message.parse[RawJson](rawMsg)
+        val res = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
 
         val expectedRes = Right(
           Message(
