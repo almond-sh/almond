@@ -317,11 +317,11 @@ object Dsl {
   )(implicit sessionId: SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        ProtocolExecute.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = ProtocolExecute.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
       ProtocolExecute.Request(code, stop_on_error = Some(stopOnError)),
       metadata = metadata
@@ -355,11 +355,11 @@ object Dsl {
   )(implicit sessionId: SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        Inspect.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = Inspect.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
       Inspect.Request(code, pos, if (detailed) 1 else 0)
     ).on(Channel.Requests)
@@ -399,11 +399,11 @@ object Dsl {
   )(implicit sessionId: SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        Complete.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = Complete.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
       Complete.Request(code, pos)
     ).on(Channel.Requests)
