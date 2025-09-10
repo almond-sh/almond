@@ -2038,7 +2038,12 @@ object Tests {
     val predef =
       s"""kernel.handleExceptions {
          |  case ex: ArithmeticException =>
-         |    System.err.println(s"Detected division by 0 with metadata $${kernel.currentExecuteRequest().map(_.metadata)}")
+         |    System.err.println(
+         |      "Detected division by 0 with metadata " +
+         |        kernel.currentExecuteRequest().map(_.metadata) +
+         |        ", and parent header entries " +
+         |        kernel.currentExecuteRequest().flatMap(_.parentHeader).map(_.entries.toVector.sorted)
+         |    )
          |}
          |""".stripMargin
 
@@ -2050,9 +2055,32 @@ object Tests {
       execute(
         "2 / 0",
         metadata = RawJson("""{"foo": "thing"}""".getBytes(StandardCharsets.UTF_8)),
+        parentHeaderOpt = Some(
+          Header(
+            msg_id = "msg_id_valuez",
+            username = "username_valuez",
+            session = "session_valuez",
+            msg_type = "msg_type_valuez",
+            version = None,
+            rawContentOpt = Some(
+              RawJson(
+                """{
+                  |  "msg_id": "msg_id_value",
+                  |  "username": "username_value",
+                  |  "session": "session_value",
+                  |  "msg_type": "msg_type_value",
+                  |  "otherThing": "otherThingValue",
+                  |  "version": "5.4"
+                  |}""".stripMargin.getBytes(StandardCharsets.UTF_8)
+              )
+            )
+          )
+        ),
         expectError = true,
         stderr =
-          """Detected division by 0 with metadata Some({"foo": "thing"})""" + System.lineSeparator()
+          """Detected division by 0 with metadata Some({"foo": "thing"}), """ +
+            """and parent header entries Some(Vector((msg_id,msg_id_value), (msg_type,msg_type_value), (otherThing,otherThingValue), (session,session_value), (username,username_value), (version,5.4)))""" +
+            System.lineSeparator()
       )
     }
   }

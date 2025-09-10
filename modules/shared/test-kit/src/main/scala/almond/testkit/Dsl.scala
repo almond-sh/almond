@@ -85,7 +85,8 @@ object Dsl {
     waitForUpdateDisplay: Boolean = false,
     handler: MessageHandler = MessageHandler.discard { case _ => },
     trimReplyLines: Boolean = false,
-    metadata: RawJson = RawJson.emptyObj
+    metadata: RawJson = RawJson.emptyObj,
+    parentHeaderOpt: Option[Header] = None
   )(implicit
     sessionId: SessionId,
     session: Session
@@ -95,7 +96,12 @@ object Dsl {
     val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
 
     val input = Stream(
-      executeMessage(code, stopOnError = !expectError0, metadata = metadata)
+      executeMessage(
+        code,
+        stopOnError = !expectError0,
+        metadata = metadata,
+        parentHeaderOpt = parentHeaderOpt
+      )
     )
 
     val stopWhen0: (Channel, Message[RawJson]) => IO[Boolean] =
@@ -313,7 +319,8 @@ object Dsl {
     code: String,
     msgId: String = UUID.randomUUID().toString,
     stopOnError: Boolean = true,
-    metadata: RawJson = RawJson.emptyObj
+    metadata: RawJson = RawJson.emptyObj,
+    parentHeaderOpt: Option[Header] = None
   )(implicit sessionId: SessionId) =
     Message(
       Header(
@@ -324,7 +331,8 @@ object Dsl {
         version = Some(Protocol.versionStr)
       ),
       ProtocolExecute.Request(code, stop_on_error = Some(stopOnError)),
-      metadata = metadata
+      metadata = metadata,
+      parent_header = parentHeaderOpt
     ).on(Channel.Requests)
 
   def inspect(

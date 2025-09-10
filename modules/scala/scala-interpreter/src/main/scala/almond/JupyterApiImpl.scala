@@ -10,6 +10,8 @@ import almond.interpreter.api.CommHandler
 import almond.logger.LoggerContext
 import almond.protocol.{Execute => ProtocolExecute, Header}
 import ammonite.util.Ref
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import pprint.{TPrint, TPrintColors}
 
 import scala.collection.mutable
@@ -156,6 +158,8 @@ final class JupyterApiImpl(
 }
 
 object JupyterApiImpl {
+  private lazy val mapCodec: JsonValueCodec[Map[String, String]] =
+    JsonCodecMaker.make
   private def messageHeader(header: Header): JupyterApi.MessageHeader =
     new JupyterApi.MessageHeader {
       def msgId: String           = header.msg_id
@@ -163,6 +167,20 @@ object JupyterApiImpl {
       def session: String         = header.session
       def msgType: String         = header.msg_type
       def version: Option[String] = header.version
+
+      private lazy val headerMap: Map[String, String] =
+        header.rawContentOpt match {
+          case Some(rawHeader) =>
+            readFromArray(rawHeader.value)(mapCodec)
+          case None =>
+            Map(
+              "msg_id"   -> header.msg_id,
+              "username" -> header.username,
+              "session"  -> header.session,
+              "msg_type" -> header.msg_type
+            ) ++ header.version.map("version" -> _)
+        }
+      def entries: Map[String, String] = headerMap
     }
   private def executeRequest(msg: Message[ProtocolExecute.Request]): JupyterApi.ExecuteRequest =
     new JupyterApi.ExecuteRequest {

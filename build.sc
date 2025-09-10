@@ -225,6 +225,9 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
       Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna"))
     )
   }
+  def compileIvyDeps = Agg(
+    Deps.jsoniterScalaMacros
+  )
   def scalacOptions = super.scalacOptions() ++ {
     val scala213Options =
       if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations")

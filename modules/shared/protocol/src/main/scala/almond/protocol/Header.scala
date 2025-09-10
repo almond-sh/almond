@@ -10,12 +10,13 @@ final class Header(
   val username: String,
   val session: String,
   val msg_type: String,
-  val version: Option[String]
+  val version: Option[String],
   // https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#general-message-format says an ISO 8601 date
   // should be mandatory as of protocol version 5.1, but it seems the classic UI doesn't write it…
   // date: Instant
+  val rawContentOpt: Option[RawJson]
 ) {
-  private def copy(
+  private def copyClearRawContent(
     msg_id: String = msg_id,
     username: String = username,
     session: String = session,
@@ -27,12 +28,15 @@ final class Header(
       username = username,
       session = session,
       msg_type = msg_type,
-      version = version
+      version = version,
+      rawContentOpt = None
     )
   def withMsgId(msgId: String): Header =
-    copy(msg_id = msgId)
+    copyClearRawContent(msg_id = msgId)
   def withMsgType(msgType: String): Header =
-    copy(msg_type = msgType)
+    copyClearRawContent(msg_type = msgType)
+  def clearRawContent(): Header =
+    copyClearRawContent()
 
   override def equals(other: Any): Boolean =
     other.isInstanceOf[Header] && {
@@ -41,7 +45,8 @@ final class Header(
       username == that.username &&
       session == that.session &&
       msg_type == that.msg_type &&
-      version == that.version
+      version == that.version &&
+      rawContentOpt == that.rawContentOpt
     }
 }
 
@@ -59,7 +64,25 @@ object Header {
       username = username,
       session = session,
       msg_type = msg_type,
-      version = version
+      version = version,
+      rawContentOpt = None
+    )
+
+  def apply(
+    msg_id: String,
+    username: String,
+    session: String,
+    msg_type: String,
+    version: Option[String],
+    rawContentOpt: Option[RawJson]
+  ): Header =
+    new Header(
+      msg_id = msg_id,
+      username = username,
+      session = session,
+      msg_type = msg_type,
+      version = version,
+      rawContentOpt = rawContentOpt
     )
 
   private final case class Helper(
@@ -69,13 +92,14 @@ object Header {
     msg_type: String,
     version: Option[String]
   ) {
-    def toHeader: Header =
+    def toHeader(rawContentOpt: Option[RawJson]): Header =
       new Header(
         msg_id = msg_id,
         username = username,
         session = session,
         msg_type = msg_type,
-        version = version
+        version = version,
+        rawContentOpt = rawContentOpt
       )
   }
 
@@ -107,13 +131,18 @@ object Header {
 
   implicit lazy val codec: JsonValueCodec[Header] =
     new JsonValueCodec[Header] {
-      def nullValue = Option(Helper.codec.nullValue).map(_.toHeader).orNull
+      def nullValue = Option(Helper.codec.nullValue).map(_.toHeader(None)).orNull
       def encodeValue(header: Header, out: JsonWriter) =
-        Helper.codec.encodeValue(Helper.fromHeader(header), out)
+        header.rawContentOpt match {
+          case Some(rawContent) =>
+            out.writeRawVal(rawContent.value)
+          case None =>
+            Helper.codec.encodeValue(Helper.fromHeader(header), out)
+        }
       def decodeValue(in: JsonReader, default: Header): Header = {
         val value  = RawJson(in.readRawValAsBytes())
         val helper = readFromArray(value.value)(Helper.codec)
-        helper.toHeader
+        helper.toHeader(Some(value))
       }
     }
 }
