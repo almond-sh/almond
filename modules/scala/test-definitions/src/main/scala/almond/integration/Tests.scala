@@ -158,11 +158,11 @@ object Tests {
     val interruptOnInput = MessageHandler(Channel.Input, Input.requestType) { msg =>
       Message(
         Header(
-          UUID.randomUUID().toString,
-          "test",
-          sessionId.sessionId,
-          Interrupt.requestType.messageType,
-          Some(Protocol.versionStr)
+          msg_id = UUID.randomUUID().toString,
+          username = "test",
+          session = sessionId.sessionId,
+          msg_type = Interrupt.requestType.messageType,
+          version = Some(Protocol.versionStr)
         ),
         Interrupt.Request
       ).streamOn(Channel.Control)
