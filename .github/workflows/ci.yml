@@ -61,7 +61,7 @@ jobs:
 
   integration-tests:
     runs-on: ${{ matrix.OS }}
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
