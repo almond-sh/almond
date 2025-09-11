@@ -14,8 +14,8 @@ import almond.internals.{
   HtmlAnsiOutputStream,
   UpdatableResults
 }
-import almond.interpreter.ExecuteResult
-import almond.interpreter.api.{CommHandler, DisplayData, OutputHandler}
+import almond.interpreter.ExecuteError
+import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
@@ -204,7 +204,7 @@ final class Execute(
         }
     }
 
-  private def withInputManager[T](m: Option[InputManager], done: Boolean = true)(f: => T): T = {
+  private def withInputManager[T](m: Option[InputManager], done: Boolean)(f: => T): T = {
     val previous = currentInputManagerOpt0
     try {
       currentInputManagerOpt0 = m
@@ -348,7 +348,7 @@ final class Execute(
         }
         _ = log.debug(s"splitted '$code0'")
         ev <- interruptible(jupyterApi) {
-          withInputManager(inputManager) {
+          withInputManager(inputManager, done = false) {
             withClientStdin {
               capturingOutput {
                 resultOutput.clear()
@@ -444,6 +444,7 @@ final class Execute(
     colors0: Ref[Colors],
     storeHistory: Boolean,
     executeHooks: Seq[JupyterApi.ExecuteHook],
+    postRunHooks: Seq[JupyterApi.PostRunHook],
     jupyterApi: JupyterApi
   ): ExecuteResult = {
 
@@ -458,32 +459,34 @@ final class Execute(
     }
 
     val finalCodeOrResult =
-      withOutputHandler(outputHandler) {
-        interruptible(jupyterApi) {
-          withInputManager(inputManager, done = false) {
-            withClientStdin {
-              capturingOutput {
-                executeHooks.foldLeft[Try[Either[JupyterApi.ExecuteHookResult, String]]](
-                  Success(Right(code))
-                ) {
-                  (codeOrDisplayDataAttempt, hook) =>
-                    codeOrDisplayDataAttempt.flatMap { codeOrDisplayData =>
-                      try Success(codeOrDisplayData.flatMap { value =>
-                          hook.hook(value)
-                        })
-                      catch {
-                        case e: Throwable => // kind of meh, but Ammonite does the same it seems…
-                          Failure(e)
+      if (executeHooks.isEmpty) Success(Right(code))
+      else
+        withOutputHandler(outputHandler) {
+          interruptible(jupyterApi) {
+            withInputManager(inputManager, done = false) {
+              withClientStdin {
+                capturingOutput {
+                  executeHooks.foldLeft[Try[Either[JupyterApi.ExecuteHookResult, String]]](
+                    Success(Right(code))
+                  ) {
+                    (codeOrDisplayDataAttempt, hook) =>
+                      codeOrDisplayDataAttempt.flatMap { codeOrDisplayData =>
+                        try Success(codeOrDisplayData.flatMap { value =>
+                            hook.hook(value)
+                          })
+                        catch {
+                          case e: Throwable => // kind of meh, but Ammonite does the same it seems…
+                            Failure(e)
+                        }
                       }
-                    }
+                  }
                 }
               }
             }
           }
         }
-      }
 
-    finalCodeOrResult match {
+    val result = finalCodeOrResult match {
       case Failure(ex) =>
         log.error(s"exception when running hooks (${ex.getMessage})", ex)
         Execute.error(colors0(), Some(ex), "")
@@ -570,7 +573,7 @@ final class Execute(
                               "",
                               List("Interrupted!") ++ st
                                 .takeWhile(x => !cutoff(x.getMethodName))
-                                .map(ExecuteResult.Error.highlightFrame(
+                                .map(ExecuteError.highlightFrame(
                                   _,
                                   fansi.Attr.Reset,
                                   colors0().literal()
@@ -596,12 +599,44 @@ final class Execute(
             }
         }
     }
+
+    if (postRunHooks.isEmpty) {
+      withInputManager(inputManager, done = true)(())
+      result
+    }
+    else {
+      val maybeRes = withOutputHandler(outputHandler) {
+        interruptible(jupyterApi) {
+          withInputManager(inputManager, done = true) {
+            withClientStdin {
+              capturingOutput {
+                postRunHooks.foldLeft[Try[ExecuteResult]](Success(result)) {
+                  (res, hook) =>
+                    res.flatMap { res0 =>
+                      Try {
+                        hook.process(res0)
+                      }
+                    }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      maybeRes match {
+        case Success(res) => res
+        case Failure(ex) =>
+          log.error(s"exception when running post run hooks (${ex.getMessage})", ex)
+          Execute.error(colors0(), Some(ex), "")
+      }
+    }
   }
 }
 
 object Execute {
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
-    ExecuteResult.Error.error(colors.error(), colors.literal(), exOpt, msg)
+    ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
   private lazy val isJdk20OrHigher =
     sys.props
       .get("java.version")
