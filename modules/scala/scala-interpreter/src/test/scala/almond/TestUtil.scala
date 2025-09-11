@@ -303,11 +303,11 @@ object TestUtil {
   )(implicit sessionId: Dsl.SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        ProtocolExecute.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = ProtocolExecute.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
       ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
     ).on(Channel.Requests)

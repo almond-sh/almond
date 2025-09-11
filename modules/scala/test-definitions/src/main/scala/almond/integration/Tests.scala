@@ -9,6 +9,7 @@ import com.eed3si9n.expecty.Expecty.expect
 import coursier.version.Version
 
 import java.io.File
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 import scala.jdk.CollectionConverters._
@@ -157,11 +158,11 @@ object Tests {
     val interruptOnInput = MessageHandler(Channel.Input, Input.requestType) { msg =>
       Message(
         Header(
-          UUID.randomUUID().toString,
-          "test",
-          sessionId.sessionId,
-          Interrupt.requestType.messageType,
-          Some(Protocol.versionStr)
+          msg_id = UUID.randomUUID().toString,
+          username = "test",
+          session = sessionId.sessionId,
+          msg_type = Interrupt.requestType.messageType,
+          version = Some(Protocol.versionStr)
         ),
         Interrupt.Request
       ).streamOn(Channel.Control)
@@ -2024,6 +2025,62 @@ object Tests {
         """2 / 0""",
         expectError = true,
         stderr = "Division by 0 detected" + System.lineSeparator()
+      )
+    }
+  }
+
+  // several exception handlers, and one that uses stderr
+  def metadata()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val predef =
+      s"""kernel.handleExceptions {
+         |  case ex: ArithmeticException =>
+         |    System.err.println(
+         |      "Detected division by 0 with metadata " +
+         |        kernel.currentExecuteRequest().map(_.metadata) +
+         |        ", and parent header entries " +
+         |        kernel.currentExecuteRequest().flatMap(_.parentHeader).map(_.entries.toVector.sorted)
+         |    )
+         |}
+         |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.exception-handler-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    runner.withSession("--predef", predefPath.toString) { implicit session =>
+      execute(
+        "2 / 0",
+        metadata = RawJson("""{"foo": "thing"}""".getBytes(StandardCharsets.UTF_8)),
+        parentHeaderOpt = Some(
+          Header(
+            msg_id = "msg_id_valuez",
+            username = "username_valuez",
+            session = "session_valuez",
+            msg_type = "msg_type_valuez",
+            version = None,
+            rawContentOpt = Some(
+              RawJson(
+                """{
+                  |  "msg_id": "msg_id_value",
+                  |  "username": "username_value",
+                  |  "session": "session_value",
+                  |  "msg_type": "msg_type_value",
+                  |  "otherThing": "otherThingValue",
+                  |  "version": "5.4"
+                  |}""".stripMargin.getBytes(StandardCharsets.UTF_8)
+              )
+            )
+          )
+        ),
+        expectError = true,
+        stderr =
+          """Detected division by 0 with metadata Some({"foo": "thing"}), """ +
+            """and parent header entries Some(Vector((msg_id,msg_id_value), (msg_type,msg_type_value), (otherThing,otherThingValue), (session,session_value), (username,username_value), (version,5.4)))""" +
+            System.lineSeparator()
       )
     }
   }

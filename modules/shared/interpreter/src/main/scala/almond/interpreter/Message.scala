@@ -28,10 +28,9 @@ final case class Message[T](
     MessageType(header.msg_type)
 
   private def replyHeader(messageType: MessageType[_]): Header =
-    header.copy(
-      msg_id = UUID.randomUUID().toString,
-      msg_type = messageType.messageType
-    )
+    header
+      .withMsgId(UUID.randomUUID().toString)
+      .withMsgType(messageType.messageType)
 
   /** Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Publish]]
     * channel.
@@ -114,11 +113,16 @@ final case class Message[T](
 
   def update[U](msgType: MessageType[U], newContent: U): Message[U] =
     copy(
-      header = header.copy(
-        msg_id = UUID.randomUUID().toString,
-        msg_type = msgType.messageType
-      ),
+      header = header
+        .withMsgId(UUID.randomUUID().toString)
+        .withMsgType(msgType.messageType),
       content = newContent
+    )
+
+  def clearRawHeaderContent: Message[T] =
+    copy(
+      header = header.clearRawContent(),
+      parent_header = parent_header.map(_.clearRawContent())
     )
 }
 

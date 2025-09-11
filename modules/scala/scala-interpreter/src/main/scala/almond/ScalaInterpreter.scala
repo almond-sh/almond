@@ -8,7 +8,7 @@ import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
-import almond.protocol.{KernelInfo, RawJson}
+import almond.protocol.{Execute => ProtocolExecute, KernelInfo, RawJson}
 import almond.toree.{CellMagicHook, LineMagicHook}
 import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
@@ -89,6 +89,8 @@ final class ScalaInterpreter(
     launcherDirectiveGroups = params.launcherDirectiveGroups
   )
 
+  private var currentExecuteRequestOpt0 = Option.empty[Message[ProtocolExecute.Request]]
+
   val sessApi = new SessionApiImpl(frames0)
 
   val replApi =
@@ -110,7 +112,8 @@ final class ScalaInterpreter(
       kernelClassLoader = Thread.currentThread().getContextClassLoader,
       consoleOut = System.out,
       consoleErr = System.err,
-      logCtx = logCtx
+      logCtx = logCtx,
+      currentExecuteRequest0 = currentExecuteRequestOpt0
     )
 
   if (params.toreeMagics) {
@@ -171,19 +174,25 @@ final class ScalaInterpreter(
     code: String,
     storeHistory: Boolean, // FIXME Take that one into account
     inputManager: Option[InputManager],
-    outputHandler: Option[OutputHandler]
+    outputHandler: Option[OutputHandler],
+    messageOpt: Option[Message[ProtocolExecute.Request]]
   ): ExecuteResult =
-    execute0(
-      ammInterp,
-      code,
-      inputManager,
-      outputHandler,
-      colors0,
-      storeHistory,
-      jupyterApi.executeHooks,
-      jupyterApi.postRunHooks(),
-      jupyterApi
-    )
+    try {
+      currentExecuteRequestOpt0 = messageOpt
+      execute0(
+        ammInterp,
+        code,
+        inputManager,
+        outputHandler,
+        colors0,
+        storeHistory,
+        jupyterApi.executeHooks,
+        jupyterApi.postRunHooks(),
+        jupyterApi
+      )
+    }
+    finally
+      currentExecuteRequestOpt0 = None
 
   def currentLine(): Int =
     execute0.currentLine

@@ -11,7 +11,7 @@ import scala.reflect.{ClassTag, classTag}
 
 abstract class JupyterApi { api =>
 
-  import JupyterApi.{ExceptionHandler, ExecuteHook}
+  import JupyterApi.{ExceptionHandler, ExecuteHook, ExecuteRequest}
 
   /** Request input from the the Jupyter UI */
   final def stdin(prompt: String = "", password: Boolean = false): String =
@@ -167,6 +167,9 @@ abstract class JupyterApi { api =>
 
   def consoleOut: PrintStream
   def consoleErr: PrintStream
+
+  /** Details about the current execute request, if any */
+  def currentExecuteRequest(): Option[ExecuteRequest]
 }
 
 object JupyterApi {
@@ -291,6 +294,41 @@ object JupyterApi {
       ex.setStackTrace(Array.empty)
       ex
     }
+  }
+
+  /** Details associated to an execute request */
+  trait ExecuteRequest {
+
+    /** Metadata of the request */
+    def metadata: String
+
+    /** Header of the request */
+    def header: MessageHeader
+
+    /** Parent header of the request, if any */
+    def parentHeader: Option[MessageHeader]
+  }
+
+  /** Details about a Jupyter message header */
+  trait MessageHeader {
+
+    /** Unique ID for the message */
+    def msgId: String
+
+    /** Message username */
+    def userName: String
+
+    /** Unique ID for the session */
+    def session: String
+
+    /** Message type */
+    def msgType: String
+
+    /** Message protocol version */
+    def version: Option[String]
+
+    /** All message header object key-values */
+    def entries: Map[String, String]
   }
 
 }

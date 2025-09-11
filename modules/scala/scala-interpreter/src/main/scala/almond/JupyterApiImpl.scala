@@ -5,9 +5,13 @@ import java.nio.charset.StandardCharsets
 
 import almond.api.{FullJupyterApi, JupyterApi}
 import almond.internals.HtmlAnsiOutputStream
+import almond.interpreter.Message
 import almond.interpreter.api.CommHandler
 import almond.logger.LoggerContext
+import almond.protocol.{Execute => ProtocolExecute, Header}
 import ammonite.util.Ref
+import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import pprint.{TPrint, TPrintColors}
 
 import scala.collection.mutable
@@ -26,7 +30,8 @@ final class JupyterApiImpl(
   val kernelClassLoader: ClassLoader,
   val consoleOut: PrintStream,
   val consoleErr: PrintStream,
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  currentExecuteRequest0: => Option[Message[ProtocolExecute.Request]]
 ) extends FullJupyterApi with VariableInspectorApiImpl {
 
   private val log = logCtx(getClass)
@@ -147,4 +152,43 @@ final class JupyterApiImpl(
   }
   def exceptionHandlers(): Seq[JupyterApi.ExceptionHandler] =
     exceptionHandlers0.toList
+
+  def currentExecuteRequest(): Option[JupyterApi.ExecuteRequest] =
+    currentExecuteRequest0.map(JupyterApiImpl.executeRequest)
+}
+
+object JupyterApiImpl {
+  private lazy val mapCodec: JsonValueCodec[Map[String, String]] =
+    JsonCodecMaker.make
+  private def messageHeader(header: Header): JupyterApi.MessageHeader =
+    new JupyterApi.MessageHeader {
+      def msgId: String           = header.msg_id
+      def userName: String        = header.username
+      def session: String         = header.session
+      def msgType: String         = header.msg_type
+      def version: Option[String] = header.version
+
+      private lazy val headerMap: Map[String, String] =
+        header.rawContentOpt match {
+          case Some(rawHeader) =>
+            readFromArray(rawHeader.value)(mapCodec)
+          case None =>
+            Map(
+              "msg_id"   -> header.msg_id,
+              "username" -> header.username,
+              "session"  -> header.session,
+              "msg_type" -> header.msg_type
+            ) ++ header.version.map("version" -> _)
+        }
+      def entries: Map[String, String] = headerMap
+    }
+  private def executeRequest(msg: Message[ProtocolExecute.Request]): JupyterApi.ExecuteRequest =
+    new JupyterApi.ExecuteRequest {
+      def metadata: String =
+        new String(msg.metadata.value, StandardCharsets.UTF_8)
+      def header: JupyterApi.MessageHeader =
+        messageHeader(msg.header)
+      def parentHeader: Option[JupyterApi.MessageHeader] =
+        msg.parent_header.map(messageHeader)
+    }
 }

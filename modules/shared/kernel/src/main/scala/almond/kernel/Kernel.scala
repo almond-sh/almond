@@ -84,11 +84,12 @@ final case class Kernel(
           Stream(
             Message(
               Header(
-                UUID.randomUUID().toString,
-                "username",
-                UUID.randomUUID().toString, // Would there be a way to get the session id from the client?
-                Status.messageType.messageType,
-                Some(Protocol.versionStr)
+                msg_id = UUID.randomUUID().toString,
+                username = "username",
+                session =
+                  UUID.randomUUID().toString, // Would there be a way to get the session id from the client?
+                msg_type = Status.messageType.messageType,
+                version = Some(Protocol.versionStr)
               ),
               status,
               idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)

@@ -84,7 +84,9 @@ object Dsl {
     stderr: String = null,
     waitForUpdateDisplay: Boolean = false,
     handler: MessageHandler = MessageHandler.discard { case _ => },
-    trimReplyLines: Boolean = false
+    trimReplyLines: Boolean = false,
+    metadata: RawJson = RawJson.emptyObj,
+    parentHeaderOpt: Option[Header] = None
   )(implicit
     sessionId: SessionId,
     session: Session
@@ -94,7 +96,12 @@ object Dsl {
     val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
 
     val input = Stream(
-      executeMessage(code, stopOnError = !expectError0)
+      executeMessage(
+        code,
+        stopOnError = !expectError0,
+        metadata = metadata,
+        parentHeaderOpt = parentHeaderOpt
+      )
     )
 
     val stopWhen0: (Channel, Message[RawJson]) => IO[Boolean] =
@@ -311,17 +318,21 @@ object Dsl {
   private def executeMessage(
     code: String,
     msgId: String = UUID.randomUUID().toString,
-    stopOnError: Boolean = true
+    stopOnError: Boolean = true,
+    metadata: RawJson = RawJson.emptyObj,
+    parentHeaderOpt: Option[Header] = None
   )(implicit sessionId: SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        ProtocolExecute.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = ProtocolExecute.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
-      ProtocolExecute.Request(code, stop_on_error = Some(stopOnError))
+      ProtocolExecute.Request(code, stop_on_error = Some(stopOnError)),
+      metadata = metadata,
+      parent_header = parentHeaderOpt
     ).on(Channel.Requests)
 
   def inspect(
@@ -352,11 +363,11 @@ object Dsl {
   )(implicit sessionId: SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        Inspect.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = Inspect.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
       Inspect.Request(code, pos, if (detailed) 1 else 0)
     ).on(Channel.Requests)
@@ -396,11 +407,11 @@ object Dsl {
   )(implicit sessionId: SessionId) =
     Message(
       Header(
-        msgId,
-        "test",
-        sessionId.sessionId,
-        Complete.requestType.messageType,
-        Some(Protocol.versionStr)
+        msg_id = msgId,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = Complete.requestType.messageType,
+        version = Some(Protocol.versionStr)
       ),
       Complete.Request(code, pos)
     ).on(Channel.Requests)
