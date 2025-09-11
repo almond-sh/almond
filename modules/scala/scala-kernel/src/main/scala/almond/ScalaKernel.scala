@@ -260,7 +260,7 @@ object ScalaKernel extends CaseApp[Options] {
             if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
             else None
         ))
-        .unsafeRunSync()(IORuntime.global)
+        .unsafeRunSync()(kernelThreads.ioRuntime)
     finally
       interpreter.shutdown()
   }

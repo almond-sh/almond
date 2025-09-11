@@ -70,12 +70,17 @@ object KernelTests extends TestSuite {
         ).streamOn(Channel.Requests)
 
       val streams =
-        ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
+        ClientStreams.create(
+          input,
+          stopWhen,
+          inputHandler.orElse(ignoreExpectedReplies),
+          threads.ioRuntime
+        )
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val inputReply   = streams.singleRequest(Channel.Input, Input.replyType)
@@ -115,12 +120,12 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes()
@@ -162,13 +167,13 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes()
@@ -192,13 +197,13 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       assert(interpreter.shutdownCalled())
@@ -238,12 +243,13 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen, ignoreExpectedReplies)
+      val streams =
+        ClientStreams.create(input, stopWhen, ignoreExpectedReplies, ioRuntime = threads.ioRuntime)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toSet

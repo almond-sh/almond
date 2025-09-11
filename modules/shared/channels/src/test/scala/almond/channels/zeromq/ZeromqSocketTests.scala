@@ -15,7 +15,8 @@ import java.nio.charset.StandardCharsets
 
 object ZeromqSocketTests extends TestSuite {
 
-  private val ctx = ZMQ.context(4)
+  private val ctx       = ZMQ.context(4)
+  private val ioRuntime = IORuntime.global
 
   override def utestAfterAll() =
     ctx.term()
@@ -93,7 +94,7 @@ object ZeromqSocketTests extends TestSuite {
           _ <- rep.close(lingerDuration = 5.seconds)
         } yield ()
 
-      t.unsafeRunSync()(IORuntime.global)
+      t.unsafeRunSync()(ioRuntime)
     }
 
     test("simpleWithNoKey") {
@@ -160,7 +161,7 @@ object ZeromqSocketTests extends TestSuite {
           _ <- rep.close(lingerDuration = 5.seconds)
         } yield ()
 
-      t.unsafeRunSync()(IORuntime.global)
+      t.unsafeRunSync()(ioRuntime)
     }
 
   }
