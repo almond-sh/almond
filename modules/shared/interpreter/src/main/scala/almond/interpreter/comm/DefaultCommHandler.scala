@@ -13,7 +13,8 @@ import scala.concurrent.ExecutionContext
 
 final class DefaultCommHandler(
   queue: Queue[IO, (Channel, RawMessage)],
-  commEc: ExecutionContext
+  commEc: ExecutionContext,
+  ioRuntime: IORuntime
 ) extends CommHandler {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -54,7 +55,7 @@ final class DefaultCommHandler(
     message
       .publish(messageType, content, RawJson(metadata))
       .enqueueOn(Channel.Publish, queue)
-      .unsafeRunSync()(IORuntime.global)
+      .unsafeRunSync()(ioRuntime)
 
   def commOpen(targetName: String, id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
     publish(Comm.openType, Comm.Open(id, targetName, RawJson(data)), metadata)

@@ -27,7 +27,8 @@ object LauncherOutputHandler {
 
 class LauncherOutputHandler(
   firstMessage: Message[RawJson],
-  conn: Connection
+  conn: Connection,
+  ioRuntime: IORuntime
 ) extends OutputHandler {
   import LauncherOutputHandler._
   def done(): Unit = {
@@ -84,7 +85,7 @@ class LauncherOutputHandler(
           try
             conn
               .send(Channel.Publish, msg0)
-              .unsafeRunSync()(IORuntime.global)
+              .unsafeRunSync()(ioRuntime)
           catch {
             case NonFatal(e) =>
               throw new Exception(e)

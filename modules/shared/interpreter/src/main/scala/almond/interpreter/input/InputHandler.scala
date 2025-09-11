@@ -18,7 +18,8 @@ import scala.util.Success
 
 final class InputHandler(
   futureEc: ExecutionContext,
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  ioRuntime: IORuntime
 ) {
 
   private val log = logCtx(getClass)
@@ -60,7 +61,7 @@ final class InputHandler(
           {
             implicit val ec = futureEc
             for {
-              _ <- send(Channel.Input, msg).unsafeToFuture()(IORuntime.global)
+              _ <- send(Channel.Input, msg).unsafeToFuture()(ioRuntime)
               s <- p.future
             } yield s
           }

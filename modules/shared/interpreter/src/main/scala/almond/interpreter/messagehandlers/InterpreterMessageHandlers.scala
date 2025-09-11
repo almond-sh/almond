@@ -27,7 +27,8 @@ final case class InterpreterMessageHandlers(
   logCtx: LoggerContext,
   runAfterQueued: IO[Unit] => IO[Unit],
   exitSignal: SignallingRef[IO, Boolean],
-  noExecuteInputFor: Set[String]
+  noExecuteInputFor: Set[String],
+  ioRuntime: IORuntime
 ) {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -38,7 +39,7 @@ final case class InterpreterMessageHandlers(
       (rawMessage, message, queue) =>
 
         val payloads = new ListBuffer[String]
-        val handler  = new QueueOutputHandler(message, queue, commHandlerOpt, payloads)
+        val handler  = new QueueOutputHandler(message, queue, commHandlerOpt, payloads, ioRuntime)
 
         def payloadsAsJson(): List[RawJson] =
           payloads.toList.map { str =>
@@ -266,14 +267,15 @@ object InterpreterMessageHandlers {
     message: Message[_],
     queue: Queue[IO, Either[Throwable, (Channel, RawMessage)]],
     commHandlerOpt: Option[CommHandler],
-    payloads: ListBuffer[String]
+    payloads: ListBuffer[String],
+    ioRuntime: IORuntime
   ) extends OutputHandler {
 
     private def print(on: String, s: String): Unit =
       message
         .publish(Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
         .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(IORuntime.global)
+        .unsafeRunSync()(ioRuntime)
 
     def stdout(s: String): Unit =
       print("stdout", s)

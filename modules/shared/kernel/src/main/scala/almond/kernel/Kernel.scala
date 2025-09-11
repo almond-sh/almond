@@ -19,6 +19,7 @@ import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import cats.effect.IO
 import cats.effect.std.Queue
+import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
@@ -59,7 +60,8 @@ final case class Kernel(
         logCtx,
         io => executeQueue.offer(Some(None -> Stream.exec(io))),
         exitSignal0,
-        noExecuteInputFor
+        noExecuteInputFor,
+        kernelThreads.ioRuntime
       )
 
       val commMessageHandler = backgroundCommHandlerOpt match {
@@ -488,7 +490,7 @@ object Kernel {
     noExecuteInputFor: Set[String]
   ): IO[Kernel] =
     create(
-      new InterpreterToIOInterpreter(interpreter, interpreterEc, logCtx),
+      new InterpreterToIOInterpreter(interpreter, interpreterEc, logCtx, kernelThreads.ioRuntime),
       kernelThreads,
       logCtx,
       extraHandler,
@@ -527,7 +529,11 @@ object Kernel {
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {
-            val h = new DefaultCommHandler(backgroundMessagesQueue, kernelThreads.commEc)
+            val h = new DefaultCommHandler(
+              backgroundMessagesQueue,
+              kernelThreads.commEc,
+              kernelThreads.ioRuntime
+            )
             interpreter.setCommHandler(h)
             h
           }
@@ -535,7 +541,7 @@ object Kernel {
           None
       }
       inputHandler <- IO {
-        new InputHandler(kernelThreads.futureEc, logCtx)
+        new InputHandler(kernelThreads.futureEc, logCtx, kernelThreads.ioRuntime)
       }
     } yield Kernel(
       interpreter,

@@ -55,21 +55,22 @@ object TestUtil {
 
   implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
-    def unsafeRunTimedOrThrow(duration: Duration = Duration.Inf): T =
+    def unsafeRunTimedOrThrow(ioRuntime: IORuntime, duration: Duration = Duration.Inf): T =
       duration match {
         case finite: FiniteDuration =>
-          io.unsafeRunTimed(finite)(IORuntime.global).getOrElse {
+          io.unsafeRunTimed(finite)(ioRuntime).getOrElse {
             throw new Exception("Timeout")
           }
         case _ =>
-          io.unsafeRunSync()(IORuntime.global)
+          io.unsafeRunSync()(ioRuntime)
       }
   }
 
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
+    def helperIORuntime = kernel.kernelThreads.ioRuntime
     def run(streams: ClientStreams): Unit =
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(kernel.kernelThreads.ioRuntime)
   }
 
   final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
@@ -144,7 +145,7 @@ object TestUtil {
       )
 
       Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
   }
 
   implicit class KernelOps(private val kernel: Kernel) extends AnyVal {
@@ -179,10 +180,11 @@ object TestUtil {
         else
           (_, m) => IO.pure(m.header.msg_type == "execute_reply")
 
-      val streams = ClientStreams.create(input, stopWhen, handler)
+      val streams =
+        ClientStreams.create(input, stopWhen, handler, ioRuntime = kernel.kernelThreads.ioRuntime)
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(kernel.kernelThreads.ioRuntime)
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
       val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
@@ -344,7 +346,7 @@ object TestUtil {
           execute(input.last, lastMsgId): _*
       )
 
-      val streams = ClientStreams.create(input0, stopWhen)
+      val streams = ClientStreams.create(input0, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new ScalaInterpreter(
         params = interpreterParams.copy(
@@ -356,7 +358,7 @@ object TestUtil {
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      t.unsafeRunTimedOrThrow()
+      t.unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val replies0 = streams.executeReplies.filter(_._2.nonEmpty)
       val expectedReplies = replies

@@ -18,7 +18,8 @@ import scala.concurrent.ExecutionContext
 final class InterpreterToIOInterpreter(
   interpreter: Interpreter,
   interpreterEc: ExecutionContext,
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  ioRuntime: IORuntime
 ) extends IOInterpreter {
 
   private val log = logCtx(getClass)
@@ -30,7 +31,7 @@ final class InterpreterToIOInterpreter(
 
   private val cancelledSignal0 =
     // maybe not the right IORuntime, but that one shouldn't be used yet at that point
-    SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
+    SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
   def cancelledSignal: SignallingRef[IO, Boolean] =
     cancelledSignal0
 

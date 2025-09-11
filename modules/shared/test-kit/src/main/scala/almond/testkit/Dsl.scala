@@ -5,6 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.eed3si9n.expecty.Expecty.expect
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import fs2.Stream
@@ -32,6 +33,8 @@ object Dsl {
 
   trait Session {
     def run(streams: ClientStreams): Unit
+
+    def helperIORuntime: IORuntime
   }
 
   private implicit class CustomStringOps(private val str: String) extends AnyVal {
@@ -111,7 +114,7 @@ object Dsl {
       else
         stopWhen(ProtocolExecute.replyType.messageType)
 
-    val streams = ClientStreams.create(input, stopWhen0, handler)
+    val streams = ClientStreams.create(input, stopWhen0, handler, session.helperIORuntime)
 
     session.run(streams)
 
@@ -319,7 +322,11 @@ object Dsl {
       executeMessage("sys.exit(0) // ALMOND FORCE EXIT")
     )
 
-    val streams = ClientStreams.create(input, stopWhen(ProtocolExecute.replyType.messageType))
+    val streams = ClientStreams.create(
+      input,
+      stopWhen(ProtocolExecute.replyType.messageType),
+      ioRuntime = session.helperIORuntime
+    )
 
     val interrupted =
       try {
@@ -370,7 +377,11 @@ object Dsl {
       inspectMessage(code, pos, detailed)
     )
 
-    val streams = ClientStreams.create(input, stopWhen(Inspect.replyType.messageType))
+    val streams = ClientStreams.create(
+      input,
+      stopWhen(Inspect.replyType.messageType),
+      ioRuntime = session.helperIORuntime
+    )
 
     session.run(streams)
 
@@ -415,7 +426,11 @@ object Dsl {
       completeMessage(code0, pos0)
     )
 
-    val streams = ClientStreams.create(input, stopWhen(Complete.replyType.messageType))
+    val streams = ClientStreams.create(
+      input,
+      stopWhen(Complete.replyType.messageType),
+      ioRuntime = session.helperIORuntime
+    )
 
     session.run(streams)
 

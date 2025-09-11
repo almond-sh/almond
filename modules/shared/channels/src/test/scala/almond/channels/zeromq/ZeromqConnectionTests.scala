@@ -20,6 +20,7 @@ object ZeromqConnectionTests extends TestSuite {
       val params        = ConnectionParameters.randomLocal()
       val kernelThreads = ZeromqThreads.create("test-kernel")
       val serverThreads = ZeromqThreads.create("test-server")
+      val ioRuntime     = IORuntime.global
 
       val msg0 = Message(
         Nil,
@@ -61,7 +62,7 @@ object ZeromqConnectionTests extends TestSuite {
           _ <- server.close(partial = false, lingerDuration = 2.seconds)
         } yield ()
 
-      t.unsafeRunSync()(IORuntime.global)
+      t.unsafeRunSync()(ioRuntime)
     }
 
   }
