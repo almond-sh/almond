@@ -10,6 +10,7 @@ import java.nio.file.FileSystems
 
 import com.github.lolgab.mill.mima._
 import coursier.getcs.GetCs
+import coursier.version.Version
 import io.github.alexarchambault.millnativeimage.upload.Upload
 import mill._
 import mill.scalalib._
@@ -41,7 +42,7 @@ trait Logger extends Cross.Module[String] with AlmondModule {
     val sv = scalaVersion()
     val scalaReflect =
       if (sv.startsWith("2.")) Agg(Deps.scalaReflect(sv))
-      else Agg(ivy"org.scala-lang:scala3-library_3:${scalaVersion()}")
+      else Agg(ivy"org.scala-lang:scala3-library_3:$sv")
     scalaReflect
   }
   object test extends CrossSbtModuleTests with AlmondTestModule
@@ -324,6 +325,19 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     )
   }
   def mainClass = Some("almond.ScalaKernel")
+
+  def generatedSources: T[Seq[PathRef]] = Task {
+    val constantsFileContent =
+      s"""package almond.internal
+         |
+         |object Constants {
+         |  def almondVersion = "${publishVersion()}"
+         |  def actualScalaVersion = "${scalaVersion()}"
+         |}
+         |""".stripMargin
+    os.write(Task.dest / "Constants.scala", constantsFileContent)
+    Seq(PathRef(Task.dest)) ++ super.generatedSources()
+  }
 }
 
 trait CoursierLogger extends Cross.Module[String] with AlmondModule {
@@ -400,6 +414,22 @@ trait AlmondRx extends Cross.Module[String] with AlmondModule with AlmondMima {
   )
 }
 
+trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondMima {
+  def crossScalaVersion = crossValue
+  def moduleDeps = Seq(
+    scala.`jupyter-api`()
+  )
+  def ivyDeps = Agg(
+    ivy"com.fasterxml.jackson.module::jackson-module-scala:2.19.0"
+  )
+  override def mimaPreviousVersions = Task {
+    // module added only in 0.14.2
+    val cutOff = Version("0.14.1")
+    super.mimaPreviousVersions()
+      .filter(v => Version(v) > cutOff)
+  }
+}
+
 trait Echo extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
@@ -435,7 +465,6 @@ object shared extends Module {
   object `test-kit`             extends Cross[TestKit](ScalaVersions.all)
 }
 
-// FIXME Can't use 'scala' because of macro hygiene issues in some mill macros
 object scala extends Module {
   object `jupyter-api`       extends Cross[JupyterApi](ScalaVersions.binaries)
   object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.all)
@@ -446,6 +475,7 @@ object scala extends Module {
   object launcher            extends Launcher
   object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx` extends Cross[AlmondRx](Seq(ScalaVersions.scala212, ScalaVersions.scala213))
+  object `json-api-jackson` extends Cross[JsonApiJackson](ScalaVersions.binaries)
 
   object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
 
@@ -552,6 +582,7 @@ trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
       scala.`jupyter-api`(ScalaVersions.binary(testScalaVersion)),
       scala.`scala-interpreter`(testScalaVersion),
       scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
+      scala.`json-api-jackson`(ScalaVersions.binary(testScalaVersion)),
       scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
       scala.`shared-directives`(ScalaVersions.binary(testScalaVersion)),
       scala.launcher

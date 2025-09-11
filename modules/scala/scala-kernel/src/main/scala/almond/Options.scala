@@ -144,7 +144,13 @@ final case class Options(
 ) {
   // format: on
 
-  private lazy val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+  private lazy val sbv = {
+    val sv = almond.internal.Constants.actualScalaVersion
+    if (sv.startsWith("2."))
+      sv.split('.').take(2).mkString(".")
+    else
+      sv.split('.').head
+  }
 
   private lazy val ammSparkVersion = defaultAlmondSparkVersion
     .map(_.trim)
@@ -217,8 +223,9 @@ final case class Options(
     val default =
       if (defaultAutoVersions)
         Map(
-          Module.of("sh.almond", s"almond-spark_$sbv")   -> Properties.ammoniteSparkVersion,
-          Module.of("sh.almond", s"ammonite-spark_$sbv") -> Properties.ammoniteSparkVersion
+          Module.of("sh.almond", s"almond-spark_$sbv")     -> Properties.ammoniteSparkVersion,
+          Module.of("sh.almond", s"ammonite-spark_$sbv")   -> Properties.ammoniteSparkVersion,
+          Module.of("sh.almond", s"json-api-jackson_$sbv") -> Properties.version
         )
       else
         Map.empty[Module, String]

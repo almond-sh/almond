@@ -3,6 +3,8 @@ package almond.protocol
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 
+import scala.collection.immutable.ListMap
+
 object Execute {
 
   final case class Request(
@@ -124,11 +126,11 @@ object Execute {
   )
 
   final case class DisplayData(
-    data: Map[
+    data: ListMap[
       String,
       RawJson
     ], // values are always strings, except if key corresponds to a JSON MIME type
-    metadata: Map[String, RawJson],
+    metadata: ListMap[String, RawJson],
     transient: DisplayData.Transient = DisplayData.Transient()
   )
 

@@ -42,13 +42,15 @@ object AlmondPublishModule extends ExternalModule {
 
   def compileBuildVersion(): String = {
     val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim()
-    val maybeExactTag: scala.util.Try[String] = scala.util.Try {
-      os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
-        .call().out
-        .trim()
-        .stripPrefix("v")
+    val maybeExactTag = {
+      val res = os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
+        .call(stderr = os.Pipe, check = false)
+      if (res.exitCode == 0)
+        Some(res.out.trim().stripPrefix("v"))
+      else
+        None
     }
-    maybeExactTag.toOption.getOrElse {
+    maybeExactTag.getOrElse {
       val latestTaggedVersion0 = latestTaggedVersion()
       val commitsSinceTaggedVersion =
         os.proc("git", "rev-list", gitHead, "--not", latestTaggedVersion0, "--count")

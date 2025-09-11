@@ -2084,4 +2084,102 @@ object Tests {
       )
     }
   }
+
+  def almondJackson(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val predef =
+      """import $ivy.`sh.almond::json-api-jackson:_`
+        |import almond.api.AlmondJackson.Extensions._
+        |import almond.interpreter.api.DisplayData
+        |""".stripMargin
+
+    val tmpDir     = os.temp.dir(prefix = "almond.jackson-api-test")
+    val predefPath = tmpDir / "predef.sc"
+    os.write(predefPath, predef)
+
+    runner.withSession("--predef", predefPath.toString) {
+      implicit session =>
+        execute(
+          """case class Data(foo: String, ok: Boolean)
+            |val data = Seq(
+            |  Data("thing", true),
+            |  Data("other", false)
+            |)
+            |""".stripMargin,
+          if (scalaVersion.startsWith("2.12."))
+            """defined class Data
+              |data: Seq[Data] = List(Data("thing", true), Data("other", false))""".stripMargin
+          else
+            """defined class Data
+              |data: Seq[Data] = List(
+              |  Data(foo = "thing", ok = true),
+              |  Data(foo = "other", ok = false)
+              |)""".stripMargin
+        )
+        execute(
+          """publish.displayData("application/thing", data)""",
+          "",
+          displays = Seq(
+            "application/thing" ->
+              """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+        execute(
+          "publish.addPayloadObject(data)",
+          "",
+          replyPayloads = Seq(
+            """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+        val tq = "\"\"\""
+        execute(
+          s"""def data0 = {
+             |  DisplayData()
+             |    .addStringifiedJson("application/thing", $tq{"thing" -> "foo"}$tq)
+             |    .add("application/other", $tq{"looks": "like JSON", "but": "sent as string"}$tq)
+             |    .addJson("application/check", data)
+             |}
+             |publish.display(data0)
+             |""".stripMargin,
+          "defined function data0",
+          displays = Seq(
+            "application/thing" -> """{"thing" -> "foo"}""",
+            "application/other" -> """"{\"looks\": \"like JSON\", \"but\": \"sent as string\"}"""",
+            "application/check" -> """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+        execute(
+          """def data0 = scala.collection.immutable.ListMap(
+            |  "application/foo" -> "thing",
+            |  "application/other" -> data
+            |)
+            |publish.displayDataObject(data0)
+            |""".stripMargin,
+          "defined function data0",
+          displays = Seq(
+            "application/foo"   -> "\"thing\"",
+            "application/other" -> """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+        execute(
+          """def data0 = {
+            |  import java.util.LinkedHashMap
+            |  val m = new LinkedHashMap[String, Any]
+            |  m.put("application/foo", "thing")
+            |  m.put("application/other", data)
+            |  m
+            |}
+            |publish.displayDataObject(data0)
+            |""".stripMargin,
+          "defined function data0",
+          displays = Seq(
+            "application/foo"   -> "\"thing\"",
+            "application/other" -> """[{"foo":"thing","ok":true},{"foo":"other","ok":false}]"""
+          )
+        )
+    }
+  }
 }

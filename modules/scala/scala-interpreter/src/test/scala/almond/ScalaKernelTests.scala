@@ -23,6 +23,7 @@ import fs2.Stream
 import utest._
 
 import scala.collection.compat._
+import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters._
 
 object ScalaKernelTests extends TestSuite {
@@ -414,7 +415,7 @@ object ScalaKernelTests extends TestSuite {
         val displayData = streams.displayData.map {
           case (d, b) =>
             val d0 = d.copy(
-              data = d.data.view.filterKeys(_ == "text/plain").toMap
+              data = ListMap(d.data.view.filterKeys(_ == "text/plain").toSeq: _*)
             )
             (d0, b)
         }
@@ -426,18 +427,18 @@ object ScalaKernelTests extends TestSuite {
 
         val expectedDisplayData = List(
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"n: Int = 2\"".bytes)),
-            Map(),
+            ListMap("text/plain" -> RawJson("\"n: Int = 2\"".bytes)),
+            ListMap(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> false,
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"n: Int = 3\"".bytes)),
-            Map(),
+            ListMap("text/plain" -> RawJson("\"n: Int = 3\"".bytes)),
+            ListMap(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true,
           ProtocolExecute.DisplayData(
-            Map("text/plain" -> RawJson("\"n: Int = 5\"".bytes)),
-            Map(),
+            ListMap("text/plain" -> RawJson("\"n: Int = 5\"".bytes)),
+            ListMap(),
             ProtocolExecute.DisplayData.Transient(Some(id))
           ) -> true
         )
@@ -510,7 +511,7 @@ object ScalaKernelTests extends TestSuite {
       val displayData = streams.displayData.map {
         case (d, b) =>
           val d0 = d.copy(
-            data = d.data.view.filterKeys(_ == "text/plain").toMap
+            data = ListMap(d.data.view.filterKeys(_ == "text/plain").toSeq: _*)
           )
           (d0, b)
       }
@@ -522,13 +523,13 @@ object ScalaKernelTests extends TestSuite {
 
       val expectedDisplayData = List(
         ProtocolExecute.DisplayData(
-          Map("text/plain" -> RawJson("\"n: Int = [lazy]\"".bytes)),
-          Map(),
+          ListMap("text/plain" -> RawJson("\"n: Int = [lazy]\"".bytes)),
+          ListMap(),
           ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> false,
         ProtocolExecute.DisplayData(
-          Map("text/plain" -> RawJson("\"n: Int = 2\"".bytes)),
-          Map(),
+          ListMap("text/plain" -> RawJson("\"n: Int = 2\"".bytes)),
+          ListMap(),
           ProtocolExecute.DisplayData.Transient(Some(id))
         ) -> true
       )
@@ -884,7 +885,7 @@ object ScalaKernelTests extends TestSuite {
         "val n = 2",
         "n: Int = 2",
         stderr =
-          "Success(DisplayData(Map(text/plain -> n: Int = 2),Map(),None))" + System.lineSeparator()
+          "Success(DisplayData(ListMap(text/plain -> String(n: Int = 2)), ListMap(), None))" + System.lineSeparator()
       )
       kernel.execute(
         """kernel.addPostRunHook { res =>
@@ -896,7 +897,7 @@ object ScalaKernelTests extends TestSuite {
           |""".stripMargin,
         "res2: Boolean = true",
         stderr =
-          "Success(DisplayData(Map(text/plain -> res2: Boolean = true),Map(),None))" + System.lineSeparator()
+          "Success(DisplayData(ListMap(text/plain -> String(res2: Boolean = true)), ListMap(), None))" + System.lineSeparator()
       )
       kernel.execute(
         """throw new Exception("THE ERROR")""",
@@ -907,7 +908,7 @@ object ScalaKernelTests extends TestSuite {
           else if (scalaVersion.startsWith("2.13."))
             "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:7)))" + System.lineSeparator()
           else
-            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65420)))" + System.lineSeparator()
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65419)))" + System.lineSeparator()
       )
     }
 
