@@ -8,7 +8,7 @@ object CellMagicHandlers {
 
   class DisplayDataHandler(publish: OutputHandler, contentType: String) extends CellMagicHandler {
     def handle(name: String, content: String): Either[JupyterApi.ExecuteHookResult, String] = {
-      publish.display(DisplayData(Map(contentType -> content)))
+      publish.display(DisplayData().add(contentType, content))
       Right("")
     }
   }
