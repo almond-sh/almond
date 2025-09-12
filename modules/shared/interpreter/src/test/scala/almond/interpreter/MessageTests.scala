@@ -20,15 +20,15 @@ object MessageTests extends TestSuite {
           """{"silent":false,"store_history":true}""".bytes
         )
 
-        val res = Message.parse[RawJson](rawMsg)
+        val res = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
         val expectedRes = Right(
           Message(
             Header(
-              "40fe2409-d5ad-4a5d-a71c-31411eeb2ea5",
-              "",
-              "66fee418-b43a-42b2-bba9-cc91ffac014a",
-              "execute_request",
-              Some("5.2")
+              msg_id = "40fe2409-d5ad-4a5d-a71c-31411eeb2ea5",
+              username = "",
+              session = "66fee418-b43a-42b2-bba9-cc91ffac014a",
+              msg_type = "execute_request",
+              version = Some("5.2")
             ),
             RawJson("""{"silent":false,"store_history":true}""".bytes)
           )
@@ -46,16 +46,16 @@ object MessageTests extends TestSuite {
           """{"silent":false,"store_history":true}""".bytes
         )
 
-        val res = Message.parse[RawJson](rawMsg)
+        val res = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
 
         val expectedRes = Right(
           Message(
             Header(
-              "40fe2409-d5ad-4a5d-a71c-31411eeb2ea5",
-              "",
-              "66fee418-b43a-42b2-bba9-cc91ffac014a",
-              "execute_request",
-              Some("5.2")
+              msg_id = "40fe2409-d5ad-4a5d-a71c-31411eeb2ea5",
+              username = "",
+              session = "66fee418-b43a-42b2-bba9-cc91ffac014a",
+              msg_type = "execute_request",
+              version = Some("5.2")
             ),
             RawJson("""{"silent":false,"store_history":true}""".bytes)
           )

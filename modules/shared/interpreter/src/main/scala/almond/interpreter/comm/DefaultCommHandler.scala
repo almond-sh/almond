@@ -24,11 +24,11 @@ final class DefaultCommHandler(
     Message(
       header =
         Header(
-          "",
-          "username",
-          "",
-          "",
-          Some(Protocol.versionStr)
+          msg_id = "",
+          username = "username",
+          session = "",
+          msg_type = "",
+          version = Some(Protocol.versionStr)
         ), // FIXME Hardcoded user / session id
       content = ()
     )
