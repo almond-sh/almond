@@ -8,4 +8,8 @@ trait AlmondSimpleModule
     with AlmondPublishModule
     with TransitiveSources
     with AlmondArtifactName
-    with AlmondScalacOptions
+    with AlmondScalacOptions {
+
+  // Getting transient errors upon incremental compilation without this
+  def scalacOptions = super.scalacOptions
+}
