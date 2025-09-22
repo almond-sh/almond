@@ -18,8 +18,7 @@ object ScalaInterpreterTests extends TestSuite {
 
   private def newInterpreter(): Interpreter =
     new ScalaInterpreter(
-      params = ScalaInterpreterParams(
-        initialColors = Colors.BlackWhite,
+      params = interpreterParams.copy(
         automaticDependencies = Map(
           Module.of("org.scalacheck", "*") -> Seq(
             Dependency.of("com.github.alexarchambault", s"scalacheck-shapeless_1.14_$sbv", "1.2.3")
@@ -47,10 +46,9 @@ object ScalaInterpreterTests extends TestSuite {
           ("val n = 2", Nil)
 
       val interp = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
+        params = interpreterParams.copy(
           predefCode = predefCode,
-          predefFiles = predefFiles,
-          initialColors = Colors.BlackWhite
+          predefFiles = predefFiles
         ),
         logCtx = logCtx
       )
@@ -73,10 +71,9 @@ object ScalaInterpreterTests extends TestSuite {
           (code, Nil)
         }
       val interp = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
+        params = interpreterParams.copy(
           predefCode = predefCode,
-          predefFiles = predefFiles,
-          initialColors = Colors.BlackWhite
+          predefFiles = predefFiles
         ),
         logCtx = logCtx
       )
@@ -95,10 +92,9 @@ object ScalaInterpreterTests extends TestSuite {
           ("val n = 2z", Nil)
 
       val interp = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
+        params = interpreterParams.copy(
           predefCode = predefCode,
           predefFiles = predefFiles,
-          initialColors = Colors.BlackWhite,
           lazyInit = true // predef throws here else
         ),
         logCtx = logCtx
@@ -126,10 +122,9 @@ object ScalaInterpreterTests extends TestSuite {
         else
           ("""val n: Int = sys.error("foo")""", Nil)
       val interp = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
+        params = interpreterParams.copy(
           predefCode = predefCode,
           predefFiles = predefFiles,
-          initialColors = Colors.BlackWhite,
           lazyInit = true // predef throws here else
         ),
         logCtx = logCtx
