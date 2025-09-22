@@ -128,8 +128,7 @@ object TestUtil {
 
       val interpreter = new ScalaInterpreter(
         params = processParams {
-          ScalaInterpreterParams(
-            initialColors = Colors.BlackWhite,
+          interpreterParams.copy(
             updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
             predefFiles = opt.predef.map(Paths.get(_)),
             toreeMagics = opt.toreeMagics,
@@ -343,9 +342,8 @@ object TestUtil {
       val streams = ClientStreams.create(input0, stopWhen)
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
+        params = interpreterParams.copy(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc)
         ),
         logCtx = logCtx
       )
@@ -393,5 +391,9 @@ object TestUtil {
         expectedGroup == got0
       }
     }
+
+  lazy val interpreterParams = ScalaInterpreterParams(
+    initialColors = Colors.BlackWhite
+  )
 
 }
