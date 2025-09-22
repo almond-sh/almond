@@ -34,4 +34,8 @@ trait AlmondModule
       else dep
     }
   }
+
+  // Getting transient errors upon incremental compilation without this
+  def artifactNameParts = super.artifactNameParts
+  def scalacOptions     = super.scalacOptions
 }

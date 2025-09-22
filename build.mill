@@ -58,7 +58,10 @@ trait Logger extends Cross.Module[String] with AlmondModule {
       else Seq(mvn"org.scala-lang:scala3-library_3:$sv")
     scalaReflect
   }
-  object test extends CrossSbtModuleTests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule {
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
+  }
 }
 
 trait Channels extends Cross.Module[String] with AlmondModule with AlmondMima {
@@ -70,7 +73,10 @@ trait Channels extends Cross.Module[String] with AlmondModule with AlmondMima {
     Deps.fs2,
     Deps.jeromq
   )
-  object test extends CrossSbtModuleTests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule {
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
+  }
 }
 
 trait Protocol extends Cross.Module[String] with AlmondModule {
@@ -89,7 +95,10 @@ trait Protocol extends Cross.Module[String] with AlmondModule {
       Deps.jsoniterScalaMacros.withConfiguration("provided")
     )
   }
-  object test extends CrossSbtModuleTests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule {
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
+  }
 }
 
 trait InterpreterApi extends Cross.Module[String] with AlmondModule with AlmondMima {
@@ -115,7 +124,10 @@ trait Interpreter extends Cross.Module[String] with AlmondModule {
     Deps.scalatags,
     Deps.slf4jNop
   )
-  object test extends CrossSbtModuleTests with AlmondTestModule
+  object test extends CrossSbtModuleTests with AlmondTestModule {
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
+  }
 }
 
 trait Kernel extends Cross.Module[String] with AlmondModule {
@@ -137,6 +149,8 @@ trait Kernel extends Cross.Module[String] with AlmondModule {
       shared.interpreter().test,
       shared.`test-kit`()
     )
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
   }
 }
 
@@ -201,6 +215,9 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
       "scala-version"                   -> crossScalaVersion
     )
   }
+
+  // Getting transient errors upon incremental compilation without this
+  def resources = super.resources
 }
 
 trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
@@ -289,6 +306,8 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     def moduleDeps = super.moduleDeps ++ Seq(
       scala.`scala-interpreter`().test
     )
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
   }
 
   def resolvedMvnDeps = Task {
@@ -412,6 +431,9 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
       "default-scala-version"    -> ScalaVersions.scala3Latest
     )
   }
+
+  // Getting transient errors upon incremental compilation without this
+  def resources = super.resources
 }
 
 trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with AlmondMima {
@@ -459,10 +481,12 @@ trait Echo extends Cross.Module[String] with AlmondModule {
     Deps.caseApp
   )
   def propertyFilePath = "almond/echo.properties"
-  object test extends this.CrossSbtModuleTests with AlmondTestModule {
+  object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       shared.test()
     )
+    // Getting transient errors upon incremental compilation without this
+    def scalacOptions = super.scalacOptions
   }
 }
 
