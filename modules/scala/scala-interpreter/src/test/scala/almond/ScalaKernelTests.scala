@@ -1,6 +1,6 @@
 package almond
 
-import java.io.{ByteArrayOutputStream, PrintStream}
+import java.io.{ByteArrayOutputStream, File, PrintStream}
 import java.net.{URL, URLClassLoader}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
