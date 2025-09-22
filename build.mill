@@ -259,6 +259,15 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
     def mvnDeps = super.mvnDeps() ++ Seq(
       Deps.caseApp
     )
+    def scalacOptions = Task {
+      val base   = super.scalacOptions()
+      val toDrop = Seq("--release", "8")
+      val idx    = base.indexOfSlice(toDrop)
+      if (idx >= 0)
+        base.take(idx) ++ base.drop(idx + toDrop.length)
+      else
+        base
+    }
     def testParallelism = false
   }
 }
