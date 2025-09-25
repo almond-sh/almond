@@ -10,7 +10,7 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
 import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
-import almond.util.ThreadUtil.singleThreadedExecutionContext
+import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp._
 import cats.effect.unsafe.IORuntime
 import coursier.cputil.ClassPathUtil
@@ -24,6 +24,9 @@ import scala.util.Properties
 object ScalaKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
+
+    // should make scalac manage opened JARs more carefully
+    sys.props("scala.classpath.closeZip") = "true"
 
     coursier.Resolve.proxySetup()
 
@@ -120,8 +123,9 @@ object ScalaKernel extends CaseApp[Options] {
           .mkString(System.lineSeparator())
       )
 
-    val interpreterEc               = singleThreadedExecutionContext("scala-interpreter")
-    val updateBackgroundVariablesEc = singleThreadedExecutionContext("update-background-variables")
+    val interpreterEc = singleThreadedExecutionContextExecutorService("scala-interpreter")
+    val updateBackgroundVariablesEc =
+      singleThreadedExecutionContextExecutorService("update-background-variables")
 
     val zeromqThreads = ZeromqThreads.create("scala-kernel")
     val kernelThreads = KernelThreads.create("scala-kernel")

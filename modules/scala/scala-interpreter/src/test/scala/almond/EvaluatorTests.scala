@@ -4,12 +4,15 @@ import almond.TestUtil.SessionRunner
 import almond.amm.AlmondCompilerLifecycleManager
 import almond.kernel.KernelThreads
 import almond.util.SequentialExecutionContext
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  singleThreadedExecutionContextExecutorService
+}
 import utest._
 
 object EvaluatorTests extends TestSuite {
 
-  val interpreterEc = singleThreadedExecutionContext("test-interpreter")
+  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
   val bgVarEc       = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")

@@ -44,7 +44,7 @@ final class ZeromqConnection(
     else SocketType.REQ
 
   private val requests0 = ZeromqSocket(
-    threads.ecs(Channel.Requests),
+    threads.channelEces(Channel.Requests),
     routerDealer,
     bind,
     params.uri(Channel.Requests),
@@ -59,7 +59,7 @@ final class ZeromqConnection(
   )
 
   private val control0 = ZeromqSocket(
-    threads.ecs(Channel.Control),
+    threads.channelEces(Channel.Control),
     routerDealer,
     bind,
     params.uri(Channel.Control),
@@ -74,7 +74,7 @@ final class ZeromqConnection(
   )
 
   private val publish0 = ZeromqSocket(
-    threads.ecs(Channel.Publish),
+    threads.channelEces(Channel.Publish),
     pubSub,
     bind,
     params.uri(Channel.Publish),
@@ -89,7 +89,7 @@ final class ZeromqConnection(
   )
 
   private val stdin0 = ZeromqSocket(
-    threads.ecs(Channel.Input),
+    threads.channelEces(Channel.Input),
     inverseRouterDealer,
     bind,
     params.uri(Channel.Input),
@@ -194,7 +194,7 @@ final class ZeromqConnection(
         if (selectorOpt.isEmpty)
           selectorOpt = Some(Selector.open())
       }
-    }.evalOn(threads.selectorOpenCloseEc)
+    }.evalOn(threads.selectorOpenCloseEces)
 
     val maybeHeartBeatPort = heartBeatPortPromiseAndUri match {
       case Some((promise, _)) =>
@@ -251,7 +251,7 @@ final class ZeromqConnection(
               .map(_.map((channel, _)))
         }
         .getOrElse(IO.pure(None))
-    }.evalOn(threads.pollingEc).flatMap(identity)
+    }.evalOn(threads.pollingEces).flatMap(identity)
 
   def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
 
@@ -275,7 +275,7 @@ final class ZeromqConnection(
       selectorOpt = None
 
       log.debug(s"Closed channels for $actualParams" + (if (partial) " (partial)" else ""))
-    }.evalOn(threads.selectorOpenCloseEc)
+    }.evalOn(threads.selectorOpenCloseEces)
 
     log0 *> t *> other
   }
@@ -305,6 +305,6 @@ object ZeromqConnection {
         logCtx,
         bindToRandomPorts = bindToRandomPorts
       )
-    ).evalOn(threads.selectorOpenCloseEc)
+    ).evalOn(threads.selectorOpenCloseEces)
 
 }

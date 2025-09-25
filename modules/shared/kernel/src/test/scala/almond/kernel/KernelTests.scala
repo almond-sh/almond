@@ -10,7 +10,10 @@ import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
 import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shutdown}
 import almond.testkit.ClientStreams
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  singleThreadedExecutionContextExecutorService
+}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
@@ -22,7 +25,7 @@ object KernelTests extends TestSuite {
 
   val logCtx = LoggerContext.nop // debug: LoggerContext.stderr(almond.logger.Level.Debug)
 
-  val interpreterEc = singleThreadedExecutionContext("test-interpreter")
+  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
 
   val threads = KernelThreads.create("test")
 
