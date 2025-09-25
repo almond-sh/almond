@@ -731,6 +731,12 @@ object Tests {
             |also select a different `charSet` to use, and provide an `offset`/`count` to
             |read from if the source supports seeking.</pre></div>""".stripMargin
         )
+        if (result != expected) {
+          pprint.err.log(expected)
+          pprint.err.log(result)
+          pprint.err.log(expected.map(_.length))
+          pprint.err.log(result.map(_.length))
+        }
         expect(result == expected)
     }
   }
