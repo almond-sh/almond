@@ -29,7 +29,7 @@ class Examples extends munit.FunSuite {
       "--force",
       "--trap-output",
       "--extra-repository",
-      s"ivy:${ExampleProperties.repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
+      ExampleProperties.repoRoot.toNIO.toUri.toASCIIString
     ).call(cwd = ExampleProperties.directory, env = Map("ALMOND_USE_RANDOM_IDS" -> "false"))
 
     path
@@ -127,7 +127,7 @@ class Examples extends munit.FunSuite {
         else
           notebook
       val output = outputDir / notebook.last
-      val res = os.proc(
+      os.proc(
         "jupyter",
         "nbconvert",
         "--to",
@@ -141,7 +141,10 @@ class Examples extends munit.FunSuite {
         env = Map(
           "JUPYTER_PATH"          -> jupyterPath.toString,
           "ALMOND_USE_RANDOM_IDS" -> "false"
-        )
+        ),
+        stdin = os.Inherit,
+        stdout = os.Inherit,
+        stderr = os.Inherit
       )
 
       if (!os.exists(output)) {
