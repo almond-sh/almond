@@ -25,6 +25,9 @@ object ScalaKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
 
+    // should make scalac manage opened JARs more carefully
+    sys.props("scala.classpath.closeZip") = "true"
+
     coursier.Resolve.proxySetup()
 
     if (Properties.isWin && System.console() != null && coursier.paths.Util.useJni())

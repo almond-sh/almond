@@ -4,7 +4,7 @@ import java.nio.file.Path
 
 import almond.logger.LoggerContext
 import ammonite.compiler.CompilerLifecycleManager
-import ammonite.compiler.iface.Preprocessor
+import ammonite.compiler.iface
 
 class AlmondCompilerLifecycleManager(
   rtCacheDir: Option[Path],
@@ -28,7 +28,7 @@ class AlmondCompilerLifecycleManager(
       outputDir,
       initialSettings
     ) {
-  override def preprocess(fileName: String): Preprocessor =
+  override def preprocess(fileName: String): iface.Preprocessor =
     synchronized {
       if (compiler == null) init(force = true)
       // parse method that needs to be put back in Ammonite's public API
@@ -60,5 +60,13 @@ object AlmondCompilerLifecycleManager {
     !v.startsWith("2.11.") && (!v.startsWith("2.12.") ||
     v.stripPrefix("2.12.").takeWhile(_.isDigit).toInt >= 7)
   }
+
+  def closeCompiler(compiler: iface.Compiler): Unit =
+    compiler match {
+      case c: ammonite.compiler.Compiler =>
+        c.compiler.close()
+      case _ =>
+        sys.error(s"Unrecognized compiler instance type: $compiler (${compiler.getClass})")
+    }
 
 }

@@ -4,7 +4,7 @@ import java.nio.file.Path
 
 import almond.logger.LoggerContext
 import ammonite.compiler.CompilerLifecycleManager
-import ammonite.compiler.iface.Preprocessor
+import ammonite.compiler.iface
 import dotty.tools.dotc.util.SourceFile
 
 class AlmondCompilerLifecycleManager(
@@ -30,7 +30,7 @@ class AlmondCompilerLifecycleManager(
       initialSettings
     ) {
 
-  override def preprocess(fileName: String): Preprocessor = synchronized {
+  override def preprocess(fileName: String): iface.Preprocessor = synchronized {
     init()
     new AlmondPreprocessor(
       compiler.initialCtx.fresh.withSource(SourceFile.virtual(fileName, "")),
@@ -49,5 +49,13 @@ class AlmondCompilerLifecycleManager(
 object AlmondCompilerLifecycleManager {
 
   private[almond] def isAtLeast_2_12_7 = true
+
+  def closeCompiler(compiler: iface.Compiler): Unit =
+    compiler match {
+      case c: ammonite.compiler.Compiler =>
+      // No resources to be disposed of in Scala 3 compiler?
+      case _ =>
+        sys.error(s"Unrecognized compiler instance type: $compiler (${compiler.getClass})")
+    }
 
 }

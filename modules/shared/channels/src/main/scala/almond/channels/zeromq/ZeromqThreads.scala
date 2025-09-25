@@ -6,14 +6,22 @@ import almond.channels.Channel
 import almond.util.ThreadUtil.daemonThreadFactory
 import org.zeromq.ZMQ
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 final case class ZeromqThreads(
-  ecs: Channel => ExecutionContext,
-  selectorOpenCloseEc: ExecutionContext,
-  pollingEc: ExecutionContext,
+  ecs: Channel => ExecutionContextExecutorService,
+  selectorOpenCloseEc: ExecutionContextExecutorService,
+  pollingEc: ExecutionContextExecutorService,
   context: ZMQ.Context
-)
+) extends AutoCloseable {
+  def close(): Unit = {
+    for (c <- Channel.channels)
+      ecs(c).shutdown()
+    selectorOpenCloseEc.shutdown()
+    pollingEc.shutdown()
+    context.close()
+  }
+}
 
 object ZeromqThreads {
 
