@@ -69,7 +69,7 @@ object Deps {
   def scalatags                = mvn"com.lihaoyi::scalatags:0.13.1"
   def slf4jNop                 = mvn"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode               = mvn"com.lihaoyi::sourcecode:0.3.0"
-  def testUtil                 = mvn"io.github.alexarchambault::test-util:0.1.6"
+  def testUtil                 = mvn"io.github.alexarchambault::test-util:0.1.7"
   def upickle =
     mvn"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
   def utest = mvn"com.lihaoyi::utest:0.9.0"
