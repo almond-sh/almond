@@ -595,7 +595,7 @@ trait Examples extends SbtModule {
     }
     def forkArgs = Task {
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${BuildCtx.workspaceRoot / "examples"}",
+        s"-Dalmond.examples.dir=${examplesDir().path}",
         s"-Dalmond.examples.output-dir=${Task.dest / "output"}",
         s"-Dalmond.examples.jupyter-path=${Task.dest / "jupyter"}",
         s"-Dalmond.examples.launcher=${scala.`scala-kernel`(examplesScalaVersion).launcher().path}",
