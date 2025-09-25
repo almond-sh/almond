@@ -329,7 +329,7 @@ class KernelLauncher(
             t.start()
             output.printStream.println("Closing test ZeroMQ context")
             IO(ctx.close())
-              .evalOn(threads.pollingEc)
+              .evalOn(threads.pollingEces)
               .unsafeRunTimed(2.minutes)(ioRuntime)
               .getOrElse {
                 sys.error("Timeout when closing ZeroMQ context")

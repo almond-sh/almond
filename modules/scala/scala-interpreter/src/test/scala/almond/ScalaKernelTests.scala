@@ -16,7 +16,10 @@ import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, interpreterParams, isScala212}
 import almond.util.SequentialExecutionContext
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  singleThreadedExecutionContextExecutorService
+}
 import ammonite.util.Colors
 import cats.effect.IO
 import fs2.Stream
@@ -30,7 +33,7 @@ object ScalaKernelTests extends TestSuite {
 
   import almond.interpreter.TestInterpreter.StringBOps
 
-  val interpreterEc = singleThreadedExecutionContext("test-interpreter")
+  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
   val bgVarEc       = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
