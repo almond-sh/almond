@@ -127,7 +127,7 @@ class Examples extends munit.FunSuite {
         else
           notebook
       val output = outputDir / notebook.last
-      val res = os.proc(
+      os.proc(
         "jupyter",
         "nbconvert",
         "--to",
@@ -141,7 +141,10 @@ class Examples extends munit.FunSuite {
         env = Map(
           "JUPYTER_PATH"          -> jupyterPath.toString,
           "ALMOND_USE_RANDOM_IDS" -> "false"
-        )
+        ),
+        stdin = os.Inherit,
+        stdout = os.Inherit,
+        stderr = os.Inherit
       )
 
       if (!os.exists(output)) {
