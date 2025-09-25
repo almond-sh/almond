@@ -68,7 +68,7 @@ object Deps {
   def scalatags                = ivy"com.lihaoyi::scalatags:0.13.1"
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode               = ivy"com.lihaoyi::sourcecode:0.3.0"
-  def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.6"
+  def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.7"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
   def utest = ivy"com.lihaoyi::utest:0.9.0"
