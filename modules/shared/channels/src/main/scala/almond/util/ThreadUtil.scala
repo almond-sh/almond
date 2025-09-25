@@ -37,7 +37,7 @@ object ThreadUtil {
   def sequentialExecutionContext(): ExecutionContext =
     new SequentialExecutionContext
 
-  def singleThreadedExecutionContext(threadName: String): ExecutionContext =
+  def singleThreadedExecutionContext(threadName: String): ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(
       Executors.newSingleThreadExecutor(daemonThreadFactory(threadName))
     )

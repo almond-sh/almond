@@ -17,13 +17,18 @@ import cats.effect.unsafe.IORuntime
 import com.eed3si9n.expecty.Expecty.expect
 import fs2.Stream
 
+import java.io.File
+import java.net.{URI, URLClassLoader}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
+import java.util.jar.Attributes
+import java.util.zip.ZipFile
 
 import scala.collection.compat._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Using
 
 object TestUtil {
 
@@ -50,21 +55,22 @@ object TestUtil {
 
   implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
-    def unsafeRunTimedOrThrow(duration: Duration = Duration.Inf): T =
+    def unsafeRunTimedOrThrow(ioRuntime: IORuntime, duration: Duration = Duration.Inf): T =
       duration match {
         case finite: FiniteDuration =>
-          io.unsafeRunTimed(finite)(IORuntime.global).getOrElse {
+          io.unsafeRunTimed(finite)(ioRuntime).getOrElse {
             throw new Exception("Timeout")
           }
         case _ =>
-          io.unsafeRunSync()(IORuntime.global)
+          io.unsafeRunSync()(ioRuntime)
       }
   }
 
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
+    def helperIORuntime = kernel.kernelThreads.ioRuntime
     def run(streams: ClientStreams): Unit =
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(kernel.kernelThreads.ioRuntime)
   }
 
   final case class KernelRunner(kernel: Seq[String] => Kernel) extends Dsl.Runner {
@@ -101,6 +107,11 @@ object TestUtil {
       val sess = withLauncherOptions(launcherOptions: _*)(options: _*)
       f(sess)
     }
+
+    def withManySessions[T](count: Int, options: String*)(f: Seq[Dsl.Session] => T)(implicit
+      sessionId: Dsl.SessionId
+    ): T =
+      sys.error("Spawning sessions in batch not supported by the unit test kernel launcher")
   }
 
   private case class Options(
@@ -128,8 +139,7 @@ object TestUtil {
 
       val interpreter = new ScalaInterpreter(
         params = processParams {
-          ScalaInterpreterParams(
-            initialColors = Colors.BlackWhite,
+          interpreterParams.copy(
             updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
             predefFiles = opt.predef.map(Paths.get(_)),
             toreeMagics = opt.toreeMagics,
@@ -140,7 +150,7 @@ object TestUtil {
       )
 
       Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
   }
 
   implicit class KernelOps(private val kernel: Kernel) extends AnyVal {
@@ -175,10 +185,11 @@ object TestUtil {
         else
           (_, m) => IO.pure(m.header.msg_type == "execute_reply")
 
-      val streams = ClientStreams.create(input, stopWhen, handler)
+      val streams =
+        ClientStreams.create(input, stopWhen, handler, ioRuntime = kernel.kernelThreads.ioRuntime)
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(kernel.kernelThreads.ioRuntime)
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
       val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
@@ -340,12 +351,11 @@ object TestUtil {
           execute(input.last, lastMsgId): _*
       )
 
-      val streams = ClientStreams.create(input0, stopWhen)
+      val streams = ClientStreams.create(input0, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
+        params = interpreterParams.copy(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc)
         ),
         logCtx = logCtx
       )
@@ -353,7 +363,7 @@ object TestUtil {
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      t.unsafeRunTimedOrThrow()
+      t.unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val replies0 = streams.executeReplies.filter(_._2.nonEmpty)
       val expectedReplies = replies
@@ -393,5 +403,42 @@ object TestUtil {
         expectedGroup == got0
       }
     }
+
+  lazy val initialClassLoader = {
+
+    val contextClassLoader = Thread.currentThread().getContextClassLoader
+
+    val appClassPath = sys.props.get("java.class.path").toSeq.flatMap(_.split(File.pathSeparator))
+
+    val manifestClassPathOpt = appClassPath match {
+      case Seq(jar) =>
+        val jar0 = os.Path(jar)
+        Using.resource(new ZipFile(jar0.toIO)) { zf =>
+          Option(zf.getEntry("META-INF/MANIFEST.MF")).flatMap { manifestEntry =>
+            val manifestBytes   = zf.getInputStream(manifestEntry).readAllBytes()
+            val manifestContent = new String(manifestBytes, StandardCharsets.UTF_8)
+            val manifest        = new java.util.jar.Manifest(zf.getInputStream(manifestEntry))
+            Option(manifest.getMainAttributes.get(Attributes.Name.CLASS_PATH)).collect {
+              case classPath: String =>
+                classPath.split("\\s+").map(new URI(_).toURL)
+            }
+          }
+        }
+      case _ => None
+    }
+
+    manifestClassPathOpt match {
+      case Some(manifestClassPath) =>
+        // Artifically add JARs from manifest JAR in a URLClassLoader,
+        // so that Ammonite finds those JARs down-the-line
+        new URLClassLoader(manifestClassPath, contextClassLoader)
+      case None => contextClassLoader
+    }
+  }
+
+  lazy val interpreterParams = ScalaInterpreterParams(
+    initialColors = Colors.BlackWhite,
+    initialClassLoader = initialClassLoader
+  )
 
 }

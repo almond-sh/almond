@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.util.control.NonFatal
 import scala.util.Properties
 
@@ -151,6 +151,14 @@ class KernelLauncher(
   val defaultScalaVersion: String
 ) {
 
+  private lazy val ioRuntime = IORuntime.global
+
+  /** How long we should wait for messages when closing zeromq connections? */
+  def lingerDuration: Duration = 30.seconds
+
+  /** How long after session start should we time out if a session takes too long to run */
+  def sessionTimeout: Duration = 3.minutes
+
   import KernelLauncher._
 
   def isTwoStepStartup = launcherType.isTwoStepStartup
@@ -170,7 +178,7 @@ class KernelLauncher(
     val repoArgs = Seq(
       "--no-default",
       "-r",
-      s"ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]",
+      localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/"),
       "-r",
       "ivy2Local",
       "-r",
@@ -213,8 +221,6 @@ class KernelLauncher(
         s"""Error generating an Almond $almondVersion launcher for Scala $defaultScalaVersion
            |
            |If that error is unexpected, you might want to:
-           |- remove out/repo
-           |    rm -rf out/repo
            |- remove cached version computation in the build:
            |    find out -name "*publishVersion*" -print0 | xargs -0 rm -f
            |
@@ -272,13 +278,19 @@ class KernelLauncher(
           output.printStream.println("stack-trace-printer thread exiting")
     }
 
-  def session(conn: Connection, ctx: ZMQ.Context, output: TestOutput): Session with AutoCloseable =
+  def session(
+    conn: Connection,
+    ctx: ZMQ.Context,
+    output: TestOutput,
+    ioRuntime: IORuntime
+  ): Session with AutoCloseable =
     new Session with AutoCloseable {
+      def helperIORuntime = ioRuntime
       def run(streams: ClientStreams): Unit = {
 
         val poisonPill: (Channel, RawMessage) = null
 
-        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
+        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
 
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
@@ -295,15 +307,15 @@ class KernelLauncher(
           }
         } yield ()
 
-        try Await.result(t.unsafeToFuture()(IORuntime.global), 1.minute)
+        try Await.result(t.unsafeToFuture()(ioRuntime), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
       }
 
       def close(): Unit = {
-        conn.close(partial = false, lingerDuration = 30.seconds)
-          .unsafeRunTimed(2.minutes)(IORuntime.global)
+        conn.close(partial = false, lingerDuration = lingerDuration)
+          .unsafeRunTimed(2.minutes)(ioRuntime)
           .getOrElse {
             sys.error("Timeout when closing ZeroMQ connections")
           }
@@ -315,7 +327,7 @@ class KernelLauncher(
             output.printStream.println("Closing test ZeroMQ context")
             IO(ctx.close())
               .evalOn(threads.pollingEc)
-              .unsafeRunTimed(2.minutes)(IORuntime.global)
+              .unsafeRunTimed(2.minutes)(ioRuntime)
               .getOrElse {
                 sys.error("Timeout when closing ZeroMQ context")
               }
@@ -338,12 +350,12 @@ class KernelLauncher(
       var sessions            = List.empty[Session with AutoCloseable]
       var jupyterDirs         = List.empty[os.Path]
 
-      private def setupJupyterDir[T](
+      private def setupJupyterDir0[T](
         options: Seq[String],
         launcherOptions: Seq[String],
         extraClassPath: Seq[String],
         output: TestOutput
-      ): (os.Path => os.Shellable, Map[String, String]) = {
+      ): KernelSpec = {
 
         val kernelId = "almond-it"
 
@@ -403,13 +415,38 @@ class KernelLauncher(
         proc0.call(stdin = os.Inherit, stdout = output.processOutput, stderr = output.processOutput)
 
         val specFile = dir / kernelId / "kernel.json"
-        val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
+        readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
+      }
 
+      private def setupJupyterDir[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        output: TestOutput
+      ): (os.Path => os.Shellable, Map[String, String]) = {
+        val spec = setupJupyterDir0(options, launcherOptions, extraClassPath, output)
         val f: os.Path => os.Shellable =
           connFile =>
             spec.argv.map {
               case "{connection_file}" => connFile: os.Shellable
               case arg                 => arg: os.Shellable
+            }
+        (f, spec.env)
+      }
+
+      private def setupJupyterDirMany[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        output: TestOutput
+      ): (Seq[os.Path] => os.Shellable, Map[String, String]) = {
+        val spec = setupJupyterDir0(options, launcherOptions, extraClassPath, output)
+        val f: Seq[os.Path] => os.Shellable =
+          connFiles =>
+            spec.argv.map {
+              case "{connection_file}" =>
+                connFiles.map(_.toString).mkString(File.pathSeparator): os.Shellable
+              case arg => arg: os.Shellable
             }
         (f, spec.env)
       }
@@ -425,12 +462,17 @@ class KernelLauncher(
       )(implicit sessionId: SessionId): T =
         withRunnerSession(options, launcherOptions, Nil)(f)
 
+      def withManySessions[T](count: Int, options: String*)(f: Seq[Session] => T)(implicit
+        sessionId: SessionId
+      ): T =
+        withManyRunnerSessions(options, Nil, Nil, count)(f)
+
       def withRunnerSession[T](
         options: Seq[String],
         launcherOptions: Seq[String],
         extraClassPath: Seq[String]
       )(f: Session => T)(implicit sessionId: SessionId): T =
-        TestUtil.runWithTimeout(Some(3.minutes)) {
+        TestUtil.runWithTimeout(Some(sessionTimeout).collect { case f: FiniteDuration => f }) {
           implicit val sess = runnerSession(options, launcherOptions, extraClassPath, output0)
           var running       = true
 
@@ -462,6 +504,55 @@ class KernelLauncher(
               // not any of its sub-processes (which would stay around, and such processes would end up
               // filling up memory on Windows).
               exit()
+            t0
+          }
+          finally {
+            running = false
+            close(Some(output0))
+          }
+        }
+
+      def withManyRunnerSessions[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        sessionCount: Int
+      )(f: Seq[Session] => T)(implicit sessionId: SessionId): T =
+        TestUtil.runWithTimeout(Some(sessionTimeout).collect { case f: FiniteDuration => f }) {
+          val sessions =
+            runnerSessions(options, launcherOptions, extraClassPath, output0, sessionCount)
+          var running = true
+
+          val currentThread = Thread.currentThread()
+
+          val t: Thread =
+            new Thread("watch-kernel-proc") {
+              setDaemon(true)
+              override def run(): Unit = {
+                var done = false
+                while (running && !done)
+                  done = proc.waitFor(100L)
+                if (running && done) {
+                  val retCode = proc.exitCode()
+                  output0.printStream.println(
+                    s"Kernel process exited with code $retCode, interrupting test"
+                  )
+                  currentThread.interrupt()
+                }
+              }
+            }
+
+          t.start()
+          try {
+            val t0 = f(sessions)
+            if (Properties.isWin) {
+              implicit val sess = sessions.head
+              // On Windows, exit the kernel manually from the inside, so that all involved processes
+              // exit cleanly. A call to Process#destroy would only destroy the first kernel process,
+              // not any of its sub-processes (which would stay around, and such processes would end up
+              // filling up memory on Windows).
+              exit()
+            }
             t0
           }
           finally {
@@ -507,7 +598,7 @@ class KernelLauncher(
           )
           Map(
             "COURSIER_REPOSITORIES" ->
-              s"$baseRepos|ivy:${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}/[defaultPattern]"
+              s"$baseRepos|${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}"
           )
         }
 
@@ -564,21 +655,130 @@ class KernelLauncher(
               identityOpt = Some(UUID.randomUUID().toString),
               bindToRandomPorts = false
             )
-            .unsafeRunTimed(delay)(IORuntime.global)
+            .unsafeRunTimed(delay)(ioRuntime)
             .getOrElse {
               sys.error("Timeout when creating ZeroMQ connections")
             }
 
-          conn0.open.unsafeRunTimed(delay)(IORuntime.global).getOrElse {
+          conn0.open.unsafeRunTimed(delay)(ioRuntime).getOrElse {
             sys.error("Timeout when opening ZeroMQ connections")
           }
 
           conn0
         }
 
-        val sess = session(conn, ctx, output)
+        val sess = session(conn, ctx, output, ioRuntime)
         sessions = sess :: sessions
         sess
+      }
+
+      private def runnerSessions(
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        output: TestOutput,
+        sessionCount: Int
+      ): Seq[Session] = {
+
+        close(Some(output))
+
+        val dir       = TmpDir.tmpDir()
+        val connFiles = (1 to sessionCount).map(n => dir / s"connection-$n.json")
+
+        if (!kernelBindToRandomPorts)
+          sys.error("kernelBindToRandomPorts must be true to spawn several sessions at once")
+
+        val initialConnFilesLastModified = connFiles.map { connFile =>
+          val connDetails = ConnectionSpec.fromParams(ConnectionParameters.randomZeroPorts())
+          os.write(connFile, writeToArray(connDetails))
+          (connFile, os.mtime(connFile))
+        }
+
+        // just in case, to be sure the the mtime is newer when the kernel
+        // updates the connection file
+        Thread.sleep(2L)
+
+        val (command, specExtraEnv) = {
+          val (f, env0) = setupJupyterDirMany(options, launcherOptions, extraClassPath, output)
+          (f(connFiles), env0)
+        }
+
+        output.printStream.println(s"Running ${command.value.mkString(" ")}")
+        val extraEnv = {
+          val baseRepos = sys.env.getOrElse(
+            "COURSIER_REPOSITORIES",
+            "ivy2Local|central"
+          )
+          Map(
+            "COURSIER_REPOSITORIES" ->
+              s"$baseRepos|${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}"
+          )
+        }
+
+        assert(proc == null)
+        proc = os.proc(command).spawn(
+          cwd = dir,
+          env = extraEnv ++ specExtraEnv,
+          stdin = os.Inherit,
+          stdout = output.processOutput,
+          stderr = os.Inherit
+        )
+
+        val allConn = {
+          val allUpdatedParams = {
+            retryPeriodicallyUntil(
+              System.currentTimeMillis() + 2.minutes.toMillis,
+              500.millis.toMillis
+            ) {
+              val allOverwritten = initialConnFilesLastModified.forall {
+                case (connFile, initialConnFileLastModified) =>
+                  val connFileLastModified = os.mtime(connFile)
+                  connFileLastModified > initialConnFileLastModified
+              }
+              if (allOverwritten) Some(()) else None
+            }
+            initialConnFilesLastModified.map {
+              case (connFile, _) =>
+                val conn = readFromArray(os.read.bytes(connFile))(ConnectionSpec.codec)
+                conn.connectionParameters
+            }
+          }
+
+          // we already waited for the connection file to be updated, the kernel should already be
+          // listening for connections at that time
+          val delay = 20.seconds
+          val allConn0 = {
+            val tasks = allUpdatedParams.map { updatedParams =>
+              val ctx = ZMQ.context(4)
+              updatedParams.channels(
+                bind = false,
+                threads.copy(context = ctx),
+                lingerPeriod = Some(Duration.Inf),
+                logCtx = TestLogging.logCtxForOutput(output),
+                identityOpt = Some(UUID.randomUUID().toString),
+                bindToRandomPorts = false
+              ).map((_, ctx))
+            }
+            IO.parSequence(tasks.toVector)
+              .unsafeRunTimed(delay)(ioRuntime)
+              .getOrElse {
+                sys.error("Timeout when creating ZeroMQ connections")
+              }
+          }
+
+          IO.parSequence(allConn0.map(_._1.open)).unsafeRunTimed(delay)(ioRuntime).getOrElse {
+            sys.error("Timeout when opening ZeroMQ connections")
+          }
+
+          allConn0
+        }
+
+        val allSess = allConn.map {
+          case (sess, ctx) =>
+            session(sess, ctx, output, ioRuntime)
+        }.toList
+        sessions = allSess ::: sessions
+        allSess
       }
 
       def close(): Unit =
@@ -600,15 +800,15 @@ class KernelLauncher(
         jupyterDirs = Nil
         if (proc != null) {
           if (proc.isAlive()) {
-            proc.close()
-            val timeout = 3.seconds
-            if (!proc.waitFor(timeout.toMillis)) {
+            if (!proc.waitFor(Long.MaxValue)) {
               ps.println(
-                s"Test kernel still running after $timeout, destroying it forcibly"
+                "Test kernel still running, destroying it forcibly"
               )
               proc.destroyForcibly()
             }
           }
+          else
+            ps.println("Kernel already exited")
           proc = null
         }
       }

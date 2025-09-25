@@ -1,6 +1,6 @@
 package almond
 
-import almond.amm.AmmInterpreter
+import almond.amm.{AlmondCompilerLifecycleManager, AmmInterpreter}
 import almond.api.JupyterApi
 import almond.internals._
 import almond.interpreter._
@@ -318,11 +318,19 @@ final class ScalaInterpreter(
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
 
-  override def shutdown(): Unit =
+  override def shutdown(): Unit = {
     try Function.chain(ammInterp.beforeExitHooks).apply(())
     catch {
       case NonFatal(e) =>
         log.warn("Caught exception while trying to run exit hooks", e)
     }
+
+    AlmondCompilerLifecycleManager.closeCompiler(ammInterp.compilerManager.compiler)
+
+    for (frame <- frames0()) {
+      frame.pluginClassloader.close()
+      frame.classloader.close()
+    }
+  }
 
 }

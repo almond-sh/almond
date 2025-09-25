@@ -1,6 +1,6 @@
 package almond
 
-import java.io.{ByteArrayOutputStream, PrintStream}
+import java.io.{ByteArrayOutputStream, File, PrintStream}
 import java.net.{URL, URLClassLoader}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -14,7 +14,7 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.protocol.{Execute => ProtocolExecute, _}
 import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
-import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, isScala212}
+import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, interpreterParams, isScala212}
 import almond.util.SequentialExecutionContext
 import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
 import ammonite.util.Colors
@@ -77,14 +77,12 @@ object ScalaKernelTests extends TestSuite {
     test("stdin") {
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
+        params = interpreterParams,
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       // How the pseudo-client behaves
 
@@ -121,10 +119,15 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val streams =
-        ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
+        ClientStreams.create(
+          input,
+          stopWhen,
+          inputHandler.orElse(ignoreExpectedReplies),
+          ioRuntime = threads.ioRuntime
+        )
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val replies = streams.executeReplies
 
@@ -150,14 +153,12 @@ object ScalaKernelTests extends TestSuite {
       // next one when the previous one is done running (so no messages would be queued.)
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
+        params = interpreterParams,
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -175,10 +176,10 @@ object ScalaKernelTests extends TestSuite {
         executeMessage("""val s = "other"""", lastMsgId)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -258,7 +259,7 @@ object ScalaKernelTests extends TestSuite {
 
     test("start from custom class loader") {
 
-      val loader = new URLClassLoader(Array(), Thread.currentThread().getContextClassLoader) {
+      val loader = new URLClassLoader(Array(), interpreterParams.initialClassLoader) {
         override def getResource(name: String) =
           if (name == "foo")
             new URL("https://google.fr")
@@ -267,15 +268,14 @@ object ScalaKernelTests extends TestSuite {
       }
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
+        params = interpreterParams.copy(
           initialClassLoader = loader
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -350,15 +350,14 @@ object ScalaKernelTests extends TestSuite {
       if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) {
 
         val interpreter = new ScalaInterpreter(
-          params = ScalaInterpreterParams(
-            updateBackgroundVariablesEcOpt = Some(bgVarEc),
-            initialColors = Colors.BlackWhite
+          params = interpreterParams.copy(
+            updateBackgroundVariablesEcOpt = Some(bgVarEc)
           ),
           logCtx = logCtx
         )
 
         val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-          .unsafeRunTimedOrThrow()
+          .unsafeRunTimedOrThrow(threads.ioRuntime)
 
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -377,10 +376,10 @@ object ScalaKernelTests extends TestSuite {
           executeMessage("""n += 2""", lastMsgId)
         )
 
-        val streams = ClientStreams.create(input, stopWhen)
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
         kernel.run(streams.source, streams.sink, Nil)
-          .unsafeRunTimedOrThrow()
+          .unsafeRunTimedOrThrow(threads.ioRuntime)
 
         val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
         val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
@@ -450,15 +449,14 @@ object ScalaKernelTests extends TestSuite {
     def updateLazyValsTest(): Unit = {
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          updateBackgroundVariablesEcOpt = Some(bgVarEc),
-          initialColors = Colors.BlackWhite
+        params = interpreterParams.copy(
+          updateBackgroundVariablesEcOpt = Some(bgVarEc)
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -477,10 +475,10 @@ object ScalaKernelTests extends TestSuite {
         executeMessage("""val b = { n; () }""", lastMsgId)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
       val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
@@ -584,15 +582,14 @@ object ScalaKernelTests extends TestSuite {
           |""".stripMargin
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
+        params = interpreterParams.copy(
           predefCode = predef
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -647,15 +644,14 @@ object ScalaKernelTests extends TestSuite {
     def toreeAddDepsTest(transitive: Boolean = true): Unit = {
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
+        params = interpreterParams.copy(
           toreeMagics = true
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -733,15 +729,14 @@ object ScalaKernelTests extends TestSuite {
     test("toree Truncation") {
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
+        params = interpreterParams.copy(
           toreeMagics = true
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -787,14 +782,12 @@ object ScalaKernelTests extends TestSuite {
     test("payloads") {
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite
-        ),
+        params = interpreterParams,
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -835,15 +828,14 @@ object ScalaKernelTests extends TestSuite {
            |""".stripMargin
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
+        params = interpreterParams.copy(
           predefCode = predef
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -869,15 +861,14 @@ object ScalaKernelTests extends TestSuite {
           |""".stripMargin
 
       val interpreter = new ScalaInterpreter(
-        params = ScalaInterpreterParams(
-          initialColors = Colors.BlackWhite,
+        params = interpreterParams.copy(
           predefCode = predef
         ),
         logCtx = logCtx
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 

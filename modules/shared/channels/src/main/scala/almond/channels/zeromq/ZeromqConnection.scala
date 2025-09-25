@@ -1,7 +1,12 @@
 package almond.channels.zeromq
 
 import java.net.URI
-import java.nio.channels.{ClosedByInterruptException, Selector}
+import java.nio.channels.{
+  ClosedByInterruptException,
+  ClosedChannelException,
+  ClosedSelectorException,
+  Selector
+}
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.channels._
@@ -176,13 +181,15 @@ final class ZeromqConnection(
     }
 
   @volatile private var selectorOpt = Option.empty[Selector]
+  private var actualParams          = params
 
-  private def withSelector[T](f: Selector => T): T =
+  private def withSelector[T](f: Selector => T): Option[T] =
     selectorOpt match {
       case Some(selector) =>
-        f(selector)
+        Some(f(selector))
       case None =>
-        throw new Exception("Channel not opened")
+        log.debug("Connection not opened")
+        None
     }
 
   val open: IO[Map[Option[Channel], Int]] = {
@@ -225,20 +232,33 @@ final class ZeromqConnection(
       ports      <- t
       _          <- other
       extraPorts <- maybeHeartBeatPort
-    } yield ports ++ extraPorts
+    } yield {
+      val ports0 = ports ++ extraPorts
+      actualParams = actualParams.copy(
+        stdin_port = ports0.getOrElse(Some(Channel.Input), actualParams.stdin_port),
+        control_port = ports0.getOrElse(Some(Channel.Control), actualParams.control_port),
+        hb_port = ports0.getOrElse(None, actualParams.hb_port),
+        shell_port = ports0.getOrElse(Some(Channel.Requests), actualParams.shell_port),
+        iopub_port = ports0.getOrElse(Some(Channel.Publish), actualParams.iopub_port)
+      )
+      ports0
+    }
   }
 
   def send(channel: Channel, message: Message): IO[Unit] = {
 
-    val log0 = IO(log.debug(s"Sending message on $params from $channel"))
+    val log0 = IO(log.debug(s"Sending message on $actualParams from $channel"))
 
     log0 *> channelSocket0(channel).send(message)
   }
 
-  def tryRead(channels: Seq[Channel], pollingDelay: Duration): IO[Option[(Channel, Message)]] =
+  def tryRead(
+    channels: Seq[Channel],
+    pollingDelay: Duration
+  ): IO[Option[Either[Unit, (Channel, Message)]]] =
     IO {
 
-      // log.debug(s"Trying to read on $params from $channels") // un-comment if you're, like, really debugging hard
+      // log.debug(s"Trying to read on $actualParams from $channels") // un-comment if you're, like, really debugging hard
 
       val pollItems = channels
         .map { channel =>
@@ -246,23 +266,33 @@ final class ZeromqConnection(
           (channel, new PollItem(socket.channel, Poller.POLLIN))
         }
 
-      withSelector { selector =>
-        ZMQ.poll(selector, pollItems.map(_._2).toArray, pollingDelay.toMillis)
+      val closedOpt = withSelector { selector =>
+        try {
+          ZMQ.poll(selector, pollItems.map(_._2).toArray, pollingDelay.toMillis)
+          false
+        }
+        catch {
+          case _: ClosedSelectorException => true
+          case _: ClosedChannelException  => true
+        }
       }
 
-      pollItems
-        .collectFirst {
-          case (channel, pi) if pi.isReadable =>
-            channelSocket0(channel)
-              .read
-              .map(_.map((channel, _)))
-        }
-        .getOrElse(IO.pure(None))
+      if (closedOpt.getOrElse(true))
+        IO.pure(Some(Left(())))
+      else
+        pollItems
+          .collectFirst {
+            case (channel, pi) if pi.isReadable =>
+              channelSocket0(channel)
+                .read
+                .map(_.map(msg => Right((channel, msg))))
+          }
+          .getOrElse(IO.pure(None))
     }.evalOn(threads.pollingEc).flatMap(identity)
 
   def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
 
-    val log0 = IO(log.debug(s"Closing channels for $params"))
+    val log0 = IO(log.debug(s"Closing channels for $actualParams"))
 
     val channels = List(
       requests0,
@@ -273,7 +303,7 @@ final class ZeromqConnection(
     val t = Parallel.parTraverse(channels)(_.close(lingerDuration))
 
     val other = IO {
-      log.debug(s"Closing things for $params" + (if (partial) " (partial)" else ""))
+      log.debug(s"Closing things for $actualParams" + (if (partial) " (partial)" else ""))
 
       if (!partial)
         heartBeatThreadOpt.foreach(_.interrupt())
@@ -281,7 +311,7 @@ final class ZeromqConnection(
       selectorOpt.foreach(_.close())
       selectorOpt = None
 
-      log.debug(s"Closed channels for $params" + (if (partial) " (partial)" else ""))
+      log.debug(s"Closed channels for $actualParams" + (if (partial) " (partial)" else ""))
     }.evalOn(threads.selectorOpenCloseEc)
 
     log0 *> t *> other
