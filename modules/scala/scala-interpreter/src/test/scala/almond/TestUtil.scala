@@ -107,6 +107,11 @@ object TestUtil {
       val sess = withLauncherOptions(launcherOptions: _*)(options: _*)
       f(sess)
     }
+
+    def withManySessions[T](count: Int, options: String*)(f: Seq[Dsl.Session] => T)(implicit
+      sessionId: Dsl.SessionId
+    ): T =
+      sys.error("Spawning sessions in batch not supported by the unit test kernel launcher")
   }
 
   private case class Options(

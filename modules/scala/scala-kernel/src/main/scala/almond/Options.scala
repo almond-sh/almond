@@ -48,7 +48,15 @@ final case class Options(
   @HelpMessage("Send log to a file rather than stderr")
   @ValueDescription("/path/to/log-file")
     logTo: Option[String] = None,
-  connectionFile: Option[String] = None,
+  @HelpMessage("Connection file to read zeromq ports to bind to from")
+  @ValueDescription("/path/to/connection-file")
+    connectionFile: List[String] = Nil,
+  @Hidden
+  @HelpMessage("Accept multiple connections files separated by : (Linux / macOS) or ; (Windows), and run one kernel for each of them")
+    debugMultiKernels: Boolean = false,
+  @Hidden
+  @HelpMessage("When spawning multiple kernels (see --debug-multi-kernels), use one set of threads per kernel rather than the same set of threads for all kernels")
+    debugMultiKernelsSameThreads: Boolean = false,
   // For class loader isolation, the user code is loaded from the classloader of the api module.
   // If the right -i / -I options are passed to coursier bootstrap when generating a launcher, that loader
   // only sees the api module and its dependencies, rather than the full classpath of almond.
@@ -144,7 +152,11 @@ final case class Options(
 
   @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
   @Hidden
-    wrapperName: Option[String] = None
+    wrapperName: Option[String] = None,
+
+  @HelpMessage("Wait for user to press enter at the beginning and end of Almond's main method")
+  @Hidden
+    pause: Boolean = false
 ) {
   // format: on
 
