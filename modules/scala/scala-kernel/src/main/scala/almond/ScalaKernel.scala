@@ -123,13 +123,6 @@ object ScalaKernel extends CaseApp[Options] {
           .mkString(System.lineSeparator())
       )
 
-    val interpreterEc = singleThreadedExecutionContextExecutorService("scala-interpreter")
-    val updateBackgroundVariablesEc =
-      singleThreadedExecutionContextExecutorService("update-background-variables")
-
-    val zeromqThreads = ZeromqThreads.create("scala-kernel")
-    val kernelThreads = KernelThreads.create("scala-kernel")
-
     val initialClassLoader =
       if (options.specificLoader)
         JupyterApi.getClass.getClassLoader
@@ -153,9 +146,11 @@ object ScalaKernel extends CaseApp[Options] {
         KernelOptions()
     }
 
+    val threads = ScalaKernelThreads.create("scala-kernel")
+
     val interpreter = new ScalaInterpreter(
       params = ScalaInterpreterParams(
-        updateBackgroundVariablesEcOpt = Some(updateBackgroundVariablesEc),
+        updateBackgroundVariablesEcOpt = Some(threads.updateBackgroundVariablesEc),
         extraRepos = options.extraRepository,
         extraBannerOpt = options.banner,
         extraLinks = extraLinks,
@@ -234,7 +229,7 @@ object ScalaKernel extends CaseApp[Options] {
         )
         val scalafmt = new Scalafmt(
           fmtPool,
-          kernelThreads.queueEc,
+          threads.kernelThreads.queueEc,
           logCtx,
           Scalafmt.defaultDialectFor(interpreter.ammInterp.compilerBuilder.scalaVersion)
         )
@@ -247,8 +242,8 @@ object ScalaKernel extends CaseApp[Options] {
     try
       Kernel.create(
         interpreter,
-        interpreterEc,
-        kernelThreads,
+        threads.interpreterEc,
+        threads.kernelThreads,
         logCtx,
         fmtMessageHandler,
         options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet
@@ -256,7 +251,7 @@ object ScalaKernel extends CaseApp[Options] {
         .flatMap(_.runOnConnectionFile(
           connectionFile,
           "scala",
-          zeromqThreads,
+          threads.zeromqThreads,
           options.leftoverMessages0(),
           autoClose = true,
           lingerDuration = options.lingerDuration,
@@ -264,7 +259,7 @@ object ScalaKernel extends CaseApp[Options] {
             if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
             else None
         ))
-        .unsafeRunSync()(kernelThreads.ioRuntime)
+        .unsafeRunSync()(threads.kernelThreads.ioRuntime)
     finally
       interpreter.shutdown()
   }
