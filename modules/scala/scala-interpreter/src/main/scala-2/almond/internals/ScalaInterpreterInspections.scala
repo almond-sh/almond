@@ -18,12 +18,13 @@ import scala.meta.pc.SymbolDocumentation
 import java.io.File
 import java.net.URI
 import java.util.Optional
+import java.util.zip.ZipFile
 
 import scala.collection.compat._
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.tools.nsc.interactive.{Global => Interactive}
-import java.util.zip.ZipFile
+import scala.util.Properties
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,
@@ -143,8 +144,25 @@ final class ScalaInterpreterInspections(
                       Optional.empty[SymbolDocumentation]()
                   }
 
-                if (documentation.isPresent) Some(documentation.get().docstring)
-                else None
+                if (documentation.isPresent) {
+                  val docstring = documentation.get().docstring
+                  val finalDocstring =
+                    if (Properties.isWin)
+                      docstring.linesIterator
+                        .zip(docstring.linesWithSeparators)
+                        .map {
+                          case (line, lineWithSep) =>
+                            val hasSeparator = line.length < lineWithSep.length
+                            if (hasSeparator) line + System.lineSeparator()
+                            else lineWithSep
+                        }
+                        .mkString
+                    else
+                      docstring
+                  Some(finalDocstring)
+                }
+                else
+                  None
               }
             }
 
