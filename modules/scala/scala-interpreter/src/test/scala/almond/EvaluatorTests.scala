@@ -38,8 +38,8 @@ object EvaluatorTests extends TestSuite {
       // Running them here to test our custom preprocessor.
 
       test("multistatement") {
-        val sv         = scala.util.Properties.versionNumberString
-        val isScala212 = sv.startsWith("2.12.")
+        val sv         = almond.api.Properties.actualScalaVersion
+        val isScala213 = sv.startsWith("2.13.")
         runner.run(
           Seq(
             ";1; 2L; '3';" ->
@@ -56,7 +56,7 @@ object EvaluatorTests extends TestSuite {
               """y: Int = 1
                 |defined class C
                 |res4_2: Int = 3""".stripMargin,
-            "C()" -> (if (isScala212) "res5: C = C(0)" else "res5: C = C(i = 0)")
+            "C()" -> (if (isScala213) "res5: C = C(i = 0)" else "res5: C = C(0)")
           )
         )
       }
