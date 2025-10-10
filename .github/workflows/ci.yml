@@ -43,7 +43,7 @@ jobs:
         include:
           - OS: windows-latest
             SCALA: 2.13.16
-          - OS: macos-13
+          - OS: macos-15
             SCALA: 2.13.16
     steps:
     - uses: actions/checkout@v5
@@ -65,7 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        OS: ["ubuntu-22.04", macos-13, windows-latest]
+        OS: ["ubuntu-22.04", macos-15, windows-latest]
     steps:
     - uses: actions/checkout@v5
       with:
