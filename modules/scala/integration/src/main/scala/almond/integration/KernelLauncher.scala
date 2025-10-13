@@ -151,6 +151,8 @@ class KernelLauncher(
   val defaultScalaVersion: String
 ) {
 
+  private lazy val ioRuntime = IORuntime.global
+
   import KernelLauncher._
 
   def isTwoStepStartup = launcherType.isTwoStepStartup
@@ -272,13 +274,19 @@ class KernelLauncher(
           output.printStream.println("stack-trace-printer thread exiting")
     }
 
-  def session(conn: Connection, ctx: ZMQ.Context, output: TestOutput): Session with AutoCloseable =
+  def session(
+    conn: Connection,
+    ctx: ZMQ.Context,
+    output: TestOutput,
+    ioRuntime: IORuntime
+  ): Session with AutoCloseable =
     new Session with AutoCloseable {
+      def helperIORuntime = ioRuntime
       def run(streams: ClientStreams): Unit = {
 
         val poisonPill: (Channel, RawMessage) = null
 
-        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
+        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
 
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
@@ -295,7 +303,7 @@ class KernelLauncher(
           }
         } yield ()
 
-        try Await.result(t.unsafeToFuture()(IORuntime.global), 1.minute)
+        try Await.result(t.unsafeToFuture()(ioRuntime), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
@@ -303,7 +311,7 @@ class KernelLauncher(
 
       def close(): Unit = {
         conn.close(partial = false, lingerDuration = 30.seconds)
-          .unsafeRunTimed(2.minutes)(IORuntime.global)
+          .unsafeRunTimed(2.minutes)(ioRuntime)
           .getOrElse {
             sys.error("Timeout when closing ZeroMQ connections")
           }
@@ -315,7 +323,7 @@ class KernelLauncher(
             output.printStream.println("Closing test ZeroMQ context")
             IO(ctx.close())
               .evalOn(threads.pollingEc)
-              .unsafeRunTimed(2.minutes)(IORuntime.global)
+              .unsafeRunTimed(2.minutes)(ioRuntime)
               .getOrElse {
                 sys.error("Timeout when closing ZeroMQ context")
               }
@@ -564,19 +572,19 @@ class KernelLauncher(
               identityOpt = Some(UUID.randomUUID().toString),
               bindToRandomPorts = false
             )
-            .unsafeRunTimed(delay)(IORuntime.global)
+            .unsafeRunTimed(delay)(ioRuntime)
             .getOrElse {
               sys.error("Timeout when creating ZeroMQ connections")
             }
 
-          conn0.open.unsafeRunTimed(delay)(IORuntime.global).getOrElse {
+          conn0.open.unsafeRunTimed(delay)(ioRuntime).getOrElse {
             sys.error("Timeout when opening ZeroMQ connections")
           }
 
           conn0
         }
 
-        val sess = session(conn, ctx, output)
+        val sess = session(conn, ctx, output, ioRuntime)
         sessions = sess :: sessions
         sess
       }

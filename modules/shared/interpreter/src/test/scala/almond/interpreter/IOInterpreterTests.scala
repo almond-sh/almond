@@ -16,6 +16,7 @@ object IOInterpreterTests extends TestSuite {
 
   private val pool = Executors.newScheduledThreadPool(4, ThreadUtil.daemonThreadFactory("test"))
   private val ec   = ExecutionContext.fromExecutorService(pool)
+  private val ioRuntime = IORuntime.global
 
   override def utestAfterAll() =
     pool.shutdown()
@@ -28,7 +29,7 @@ object IOInterpreterTests extends TestSuite {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
-          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
 
         val ios = Seq(
           // the "cancel" completion checks are only completed if they are cancelled
@@ -39,7 +40,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()(IORuntime.global)
+        val res = t.unsafeRunSync()(ioRuntime)
         val expectedRes = Seq(
           Some(IsCompleteResult.Invalid),
           Some(IsCompleteResult.Invalid),
@@ -57,7 +58,7 @@ object IOInterpreterTests extends TestSuite {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
-          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
 
         val ios = Seq(
           // the "cancel" completions are only completed if they are cancelled
@@ -68,7 +69,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()(IORuntime.global)
+        val res = t.unsafeRunSync()(ioRuntime)
         val expectedRes = Seq(
           Completion(0, "cancel".length, Seq("cancelled")),
           Completion(0, "cancel".length, Seq("cancelled")),
@@ -86,7 +87,7 @@ object IOInterpreterTests extends TestSuite {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
-          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop)
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
 
         val ios = Seq(
           // the "cancel" inspections are only completed if they are cancelled
@@ -97,7 +98,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()(IORuntime.global)
+        val res = t.unsafeRunSync()(ioRuntime)
         val expectedRes = Seq(
           Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
           Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
