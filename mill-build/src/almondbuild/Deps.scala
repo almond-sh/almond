@@ -40,7 +40,7 @@ object Deps {
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.13.0"
   def coursier =
     ivy"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
-  def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M1"
+  def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M2"
   def coursierLauncher    = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def coursierVersions    = ivy"io.get-coursier::versions:0.5.1"
   def dependencyInterface = ivy"io.get-coursier::dependency-interface:0.3.2"
