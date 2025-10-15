@@ -37,7 +37,7 @@ object Deps {
   def caseAppAnnotations = ivy"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
-  def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.13.0"
+  def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.14.0"
   def coursier =
     ivy"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
   def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M1"
