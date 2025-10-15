@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         OS: [ubuntu-latest]
-        SCALA: [2.12.19, 2.12.20, 2.13.15, 2.13.16, 3.3.5, 3.4.3, 3.6.3]
+        SCALA: [2.12.19, 2.12.20, 2.13.15, 2.13.16, 3.3.7, 3.4.3, 3.6.3]
         include:
           - OS: windows-latest
             SCALA: 2.13.16
