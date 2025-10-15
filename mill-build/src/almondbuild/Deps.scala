@@ -71,5 +71,5 @@ object Deps {
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.7"
   def upickle =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
-  def utest = ivy"com.lihaoyi::utest:0.9.0"
+  def utest = ivy"com.lihaoyi::utest:0.9.1"
 }
