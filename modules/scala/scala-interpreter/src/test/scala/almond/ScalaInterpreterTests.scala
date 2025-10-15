@@ -168,7 +168,7 @@ object ScalaInterpreterTests extends TestSuite {
       }
 
       test("respect store history") {
-        val interpreter = newInterpreter()
+        val interpreter      = newInterpreter()
         val noHistoryTextOpt = interpreter.execute("2", storeHistory = false)
           .asSuccess
           .flatMap(_.data.detailedData.get("text/plain"))
@@ -214,7 +214,7 @@ object ScalaInterpreterTests extends TestSuite {
         val expectedRes            = Completion(0, 3, Seq("List"))
         val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
         val res0                   = interpreter.complete(code, code.length).clearMetadata
-        val res = res0.copy(
+        val res                    = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
         val alternativeRes = res0.copy(
@@ -247,7 +247,7 @@ object ScalaInterpreterTests extends TestSuite {
           ) ++ extraCompletions
         )
         val res0 = interpreter.complete(code, code.length).clearMetadata
-        val res = res0.copy(
+        val res  = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
         assert(res == expectedRes)
@@ -306,7 +306,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(true)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter().execute(code)
+        val res         = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
             |silentAfter: Boolean = true""".stripMargin
@@ -321,7 +321,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(false)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter().execute(code)
+        val res         = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = true
             |silentAfter: Boolean = false""".stripMargin
@@ -342,10 +342,10 @@ object ScalaInterpreterTests extends TestSuite {
           """
             | val effectInNextExecuteAgain = 0
             |""".stripMargin
-        val i    = newInterpreter()
-        val res0 = i.execute(code0)
-        val res1 = i.execute(code1)
-        val res2 = i.execute(code2)
+        val i            = newInterpreter()
+        val res0         = i.execute(code0)
+        val res1         = i.execute(code1)
+        val res2         = i.execute(code2)
         val expectedRes0 = ExecuteResult.Success(DisplayData.text(
           "noEffectInSameExecute: Boolean = true"
         ))

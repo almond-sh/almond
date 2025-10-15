@@ -20,7 +20,7 @@ object MessageTests extends TestSuite {
           """{"silent":false,"store_history":true}""".bytes
         )
 
-        val res = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
+        val res         = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
         val expectedRes = Right(
           Message(
             Header(
@@ -61,7 +61,7 @@ object MessageTests extends TestSuite {
           )
         )
 
-        val metadata = res.map(_.metadata)
+        val metadata         = res.map(_.metadata)
         val expectedMetadata = Right(
           RawJson("""{"deletedCells":[],"cellId":"7ff41107-c89a-4272-8ea2-d6433f918a6d"}""".bytes)
         )

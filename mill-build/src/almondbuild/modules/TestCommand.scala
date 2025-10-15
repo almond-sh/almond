@@ -18,7 +18,7 @@ trait TestCommand extends TestModule {
       val (jvmArgs, props: Map[String, String]) =
         if (useArgsFile) {
           val (props, jvmArgs) = forkArgs().partition(_.startsWith("-D"))
-          val sysProps =
+          val sysProps         =
             props
               .map(_.drop(2).split("[=]", 2))
               .map {

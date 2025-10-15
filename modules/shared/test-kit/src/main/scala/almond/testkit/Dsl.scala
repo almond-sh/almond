@@ -119,7 +119,7 @@ object Dsl {
     session.run(streams)
 
     val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-    val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+    val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
       .filter(if (ignoreStreams0) _ != "stream" else _ => true)
 
     val expectedRequestsMessageTypes =

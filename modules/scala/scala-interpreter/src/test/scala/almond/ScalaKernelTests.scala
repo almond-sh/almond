@@ -361,7 +361,7 @@ object ScalaKernelTests extends TestSuite {
 
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-        val lastMsgId = UUID.randomUUID().toString
+        val lastMsgId                                            = UUID.randomUUID().toString
         val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
             IO.pure(
@@ -460,7 +460,7 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-      val lastMsgId = UUID.randomUUID().toString
+      val lastMsgId                                            = UUID.randomUUID().toString
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
           IO.pure(
@@ -817,7 +817,7 @@ object ScalaKernelTests extends TestSuite {
 
     test("payload from exception handler") {
 
-      val tq = "\"\"\""
+      val tq     = "\"\"\""
       val predef =
         s"""class CustomException(val value: String) extends Exception
            |

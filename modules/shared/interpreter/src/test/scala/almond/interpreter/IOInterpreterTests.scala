@@ -27,7 +27,7 @@ object IOInterpreterTests extends TestSuite {
 
       test("cancel previous requests") {
 
-        val interpreter: Interpreter = new TestInterpreter
+        val interpreter: Interpreter     = new TestInterpreter
         val ioInterpreter: IOInterpreter =
           new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
 
@@ -40,7 +40,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()(ioRuntime)
+        val res         = t.unsafeRunSync()(ioRuntime)
         val expectedRes = Seq(
           Some(IsCompleteResult.Invalid),
           Some(IsCompleteResult.Invalid),
@@ -56,7 +56,7 @@ object IOInterpreterTests extends TestSuite {
 
       test("cancel previous requests") {
 
-        val interpreter: Interpreter = new TestInterpreter
+        val interpreter: Interpreter     = new TestInterpreter
         val ioInterpreter: IOInterpreter =
           new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
 
@@ -69,7 +69,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()(ioRuntime)
+        val res         = t.unsafeRunSync()(ioRuntime)
         val expectedRes = Seq(
           Completion(0, "cancel".length, Seq("cancelled")),
           Completion(0, "cancel".length, Seq("cancelled")),
@@ -85,7 +85,7 @@ object IOInterpreterTests extends TestSuite {
 
       test("cancel previous requests") {
 
-        val interpreter: Interpreter = new TestInterpreter
+        val interpreter: Interpreter     = new TestInterpreter
         val ioInterpreter: IOInterpreter =
           new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
 
@@ -98,7 +98,7 @@ object IOInterpreterTests extends TestSuite {
 
         val t = ios.toList.sequence
 
-        val res = t.unsafeRunSync()(ioRuntime)
+        val res         = t.unsafeRunSync()(ioRuntime)
         val expectedRes = Seq(
           Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
           Some(Inspection(Map("cancelled" -> RawJson("true".bytes)))),
