@@ -429,7 +429,7 @@ trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondM
     scala.`jupyter-api`()
   )
   def ivyDeps = Agg(
-    ivy"com.fasterxml.jackson.module::jackson-module-scala:2.19.0"
+    ivy"com.fasterxml.jackson.module::jackson-module-scala:2.19.2"
   )
   override def mimaPreviousVersions = Task {
     // module added only in 0.14.2
