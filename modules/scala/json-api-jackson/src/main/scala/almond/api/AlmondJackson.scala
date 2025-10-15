@@ -96,7 +96,7 @@ object AlmondJackson {
         */
       def displayDataObject(data: Object, mapper: JsonMapper): Unit = {
         val node = mapper.valueToTree[JsonNode](data)
-        val map = mapper.convertValue(node, classOf[Map[String, Any]]).map {
+        val map  = mapper.convertValue(node, classOf[Map[String, Any]]).map {
           case (k, v) =>
             (k, DisplayData.Value.Json(mapper.writeValueAsString(v)))
         }

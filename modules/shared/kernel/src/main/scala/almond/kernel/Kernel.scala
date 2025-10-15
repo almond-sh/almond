@@ -266,7 +266,7 @@ final case class Kernel(
       val run0 =
         for {
           ports <- c.open
-          _ <- {
+          _     <- {
             assert(bindToRandomPorts.nonEmpty || ports.isEmpty)
             bindToRandomPorts match {
               case Some(connectionFile) if ports.nonEmpty =>
@@ -368,7 +368,7 @@ final case class Kernel(
           IO.raiseError(new Exception(s"Connection file $connectionPath not a regular file"))
       }
       connection <- JsonConnection.fromPath(connectionPath)
-      value <- runOnConnectionAllowClose(
+      value      <- runOnConnectionAllowClose(
         connection.connectionParameters,
         kernelId,
         zeromqThreads,
@@ -521,11 +521,11 @@ object Kernel {
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.unbounded[IO, (Channel, RawMessage)]
-      executeQueue <- Queue.unbounded[IO, Option[(
+      executeQueue            <- Queue.unbounded[IO, Option[(
         Option[(Channel, RawMessage)],
         Stream[IO, (Channel, RawMessage)]
       )]]
-      otherQueue <- Queue.unbounded[IO, Option[Stream[IO, (Channel, RawMessage)]]]
+      otherQueue               <- Queue.unbounded[IO, Option[Stream[IO, (Channel, RawMessage)]]]
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {

@@ -59,7 +59,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       else
         new NotebookCacheLogger(outputHandler, logCtx)
 
-    val cache = coursierapi.Cache.create().withLogger(logger)
+    val cache          = coursierapi.Cache.create().withLogger(logger)
     val forcedVersions =
       if (scalaVersion.startsWith("2."))
         Map(
@@ -99,7 +99,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     }
     val apiFiles = {
       val scalaParams = ScalaParameters(scalaVersion)
-      val extraDeps = options.sharedDependencies.map { str =>
+      val extraDeps   = options.sharedDependencies.map { str =>
         val dep = dependency.parser.DependencyParser.parse(str) match {
           case Left(err) =>
             sys.error(s"Malformed shared dependency '$str': $err")
@@ -133,7 +133,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     }
 
     val launcher = os.temp(prefix = "almond", suffix = ".jar")
-    val params = Parameters.Bootstrap(
+    val params   = Parameters.Bootstrap(
       Seq(content(apiFiles), content(kernelFiles)),
       Properties.kernelMainClass
     )
@@ -155,7 +155,7 @@ object Launcher extends CaseApp[LauncherOptions] {
         Seq[os.Shellable]("--kernel-options", optionsFile)
       }
 
-    val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
+    val jvmIdOpt    = params0.jvm.filter(_.trim.nonEmpty)
     val javaCommand = jvmIdOpt match {
       case Some(jvmId) =>
         val jvmManager = coursierapi.JvmManager.create().setArchiveCache(
@@ -200,7 +200,7 @@ object Launcher extends CaseApp[LauncherOptions] {
   private def launchActualKernel(proc: os.proc): Unit = {
 
     System.err.println(s"Launching ${proc.command.flatMap(_.value).mkString(" ")}")
-    val p = proc.spawn(stdin = os.Inherit, stdout = os.Inherit)
+    val p            = proc.spawn(stdin = os.Inherit, stdout = os.Inherit)
     val hook: Thread =
       new Thread("shutdown-kernel") {
         setDaemon(true)
@@ -341,7 +341,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     val leftoverMessagesFileOpt =
       if (leftoverMessages.isEmpty) None
       else {
-        val msgFile = MessageFile.from(leftoverMessages)
+        val msgFile              = MessageFile.from(leftoverMessages)
         val leftoverMessagesFile = os.temp(
           msgFile.asJson.value,
           prefix = "almond-launcher-leftover-messages-",
@@ -400,7 +400,7 @@ object Launcher extends CaseApp[LauncherOptions] {
         case NonFatal(e) if firstMessageOpt.nonEmpty =>
           val firstMessage = firstMessageOpt.getOrElse(sys.error("Cannot happen"))
           val err          = ExecuteError.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
-          val errMsg = firstMessage.publish(
+          val errMsg       = firstMessage.publish(
             Execute.errorType,
             Execute.Error("", "", List(err.message))
           )

@@ -84,7 +84,7 @@ final class JupyterApiImpl(
   protected def updatableResults0: JupyterApi.UpdatableResults =
     execute.updatableResults
 
-  private val executeHooks0 = new mutable.ListBuffer[JupyterApi.ExecuteHook]
+  private val executeHooks0                     = new mutable.ListBuffer[JupyterApi.ExecuteHook]
   def executeHooks: Seq[JupyterApi.ExecuteHook] =
     executeHooks0.toList
   def addExecuteHook(hook: JupyterApi.ExecuteHook): Boolean =
@@ -100,7 +100,7 @@ final class JupyterApiImpl(
     }
   }
 
-  private val postRunHooks0 = new mutable.ListBuffer[JupyterApi.PostRunHook]
+  private val postRunHooks0                       = new mutable.ListBuffer[JupyterApi.PostRunHook]
   def postRunHooks(): Seq[JupyterApi.PostRunHook] =
     postRunHooks0.toList
   def addPostRunHook(hook: JupyterApi.PostRunHook): Boolean =
@@ -130,7 +130,7 @@ final class JupyterApiImpl(
     }
   }
   def postInterruptHooks(): Seq[(String, Any => Any)] = postInterruptHooks0.toList
-  def runPostInterruptHooks(): Unit =
+  def runPostInterruptHooks(): Unit                   =
     try Function.chain(postInterruptHooks0.map(_._2)).apply(())
     catch {
       case NonFatal(e) =>

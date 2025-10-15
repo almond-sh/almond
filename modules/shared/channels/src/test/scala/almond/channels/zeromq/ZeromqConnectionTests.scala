@@ -48,9 +48,9 @@ object ZeromqConnectionTests extends TestSuite {
             bindToRandomPorts = false,
             identityOpt = None
           )
-          _ <- kernel.open
-          _ <- server.open
-          _ <- server.send(Channel.Requests, msg0)
+          _    <- kernel.open
+          _    <- server.open
+          _    <- server.send(Channel.Requests, msg0)
           resp <- kernel.tryRead(Seq(Channel.Requests), 1.second).flatMap {
             case Some(r) => IO.pure(r)
             case None    => IO.raiseError(new Exception("no message"))

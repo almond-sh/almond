@@ -47,12 +47,12 @@ object TextDisplay {
 
   def urlContent(url: URL): String = {
 
-    var conn: URLConnection = null
+    var conn: URLConnection      = null
     val (rawContent, charsetOpt) =
       try {
         conn = url.openConnection()
         conn.setConnectTimeout(5000) // allow users to tweak that?
-        val b = readFully(conn.getInputStream)
+        val b           = readFully(conn.getInputStream)
         val charsetOpt0 = conn match {
           case conn0: HttpURLConnection =>
             conn0

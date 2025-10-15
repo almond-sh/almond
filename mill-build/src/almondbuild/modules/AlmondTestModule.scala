@@ -24,7 +24,7 @@ trait AlmondTestModule
       val (jvmArgs, props: Map[String, String]) =
         if (useArgsFile) {
           val (props, jvmArgs) = forkArgs().partition(_.startsWith("-D"))
-          val sysProps =
+          val sysProps         =
             props
               .map(_.drop(2).split("[=]", 2))
               .map {
@@ -72,7 +72,7 @@ trait AlmondTestModule
       if (!os.exists(outputPath)) mill.api.Result.Failure("Test execution failed.")
       else
         try {
-          val jsonOutput = ujson.read(outputPath.toIO)
+          val jsonOutput         = ujson.read(outputPath.toIO)
           val (doneMsg, results) =
             upickle.default.read[(String, Seq[mill.testrunner.TestResult])](jsonOutput)
           TestModule.handleResults(doneMsg, results, Some(Task.ctx()))

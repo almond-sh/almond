@@ -18,12 +18,12 @@ trait AlmondPublishModule extends PublishModule with ScalaModule {
     )
   )
   def publishVersion = Task(AlmondPublishModule.buildVersion())
-  def javacOptions = super.javacOptions() ++ Seq(
+  def javacOptions   = super.javacOptions() ++ Seq(
     "--release",
     "8"
   )
   def scalacOptions = Task {
-    val sv = scalaVersion()
+    val sv           = scalaVersion()
     val extraOptions =
       if (sv.startsWith("2.12.") && sv.stripPrefix("2.12.").toIntOption.exists(_ <= 18))
         Seq("-target:8")
@@ -41,7 +41,7 @@ object AlmondPublishModule extends ExternalModule {
       .trim()
 
   def compileBuildVersion(): String = {
-    val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim()
+    val gitHead       = os.proc("git", "rev-parse", "HEAD").call().out.trim()
     val maybeExactTag = {
       val res = os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
         .call(stderr = os.Pipe, check = false)
@@ -51,7 +51,7 @@ object AlmondPublishModule extends ExternalModule {
         None
     }
     maybeExactTag.getOrElse {
-      val latestTaggedVersion0 = latestTaggedVersion()
+      val latestTaggedVersion0      = latestTaggedVersion()
       val commitsSinceTaggedVersion =
         os.proc("git", "rev-list", gitHead, "--not", latestTaggedVersion0, "--count")
           .call().out.trim()

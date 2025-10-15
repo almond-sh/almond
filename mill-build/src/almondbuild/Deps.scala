@@ -29,7 +29,7 @@ object Deps {
   }
 
   def ammoniteCompiler = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
-  def ammoniteRepl =
+  def ammoniteRepl     =
     ivy"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))
   def ammoniteReplApi    = ivy"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
@@ -38,7 +38,7 @@ object Deps {
   def caseApp            = ivy"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = ivy"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = ivy"org.scala-lang.modules::scala-collection-compat:2.13.0"
-  def coursier =
+  def coursier           =
     ivy"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
   def coursierApi         = ivy"io.get-coursier:interface:1.0.29-M1"
   def coursierLauncher    = ivy"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
@@ -50,7 +50,7 @@ object Deps {
   def fs2                 = ivy"co.fs2::fs2-core:3.12.0"
   def jansi               = ivy"org.fusesource.jansi:jansi:2.4.2"
   def jeromq              = ivy"org.zeromq:jeromq:0.5.4"
-  def jsoniterScalaCore =
+  def jsoniterScalaCore   =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
     ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
@@ -69,7 +69,7 @@ object Deps {
   def slf4jNop                 = ivy"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode               = ivy"com.lihaoyi::sourcecode:0.3.0"
   def testUtil                 = ivy"io.github.alexarchambault::test-util:0.1.7"
-  def upickle =
+  def upickle                  =
     ivy"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
   def utest = ivy"com.lihaoyi::utest:0.9.0"
 }

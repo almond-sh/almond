@@ -85,7 +85,7 @@ final case class LauncherOptions(
       .map { input =>
         input.split(":", 2) match {
           case Array(prefix, command) => Right(CustomGroup(prefix, command))
-          case Array(_) =>
+          case Array(_)               =>
             Left(s"Malformed custom directive group argument, expected 'prefix:command': '$input'")
         }
       }

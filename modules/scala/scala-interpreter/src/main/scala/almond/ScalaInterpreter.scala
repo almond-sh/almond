@@ -37,7 +37,7 @@ final class ScalaInterpreter(
     frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
 
   private var inspectionsInitialized = false
-  private lazy val inspections = {
+  private lazy val inspections       = {
     val value = new ScalaInterpreterInspections(
       logCtx,
       params.metabrowse,
@@ -166,7 +166,7 @@ final class ScalaInterpreter(
   override def interrupt(): Unit =
     execute0.interrupt(jupyterApi)
 
-  override def supportComm: Boolean = true
+  override def supportComm: Boolean                            = true
   override def setCommHandler(commHandler0: CommHandler): Unit =
     commHandlerOpt = Some(commHandler0)
 
@@ -297,7 +297,7 @@ final class ScalaInterpreter(
     )
   }
 
-  private def nl = System.lineSeparator()
+  private def nl   = System.lineSeparator()
   def kernelInfo() =
     KernelInfo(
       "scala",
