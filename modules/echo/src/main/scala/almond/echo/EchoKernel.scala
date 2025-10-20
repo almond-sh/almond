@@ -1,6 +1,6 @@
 package almond.echo
 
-import almond.util.ThreadUtil.singleThreadedExecutionContext
+import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads}
@@ -51,7 +51,7 @@ object EchoKernel extends CaseApp[Options] {
 
     val zeromqThreads = ZeromqThreads.create("echo-kernel")
     val kernelThreads = KernelThreads.create("echo-kernel")
-    val interpreterEc = singleThreadedExecutionContext("echo-interpreter")
+    val interpreterEc = singleThreadedExecutionContextExecutorService("echo-interpreter")
 
     log.debug("Running kernel")
     Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, logCtx)
