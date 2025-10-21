@@ -1,7 +1,8 @@
 package almondbuild.modules
 
 import almondbuild.Deps
-import mill._
+import mill.*
+import mill.api.*
 
 trait PropertyFile extends AlmondPublishModule {
 

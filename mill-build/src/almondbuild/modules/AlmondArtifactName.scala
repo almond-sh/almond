@@ -1,7 +1,8 @@
 package almondbuild.modules
 
-import mill._
-import mill.scalalib._
+import mill.*
+import mill.api.*
+import mill.scalalib.*
 
 trait AlmondArtifactName extends SbtModule {
   def artifactNameParts =

@@ -29,7 +29,7 @@ class Examples extends munit.FunSuite {
       "--force",
       "--trap-output",
       "--extra-repository",
-      s"ivy:${ExampleProperties.repoRoot.toNIO.toUri.toASCIIString}/[defaultPattern]"
+      ExampleProperties.repoRoot.toNIO.toUri.toASCIIString
     ).call(cwd = ExampleProperties.directory, env = Map("ALMOND_USE_RANDOM_IDS" -> "false"))
 
     path

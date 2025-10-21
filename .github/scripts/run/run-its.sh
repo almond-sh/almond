@@ -26,24 +26,9 @@ trap "jps -mlv" EXIT
 # allow to drop the -j 1.
 
 if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "MINGW" ]; then
-  ./mill -i -j 1 show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup212.*" > test-args-212.json
-  ./mill -i -j 1 show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup213.*" > test-args-213.json
-  ./mill -i -j 1 show "scala.integration.test.testCommand" "almond.integration.KernelTestsTwoStepStartup3.*" > test-args-3.json
-
-  cat test-args-212.json
-  "$RUN_APP" test-args-212.json
-  checkResults
-
-  cat test-args-213.json
-  "$RUN_APP" test-args-213.json
-  checkResults
-
-  cat test-args-3.json
-  "$RUN_APP" test-args-3.json
-  checkResults
+  ./mill.bat -i -j 1 "scala.integration.test.testForked" "almond.integration.KernelTestsTwoStepStartup212.*"
+  ./mill.bat -i -j 1 "scala.integration.test.testForked" "almond.integration.KernelTestsTwoStepStartup213.*"
+  ./mill.bat -i -j 1 "scala.integration.test.testForked" "almond.integration.KernelTestsTwoStepStartup3.*"
 else
-  ./mill -i -j 1 show "scala.integration.test.testCommand" > test-args.json
-  cat test-args.json
-  "$RUN_APP" test-args.json
-  checkResults
+  ./mill -i -j 1 "scala.integration.test.testForked"
 fi

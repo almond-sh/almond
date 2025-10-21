@@ -1,9 +1,10 @@
 package almondbuild.modules
 
 import almondbuild.Mima
-import com.github.lolgab.mill.mima._
-import mill._
-import mill.javalib._
+import com.github.lolgab.mill.mima.*
+import mill.*
+import mill.api.*
+import mill.javalib.*
 
 trait AlmondMima extends com.github.lolgab.mill.mima.Mima with PublishModule {
   def mimaPreviousVersions = Mima.binaryCompatibilityVersions()
@@ -13,10 +14,8 @@ trait AlmondMima extends com.github.lolgab.mill.mima.Mima with PublishModule {
   def mimaPreviousArtifacts = Task {
     val versions = mimaPreviousVersions().distinct
     mill.api.Result.Success(
-      Agg.from(
-        versions.map(version =>
-          ivy"${pomSettings().organization}:${artifactId()}:$version"
-        )
+      versions.map(version =>
+        mvn"${pomSettings().organization}:${artifactId()}:$version"
       )
     )
   }
