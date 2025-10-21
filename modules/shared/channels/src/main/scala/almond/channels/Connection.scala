@@ -35,7 +35,10 @@ abstract class Connection {
     *   a [[Message]], if any, along with the [[Channel]] it was read from, wrapped in
     *   [[scala.Some]]; else [[scala.None]]
     */
-  def tryRead(channels: Seq[Channel], pollingDelay: Duration): IO[Option[(Channel, Message)]]
+  def tryRead(
+    channels: Seq[Channel],
+    pollingDelay: Duration
+  ): IO[Option[Either[Unit, (Channel, Message)]]]
 
   /** Close the channels.
     *
@@ -52,12 +55,12 @@ abstract class Connection {
     * @return
     *   a [[Message]], if any, wrapped in [[scala.Some]], else [[scala.None]]
     */
-  final def tryRead(channel: Channel, pollingDelay: Duration): IO[Option[Message]] =
-    tryRead(Seq(channel), pollingDelay).map(_.map {
+  final def tryRead(channel: Channel, pollingDelay: Duration): IO[Option[Either[Unit, Message]]] =
+    tryRead(Seq(channel), pollingDelay).map(_.map(_.map {
       case (channel0, message) =>
         assert(channel == channel0)
         message
-    })
+    }))
 
   /** [[Stream]] of [[Message]]s from the specified [[Channel]]s.
     *
@@ -73,7 +76,8 @@ abstract class Connection {
   ): Stream[IO, (Channel, Message)] =
     Stream
       .repeatEval(tryRead(channels, pollingDelay))
-      .flatMap(t => Stream(t.toList: _*))
+      .takeWhile(_.forall(_.isRight))
+      .flatMap(t => Stream(t.toList.flatMap(_.toSeq): _*))
 
   /** Sink to send [[Message]]s to any [[Channel]].
     */
