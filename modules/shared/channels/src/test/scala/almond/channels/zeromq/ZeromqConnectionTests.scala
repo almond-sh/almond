@@ -43,8 +43,8 @@ object ZeromqConnectionTests extends TestSuite {
             case Some(r) => IO.pure(r)
             case None    => IO.raiseError(new Exception("no message"))
           }
-          _ = assert(resp._1 == Channel.Requests)
-          _ = assert(resp._2.copy(idents = Nil) == msg0)
+          _ = assert(resp.exists(_._1 == Channel.Requests))
+          _ = assert(resp.exists(_._2.copy(idents = Nil) == msg0))
           // TODO Enforce this is run via bracketing
           _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
           _ <- server.close(partial = false, lingerDuration = 2.seconds)
