@@ -351,12 +351,12 @@ class KernelLauncher(
       var sessions            = List.empty[Session with AutoCloseable]
       var jupyterDirs         = List.empty[os.Path]
 
-      private def setupJupyterDir[T](
+      private def setupJupyterDir0[T](
         options: Seq[String],
         launcherOptions: Seq[String],
         extraClassPath: Seq[String],
         output: TestOutput
-      ): (os.Path => os.Shellable, Map[String, String]) = {
+      ): KernelSpec = {
 
         val kernelId = "almond-it"
 
@@ -416,13 +416,38 @@ class KernelLauncher(
         proc0.call(stdin = os.Inherit, stdout = output.processOutput, stderr = output.processOutput)
 
         val specFile = dir / kernelId / "kernel.json"
-        val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
+        readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
+      }
 
+      private def setupJupyterDir[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        output: TestOutput
+      ): (os.Path => os.Shellable, Map[String, String]) = {
+        val spec = setupJupyterDir0(options, launcherOptions, extraClassPath, output)
         val f: os.Path => os.Shellable =
           connFile =>
             spec.argv.map {
               case "{connection_file}" => connFile: os.Shellable
               case arg                 => arg: os.Shellable
+            }
+        (f, spec.env)
+      }
+
+      private def setupJupyterDirMany[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        output: TestOutput
+      ): (Seq[os.Path] => os.Shellable, Map[String, String]) = {
+        val spec = setupJupyterDir0(options, launcherOptions, extraClassPath, output)
+        val f: Seq[os.Path] => os.Shellable =
+          connFiles =>
+            spec.argv.map {
+              case "{connection_file}" =>
+                connFiles.map(_.toString).mkString(File.pathSeparator): os.Shellable
+              case arg => arg: os.Shellable
             }
         (f, spec.env)
       }
@@ -437,6 +462,11 @@ class KernelLauncher(
         f: Session => T
       )(implicit sessionId: SessionId): T =
         withRunnerSession(options, launcherOptions, Nil)(f)
+
+      def withManySessions[T](count: Int, options: String*)(f: Seq[Session] => T)(implicit
+        sessionId: SessionId
+      ): T =
+        withManyRunnerSessions(options, Nil, Nil, count)(f)
 
       def withRunnerSession[T](
         options: Seq[String],
@@ -475,6 +505,55 @@ class KernelLauncher(
               // not any of its sub-processes (which would stay around, and such processes would end up
               // filling up memory on Windows).
               exit()
+            t0
+          }
+          finally {
+            running = false
+            close(Some(output0))
+          }
+        }
+
+      def withManyRunnerSessions[T](
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        sessionCount: Int
+      )(f: Seq[Session] => T)(implicit sessionId: SessionId): T =
+        TestUtil.runWithTimeout(Some(sessionTimeout).collect { case f: FiniteDuration => f }) {
+          val sessions =
+            runnerSessions(options, launcherOptions, extraClassPath, output0, sessionCount)
+          var running = true
+
+          val currentThread = Thread.currentThread()
+
+          val t: Thread =
+            new Thread("watch-kernel-proc") {
+              setDaemon(true)
+              override def run(): Unit = {
+                var done = false
+                while (running && !done)
+                  done = proc.waitFor(100L)
+                if (running && done) {
+                  val retCode = proc.exitCode()
+                  output0.printStream.println(
+                    s"Kernel process exited with code $retCode, interrupting test"
+                  )
+                  currentThread.interrupt()
+                }
+              }
+            }
+
+          t.start()
+          try {
+            val t0 = f(sessions)
+            if (Properties.isWin) {
+              implicit val sess = sessions.head
+              // On Windows, exit the kernel manually from the inside, so that all involved processes
+              // exit cleanly. A call to Process#destroy would only destroy the first kernel process,
+              // not any of its sub-processes (which would stay around, and such processes would end up
+              // filling up memory on Windows).
+              exit()
+            }
             t0
           }
           finally {
@@ -592,6 +671,115 @@ class KernelLauncher(
         val sess = session(conn, ctx, output, ioRuntime)
         sessions = sess :: sessions
         sess
+      }
+
+      private def runnerSessions(
+        options: Seq[String],
+        launcherOptions: Seq[String],
+        extraClassPath: Seq[String],
+        output: TestOutput,
+        sessionCount: Int
+      ): Seq[Session] = {
+
+        close(Some(output))
+
+        val dir       = TmpDir.tmpDir()
+        val connFiles = (1 to sessionCount).map(n => dir / s"connection-$n.json")
+
+        if (!kernelBindToRandomPorts)
+          sys.error("kernelBindToRandomPorts must be true to spawn several sessions at once")
+
+        val initialConnFilesLastModified = connFiles.map { connFile =>
+          val connDetails = ConnectionSpec.fromParams(ConnectionParameters.randomZeroPorts())
+          os.write(connFile, writeToArray(connDetails))
+          (connFile, os.mtime(connFile))
+        }
+
+        // just in case, to be sure the the mtime is newer when the kernel
+        // updates the connection file
+        Thread.sleep(2L)
+
+        val (command, specExtraEnv) = {
+          val (f, env0) = setupJupyterDirMany(options, launcherOptions, extraClassPath, output)
+          (f(connFiles), env0)
+        }
+
+        output.printStream.println(s"Running ${command.value.mkString(" ")}")
+        val extraEnv = {
+          val baseRepos = sys.env.getOrElse(
+            "COURSIER_REPOSITORIES",
+            "ivy2Local|central"
+          )
+          Map(
+            "COURSIER_REPOSITORIES" ->
+              s"$baseRepos|${localRepoRoot.toNIO.toUri.toASCIIString.stripSuffix("/")}"
+          )
+        }
+
+        assert(proc == null)
+        proc = os.proc(command).spawn(
+          cwd = dir,
+          env = extraEnv ++ specExtraEnv,
+          stdin = os.Inherit,
+          stdout = output.processOutput,
+          stderr = os.Inherit
+        )
+
+        val allConn = {
+          val allUpdatedParams = {
+            retryPeriodicallyUntil(
+              System.currentTimeMillis() + 2.minutes.toMillis,
+              500.millis.toMillis
+            ) {
+              val allOverwritten = initialConnFilesLastModified.forall {
+                case (connFile, initialConnFileLastModified) =>
+                  val connFileLastModified = os.mtime(connFile)
+                  connFileLastModified > initialConnFileLastModified
+              }
+              if (allOverwritten) Some(()) else None
+            }
+            initialConnFilesLastModified.map {
+              case (connFile, _) =>
+                val conn = readFromArray(os.read.bytes(connFile))(ConnectionSpec.codec)
+                conn.connectionParameters
+            }
+          }
+
+          // we already waited for the connection file to be updated, the kernel should already be
+          // listening for connections at that time
+          val delay = 20.seconds
+          val allConn0 = {
+            val tasks = allUpdatedParams.map { updatedParams =>
+              val ctx = ZMQ.context(4)
+              updatedParams.channels(
+                bind = false,
+                threads.copy(context = ctx),
+                lingerPeriod = Some(Duration.Inf),
+                logCtx = TestLogging.logCtxForOutput(output),
+                identityOpt = Some(UUID.randomUUID().toString),
+                bindToRandomPorts = false
+              ).map((_, ctx))
+            }
+            IO.parSequence(tasks.toVector)
+              .unsafeRunTimed(delay)(ioRuntime)
+              .getOrElse {
+                sys.error("Timeout when creating ZeroMQ connections")
+              }
+          }
+
+          IO.parSequence(allConn0.map(_._1.open)).unsafeRunTimed(delay)(ioRuntime).getOrElse {
+            sys.error("Timeout when opening ZeroMQ connections")
+          }
+
+          allConn0
+        }
+
+        val allSess = allConn.map {
+          case (sess, ctx) =>
+            session(sess, ctx, output, ioRuntime)
+        }.toList
+        sessions = allSess ::: sessions
+        allSess
       }
 
       def close(): Unit =

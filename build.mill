@@ -670,6 +670,25 @@ trait Integration extends SbtModule {
     Deps.testUtil
   )
 
+  def forkArgs = Task {
+    val version = scala.`scala-kernel`(ScalaVersions.scala3Latest).publishVersion()
+    super.forkArgs() ++ Seq(
+      "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
+      s"-Dalmond.test.local-repo=${`local-repo`.localRepo().path}",
+      s"-Dalmond.test.version=$version",
+      s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.versionConstraint.asString, "2.1.2")}",
+      s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
+      s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
+      s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}"
+    )
+  }
+  def tmpDirBase = Task(persistent = true) {
+    PathRef(Task.dest / "working-dir")
+  }
+  def forkEnv = super.forkEnv() ++ Seq(
+    "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
+  )
+
   object test extends SbtTests {
     object helper extends ScalaModule {
       def scalaVersion = ScalaVersions.scala3Latest
@@ -716,9 +735,6 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}",
         s"-Dalmond.test.shapeless-version-pulled-by-kernel=${shapelessVersion()}"
       )
-    }
-    def tmpDirBase = Task(persistent = true) {
-      PathRef(Task.dest / "working-dir")
     }
     def forkEnv = super.forkEnv() ++ Seq(
       "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
