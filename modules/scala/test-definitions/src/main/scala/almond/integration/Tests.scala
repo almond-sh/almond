@@ -2207,4 +2207,41 @@ object Tests {
         "className: String = \"cell2$Helper$C\""
       )
     }
+
+  def packageCells()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """package thing
+          |
+          |object Thing {
+          |  def value = 2
+          |}
+          |""".stripMargin,
+        ""
+      )
+      execute(
+        "import thing.Thing",
+        "import thing.Thing"
+      )
+      execute(
+        "val n = Thing.value + Thing.value",
+        "n: Int = 4"
+      )
+      execute(
+        """package thing
+          |
+          |object Other {
+          |  def message = s"Thing value is ${Thing.value}"
+          |}
+          |""".stripMargin,
+        ""
+      )
+      execute(
+        "val message = thing.Other.message",
+        """message: String = "Thing value is 2""""
+      )
+    }
 }

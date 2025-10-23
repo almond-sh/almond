@@ -21,6 +21,7 @@ import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
 import almond.protocol.{Execute => ProtocolExecute}
 import ammonite.compiler.Parsers
+import ammonite.compiler.iface.Preprocessor
 import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
@@ -319,6 +320,8 @@ final class Execute(
       case Right(()) =>
     }
 
+  private var standaloneSourceCount = 0
+
   private def ammResult(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
@@ -335,106 +338,134 @@ final class Execute(
         else
           code + ls
       }
-      for {
-        stmts <- ammonite.compiler.Parsers.split(code0, ignoreIncomplete = false) match {
-          case None =>
-            // In Scala 2? cannot happen with ignoreIncomplete = false.
-            // In Scala 3, this might unexpectedly happen. The lineSeparator stuff above
-            // tries to avoid some cases where this happens.
-            Res.Skip
-          case Some(Right(stmts)) =>
-            Res.Success(stmts)
-          case Some(Left(err)) =>
-            Res.Failure(err)
-        }
-        _ = log.debug(s"splitted '$code0'")
-        ev <- interruptible(jupyterApi) {
-          withInputManager(inputManager, done = false) {
-            withClientStdin {
-              capturingOutput {
-                resultOutput.clear()
-                resultVariables.clear()
-                log.debug(s"Compiling / evaluating $code0 ($stmts)")
-                val r = ammInterp.processLine(
-                  code0,
-                  stmts,
-                  (if (storeHistory) currentLine0 else currentNoHistoryLine0) + 1,
-                  silent = silent(),
-                  incrementLine = () => incrementLine(storeHistory)
-                )
+      // TODO Ignore comments before any package directive too
+      val isStandaloneSource = code.startsWith("package ")
+      if (isStandaloneSource) {
+        val count = standaloneSourceCount
+        standaloneSourceCount = standaloneSourceCount + 1
+        for {
+          output <- interruptible(jupyterApi) {
+            capturingOutput {
+              Res(
+                ammInterp.compilerManager.compileClass(
+                  Preprocessor.Output(code, 0, 0),
+                  printer0,
+                  s"standalone-source-$count.scala"
+                ),
+                "Compilation Failed"
+              )
+            }
+          }
+          _ = {
+            for ((name, bytes) <- output.classFiles)
+              ammInterp.headFrame.classloader.addClassFile(
+                name.stripSuffix(".class").replace('/', '.'),
+                bytes
+              )
+          }
+        } yield DisplayData.empty
+      }
+      else
+        for {
+          stmts <- ammonite.compiler.Parsers.split(code0, ignoreIncomplete = false) match {
+            case None =>
+              // In Scala 2? cannot happen with ignoreIncomplete = false.
+              // In Scala 3, this might unexpectedly happen. The lineSeparator stuff above
+              // tries to avoid some cases where this happens.
+              Res.Skip
+            case Some(Right(stmts)) =>
+              Res.Success(stmts)
+            case Some(Left(err)) =>
+              Res.Failure(err)
+          }
+          _ = log.debug(s"splitted '$code0'")
+          ev <- interruptible(jupyterApi) {
+            withInputManager(inputManager, done = false) {
+              withClientStdin {
+                capturingOutput {
+                  resultOutput.clear()
+                  resultVariables.clear()
+                  log.debug(s"Compiling / evaluating $code0 ($stmts)")
+                  val r = ammInterp.processLine(
+                    code0,
+                    stmts,
+                    (if (storeHistory) currentLine0 else currentNoHistoryLine0) + 1,
+                    silent = silent(),
+                    incrementLine = () => incrementLine(storeHistory)
+                  )
 
-                val updatedRes = r match {
-                  case ex: Res.Exception =>
-                    val exOpt =
-                      jupyterApi.exceptionHandlers().foldLeft[Option[Throwable]](Some(ex.t)) {
-                        (exOpt, handler) =>
-                          exOpt.flatMap(handler.handle)
-                      }
-                    exOpt match {
-                      case Some(ex0) =>
-                        if (ex0 == ex.t) ex
-                        else ex.copy(t = ex0)
-                      case None =>
-                        ex.copy(t = JupyterApi.ExceptionHandler.noException())
-                    }
-                  case _ =>
-                    r
-                }
-
-                log.debug(s"Handling output of '$code0'")
-                Repl.handleOutput(ammInterp, updatedRes)
-                updatedRes match {
-                  case Res.Exception(ex, _) =>
-                    lastExceptionOpt0 = Some(ex)
-                  case _ =>
-                }
-
-                val variables = resultVariables.toMap
-                val res0      = resultOutput.result()
-                log.debug(s"Result of '$code0': $res0")
-                resultOutput.clear()
-                resultVariables.clear()
-                val data =
-                  if (variables.isEmpty)
-                    if (res0.isEmpty)
-                      DisplayData.empty
-                    else
-                      DisplayData.text(res0)
-                  else
-                    updatableResultsOpt0 match {
-                      case None =>
-                        DisplayData.text(res0)
-                      case Some(r) =>
-                        val baos = new ByteArrayOutputStream
-                        val haos = new HtmlAnsiOutputStream(baos)
-                        haos.write(res0.getBytes(StandardCharsets.UTF_8))
-                        haos.close()
-                        val html =
-                          s"""<div class="jp-RenderedText">
-                             |<pre><code>${baos.toString("UTF-8")}</code></pre>
-                             |</div>""".stripMargin
-                        log.debug(s"HTML: $html")
-                        val d = r.add(
-                          almond.display.Data(
-                            almond.display.Text.mimeType -> res0,
-                            almond.display.Html.mimeType -> html
-                          ).displayData(),
-                          variables
-                        )
-                        outputHandler match {
-                          case None =>
-                            d
-                          case Some(h) =>
-                            h.display(d)
-                            DisplayData.empty
+                  val updatedRes = r match {
+                    case ex: Res.Exception =>
+                      val exOpt =
+                        jupyterApi.exceptionHandlers().foldLeft[Option[Throwable]](Some(ex.t)) {
+                          (exOpt, handler) =>
+                            exOpt.flatMap(handler.handle)
                         }
-                    }
-                updatedRes.map(_ => data)
+                      exOpt match {
+                        case Some(ex0) =>
+                          if (ex0 == ex.t) ex
+                          else ex.copy(t = ex0)
+                        case None =>
+                          ex.copy(t = JupyterApi.ExceptionHandler.noException())
+                      }
+                    case _ =>
+                      r
+                  }
+
+                  log.debug(s"Handling output of '$code0'")
+                  Repl.handleOutput(ammInterp, updatedRes)
+                  updatedRes match {
+                    case Res.Exception(ex, _) =>
+                      lastExceptionOpt0 = Some(ex)
+                    case _ =>
+                  }
+
+                  val variables = resultVariables.toMap
+                  val res0      = resultOutput.result()
+                  log.debug(s"Result of '$code0': $res0")
+                  resultOutput.clear()
+                  resultVariables.clear()
+                  val data =
+                    if (variables.isEmpty)
+                      if (res0.isEmpty)
+                        DisplayData.empty
+                      else
+                        DisplayData.text(res0)
+                    else
+                      updatableResultsOpt0 match {
+                        case None =>
+                          DisplayData.text(res0)
+                        case Some(r) =>
+                          val baos = new ByteArrayOutputStream
+                          val haos = new HtmlAnsiOutputStream(baos)
+                          haos.write(res0.getBytes(StandardCharsets.UTF_8))
+                          haos.close()
+                          val html =
+                            s"""<div class="jp-RenderedText">
+                               |<pre><code>${baos.toString("UTF-8")}</code></pre>
+                               |</div>""".stripMargin
+                          log.debug(s"HTML: $html")
+                          val d = r.add(
+                            almond.display.Data(
+                              almond.display.Text.mimeType -> res0,
+                              almond.display.Html.mimeType -> html
+                            ).displayData(),
+                            variables
+                          )
+                          outputHandler match {
+                            case None =>
+                              d
+                            case Some(h) =>
+                              h.display(d)
+                              DisplayData.empty
+                          }
+                      }
+                  updatedRes.map(_ => data)
+                }
               }
             }
           }
-        }
-      } yield ev
+        } yield ev
     }
 
   def apply(
