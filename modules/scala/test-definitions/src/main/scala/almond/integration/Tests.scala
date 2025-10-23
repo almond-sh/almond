@@ -2201,4 +2201,45 @@ object Tests {
         "className: String = \"cell2$Helper$C\""
       )
     }
+
+  def packageCells(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val isScala2 = scalaVersion.startsWith("2.")
+
+    runner.withSession() { implicit session =>
+      execute(
+        """package thing
+          |
+          |object Thing {
+          |  def value = 2
+          |}
+          |""".stripMargin,
+        ""
+      )
+      execute(
+        "import thing.Thing",
+        "import thing.Thing" + maybePostImportNewLine(isScala2)
+      )
+      execute(
+        "val n = Thing.value + Thing.value",
+        "n: Int = 4"
+      )
+      execute(
+        """package thing
+          |
+          |object Other {
+          |  def message = s"Thing value is ${Thing.value}"
+          |}
+          |""".stripMargin,
+        ""
+      )
+      execute(
+        "val message = thing.Other.message",
+        """message: String = "Thing value is 2""""
+      )
+    }
+  }
 }
