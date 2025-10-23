@@ -79,7 +79,7 @@ final case class LauncherOptions(
     for (group <- customDirectiveGroup.map(_.split(":", 2)).collect { case Array(k, _) => k })
       b ++= Seq(s"--launcher-directive-group=$group")
     for (name <- wrapperName)
-      b += s"--wrappper-name=$name"
+      b += s"--wrapper-name=$name"
     b.result()
   }
 
