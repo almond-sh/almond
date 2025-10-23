@@ -175,4 +175,11 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
       almond.integration.Tests.almondJackson(kernelLauncher.defaultScalaVersion)
     }
   }
+
+  test("custom wrapper name") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.customWrapperName()
+    }
+  }
 }
