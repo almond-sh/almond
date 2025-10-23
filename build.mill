@@ -285,6 +285,9 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
       else
         base
     }
+    // Getting weird errors with test parallelism on CI when running all tests,
+    // but getting weird ones locally with test parallelism disabled
+    def testParallelism = System.getenv("CI") == null
   }
 }
 
