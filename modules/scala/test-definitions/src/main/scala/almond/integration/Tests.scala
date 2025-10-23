@@ -2188,4 +2188,23 @@ object Tests {
         )
     }
   }
+
+  def customWrapperName()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession("--wrapper-name", "cell") { implicit session =>
+      execute(
+        "val n = 2 + 2",
+        "n: Int = 4"
+      )
+      execute(
+        "class C",
+        "defined class C"
+      )
+      execute(
+        """val className = classOf[C].getName.stripPrefix("ammonite.$sess.")""",
+        "className: String = \"cell2$Helper$C\""
+      )
+    }
 }

@@ -140,7 +140,11 @@ final case class Options(
     "If zero-d ports are passed by Jupyter in connection file, bind to random available ports, " +
     "and update the connection file with the actually used ports"
   )
-    bindToRandomPorts: Option[Boolean] = None
+    bindToRandomPorts: Option[Boolean] = None,
+
+  @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
+  @Hidden
+    wrapperName: Option[String] = None
 ) {
   // format: on
 
@@ -200,7 +204,11 @@ final case class Options(
                 sys.error(s"Malformed dependency '$auto' in --auto-dependency argument '$s': $err")
               case Right((d, _)) =>
                 val dep = d.dependency(scala.util.Properties.versionNumberString)
-                Dependency.of(dep.module.organization.value, dep.module.name.value, dep.version)
+                Dependency.of(
+                  dep.module.organization.value,
+                  dep.module.name.value,
+                  dep.versionConstraint.asString
+                )
                   .withConfiguration(dep.configuration.value)
                   .withClassifier(dep.attributes.classifier.value)
                   .withType(dep.attributes.`type`.value)

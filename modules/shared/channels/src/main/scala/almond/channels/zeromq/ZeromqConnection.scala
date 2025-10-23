@@ -1,7 +1,12 @@
 package almond.channels.zeromq
 
 import java.net.URI
-import java.nio.channels.{ClosedByInterruptException, Selector}
+import java.nio.channels.{
+  ClosedByInterruptException,
+  ClosedChannelException,
+  ClosedSelectorException,
+  Selector
+}
 import java.nio.charset.StandardCharsets.UTF_8
 
 import almond.channels._
@@ -62,7 +67,7 @@ final class ZeromqConnection(
     else SocketType.REQ
 
   private val requests0 = ZeromqSocket(
-    threads.ecs(Channel.Requests),
+    threads.channelEces(Channel.Requests),
     routerDealer,
     bind,
     params.uri(Channel.Requests),
@@ -77,7 +82,7 @@ final class ZeromqConnection(
   )
 
   private val control0 = ZeromqSocket(
-    threads.ecs(Channel.Control),
+    threads.channelEces(Channel.Control),
     routerDealer,
     bind,
     params.uri(Channel.Control),
@@ -92,7 +97,7 @@ final class ZeromqConnection(
   )
 
   private val publish0 = ZeromqSocket(
-    threads.ecs(Channel.Publish),
+    threads.channelEces(Channel.Publish),
     pubSub,
     bind,
     params.uri(Channel.Publish),
@@ -107,7 +112,7 @@ final class ZeromqConnection(
   )
 
   private val stdin0 = ZeromqSocket(
-    threads.ecs(Channel.Input),
+    threads.channelEces(Channel.Input),
     inverseRouterDealer,
     bind,
     params.uri(Channel.Input),
@@ -178,12 +183,13 @@ final class ZeromqConnection(
   @volatile private var selectorOpt = Option.empty[Selector]
   private var actualParams          = params
 
-  private def withSelector[T](f: Selector => T): T =
+  private def withSelector[T](f: Selector => T): Option[T] =
     selectorOpt match {
       case Some(selector) =>
-        f(selector)
+        Some(f(selector))
       case None =>
-        throw new Exception("Channel not opened")
+        log.debug("Connection not opened")
+        None
     }
 
   val open: IO[Map[Option[Channel], Int]] = {
@@ -212,7 +218,7 @@ final class ZeromqConnection(
         if (selectorOpt.isEmpty)
           selectorOpt = Some(Selector.open())
       }
-    }.evalOn(threads.selectorOpenCloseEc)
+    }.evalOn(threads.selectorOpenCloseEces)
 
     val maybeHeartBeatPort = heartBeatPortPromiseAndUri match {
       case Some((promise, _)) =>
@@ -246,7 +252,10 @@ final class ZeromqConnection(
     log0 *> channelSocket0(channel).send(message)
   }
 
-  def tryRead(channels: Seq[Channel], pollingDelay: Duration): IO[Option[(Channel, Message)]] =
+  def tryRead(
+    channels: Seq[Channel],
+    pollingDelay: Duration
+  ): IO[Option[Either[Unit, (Channel, Message)]]] =
     IO {
 
       // log.debug(s"Trying to read on $actualParams from $channels") // un-comment if you're, like, really debugging hard
@@ -257,19 +266,30 @@ final class ZeromqConnection(
           (channel, new PollItem(socket.channel, Poller.POLLIN))
         }
 
-      withSelector { selector =>
-        ZMQ.poll(selector, pollItems.map(_._2).toArray, pollingDelay.toMillis)
+      val closedOpt = withSelector { selector =>
+        try {
+          ZMQ.poll(selector, pollItems.map(_._2).toArray, pollingDelay.toMillis)
+          false
+        }
+        catch {
+          case _: ClosedSelectorException                                               => true
+          case _: ClosedChannelException                                                => true
+          case e: ZError.IOException if e.getCause.isInstanceOf[ClosedChannelException] => true
+        }
       }
 
-      pollItems
-        .collectFirst {
-          case (channel, pi) if pi.isReadable =>
-            channelSocket0(channel)
-              .read
-              .map(_.map((channel, _)))
-        }
-        .getOrElse(IO.pure(None))
-    }.evalOn(threads.pollingEc).flatMap(identity)
+      if (closedOpt.getOrElse(true))
+        IO.pure(Some(Left(())))
+      else
+        pollItems
+          .collectFirst {
+            case (channel, pi) if pi.isReadable =>
+              channelSocket0(channel)
+                .read
+                .map(_.map(msg => Right((channel, msg))))
+          }
+          .getOrElse(IO.pure(None))
+    }.evalOn(threads.pollingEces).flatMap(identity)
 
   def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
 
@@ -293,7 +313,7 @@ final class ZeromqConnection(
       selectorOpt = None
 
       log.debug(s"Closed channels for $actualParams" + (if (partial) " (partial)" else ""))
-    }.evalOn(threads.selectorOpenCloseEc)
+    }.evalOn(threads.selectorOpenCloseEces)
 
     log0 *> t *> other
   }
@@ -323,7 +343,7 @@ object ZeromqConnection {
         logCtx,
         bindToRandomPorts = bindToRandomPorts
       )
-    ).evalOn(threads.selectorOpenCloseEc)
+    ).evalOn(threads.selectorOpenCloseEces)
 
   @deprecated("Use override accepting bindToRandomPorts", "0.14.2")
   def apply(
@@ -344,6 +364,6 @@ object ZeromqConnection {
         logCtx,
         bindToRandomPorts = true
       )
-    ).evalOn(threads.selectorOpenCloseEc)
+    ).evalOn(threads.selectorOpenCloseEces)
 
 }

@@ -16,7 +16,10 @@ import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, interpreterParams, isScala212}
 import almond.util.SequentialExecutionContext
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  singleThreadedExecutionContextExecutorService
+}
 import ammonite.util.Colors
 import cats.effect.IO
 import fs2.Stream
@@ -30,7 +33,7 @@ object ScalaKernelTests extends TestSuite {
 
   import almond.interpreter.TestInterpreter.StringBOps
 
-  val interpreterEc = singleThreadedExecutionContext("test-interpreter")
+  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
   val bgVarEc       = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
@@ -895,9 +898,9 @@ object ScalaKernelTests extends TestSuite {
         "avoided THE ERROR",
         stderr =
           if (scalaVersion.startsWith("2.12."))
-            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<init>(cmd3.sc:7),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:-1)))" + System.lineSeparator()
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<init>(cmd3.sc:6),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:-1)))" + System.lineSeparator()
           else if (scalaVersion.startsWith("2.13."))
-            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:7)))" + System.lineSeparator()
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:6)))" + System.lineSeparator()
           else
             "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65419)))" + System.lineSeparator()
       )

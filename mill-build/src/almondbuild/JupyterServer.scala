@@ -1,6 +1,6 @@
 package almondbuild
 
-import java.nio.file._
+import java.nio.file.*
 
 object JupyterServer {
 
@@ -11,6 +11,7 @@ object JupyterServer {
     launcher: Path,
     jupyterDir: Path,
     workspace: os.Path,
+    localRepoRoot: os.Path,
     publishVersion: String,
     kernelId: String,
     name: String,
@@ -31,13 +32,13 @@ object JupyterServer {
       "--silent-imports",
       "--use-notebook-coursier-logger",
       "--extra-repository",
-      s"ivy:${(workspace / "out/repo" / publishVersion).toNIO.toUri.toASCIIString}/[defaultPattern]"
+      localRepoRoot.toNIO.toUri.toASCIIString
     )
     val kernelJson = ujson.Obj(
       "language"     -> ujson.Str("scala"),
       "display_name" -> ujson.Str(name),
       "argv" -> ujson.Arr(
-        (baseArgs ++ extraArgs).map(ujson.Str(_)): _*
+        (baseArgs ++ extraArgs).map(ujson.Str(_))*
       )
     ).render()
     Files.write(dir.resolve("kernel.json"), kernelJson.getBytes("UTF-8"))
@@ -50,14 +51,24 @@ object JupyterServer {
     jupyterDir: Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String
+    publishVersion: String,
+    localRepoRoot: os.Path
   ): Unit = {
 
-    writeKernelJson(launcher, jupyterDir, workspace, publishVersion, kernelId, "Scala (sources)")
+    writeKernelJson(
+      launcher,
+      jupyterDir,
+      workspace,
+      localRepoRoot,
+      publishVersion,
+      kernelId,
+      "Scala (sources)"
+    )
     writeKernelJson(
       specialLauncher,
       jupyterDir,
       workspace,
+      localRepoRoot,
       publishVersion,
       specialKernelId,
       "Scala (special, sources)",
@@ -66,7 +77,7 @@ object JupyterServer {
 
     os.makeDir.all(workspace / "notebooks")
     val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
-    val b              = new ProcessBuilder(jupyterCommand ++ args: _*).inheritIO()
+    val b              = new ProcessBuilder((jupyterCommand ++ args)*).inheritIO()
     val env            = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
     b.directory(workspace.toIO)
@@ -89,21 +100,31 @@ object JupyterServer {
     jupyterDir: Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String
+    publishVersion: String,
+    localRepoRoot: os.Path
   ): Unit = {
 
-    writeKernelJson(launcher, jupyterDir, workspace, publishVersion, kernelId, "Scala (sources)")
+    writeKernelJson(
+      launcher,
+      jupyterDir,
+      workspace,
+      localRepoRoot,
+      publishVersion,
+      kernelId,
+      "Scala (sources)"
+    )
     writeKernelJson(
       specialLauncher,
       jupyterDir,
       workspace,
+      localRepoRoot,
       publishVersion,
       specialKernelId,
       "Scala (special, sources)"
     )
 
     val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
-    val b   = new ProcessBuilder(jupyterCommand ++ args: _*).directory(workspace.toIO).inheritIO()
+    val b   = new ProcessBuilder((jupyterCommand ++ args)*).directory(workspace.toIO).inheritIO()
     val env = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
     val p = b.start()

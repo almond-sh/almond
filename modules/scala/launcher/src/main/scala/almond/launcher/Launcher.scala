@@ -11,7 +11,7 @@ import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.{Execute, RawJson}
-import almond.util.ThreadUtil.singleThreadedExecutionContext
+import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
 import cats.effect.IO
@@ -313,7 +313,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       if (options.color.getOrElse(true)) LauncherInterpreter.Colors.default
       else LauncherInterpreter.Colors.blackWhite
 
-    val interpreterEc = singleThreadedExecutionContext("scala-launcher-interpreter")
+    val interpreterEc = singleThreadedExecutionContextExecutorService("scala-launcher-interpreter")
 
     val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
@@ -426,7 +426,7 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     log.debug("Closing ZeroMQ context")
     IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.pollingEc)
+      .evalOn(zeromqThreads.pollingEces)
       .unsafeRunSync()(kernelThreads.ioRuntime)
     log.debug("ZeroMQ context closed")
 
