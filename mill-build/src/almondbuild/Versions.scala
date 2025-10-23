@@ -1,7 +1,7 @@
 package almondbuild
 
 object Versions {
-  def ammonite      = "3.0.2"
+  def ammonite      = "3.0.4"
   def caseApp       = "2.1.0"
   def coursier      = "2.1.25-M2"
   def jsoniterScala = "2.13.5"

@@ -231,6 +231,10 @@ object TestUtil {
 
       if (stderr != null) {
         val stderrMessages = streams.errorOutput.mkString
+        if (stderr != stderrMessages) {
+          pprint.err.log(stderr)
+          pprint.err.log(stderrMessages)
+        }
         expect(stderr == stderrMessages)
       }
 
