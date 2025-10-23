@@ -2208,10 +2208,13 @@ object Tests {
       )
     }
 
-  def packageCells()(implicit
+  def packageCells(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
-  ): Unit =
+  ): Unit = {
+
+    val isScala2 = scalaVersion.startsWith("2.")
+
     runner.withSession() { implicit session =>
       execute(
         """package thing
@@ -2224,7 +2227,7 @@ object Tests {
       )
       execute(
         "import thing.Thing",
-        "import thing.Thing"
+        "import thing.Thing" + maybePostImportNewLine(isScala2)
       )
       execute(
         "val n = Thing.value + Thing.value",
@@ -2244,4 +2247,5 @@ object Tests {
         """message: String = "Thing value is 2""""
       )
     }
+  }
 }
