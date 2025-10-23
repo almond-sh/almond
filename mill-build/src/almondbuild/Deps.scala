@@ -57,7 +57,7 @@ object Deps {
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
   def jvmRepr                  = mvn"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = mvn"org.scalameta::mdoc:2.8.0"
-  def mtags                    = mvn"org.scalameta:::mtags:1.5.1"
+  def mtags                    = mvn"org.scalameta:::mtags:1.6.3"
   def munit                    = mvn"org.scalameta::munit:1.2.1"
   def osLib                    = mvn"com.lihaoyi::os-lib:0.11.5"
   def pprint                   = mvn"com.lihaoyi::pprint:0.9.0"

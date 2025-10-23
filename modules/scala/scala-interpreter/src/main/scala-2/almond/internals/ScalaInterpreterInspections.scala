@@ -8,12 +8,13 @@ import almond.logger.{Logger, LoggerContext}
 import ammonite.runtime.Frame
 import ammonite.util.Util.newLine
 import scala.meta.dialects
-import scala.meta.internal.metals.{Docstrings, EmptyReportContext}
+import scala.meta.internal.metals.Docstrings
 import scala.meta.internal.mtags.MtagsEnrichments._
 import scala.meta.internal.mtags.{IndexingExceptions, OnDemandSymbolIndex}
 import scala.meta.internal.semanticdb.scalac.SemanticdbOps
 import scala.meta.io.AbsolutePath
 import scala.meta.pc.SymbolDocumentation
+import scala.meta.pc.reports.EmptyReportContext
 
 import java.io.File
 import java.net.URI
@@ -52,7 +53,7 @@ final class ScalaInterpreterInspections(
           dialects.Scala213
         else
           dialects.Scala212
-      val index = OnDemandSymbolIndex.empty()(EmptyReportContext)
+      val index = OnDemandSymbolIndex.empty()(new EmptyReportContext)
       for (p <- sourcePaths)
         try index.addSourceJar(AbsolutePath(p), dialect)
         catch {
@@ -66,7 +67,7 @@ final class ScalaInterpreterInspections(
       index
     }
 
-    new Docstrings(symbolIndex)(EmptyReportContext)
+    new Docstrings(symbolIndex)(new EmptyReportContext)
   }
 
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
