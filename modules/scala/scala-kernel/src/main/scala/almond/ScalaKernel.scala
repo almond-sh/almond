@@ -196,7 +196,11 @@ object ScalaKernel extends CaseApp[Options] {
         initialCellCount = options.initialCellCount.getOrElse(0),
         upfrontKernelOptions = kernelOptionsFromJson,
         ignoreLauncherDirectivesIn = options.ignoreLauncherDirectivesIn.toSet,
-        launcherDirectiveGroups = options.launcherDirectiveGroup.map(CustomGroup(_, ""))
+        launcherDirectiveGroups = options.launcherDirectiveGroup.map(CustomGroup(_, "")),
+        wrapperNamePrefix = options.wrapperName
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .getOrElse(ScalaInterpreterParams.defaultWrapperNamePrefix)
       ),
       logCtx = logCtx
     )
