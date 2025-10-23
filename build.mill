@@ -207,6 +207,26 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     value
   }
 
+  def mimaPreviousVersions = Task {
+    val minVersionMap = Map(
+      "2.13.17" -> Version("0.14.2"),
+      "3.3.6"   -> Version("0.14.2"),
+      "3.3.7"   -> Version("0.14.2"),
+      "3.4.2"   -> Version("0.14.2"),
+      "3.5.0"   -> Version("0.14.2"),
+      "3.5.1"   -> Version("0.14.2"),
+      "3.5.2"   -> Version("0.14.2"),
+      "3.6.2"   -> Version("0.14.2"),
+      "3.6.4"   -> Version("0.14.2"),
+      "3.7.3"   -> Version("0.14.2")
+    )
+    val base = super.mimaPreviousVersions()
+    minVersionMap.get(scalaVersion()) match {
+      case Some(minVersion) => base.filter(Version(_) >= minVersion)
+      case None             => base
+    }
+  }
+
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Task {
     Seq(
