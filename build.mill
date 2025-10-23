@@ -285,7 +285,6 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
       else
         base
     }
-    def testParallelism = false
   }
 }
 
