@@ -46,7 +46,10 @@ final case class LauncherOptions(
     bindToRandomPorts: Option[Boolean] = None,
   @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
   @Hidden
-    wrapperName: Option[String] = None
+    wrapperName: Option[String] = None,
+  @HelpMessage("Package name where user code should be compiled - defaults to ammonite.$sess")
+  @Hidden
+    pkgName: Option[String] = None
 ) {
   // format: on
 
@@ -80,6 +83,8 @@ final case class LauncherOptions(
       b ++= Seq(s"--launcher-directive-group=$group")
     for (name <- wrapperName)
       b += s"--wrapper-name=$name"
+    for (name <- pkgName)
+      b += s"--pkg-name=$name"
     b.result()
   }
 
