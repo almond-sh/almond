@@ -2269,6 +2269,11 @@ object Tests {
         "defined class C",
         ignoreStreams = true
       )
+      execute(
+        "val className = classOf[C].getName",
+        s"""className: String = "$pkgName.cmd3$$Helper$$C"""",
+        ignoreStreams = true
+      )
     }
 
   def customPkgName()(implicit
