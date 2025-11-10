@@ -2248,4 +2248,43 @@ object Tests {
       )
     }
   }
+
+  private def customPkgNameTest(pkgName: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession("--pkg-name", pkgName) { implicit session =>
+      execute(
+        "val n = 2 + 2",
+        "n: Int = 4",
+        ignoreStreams = true
+      )
+      execute(
+        "val m = n + n",
+        "m: Int = 8",
+        ignoreStreams = true
+      )
+      execute(
+        "class C",
+        "defined class C",
+        ignoreStreams = true
+      )
+      execute(
+        "val className = classOf[C].getName",
+        s"""className: String = "$pkgName.cmd3$$Helper$$C"""",
+        ignoreStreams = true
+      )
+    }
+
+  def customPkgName()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    customPkgNameTest("notebook.thing")
+
+  def customShortPkgName()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    customPkgNameTest("notebook")
 }
