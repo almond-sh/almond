@@ -2,6 +2,7 @@ package almond
 
 import java.nio.file.Path
 
+import almond.amm.AmmInterpreter
 import almond.directives.KernelOptions
 import almond.launcher.directives.CustomGroup
 import almond.protocol.KernelInfo
@@ -48,5 +49,18 @@ final case class ScalaInterpreterParams(
   upfrontKernelOptions: KernelOptions = KernelOptions(),
   ignoreLauncherDirectivesIn: Set[String] = Set.empty,
   launcherDirectiveGroups: Seq[CustomGroup] = Nil,
-  initialSettings: Seq[String] = Seq("-deprecation", "-feature")
+  initialSettings: Seq[String] = Seq("-deprecation", "-feature"),
+
+  /* Spark 3.5.1 expects `cmd` in `org.apache.spark.sql.catalyst.encoders.OuterScopes`.
+   * This name is confusing to users and `cell` is more obvious. If you want to change that
+   * while not breaking Spark, you need to customize `CodeClassWrapper` so
+   * `org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)`
+   * calls are automatically added.
+   */
+  wrapperNamePrefix: String = ScalaInterpreterParams.defaultWrapperNamePrefix,
+  pkgName: Seq[String] = AmmInterpreter.defaultPkgName
 )
+
+object ScalaInterpreterParams {
+  def defaultWrapperNamePrefix: String = "cmd"
+}

@@ -2182,4 +2182,103 @@ object Tests {
         )
     }
   }
+
+  def customWrapperName()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession("--wrapper-name", "cell") { implicit session =>
+      execute(
+        "val n = 2 + 2",
+        "n: Int = 4"
+      )
+      execute(
+        "class C",
+        "defined class C"
+      )
+      execute(
+        """val className = classOf[C].getName.stripPrefix("ammonite.$sess.")""",
+        "className: String = \"cell2$Helper$C\""
+      )
+    }
+
+  def packageCells(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+
+    val isScala2 = scalaVersion.startsWith("2.")
+
+    runner.withSession() { implicit session =>
+      execute(
+        """package thing
+          |
+          |object Thing {
+          |  def value = 2
+          |}
+          |""".stripMargin,
+        ""
+      )
+      execute(
+        "import thing.Thing",
+        "import thing.Thing" + maybePostImportNewLine(isScala2)
+      )
+      execute(
+        "val n = Thing.value + Thing.value",
+        "n: Int = 4"
+      )
+      execute(
+        """package thing
+          |
+          |object Other {
+          |  def message = s"Thing value is ${Thing.value}"
+          |}
+          |""".stripMargin,
+        ""
+      )
+      execute(
+        "val message = thing.Other.message",
+        """message: String = "Thing value is 2""""
+      )
+    }
+  }
+
+  private def customPkgNameTest(pkgName: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession("--pkg-name", pkgName) { implicit session =>
+      execute(
+        "val n = 2 + 2",
+        "n: Int = 4",
+        ignoreStreams = true
+      )
+      execute(
+        "val m = n + n",
+        "m: Int = 8",
+        ignoreStreams = true
+      )
+      execute(
+        "class C",
+        "defined class C",
+        ignoreStreams = true
+      )
+      execute(
+        "val className = classOf[C].getName",
+        s"""className: String = "$pkgName.cmd3$$Helper$$C"""",
+        ignoreStreams = true
+      )
+    }
+
+  def customPkgName()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    customPkgNameTest("notebook.thing")
+
+  def customShortPkgName()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    customPkgNameTest("notebook")
 }

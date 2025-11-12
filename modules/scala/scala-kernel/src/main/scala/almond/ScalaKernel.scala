@@ -2,6 +2,7 @@ package almond
 
 import java.io.{File, FileOutputStream, PrintStream}
 
+import almond.amm.AmmInterpreter
 import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
@@ -196,7 +197,16 @@ object ScalaKernel extends CaseApp[Options] {
         initialCellCount = options.initialCellCount.getOrElse(0),
         upfrontKernelOptions = kernelOptionsFromJson,
         ignoreLauncherDirectivesIn = options.ignoreLauncherDirectivesIn.toSet,
-        launcherDirectiveGroups = options.launcherDirectiveGroup.map(CustomGroup(_, ""))
+        launcherDirectiveGroups = options.launcherDirectiveGroup.map(CustomGroup(_, "")),
+        wrapperNamePrefix = options.wrapperName
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .getOrElse(ScalaInterpreterParams.defaultWrapperNamePrefix),
+        pkgName = options.pkgName
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .map(_.split('.').filter(_.nonEmpty).toSeq)
+          .getOrElse(AmmInterpreter.defaultPkgName)
       ),
       logCtx = logCtx
     )

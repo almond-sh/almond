@@ -43,7 +43,13 @@ final case class LauncherOptions(
     "If zero-d ports are passed by Jupyter in connection file, bind to random available ports, " +
     "and update the connection file with the actually used ports"
   )
-    bindToRandomPorts: Option[Boolean] = None
+    bindToRandomPorts: Option[Boolean] = None,
+  @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
+  @Hidden
+    wrapperName: Option[String] = None,
+  @HelpMessage("Package name where user code should be compiled - defaults to ammonite.$sess")
+  @Hidden
+    pkgName: Option[String] = None
 ) {
   // format: on
 
@@ -75,6 +81,10 @@ final case class LauncherOptions(
       b ++= Seq(s"--use-notebook-coursier-logger=$value")
     for (group <- customDirectiveGroup.map(_.split(":", 2)).collect { case Array(k, _) => k })
       b ++= Seq(s"--launcher-directive-group=$group")
+    for (name <- wrapperName)
+      b += s"--wrapper-name=$name"
+    for (name <- pkgName)
+      b += s"--pkg-name=$name"
     b.result()
   }
 

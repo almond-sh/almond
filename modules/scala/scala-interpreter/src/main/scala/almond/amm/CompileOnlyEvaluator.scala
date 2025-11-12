@@ -26,6 +26,7 @@ class CompileOnlyEvaluator(
     printer: Printer,
     indexedWrapperName: Name,
     wrapperPath: Seq[Name],
+    pkgName: Seq[Name],
     silent: Boolean,
     contextClassLoader: ClassLoader
   ): Res[Evaluated] =
@@ -46,7 +47,7 @@ class CompileOnlyEvaluator(
 
       // "" Empty string as cache tag of repl code
       evaluationResult(
-        Seq(Name("ammonite"), Name("$sess"), indexedWrapperName),
+        pkgName ++ Seq(indexedWrapperName),
         wrapperPath,
         newImports
       )
