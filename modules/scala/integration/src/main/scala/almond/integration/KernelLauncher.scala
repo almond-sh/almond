@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.util.control.NonFatal
 import scala.util.Properties
 
@@ -148,8 +148,17 @@ object KernelLauncher {
 
 class KernelLauncher(
   val launcherType: KernelLauncher.LauncherType,
-  val defaultScalaVersion: String
+  val defaultScalaVersion: String,
+  closeForcibly: Boolean = true
 ) {
+
+  private lazy val ioRuntime = IORuntime.global
+
+  /** How long we should wait for messages when closing zeromq connections? */
+  def lingerDuration: Duration = 30.seconds
+
+  /** How long after session start should we time out if a session takes too long to run */
+  def sessionTimeout: Duration = 3.minutes
 
   import KernelLauncher._
 
@@ -272,13 +281,19 @@ class KernelLauncher(
           output.printStream.println("stack-trace-printer thread exiting")
     }
 
-  def session(conn: Connection, ctx: ZMQ.Context, output: TestOutput): Session with AutoCloseable =
+  def session(
+    conn: Connection,
+    ctx: ZMQ.Context,
+    output: TestOutput,
+    ioRuntime: IORuntime
+  ): Session with AutoCloseable =
     new Session with AutoCloseable {
+      def helperIORuntime = ioRuntime
       def run(streams: ClientStreams): Unit = {
 
         val poisonPill: (Channel, RawMessage) = null
 
-        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(IORuntime.global)
+        val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
 
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
@@ -295,15 +310,15 @@ class KernelLauncher(
           }
         } yield ()
 
-        try Await.result(t.unsafeToFuture()(IORuntime.global), 1.minute)
+        try Await.result(t.unsafeToFuture()(ioRuntime), 1.minute)
         catch {
           case NonFatal(e) => throw new Exception(e)
         }
       }
 
       def close(): Unit = {
-        conn.close(partial = false, lingerDuration = 30.seconds)
-          .unsafeRunTimed(2.minutes)(IORuntime.global)
+        conn.close(partial = false, lingerDuration = lingerDuration)
+          .unsafeRunTimed(2.minutes)(ioRuntime)
           .getOrElse {
             sys.error("Timeout when closing ZeroMQ connections")
           }
@@ -314,8 +329,8 @@ class KernelLauncher(
             t.start()
             output.printStream.println("Closing test ZeroMQ context")
             IO(ctx.close())
-              .evalOn(threads.pollingEc)
-              .unsafeRunTimed(2.minutes)(IORuntime.global)
+              .evalOn(threads.pollingEces)
+              .unsafeRunTimed(2.minutes)(ioRuntime)
               .getOrElse {
                 sys.error("Timeout when closing ZeroMQ context")
               }
@@ -430,7 +445,7 @@ class KernelLauncher(
         launcherOptions: Seq[String],
         extraClassPath: Seq[String]
       )(f: Session => T)(implicit sessionId: SessionId): T =
-        TestUtil.runWithTimeout(Some(3.minutes)) {
+        TestUtil.runWithTimeout(Some(sessionTimeout).collect { case f: FiniteDuration => f }) {
           implicit val sess = runnerSession(options, launcherOptions, extraClassPath, output0)
           var running       = true
 
@@ -564,19 +579,19 @@ class KernelLauncher(
               identityOpt = Some(UUID.randomUUID().toString),
               bindToRandomPorts = false
             )
-            .unsafeRunTimed(delay)(IORuntime.global)
+            .unsafeRunTimed(delay)(ioRuntime)
             .getOrElse {
               sys.error("Timeout when creating ZeroMQ connections")
             }
 
-          conn0.open.unsafeRunTimed(delay)(IORuntime.global).getOrElse {
+          conn0.open.unsafeRunTimed(delay)(ioRuntime).getOrElse {
             sys.error("Timeout when opening ZeroMQ connections")
           }
 
           conn0
         }
 
-        val sess = session(conn, ctx, output)
+        val sess = session(conn, ctx, output, ioRuntime)
         sessions = sess :: sessions
         sess
       }
@@ -599,16 +614,25 @@ class KernelLauncher(
         }
         jupyterDirs = Nil
         if (proc != null) {
-          if (proc.isAlive()) {
+          if (closeForcibly) {
             proc.close()
-            val timeout = 3.seconds
-            if (!proc.waitFor(timeout.toMillis)) {
-              ps.println(
-                s"Test kernel still running after $timeout, destroying it forcibly"
-              )
-              proc.destroyForcibly()
+            if (proc.isAlive()) {
+              if (!proc.waitFor(3.seconds.toMillis)) {
+                ps.println(
+                  "Test kernel still running, destroying it forcibly"
+                )
+                proc.destroyForcibly()
+              }
             }
+            else
+              ps.println("Kernel already exited")
           }
+          else if (proc.isAlive()) {
+            ps.println("Waiting for kernel to exit")
+            proc.waitFor(Long.MaxValue)
+          }
+          else
+            ps.println("Kernel already exited")
           proc = null
         }
       }

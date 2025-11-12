@@ -37,7 +37,12 @@ object ThreadUtil {
   def sequentialExecutionContext(): ExecutionContext =
     new SequentialExecutionContext
 
+  @deprecated("Use singleThreadedExecutionContextExecutorService instead", "0.14.2")
   def singleThreadedExecutionContext(threadName: String): ExecutionContext =
+    singleThreadedExecutionContextExecutorService(threadName)
+
+  def singleThreadedExecutionContextExecutorService(threadName: String)
+    : ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(
       Executors.newSingleThreadExecutor(daemonThreadFactory(threadName))
     )

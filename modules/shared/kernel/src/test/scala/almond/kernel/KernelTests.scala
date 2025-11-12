@@ -10,7 +10,10 @@ import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
 import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shutdown}
 import almond.testkit.ClientStreams
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  singleThreadedExecutionContextExecutorService
+}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
@@ -22,7 +25,7 @@ object KernelTests extends TestSuite {
 
   val logCtx = LoggerContext.nop // debug: LoggerContext.stderr(almond.logger.Level.Debug)
 
-  val interpreterEc = singleThreadedExecutionContext("test-interpreter")
+  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
 
   val threads = KernelThreads.create("test")
 
@@ -70,12 +73,17 @@ object KernelTests extends TestSuite {
         ).streamOn(Channel.Requests)
 
       val streams =
-        ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
+        ClientStreams.create(
+          input,
+          stopWhen,
+          inputHandler.orElse(ignoreExpectedReplies),
+          threads.ioRuntime
+        )
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val inputReply   = streams.singleRequest(Channel.Input, Input.replyType)
@@ -115,12 +123,12 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes()
@@ -162,13 +170,13 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes()
@@ -192,13 +200,13 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
       val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(10.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       assert(interpreter.shutdownCalled())
@@ -238,12 +246,13 @@ object KernelTests extends TestSuite {
         ).on(Channel.Requests)
       )
 
-      val streams = ClientStreams.create(input, stopWhen, ignoreExpectedReplies)
+      val streams =
+        ClientStreams.create(input, stopWhen, ignoreExpectedReplies, ioRuntime = threads.ioRuntime)
 
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(2.seconds)(IORuntime.global)
+      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val msgTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toSet

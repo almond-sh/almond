@@ -11,7 +11,7 @@ import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.{Execute, RawJson}
-import almond.util.ThreadUtil.singleThreadedExecutionContext
+import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
 import cats.effect.IO
@@ -313,7 +313,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       if (options.color.getOrElse(true)) LauncherInterpreter.Colors.default
       else LauncherInterpreter.Colors.blackWhite
 
-    val interpreterEc = singleThreadedExecutionContext("scala-launcher-interpreter")
+    val interpreterEc = singleThreadedExecutionContextExecutorService("scala-launcher-interpreter")
 
     val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
@@ -335,8 +335,8 @@ object Launcher extends CaseApp[LauncherOptions] {
           if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
           else None
       ))
-      .unsafeRunSync()(IORuntime.global)
-    val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(IORuntime.global)
+      .unsafeRunSync()(kernelThreads.ioRuntime)
+    val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(kernelThreads.ioRuntime)
 
     val leftoverMessagesFileOpt =
       if (leftoverMessages.isEmpty) None
@@ -361,7 +361,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
 
     val outputHandlerOpt = firstMessageOpt.map { firstMessage =>
-      new LauncherOutputHandler(firstMessage, conn)
+      new LauncherOutputHandler(firstMessage, conn, kernelThreads.ioRuntime)
     }
 
     val maybeActualKernelCommand =
@@ -404,7 +404,8 @@ object Launcher extends CaseApp[LauncherOptions] {
             Execute.errorType,
             Execute.Error("", "", List(err.message))
           )
-          try conn.send(Channel.Publish, errMsg.asRawMessage).unsafeRunSync()(IORuntime.global)
+          try
+            conn.send(Channel.Publish, errMsg.asRawMessage).unsafeRunSync()(kernelThreads.ioRuntime)
           catch {
             case NonFatal(e) =>
               throw new Exception(e)
@@ -417,7 +418,7 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     try
       conn.close(partial = false, lingerDuration = options.lingerDuration)
-        .unsafeRunSync()(IORuntime.global)
+        .unsafeRunSync()(kernelThreads.ioRuntime)
     catch {
       case NonFatal(e) =>
         throw new Exception(e)
@@ -425,8 +426,8 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     log.debug("Closing ZeroMQ context")
     IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.pollingEc)
-      .unsafeRunSync()(IORuntime.global)
+      .evalOn(zeromqThreads.pollingEces)
+      .unsafeRunSync()(kernelThreads.ioRuntime)
     log.debug("ZeroMQ context closed")
 
     maybeActualKernelCommand match {

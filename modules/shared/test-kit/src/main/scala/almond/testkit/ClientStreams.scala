@@ -291,14 +291,15 @@ object ClientStreams {
   def create(
     initialMessages: Stream[IO, (Channel, RawMessage)],
     stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = (_, _) => IO.pure(false),
-    handler: MessageHandler = MessageHandler.discard { case _ => }
+    handler: MessageHandler = MessageHandler.discard { case _ => },
+    ioRuntime: IORuntime
   ): ClientStreams = {
 
     val b = new mutable.ListBuffer[Either[(Channel, Message[RawJson]), (Channel, Message[RawJson])]]
 
     val poisonPill: (Channel, RawMessage) = null
 
-    val q = Queue.unbounded[IO, (Channel, RawMessage)].unsafeRunSync()(IORuntime.global)
+    val q = Queue.unbounded[IO, (Channel, RawMessage)].unsafeRunSync()(ioRuntime)
 
     val sink: Pipe[IO, (Channel, RawMessage), Unit] = { s =>
 

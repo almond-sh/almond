@@ -16,7 +16,10 @@ import almond.testkit.{ClientStreams, Dsl}
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil.{IOOps, KernelOps, execute => executeMessage, isScala212}
 import almond.util.SequentialExecutionContext
-import almond.util.ThreadUtil.{attemptShutdownExecutionContext, singleThreadedExecutionContext}
+import almond.util.ThreadUtil.{
+  attemptShutdownExecutionContext,
+  singleThreadedExecutionContextExecutorService
+}
 import ammonite.util.Colors
 import cats.effect.IO
 import fs2.Stream
@@ -30,7 +33,7 @@ object ScalaKernelTests extends TestSuite {
 
   import almond.interpreter.TestInterpreter.StringBOps
 
-  val interpreterEc = singleThreadedExecutionContext("test-interpreter")
+  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
   val bgVarEc       = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
@@ -84,7 +87,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       // How the pseudo-client behaves
 
@@ -121,10 +124,15 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val streams =
-        ClientStreams.create(input, stopWhen, inputHandler.orElse(ignoreExpectedReplies))
+        ClientStreams.create(
+          input,
+          stopWhen,
+          inputHandler.orElse(ignoreExpectedReplies),
+          ioRuntime = threads.ioRuntime
+        )
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val replies = streams.executeReplies
 
@@ -157,7 +165,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -175,10 +183,10 @@ object ScalaKernelTests extends TestSuite {
         executeMessage("""val s = "other"""", lastMsgId)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val messageTypes = streams.generatedMessageTypes()
 
@@ -275,7 +283,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -358,7 +366,7 @@ object ScalaKernelTests extends TestSuite {
         )
 
         val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-          .unsafeRunTimedOrThrow()
+          .unsafeRunTimedOrThrow(threads.ioRuntime)
 
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -377,10 +385,10 @@ object ScalaKernelTests extends TestSuite {
           executeMessage("""n += 2""", lastMsgId)
         )
 
-        val streams = ClientStreams.create(input, stopWhen)
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
         kernel.run(streams.source, streams.sink, Nil)
-          .unsafeRunTimedOrThrow()
+          .unsafeRunTimedOrThrow(threads.ioRuntime)
 
         val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
         val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
@@ -458,7 +466,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -477,10 +485,10 @@ object ScalaKernelTests extends TestSuite {
         executeMessage("""val b = { n; () }""", lastMsgId)
       )
 
-      val streams = ClientStreams.create(input, stopWhen)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       kernel.run(streams.source, streams.sink, Nil)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
       val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
@@ -592,7 +600,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -655,7 +663,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -741,7 +749,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -794,7 +802,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -843,7 +851,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -877,7 +885,7 @@ object ScalaKernelTests extends TestSuite {
       )
 
       val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
-        .unsafeRunTimedOrThrow()
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 

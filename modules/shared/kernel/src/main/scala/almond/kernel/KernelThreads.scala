@@ -7,6 +7,7 @@ import almond.util.ThreadUtil.{
   daemonThreadFactory,
   sequentialExecutionContext
 }
+import cats.effect.unsafe.IORuntime
 
 import scala.concurrent.ExecutionContext
 
@@ -14,15 +15,18 @@ final case class KernelThreads(
   queueEc: ExecutionContext,
   futureEc: ExecutionContext,
   scheduleEc: ExecutionContext,
-  commEc: ExecutionContext
+  commEc: ExecutionContext,
+  ioRuntime: IORuntime
 ) {
-  def attemptShutdown(): Unit =
+  def attemptShutdown(): Unit = {
+    ioRuntime.shutdown()
     Seq(queueEc, futureEc, scheduleEc, commEc)
       .distinct
       .foreach { ec =>
         if (!attemptShutdownExecutionContext(ec))
           println(s"Don't know how to shutdown $ec")
       }
+  }
 }
 
 object KernelThreads {
@@ -38,7 +42,8 @@ object KernelThreads {
       dummyStuffEc,
       ExecutionContext.fromExecutorService(
         Executors.newFixedThreadPool(2, daemonThreadFactory(s"$name-comm"))
-      )
+      ),
+      IORuntime.builder().build()
     )
   }
 }
