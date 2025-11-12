@@ -15,7 +15,6 @@ import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import dependency.ScalaParameters

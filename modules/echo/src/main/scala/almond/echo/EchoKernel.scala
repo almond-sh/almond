@@ -6,7 +6,6 @@ import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads}
 import almond.logger.{Level, LoggerContext}
 import caseapp._
-import cats.effect.unsafe.IORuntime
 
 import java.nio.file.Paths
 
