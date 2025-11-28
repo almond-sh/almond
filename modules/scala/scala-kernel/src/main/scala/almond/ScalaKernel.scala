@@ -13,7 +13,6 @@ import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp._
-import cats.effect.unsafe.IORuntime
 import coursier.cputil.ClassPathUtil
 
 import java.nio.file.Paths

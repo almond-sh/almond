@@ -15,7 +15,6 @@ import almond.util.ThreadUtil.{
   singleThreadedExecutionContextExecutorService
 }
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import utest._
 

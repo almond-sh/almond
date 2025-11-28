@@ -19,7 +19,6 @@ import almond.logger.LoggerContext
 import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
 import cats.effect.IO
 import cats.effect.std.Queue
-import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Stream}
