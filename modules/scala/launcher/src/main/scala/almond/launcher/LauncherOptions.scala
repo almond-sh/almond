@@ -49,7 +49,11 @@ final case class LauncherOptions(
     wrapperName: Option[String] = None,
   @HelpMessage("Package name where user code should be compiled - defaults to ammonite.$sess")
   @Hidden
-    pkgName: Option[String] = None
+    pkgName: Option[String] = None,
+  @ExtraName("outputDir")
+    outputDirectory: Option[String] = None,
+  @ExtraName("tmpOutputDir")
+    tmpOutputDirectory: Option[Boolean] = None
 ) {
   // format: on
 
@@ -85,6 +89,10 @@ final case class LauncherOptions(
       b += s"--wrapper-name=$name"
     for (name <- pkgName)
       b += s"--pkg-name=$name"
+    for (outputDir <- outputDirectory)
+      b += s"--output-directory=$outputDir"
+    for (tmpOutputDir <- tmpOutputDirectory)
+      b += s"--tmp-output-directory=$tmpOutputDir"
     b.result()
   }
 

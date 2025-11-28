@@ -204,6 +204,16 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  // Disabled in Scala 3 for now, as the output directory isn't
+  // write-only there. That needs fixing in Ammonite.
+  if (kernelLauncher.defaultScalaVersion.startsWith("2."))
+    test("output directory") {
+      kernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.outputDirectory()
+      }
+    }
+
   // Doesn't pass, might need fixing in Ammonite
   // test("custom short package name") {
   //   kernelLauncher.withKernel { implicit runner =>
