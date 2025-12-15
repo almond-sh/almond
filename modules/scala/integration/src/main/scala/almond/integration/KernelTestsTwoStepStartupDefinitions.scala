@@ -7,22 +7,6 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
-  test("Directives and code in first cell 3") {
-    kernelLauncher.withKernel { runner =>
-      implicit val sessionId: SessionId = SessionId()
-      runner.withSession() { implicit session =>
-        execute(
-          s"""//> using scala "${KernelLauncher.testScalaVersion}"
-             |import scala.compiletime.ops.*
-             |val sv = scala.util.Properties.versionNumberString
-             |""".stripMargin,
-          "import scala.compiletime.ops.*" + ls + ls +
-            s"""sv: String = "${KernelLauncher.testScala213VersionPulledByScala3}""""
-        )
-      }
-    }
-  }
-
   test("Directives and code in first cell 213") {
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
@@ -84,7 +68,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
         execute(
-          s"""//> using scala "${KernelLauncher.testScalaVersion}"""",
+          s"""//> using scala "${KernelLauncher.testScala213Version}"""",
           ""
         )
         execute(
@@ -104,7 +88,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
       implicit val sessionId: SessionId = SessionId()
       runner.withSession("--java-opt", "-Dfoo=thing") { implicit session =>
         execute(
-          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
              |val foo = sys.props("foo")""".stripMargin,
           """foo: String = "thing""""
         )

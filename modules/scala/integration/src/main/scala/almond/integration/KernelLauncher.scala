@@ -32,11 +32,6 @@ object KernelLauncher {
   def enableSilentOutput = true
   def printOutputOnError = true
 
-  lazy val testScalaVersion = sys.props.getOrElse(
-    "almond.test.scala-version",
-    sys.error("almond.test.scala-version Java property not set")
-  )
-
   lazy val testScala212Version = sys.props.getOrElse(
     "almond.test.scala212-version",
     sys.error("almond.test.scala212-version Java property not set")
@@ -45,11 +40,6 @@ object KernelLauncher {
   lazy val testScala213Version = sys.props.getOrElse(
     "almond.test.scala213-version",
     sys.error("almond.test.scala213-version Java property not set")
-  )
-
-  lazy val testScala213VersionPulledByScala3 = sys.props.getOrElse(
-    "almond.test.scala213-pulled-by-3-version",
-    sys.error("almond.test.scala213-pulled-by-3-version Java property not set")
   )
 
   lazy val kernelShapelessVersion = sys.props.getOrElse(

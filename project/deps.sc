@@ -10,27 +10,6 @@ object Versions {
   def scalafmtJava8 = "3.7.15"
 }
 
-implicit class DepOps(private val dep: Dep) {
-  def applyBinaryVersion213_3(scalaVersion: String): Dep =
-    dep.cross match {
-      case cross: CrossVersion.Binary
-          if scalaVersion.startsWith("3.") || scalaVersion.startsWith("2.13.") =>
-        val compatSuffix =
-          if (scalaVersion.startsWith("3.")) "_3"
-          else "_" + scalaVersion.split('.').take(2).mkString(".")
-        dep.copy(cross =
-          CrossVersion.Constant(value = compatSuffix, platformed = dep.cross.platformed)
-        )
-      case _ => dep
-    }
-  def withDottyCompat(scalaVersion: String): Dep =
-    dep.cross match {
-      case cross: CrossVersion.Binary if scalaVersion.startsWith("3.") =>
-        dep.copy(cross = CrossVersion.Constant(value = "_2.13", platformed = dep.cross.platformed))
-      case _ => dep
-    }
-}
-
 object Deps {
   def ammoniteCompiler = ivy"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
@@ -80,16 +59,11 @@ object Deps {
 
 object ScalaVersions {
   def scala3Latest   = "3.6.3"
-  def scala3Compat   = "3.3.4"
   def scala213       = "2.13.16"
   def scala212       = "2.12.20"
-  val binaries       = Seq(scala3Compat, scala213, scala212)
+  val binaries       = Seq(scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
-    scala3Latest,
-    "3.4.3",
-    "3.3.5",
-    scala3Compat,
     scala213,
     "2.13.15",
     "2.13.14",
@@ -103,6 +77,6 @@ object ScalaVersions {
   def binary(sv: String) =
     if (sv.startsWith("2.12.")) scala212
     else if (sv.startsWith("2.13.")) scala213
-    else scala3Compat
+    else sys.error("No more Scala 3 support on the 0.14.1 branch")
 
 }
