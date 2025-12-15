@@ -379,11 +379,7 @@ object Tests {
     }
 
   def toreeHtml()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    val launcherOptions =
-      if (runner.differedStartUp)
-        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
-      else
-        Seq("--shared", "sh.almond::toree-hooks")
+    val launcherOptions = Seq("--shared", "sh.almond::toree-hooks")
     runner.withLauncherOptionsSession(launcherOptions: _*)("--toree-magics", "--toree-api") {
       implicit session =>
 
@@ -550,11 +546,7 @@ object Tests {
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
-    val launcherOptions =
-      if (runner.differedStartUp)
-        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
-      else
-        Seq("--shared", "sh.almond::toree-hooks")
+    val launcherOptions = Seq("--shared", "sh.almond::toree-hooks")
     runner.withLauncherOptionsSession(launcherOptions: _*)(
       "--toree-magics",
       "--predef",
@@ -719,10 +711,6 @@ object Tests {
 
     runner.withSession("--extra-class-path", extraJars.mkString(File.pathSeparator)) {
       implicit session =>
-        if (runner.differedStartUp)
-          // In two step start up, we need the actual kernel to have started to get inspection results
-          execute("val n = 2", "n: Int = 2")
-
         val code   = "os.read"
         val result = inspect(code, code.length - 3, detailed = true)
         val expected = Seq(
