@@ -84,7 +84,8 @@ object AmmInterpreter {
     addToreeApiCompatibilityImport: Boolean,
     initialSettings: Seq[String],
     wrapperNamePrefix: String,
-    pkgName: Seq[String]
+    pkgName: Seq[String],
+    evaluatorHookOpt: Option[HookEvaluator.Hook]
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -183,7 +184,12 @@ object AmmInterpreter {
             if (compileOnly)
               new CompileOnlyEvaluator(() => headFrame, baseEval)
             else
-              baseEval
+              evaluatorHookOpt match {
+                case Some(evaluatorHook) =>
+                  HookEvaluator(baseEval, evaluatorHook)
+                case None =>
+                  baseEval
+              }
           }
         }
 

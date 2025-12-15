@@ -910,6 +910,42 @@ object ScalaKernelTests extends TestSuite {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.metadata()
     }
+
+    test("evaluator hook") {
+      import almond.testkit.Dsl._
+
+      implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+        threads,
+        interpreterEc,
+        processParams = _.copy(
+          evaluatorHookOpt = Some(
+            new almond.amm.HookEvaluator.Hook {
+              def wrap[T](f: => T): T = {
+                val current = evaluatorHookThreadLocal.get()
+                try {
+                  evaluatorHookThreadLocal.set("the value")
+                  f
+                }
+                finally
+                  evaluatorHookThreadLocal.set(current)
+              }
+            }
+          )
+        )
+      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      runner.withSession() { implicit session =>
+        assert(evaluatorHookThreadLocal.get().isEmpty)
+        execute(
+          "val value = almond.ScalaKernelTests.evaluatorHookThreadLocal.get()",
+          """value: String = "the value""""
+        )
+        assert(evaluatorHookThreadLocal.get().isEmpty)
+      }
+    }
   }
+
+  val evaluatorHookThreadLocal = ThreadLocal.withInitial(() => "")
 
 }

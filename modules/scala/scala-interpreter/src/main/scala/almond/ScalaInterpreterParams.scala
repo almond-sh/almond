@@ -2,7 +2,7 @@ package almond
 
 import java.nio.file.Path
 
-import almond.amm.AmmInterpreter
+import almond.amm.{AmmInterpreter, HookEvaluator}
 import almond.directives.KernelOptions
 import almond.launcher.directives.CustomGroup
 import almond.protocol.KernelInfo
@@ -58,7 +58,8 @@ final case class ScalaInterpreterParams(
    * calls are automatically added.
    */
   wrapperNamePrefix: String = ScalaInterpreterParams.defaultWrapperNamePrefix,
-  pkgName: Seq[String] = AmmInterpreter.defaultPkgName
+  pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
+  evaluatorHookOpt: Option[HookEvaluator.Hook] = None
 )
 
 object ScalaInterpreterParams {
