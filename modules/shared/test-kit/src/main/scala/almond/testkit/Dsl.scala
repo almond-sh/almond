@@ -77,6 +77,7 @@ object Dsl {
     expectError: Boolean = false,
     expectInterrupt: Boolean = false,
     errors: Seq[(String, String, List[String])] = null,
+    partialErrors: Seq[(String, String)] = null,
     displaysText: Seq[String] = null,
     displaysHtml: Seq[String] = null,
     displays: Seq[(String, String)] = null,
@@ -90,13 +91,14 @@ object Dsl {
     handler: MessageHandler = MessageHandler.discard { case _ => },
     trimReplyLines: Boolean = false,
     metadata: RawJson = RawJson.emptyObj,
-    parentHeaderOpt: Option[Header] = None
+    parentHeaderOpt: Option[Header] = None,
+    ignoreReply: Boolean = false
   )(implicit
     sessionId: SessionId,
     session: Session
   ): Unit = {
 
-    val expectError0   = expectError || Option(errors).nonEmpty
+    val expectError0   = expectError || Option(errors).nonEmpty || Option(partialErrors).nonEmpty
     val ignoreStreams0 = ignoreStreams || Option(stdout).nonEmpty || Option(stderr).nonEmpty
 
     val input = Stream(
@@ -155,6 +157,12 @@ object Dsl {
       else
         prefix :+ "execute_result"
     }
+    if (publishMessageTypes != expectedPublishMessageTypes) {
+      val stdoutMessages = streams.output.mkString
+      val stderrMessages = streams.errorOutput.mkString
+      pprint.err.log(stdoutMessages)
+      pprint.err.log(stderrMessages)
+    }
     expect(publishMessageTypes == expectedPublishMessageTypes)
 
     if (stdout != null) {
@@ -199,31 +207,33 @@ object Dsl {
       }
     }
 
-    val replies = streams.executeReplies
-      .toVector
-      .sortBy(_._1)
-      .map(_._2)
-      .map(s => if (trimReplyLines) s.trimLines else s)
-    if (Properties.isWin) {
-      expect(replies.length == Option(reply).toVector.length)
-      val obtainedReplyLines =
-        replies.headOption.iterator.flatMap(_.linesIterator).filter(_.nonEmpty).toVector
-      val expectedReplyLines =
-        Option(reply).iterator.flatMap(_.linesIterator).filter(_.nonEmpty).toVector
-      if (obtainedReplyLines != expectedReplyLines) {
-        pprint.err.log(obtainedReplyLines)
-        pprint.err.log(expectedReplyLines)
+    if (!ignoreReply) {
+      val replies = streams.executeReplies
+        .toVector
+        .sortBy(_._1)
+        .map(_._2)
+        .map(s => if (trimReplyLines) s.trimLines else s)
+      if (Properties.isWin) {
+        expect(replies.length == Option(reply).toVector.length)
+        val obtainedReplyLines =
+          replies.headOption.iterator.flatMap(_.linesIterator).filter(_.nonEmpty).toVector
+        val expectedReplyLines =
+          Option(reply).iterator.flatMap(_.linesIterator).filter(_.nonEmpty).toVector
+        if (obtainedReplyLines != expectedReplyLines) {
+          pprint.err.log(obtainedReplyLines)
+          pprint.err.log(expectedReplyLines)
+        }
+        expect(obtainedReplyLines == expectedReplyLines)
       }
-      expect(obtainedReplyLines == expectedReplyLines)
-    }
-    else {
-      if (replies != Option(reply).toVector) {
-        val expectedSingleReply = reply
-        val gotReplies          = replies
-        pprint.err.log(expectedSingleReply)
-        pprint.err.log(gotReplies)
+      else {
+        if (replies != Option(reply).toVector) {
+          val expectedSingleReply = reply
+          val gotReplies          = replies
+          pprint.err.log(expectedSingleReply)
+          pprint.err.log(gotReplies)
+        }
+        expect(replies == Option(reply).toVector)
       }
-      expect(replies == Option(reply).toVector)
     }
 
     if (replyPayloads != null) {
@@ -250,7 +260,18 @@ object Dsl {
     }
 
     val receivedErrors = streams.executeErrors.toVector.sortBy(_._1).map(_._2)
+    if (errors != null && receivedErrors != errors) {
+      pprint.err.log(errors)
+      pprint.err.log(receivedErrors)
+    }
     expect(errors == null || receivedErrors == errors)
+
+    val receivedPartialErrors = receivedErrors.map { case (a, b, _) => (a, b) }
+    if (partialErrors != null && receivedPartialErrors != partialErrors) {
+      pprint.err.log(partialErrors)
+      pprint.err.log(receivedPartialErrors)
+    }
+    expect(partialErrors == null || receivedPartialErrors == partialErrors)
 
     for (expectedHtmlDisplay <- Option(displaysHtml)) {
       import ClientStreams.RawJsonOps
