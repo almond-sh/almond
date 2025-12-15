@@ -289,8 +289,6 @@ class KernelLauncher(
       def helperIORuntime = ioRuntime
       def run(streams: ClientStreams): Unit = {
 
-        val poisonPill: (Channel, RawMessage) = null
-
         val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
 
         val t = for {
