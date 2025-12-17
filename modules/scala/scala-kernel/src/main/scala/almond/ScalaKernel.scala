@@ -166,7 +166,7 @@ object ScalaKernel extends CaseApp[Options] {
         metabrowse = options.metabrowse,
         metabrowseHost = "localhost",
         metabrowsePort = -1,
-        lazyInit = true,
+        lazyInit = !options.warmUp,
         trapOutput = options.trapOutput,
         quiet = options.quiet,
         disableCache = options.disableCache,
@@ -205,7 +205,9 @@ object ScalaKernel extends CaseApp[Options] {
           .map(_.trim)
           .filter(_.nonEmpty)
           .map(_.split('.').filter(_.nonEmpty).toSeq)
-          .getOrElse(AmmInterpreter.defaultPkgName)
+          .getOrElse(AmmInterpreter.defaultPkgName),
+        warmUp = options.warmUp,
+        newInit = options.newInit.getOrElse(ScalaInterpreterParams.defaultNewInit)
       ),
       logCtx = logCtx
     )

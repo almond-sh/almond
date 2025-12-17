@@ -148,7 +148,14 @@ final case class Options(
 
   @HelpMessage("Package name where user code should be compiled - defaults to ammonite.$sess")
   @Hidden
-    pkgName: Option[String] = None
+    pkgName: Option[String] = None,
+
+  @HelpMessage("Whether to warm-up the Scala interpreter upon startup")
+    warmUp: Boolean = false,
+
+  @HelpMessage("Enable new way of initializating the interpreter (defaults to true)")
+  @Hidden
+    newInit: Option[Boolean] = None
 ) {
   // format: on
 

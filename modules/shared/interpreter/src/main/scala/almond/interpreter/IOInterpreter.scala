@@ -8,6 +8,7 @@ import fs2.concurrent.SignallingRef
 
 trait IOInterpreter {
 
+  /** Kernel status is reported as busy while this is running */
   def init: IO[Unit] =
     IO.unit
 

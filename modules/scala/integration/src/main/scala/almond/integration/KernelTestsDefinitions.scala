@@ -15,6 +15,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     versionString.takeWhile(_ != '.').toInt
   }
 
+  test("warm-up") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.warmUp()
+    }
+  }
+
   test("jvm-repr") {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()

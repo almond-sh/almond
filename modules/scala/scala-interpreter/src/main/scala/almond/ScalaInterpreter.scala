@@ -160,9 +160,36 @@ final class ScalaInterpreter(
     interp
   }
 
-  if (!params.lazyInit)
-    // eagerly initialize ammInterp
-    ammInterp
+  if (!params.newInit)
+    init0(maybeWarmUp = true)
+
+  override def init(): Unit =
+    init0(maybeWarmUp = params.newInit)
+
+  private def init0(maybeWarmUp: Boolean): Unit =
+    if (!params.lazyInit && params.newInit) {
+      // eagerly initialize ammInterp
+      ammInterp
+
+      if (params.warmUp && maybeWarmUp) {
+        log.info("Warming-up interpreter")
+        // Same thing as Ammonite's own warm-up
+        // https://github.com/com-lihaoyi/Ammonite/blob/185818d3f5efdad311d32f6ff6c926514a9415d4/amm/repl/src/main/scala/ammonite/repl/Repl.scala#L152-L167
+        val code  = s"""val array = Seq.tabulate(10)(_*2).toArray.max"""
+        val stmts = ammonite.compiler.Parsers.split(code).get.toOption.get
+        val res   = ammInterp.processLine(code, stmts, 9999999, silent = true, () => ())
+        res match {
+          case f: Res.Failing =>
+            val exOpt = f match {
+              case e: Res.Exception => Some(e.t)
+              case _                => None
+            }
+            log.warn(s"Error warming-up interpreter: $f", exOpt.orNull)
+          case _ =>
+            log.info("Interpreter warm-up done")
+        }
+      }
+    }
 
   override def interruptSupported: Boolean =
     true
