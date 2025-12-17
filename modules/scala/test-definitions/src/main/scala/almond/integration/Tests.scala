@@ -23,6 +23,23 @@ object Tests {
   private def maybePostImportNewLine(isScala2: Boolean) =
     if (isScala2) "" else System.lineSeparator()
 
+  def warmUp()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession("--warm-up") { implicit session =>
+
+      // Same as jvm-repr below, what we actually do here doesn't matter much
+
+      execute("""class Bar(val value: String)""", "defined class Bar")
+      execute(
+        """kernel.register[Bar](bar => Map("text/plain" -> s"Bar(${bar.value})"))""",
+        ""
+      )
+      execute(
+        """val b = new Bar("other")""",
+        "",
+        displaysText = Seq("Bar(other)")
+      )
+    }
+
   def jvmRepr()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute("""class Bar(val value: String)""", "defined class Bar")

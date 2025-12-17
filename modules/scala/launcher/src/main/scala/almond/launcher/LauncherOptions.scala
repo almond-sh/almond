@@ -53,7 +53,8 @@ final case class LauncherOptions(
   @ExtraName("outputDir")
     outputDirectory: Option[String] = None,
   @ExtraName("tmpOutputDir")
-    tmpOutputDirectory: Option[Boolean] = None
+    tmpOutputDirectory: Option[Boolean] = None,
+  warmUp: Option[Boolean] = None
 ) {
   // format: on
 
@@ -93,6 +94,8 @@ final case class LauncherOptions(
       b += s"--output-directory=$outputDir"
     for (tmpOutputDir <- tmpOutputDirectory)
       b += s"--tmp-output-directory=$tmpOutputDir"
+    for (value <- warmUp)
+      b += s"--warm-up=$value"
     b.result()
   }
 

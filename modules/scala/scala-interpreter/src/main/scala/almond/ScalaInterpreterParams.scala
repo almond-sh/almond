@@ -59,9 +59,12 @@ final case class ScalaInterpreterParams(
    */
   wrapperNamePrefix: String = ScalaInterpreterParams.defaultWrapperNamePrefix,
   pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
-  evaluatorHookOpt: Option[HookEvaluator.Hook] = None
+  evaluatorHookOpt: Option[HookEvaluator.Hook] = None,
+  warmUp: Boolean = false,
+  newInit: Boolean = ScalaInterpreterParams.defaultNewInit
 )
 
 object ScalaInterpreterParams {
   def defaultWrapperNamePrefix: String = "cmd"
+  def defaultNewInit: Boolean          = true
 }
