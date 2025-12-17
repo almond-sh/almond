@@ -32,11 +32,6 @@ object KernelLauncher {
   def enableSilentOutput = true
   def printOutputOnError = true
 
-  lazy val testScalaVersion = sys.props.getOrElse(
-    "almond.test.scala-version",
-    sys.error("almond.test.scala-version Java property not set")
-  )
-
   lazy val testScala212Version = sys.props.getOrElse(
     "almond.test.scala212-version",
     sys.error("almond.test.scala212-version Java property not set")
@@ -45,11 +40,6 @@ object KernelLauncher {
   lazy val testScala213Version = sys.props.getOrElse(
     "almond.test.scala213-version",
     sys.error("almond.test.scala213-version Java property not set")
-  )
-
-  lazy val testScala213VersionPulledByScala3 = sys.props.getOrElse(
-    "almond.test.scala213-pulled-by-3-version",
-    sys.error("almond.test.scala213-pulled-by-3-version Java property not set")
   )
 
   lazy val kernelShapelessVersion = sys.props.getOrElse(
@@ -120,18 +110,6 @@ object KernelLauncher {
     }
   }
 
-  sealed abstract class LauncherType extends Product with Serializable {
-    def isTwoStepStartup: Boolean
-  }
-  object LauncherType {
-    case object Legacy extends LauncherType {
-      def isTwoStepStartup = false
-    }
-    case object Jvm extends LauncherType {
-      def isTwoStepStartup = true
-    }
-  }
-
   @tailrec
   private def retryPeriodicallyUntil[T](retryUntil: Long, period: Long)(f: => Option[T]): T = {
     val now = System.currentTimeMillis()
@@ -147,7 +125,6 @@ object KernelLauncher {
 }
 
 class KernelLauncher(
-  val launcherType: KernelLauncher.LauncherType,
   val defaultScalaVersion: String,
   closeForcibly: Boolean = true
 ) {
@@ -161,8 +138,6 @@ class KernelLauncher(
   def sessionTimeout: Duration = 3.minutes
 
   import KernelLauncher._
-
-  def isTwoStepStartup = launcherType.isTwoStepStartup
 
   def kernelBindToRandomPorts: Boolean = true
 
@@ -187,17 +162,13 @@ class KernelLauncher(
       "-r",
       "jitpack"
     )
-    val launcherArgs =
-      if (isTwoStepStartup)
-        Seq(s"sh.almond:launcher_3:$almondVersion")
-      else
-        Seq(
-          s"sh.almond:::scala-kernel:$almondVersion",
-          "--shared",
-          "sh.almond:::scala-kernel-api",
-          "--scala",
-          defaultScalaVersion
-        )
+    val launcherArgs = Seq(
+      s"sh.almond:::scala-kernel:$almondVersion",
+      "--shared",
+      "sh.almond:::scala-kernel-api",
+      "--scala",
+      defaultScalaVersion
+    )
     val res = os.proc(
       cs,
       "bootstrap",
@@ -347,8 +318,6 @@ class KernelLauncher(
 
       def output: Option[TestOutput] = Some(output0)
 
-      override def differedStartUp = isTwoStepStartup
-
       var proc: os.SubProcess = null
       var sessions            = List.empty[Session with AutoCloseable]
       var jupyterDirs         = List.empty[os.Path]
@@ -362,42 +331,26 @@ class KernelLauncher(
 
         val kernelId = "almond-it"
 
-        val baseCmd: os.Shellable = launcherType match {
-          case LauncherType.Legacy =>
-            val jarLauncher0 =
-              if (launcherOptions.isEmpty)
-                jarLauncher(output)
-              else
-                generateLauncher(output, launcherOptions)
-            val baseCp = (extraClassPath :+ jarLauncher0.toString)
-              .filter(_.nonEmpty)
-              .mkString(File.pathSeparator)
-            Seq[os.Shellable](
-              "java",
-              "-Xmx1g",
-              "-cp",
-              baseCp,
-              "coursier.bootstrap.launcher.Launcher"
-            )
-          case LauncherType.Jvm =>
-            Seq[os.Shellable](
-              "java",
-              "-Xmx1g",
-              "-cp",
-              jarLauncher(output),
-              "coursier.bootstrap.launcher.Launcher"
-            )
+        val baseCmd: os.Shellable = {
+          val jarLauncher0 =
+            if (launcherOptions.isEmpty)
+              jarLauncher(output)
+            else
+              generateLauncher(output, launcherOptions)
+          val baseCp = (extraClassPath :+ jarLauncher0.toString)
+            .filter(_.nonEmpty)
+            .mkString(File.pathSeparator)
+          Seq[os.Shellable](
+            "java",
+            "-Xmx1g",
+            "-cp",
+            baseCp,
+            "coursier.bootstrap.launcher.Launcher"
+          )
         }
 
         val extraStartupClassPathOpts =
           extraClassPath.flatMap(elem => Seq("--extra-startup-class-path", elem))
-
-        val twoStepStartupOpts =
-          if (isTwoStepStartup)
-            launcherOptions ++
-              Seq("--scala", defaultScalaVersion)
-          else
-            Nil
 
         val dir = TmpDir.tmpDir()
         jupyterDirs = dir :: jupyterDirs
@@ -412,7 +365,6 @@ class KernelLauncher(
           "--id",
           kernelId,
           extraStartupClassPathOpts,
-          twoStepStartupOpts,
           options
         )
         proc0.call(stdin = os.Inherit, stdout = output.processOutput, stderr = output.processOutput)
