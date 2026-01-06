@@ -8,6 +8,9 @@ final class NopCapture extends Capture {
   val err: PrintStream =
     new NopOutputStream().printStream()
 
+  def originalErr: Option[PrintStream] =
+    None
+
   def apply[T](stdout: String => Unit, stderr: String => Unit)(block: => T): T =
     Console.withOut(out) {
       Console.withErr(err) {
