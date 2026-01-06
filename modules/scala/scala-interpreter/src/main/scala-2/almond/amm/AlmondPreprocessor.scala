@@ -36,43 +36,46 @@ class AlmondPreprocessor(
   autoUpdateVars: Boolean,
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
-  logCtx: almond.logger.LoggerContext
+  logCtx: almond.logger.LoggerContext,
+  logCode: Boolean
 ) extends DefaultPreprocessor(parse) {
 
   // useful when debugging
   // this prints the code after pre-processing, that is the code that is actually passed to scalac for compilation
-  // private val log = logCtx(getClass)
-  // override def transform(
-  //   stmts: Seq[String],
-  //   resultIndex: String,
-  //   leadingSpaces: String,
-  //   codeSource: ammonite.util.Util.CodeSource,
-  //   indexedWrapperName: Name,
-  //   imports: ammonite.util.Imports,
-  //   printerTemplate: String => String,
-  //   extraCode: String,
-  //   skipEmpty: Boolean,
-  //   markScript: Boolean,
-  //   codeWrapper: ammonite.compiler.iface.CodeWrapper
-  // ) = {
-  //   val r = super.transform(
-  //     stmts,
-  //     resultIndex,
-  //     leadingSpaces,
-  //     codeSource,
-  //     indexedWrapperName,
-  //     imports,
-  //     printerTemplate,
-  //     extraCode,
-  //     skipEmpty,
-  //     markScript,
-  //     codeWrapper
-  //   )
-  //   r.map { o =>
-  //     log.info(s"Compiling '${o.code}'")
-  //   }
-  //   r
-  // }
+  private lazy val log = logCtx(getClass)
+  override def transform(
+    stmts: Seq[String],
+    resultIndex: String,
+    leadingSpaces: String,
+    codeSource: ammonite.util.Util.CodeSource,
+    indexedWrapperName: Name,
+    imports: ammonite.util.Imports,
+    printerTemplate: String => String,
+    extraCode: String,
+    skipEmpty: Boolean,
+    markScript: Boolean,
+    codeWrapper: ammonite.compiler.iface.CodeWrapper
+  ) = {
+    val r = super.transform(
+      stmts,
+      resultIndex,
+      leadingSpaces,
+      codeSource,
+      indexedWrapperName,
+      imports,
+      printerTemplate,
+      extraCode,
+      skipEmpty,
+      markScript,
+      codeWrapper
+    )
+    if (logCode)
+      r.map { o =>
+        val nl = System.lineSeparator()
+        log.info(s"Compiling ${indexedWrapperName.encoded}.sc$nl---$nl${o.code}$nl---")
+      }
+    r
+  }
 
   import AlmondPreprocessor._
 

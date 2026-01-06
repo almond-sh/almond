@@ -85,7 +85,8 @@ object AmmInterpreter {
     initialSettings: Seq[String],
     wrapperNamePrefix: String,
     pkgName: Seq[String],
-    evaluatorHookOpt: Option[HookEvaluator.Hook]
+    evaluatorHookOpt: Option[HookEvaluator.Hook],
+    logCode: Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -176,7 +177,8 @@ object AmmInterpreter {
             variableInspectorEnabled,
             outputDir0,
             initialSettings,
-            logCtx
+            logCtx,
+            logCode
           )
 
           override val eval: Evaluator = {
