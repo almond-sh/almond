@@ -258,6 +258,57 @@ object Tests {
     }
   }
 
+  def quietOutputCompilationError(
+    consoleOut: => String,
+    consoleErr: => String,
+    quiet: Boolean,
+    scalaVersion: String
+  )(implicit sessionId: SessionId, runner: Runner): Unit = {
+    runner.withSession() { implicit session =>
+      execute(
+        """def thing(s: String) = ""; thing(Array(2))""",
+        expectError = true,
+        stdout = "",
+        stderr =
+          if (scalaVersion.startsWith("2."))
+            """cmd1.sc:1: type mismatch;
+              | found   : Array[Int]
+              | required: String
+              |def thing(s: String) = ""; val res1_1 = thing(Array(2))
+              |                                                   ^
+              |Compilation Failed""".stripMargin
+          else if (scalaVersion.startsWith("3.3.") || scalaVersion.startsWith("3.4."))
+            """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
+              |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
+              |  |                                              ^^^^^^^^
+              |  |Found:    Array[Int]
+              |  |Required: String
+              |  |
+              |  |One of the following imports might make progress towards fixing the problem:
+              |  |
+              |  |  import sourcecode.Text.generate
+              |  |  import utest.framework.GoldenFix.Span.generate
+              |  |
+              |  |
+              |  | longer explanation available when compiling with `-explain`
+              |Compilation Failed""".stripMargin
+          else
+            """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
+              |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
+              |  |                                              ^^^^^^^^
+              |  |                                              Found:    Array[Int]
+              |  |                                              Required: String
+              |  |
+              |  | longer explanation available when compiling with `-explain`
+              |Compilation Failed""".stripMargin
+      )
+
+      val expectedMessage =
+        if (scalaVersion.startsWith("2.")) "type mismatch;" else "Type Mismatch Error"
+      assert(!quiet == consoleErr.contains(expectedMessage))
+    }
+  }
+
   def lastException()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(
