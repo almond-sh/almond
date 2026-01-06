@@ -241,7 +241,7 @@ object Tests {
   ): Unit = {
     runner.withSession() { implicit session =>
       execute(
-        """System.err.print("test err"); System.out.print("test out")""",
+        """System.err.print("test" + " err"); System.out.print("test" + " out")""",
         "",
         stdout = "test out",
         stderr = "test err"
