@@ -330,6 +330,24 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
+    test("quiet=false compilation error") {
+      withConsoleRedirect { (stdout, stderr) =>
+        implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+          threads,
+          interpreterEc,
+          processParams = _.copy(quiet = false)
+        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        almond.integration.Tests.quietOutputCompilationError(
+          stdout,
+          stderr,
+          quiet = false,
+          scalaVersion
+        )
+      }
+    }
+
     test("quiet=true") {
       withConsoleRedirect { (stdout, stderr) =>
         implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
@@ -340,6 +358,24 @@ object ScalaKernelTests extends TestSuite {
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
         almond.integration.Tests.quietOutput(stdout, stderr, quiet = true)
+      }
+    }
+
+    test("quiet=true compilation error") {
+      withConsoleRedirect { (stdout, stderr) =>
+        implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+          threads,
+          interpreterEc,
+          processParams = _.copy(quiet = true)
+        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        almond.integration.Tests.quietOutputCompilationError(
+          stdout,
+          stderr,
+          quiet = true,
+          scalaVersion
+        )
       }
     }
 

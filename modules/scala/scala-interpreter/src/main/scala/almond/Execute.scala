@@ -133,16 +133,29 @@ final class Execute(
   private var currentLine0          = initialCellCount
   private var currentNoHistoryLine0 = Int.MaxValue / 2
 
-  private val printer0 = Printer(
-    capture0.out,
-    capture0.err,
-    resultStream,
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s + System.lineSeparator())),
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s + System.lineSeparator())),
-    // to stdout in notebooks, not to get a red background,
-    // but stderr in the console, not to pollute stdout
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stdout(s + System.lineSeparator()))
-  )
+  private val printer0 = {
+    def doPrint(s: String, toClientStdout: Boolean = false): Unit =
+      currentPublishOpt0 match {
+        case None => Console.err.println(s)
+        case Some(outputHandler) =>
+          if (!quiet)
+            capture0.originalErr.getOrElse(System.err).println(s)
+          if (toClientStdout)
+            outputHandler.stdout(s + System.lineSeparator())
+          else
+            outputHandler.stderr(s + System.lineSeparator())
+      }
+    Printer(
+      capture0.out,
+      capture0.err,
+      resultStream,
+      doPrint(_),
+      doPrint(_),
+      // to stdout in notebooks, not to get a red background,
+      // but stderr in the console, not to pollute stdout
+      doPrint(_, toClientStdout = true)
+    )
+  }
 
   private def useOptions(
     ammInterp: ammonite.interp.Interpreter,
