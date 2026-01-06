@@ -59,7 +59,8 @@ final case class ScalaInterpreterParams(
    */
   wrapperNamePrefix: String = ScalaInterpreterParams.defaultWrapperNamePrefix,
   pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
-  evaluatorHookOpt: Option[HookEvaluator.Hook] = None
+  evaluatorHookOpt: Option[HookEvaluator.Hook] = None,
+  logCode: Boolean = false
 )
 
 object ScalaInterpreterParams {

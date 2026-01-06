@@ -53,7 +53,9 @@ final case class LauncherOptions(
   @ExtraName("outputDir")
     outputDirectory: Option[String] = None,
   @ExtraName("tmpOutputDir")
-    tmpOutputDirectory: Option[Boolean] = None
+    tmpOutputDirectory: Option[Boolean] = None,
+  @Hidden
+    logCode: Option[Boolean] = None
 ) {
   // format: on
 
@@ -93,6 +95,8 @@ final case class LauncherOptions(
       b += s"--output-directory=$outputDir"
     for (tmpOutputDir <- tmpOutputDirectory)
       b += s"--tmp-output-directory=$tmpOutputDir"
+    for (logCode0 <- logCode)
+      b += s"--log-code=$logCode0"
     b.result()
   }
 

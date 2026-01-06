@@ -205,7 +205,8 @@ object ScalaKernel extends CaseApp[Options] {
           .map(_.trim)
           .filter(_.nonEmpty)
           .map(_.split('.').filter(_.nonEmpty).toSeq)
-          .getOrElse(AmmInterpreter.defaultPkgName)
+          .getOrElse(AmmInterpreter.defaultPkgName),
+        logCode = options.logCode
       ),
       logCtx = logCtx
     )

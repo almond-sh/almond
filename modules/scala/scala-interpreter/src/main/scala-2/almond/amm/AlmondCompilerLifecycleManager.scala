@@ -18,7 +18,8 @@ class AlmondCompilerLifecycleManager(
   variableInspectorEnabled: () => Boolean,
   outputDir: Option[Path],
   initialSettings: Seq[String],
-  logCtx: LoggerContext
+  logCtx: LoggerContext,
+  logCode: Boolean
 ) extends CompilerLifecycleManager(
       rtCacheDir,
       headFrame,
@@ -45,7 +46,8 @@ class AlmondCompilerLifecycleManager(
         autoUpdateVars,
         silentImports,
         variableInspectorEnabled,
-        logCtx
+        logCtx,
+        logCode
       )
     }
 
