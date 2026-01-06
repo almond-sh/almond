@@ -6,6 +6,8 @@ trait Capture {
   def out: PrintStream
   def err: PrintStream
 
+  def originalErr: Option[PrintStream]
+
   def apply[T](stdout: String => Unit, stderr: String => Unit)(block: => T): T
 }
 
