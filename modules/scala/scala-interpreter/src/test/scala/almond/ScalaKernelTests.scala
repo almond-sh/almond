@@ -240,7 +240,6 @@ object ScalaKernelTests extends TestSuite {
 
     test("auto-update Future results upon completion") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-      ammonite.compiler.CompilerBuilder.scalaVersion
       almond.integration.Tests.autoUpdateFutureUponCompletion(scalaVersion)
     }
 
