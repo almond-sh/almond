@@ -2320,4 +2320,85 @@ object Tests {
     runner: Runner
   ): Unit =
     customPkgNameTest("notebook")
+
+  def outputDirectory()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+    val dir = os.temp.dir(prefix = "almond-test")
+    try {
+      runner.withSession("--pkg-name", "foo.thing", "--output-dir", dir.toString) {
+        implicit session =>
+          execute(
+            "class C",
+            "defined class C",
+            ignoreStreams = true
+          )
+
+          execute(
+            "val clsName = new C().getClass.getName",
+            """clsName: String = "foo.thing.cmd1$Helper$C""""
+          )
+
+          execute(
+            "val cellClsName = classOf[foo.thing.cmd1].getName",
+            """cellClsName: String = "foo.thing.cmd1""""
+          )
+
+          execute(
+            """Thread.currentThread().getContextClassLoader.loadClass("foo.thing.cmd1$Helper$C")""",
+            "ignored",
+            ignoreReply = true
+          )
+      }
+
+      val listing0 = os.walk(dir).filter(os.isFile).map(_.subRelativeTo(dir))
+      pprint.err.log(listing0)
+
+      runner.withSession("--pkg-name", "foo.other", "--output-dir", dir.toString) {
+        implicit session =>
+          execute(
+            "class C",
+            "defined class C",
+            ignoreStreams = true
+          )
+
+          execute(
+            "val clsName = new C().getClass.getName",
+            """clsName: String = "foo.other.cmd1$Helper$C""""
+          )
+
+          execute(
+            "val cellClsName = classOf[foo.other.cmd1].getName",
+            """cellClsName: String = "foo.other.cmd1""""
+          )
+
+          execute(
+            """Thread.currentThread().getContextClassLoader.loadClass("foo.other.cmd1$Helper$C")""",
+            "ignored",
+            ignoreReply = true
+          )
+
+          // classes from the first session shouldn't be available at compile-time in the second one
+          execute(
+            "val firstSessCellClsName = classOf[foo.thing.cmd1].getName",
+            expectError = true,
+            ignoreStreams = true,
+            partialErrors = Seq(("", "Compilation Failed"))
+          )
+
+          // classes from the first session shouldn't be available at runtime in the second one
+          execute(
+            """Thread.currentThread().getContextClassLoader.loadClass("foo.thing.cmd1$Helper$C")""",
+            expectError = true,
+            partialErrors = Seq(("java.lang.ClassNotFoundException", "foo.thing.cmd1$Helper$C"))
+          )
+      }
+
+      val listing1 = os.walk(dir).filter(os.isFile).map(_.subRelativeTo(dir))
+      pprint.err.log(listing1)
+    }
+    finally
+      os.remove.all(dir)
+  }
 }
