@@ -3,6 +3,8 @@ package almond.logger.internal
 import java.io.PrintStream
 import java.lang.management.ManagementFactory
 
+import scala.util.control.NonFatal
+
 import almond.logger.Level
 
 final class PrintStreamLogger(
@@ -11,6 +13,8 @@ final class PrintStreamLogger(
   colored: Boolean,
   addPid: Boolean
 ) extends ActualLogger {
+
+  import PrintStreamLogger._
 
   def this(level: Level, out: PrintStream) =
     this(level, out, colored = true, addPid = false)
@@ -21,7 +25,7 @@ final class PrintStreamLogger(
     if (addPid) {
       if (colored)
         b ++= Console.CYAN
-      b ++= PrintStreamLogger.pid
+      b ++= pid
       if (colored)
         b ++= Console.RESET
       b += ' '
@@ -33,10 +37,41 @@ final class PrintStreamLogger(
 
     out.println(b.result())
     if (exception != null)
-      exception.printStackTrace(out)
+      try exception.printStackTrace(out)
+      catch {
+        case NonFatal(_) =>
+          val message = exceptionString(exception)
+          val maybeStackTrace =
+            try Option(exception.getStackTrace).toRight("null stack trace")
+            catch {
+              case NonFatal(ex0) =>
+                Left(s"Caught ${exceptionString(ex0)} while trying to get stack trace")
+            }
+          out.println(message)
+          maybeStackTrace match {
+            case Left(err) =>
+              out.println(s"  $err")
+            case Right(stackTrace) =>
+              for (elem <- stackTrace)
+                out.println(s"  $elem")
+          }
+      }
   }
 }
 
 object PrintStreamLogger {
   lazy val pid: String = ManagementFactory.getRuntimeMXBean.getName.takeWhile(_ != '@')
+
+  def exceptionString(ex: Throwable): String =
+    try ex.toString
+    catch {
+      case NonFatal(_) =>
+        ex.getClass.getName
+    }
+  def exceptionMessage(ex: Throwable): String =
+    try ex.getMessage
+    catch {
+      case NonFatal(ex) =>
+        s"[no message: caught ${exceptionString(ex)}]"
+    }
 }
