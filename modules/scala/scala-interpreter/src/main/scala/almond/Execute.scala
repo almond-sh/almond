@@ -19,6 +19,7 @@ import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHa
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
+import almond.logger.internal.PrintStreamLogger
 import almond.protocol.{Execute => ProtocolExecute}
 import ammonite.compiler.Parsers
 import ammonite.compiler.iface.Preprocessor
@@ -36,6 +37,7 @@ import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** Wraps contextual things around when executing code (capturing output, stdin via front-ends,
@@ -630,7 +632,10 @@ final class Execute(
                         }
 
                       case Res.Exception(ex, msg) =>
-                        log.error(s"exception in user code (${ex.getMessage})", ex)
+                        log.error(
+                          s"exception in user code (${PrintStreamLogger.exceptionString(ex)})",
+                          ex
+                        )
                         Execute.error(colors0(), Some(ex), msg)
 
                       case Res.Skip =>

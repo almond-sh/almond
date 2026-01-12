@@ -2432,4 +2432,50 @@ object Tests {
     finally
       os.remove.all(dir)
   }
+
+  def throwableGetMessageThrows(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """class TestException extends Exception("") {
+          |  override def getMessage: String = throw new NullPointerException
+          |}
+          |""".stripMargin,
+        "defined class TestException"
+      )
+
+      val stackTrace =
+        if (scalaVersion.startsWith("2.12."))
+          Seq(
+            "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
+            "ammonite.$sess.cmd2$.<init>(cmd2.sc:6)",
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:-1)"
+          )
+        else if (scalaVersion.startsWith("2.13."))
+          Seq(
+            "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:6)"
+          )
+        else
+          Seq(
+            "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65434)"
+          )
+
+      execute(
+        "throw new TestException",
+        errors = Seq(
+          (
+            "ammonite.$sess.cmd1$Helper$TestException",
+            "[no message: caught java.lang.NullPointerException]",
+            List(
+              "ammonite.$sess.cmd1$Helper$TestException: [no message: caught java.lang.NullPointerException]",
+              "    ammonite.$sess.cmd1$Helper$TestException"
+            ) ++ stackTrace.map("      " + _)
+          )
+        )
+      )
+    }
 }

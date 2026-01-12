@@ -1,6 +1,7 @@
 package almond.interpreter
 
 import almond.interpreter.api.ExecuteResult
+import almond.logger.internal.PrintStreamLogger
 
 object ExecuteError {
 
@@ -44,7 +45,7 @@ object ExecuteError {
   ): Seq[String] = {
     val cutoff = Set("$main", "evaluatorRunPrinter")
     val traces = unapplySeq(ex).get.map(exception =>
-      Seq(error(exception.toString).render) ++
+      Seq(error(PrintStreamLogger.exceptionString(exception)).render) ++
         exception
           .getStackTrace
           .takeWhile(x => !cutoff(x.getMethodName))
@@ -71,7 +72,7 @@ object ExecuteError {
   ) =
     ExecuteResult.Error(
       exOpt.fold("")(_.getClass.getName),
-      msg + exOpt.fold("")(_.getMessage),
+      msg + exOpt.fold("")(PrintStreamLogger.exceptionMessage),
       exOpt.fold(List.empty[String])(ex =>
         exceptionToStackTraceLines(
           ex,
