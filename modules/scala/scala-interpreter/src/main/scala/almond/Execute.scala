@@ -187,7 +187,8 @@ final class Execute(
       if (deps.isEmpty) Right(Nil)
       else ammInterp.loadIvy(deps: _*)
     loadDepsRes.map { loaded =>
-      ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+      if (loaded.nonEmpty)
+        ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
       ()
     }
   }

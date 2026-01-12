@@ -43,9 +43,6 @@ class AlmondCompilerLifecycleManager(
       logCode
     )
   }
-
-  def preConfigure(): Unit =
-    ()
 }
 
 object AlmondCompilerLifecycleManager {
