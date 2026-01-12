@@ -896,13 +896,26 @@ object Tests {
           |""".stripMargin,
         """defined function getValue0
           |n0: Int = 2""".stripMargin,
-        ignoreStreams = true
+        stderr =
+          if (scalaVersion.startsWith("2."))
+            """cmd1.sc:3: method getValue0 in class Helper is deprecated (since 0.1): foo
+              |val n0 = getValue0()
+              |         ^
+              |""".stripMargin
+          else
+            """-- Warning: cmd1.sc:3:9 --------------------------------------------------------
+              |3 |val n0 = getValue0()
+              |  |         ^^^^^^^^^
+              |  |         method getValue0 in class Helper is deprecated since 0.1: foo
+              |""".stripMargin
       )
 
       val scalaVersion0 = Version(scalaVersion)
       val errorMessage =
         if (scalaVersion.startsWith("2.13."))
           if (scalaVersion0 >= Version("2.13.15"))
+            // we pass -deprecation, so we shouldn't get an advice about adding -deprecation
+            // com-lihaoyi/Ammonite#1703 or a related PR should fix that
             """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
               |No warnings can be incurred under -Werror.
               |Compilation Failed""".stripMargin
