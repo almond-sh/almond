@@ -307,13 +307,6 @@ object AmmInterpreter {
 
       ammInterp0.compilerManager.init()
 
-      log.debug("Processing scalac args")
-
-      ammInterp0
-        .compilerManager
-        .asInstanceOf[AlmondCompilerLifecycleManager]
-        .preConfigure()
-
       log.info("Ammonite interpreter initialized")
 
       ammInterp0

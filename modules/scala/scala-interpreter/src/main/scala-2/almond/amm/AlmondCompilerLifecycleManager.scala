@@ -50,9 +50,6 @@ class AlmondCompilerLifecycleManager(
         logCode
       )
     }
-
-  def preConfigure(): Unit =
-    preConfigureCompiler(_.processArguments(Nil, processAll = true))
 }
 
 object AlmondCompilerLifecycleManager {
