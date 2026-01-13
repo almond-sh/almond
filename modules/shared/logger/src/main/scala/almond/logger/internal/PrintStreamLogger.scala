@@ -40,13 +40,8 @@ final class PrintStreamLogger(
       try exception.printStackTrace(out)
       catch {
         case NonFatal(_) =>
-          val message = exceptionString(exception)
-          val maybeStackTrace =
-            try Option(exception.getStackTrace).toRight("null stack trace")
-            catch {
-              case NonFatal(ex0) =>
-                Left(s"Caught ${exceptionString(ex0)} while trying to get stack trace")
-            }
+          val message         = exceptionString(exception)
+          val maybeStackTrace = exceptionStackTrace(exception)
           out.println(message)
           maybeStackTrace match {
             case Left(err) =>
@@ -73,5 +68,11 @@ object PrintStreamLogger {
     catch {
       case NonFatal(ex) =>
         s"[no message: caught ${exceptionString(ex)}]"
+    }
+  def exceptionStackTrace(ex: Throwable): Either[String, Array[StackTraceElement]] =
+    try Option(ex.getStackTrace).toRight("null stack trace")
+    catch {
+      case NonFatal(ex0) =>
+        Left(s"Caught ${exceptionString(ex0)} while trying to get stack trace")
     }
 }

@@ -45,13 +45,18 @@ object ExecuteError {
   ): Seq[String] = {
     val cutoff = Set("$main", "evaluatorRunPrinter")
     val traces = unapplySeq(ex).get.map(exception =>
-      Seq(error(PrintStreamLogger.exceptionString(exception)).render) ++
-        exception
-          .getStackTrace
-          .takeWhile(x => !cutoff(x.getMethodName))
-          .map(highlightFrame(_, highlightError, source))
-          .map(_.render)
-          .toSeq
+      Seq(error(PrintStreamLogger.exceptionString(exception)).render) ++ {
+        PrintStreamLogger.exceptionStackTrace(exception) match {
+          case Left(err) =>
+            Seq(s"  $err")
+          case Right(stackTrace) =>
+            stackTrace
+              .takeWhile(x => !cutoff(x.getMethodName))
+              .map(highlightFrame(_, highlightError, source))
+              .map(_.render)
+              .toSeq
+        }
+      }
     )
     traces.flatten
   }
