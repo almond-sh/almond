@@ -218,4 +218,11 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
       almond.integration.Tests.throwableGetMessageThrows(kernelLauncher.defaultScalaVersion)
     }
   }
+
+  test("throwable getStackTrace throws") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.throwableGetStackTraceThrows(kernelLauncher.defaultScalaVersion)
+    }
+  }
 }

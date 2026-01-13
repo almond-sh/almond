@@ -2379,4 +2379,33 @@ object Tests {
         )
       )
     }
+
+  def throwableGetStackTraceThrows(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """class TestException extends Exception("") {
+          |  override def getStackTrace: Array[StackTraceElement] = throw new NullPointerException
+          |}
+          |""".stripMargin,
+        "defined class TestException"
+      )
+
+      execute(
+        "throw new TestException",
+        errors = Seq(
+          (
+            "ammonite.$sess.cmd1$Helper$TestException",
+            "",
+            List(
+              "ammonite.$sess.cmd1$Helper$TestException",
+              "    ammonite.$sess.cmd1$Helper$TestException: ",
+              "      Caught java.lang.NullPointerException while trying to get stack trace"
+            )
+          )
+        )
+      )
+    }
 }
