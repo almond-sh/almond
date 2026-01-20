@@ -938,13 +938,21 @@ object Tests {
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |Compilation Failed""".stripMargin
-        else
+        else if (scalaVersion0 < Version("3.8.0"))
           // FIXME The line number is wrong here
           """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
             |3 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |No warnings can be incurred under -Werror (or -Xfatal-warnings)
+            |Compilation Failed""".stripMargin
+        else
+          // FIXME The line number is wrong here
+          """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
+            |3 |val n = getValue()
+            |  |        ^^^^^^^^
+            |  |        method getValue in class Helper is deprecated since 0.1: foo
+            |No warnings can be incurred under -Werror
             |Compilation Failed""".stripMargin
 
       execute(

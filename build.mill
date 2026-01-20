@@ -219,7 +219,8 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
       "3.5.2"   -> Version("0.14.2"),
       "3.6.2"   -> Version("0.14.2"),
       "3.6.4"   -> Version("0.14.2"),
-      "3.7.3"   -> Version("0.14.2")
+      "3.7.3"   -> Version("0.14.2"),
+      "3.8.0"   -> Version("0.14.5")
     )
     val base = super.mimaPreviousVersions()
     minVersionMap.get(scalaVersion()) match {
@@ -675,18 +676,21 @@ trait Integration extends SbtModule {
     object helper extends ScalaModule {
       def scalaVersion = ScalaVersions.scala3Latest
       def libraryPropertiesScalaVersion = Task {
-        runClasspath()
-          .map(_.path)
-          .map(_.last)
-          .filter(_.startsWith("scala-library-2.13."))
-          .map(_.stripPrefix("scala-library-"))
-          .filter(_.endsWith(".jar"))
-          .map(_.stripSuffix(".jar"))
-          .filter(!_.contains("-"))
-          .headOption
-          .getOrElse {
-            sys.error(s"Cannot get Scala 2.13 version pulled by Scala ${scalaVersion()}")
-          }
+        if (Version(scalaVersion()) >= Version("3.8.0"))
+          scalaVersion()
+        else
+          runClasspath()
+            .map(_.path)
+            .map(_.last)
+            .filter(_.startsWith("scala-library-2.13."))
+            .map(_.stripPrefix("scala-library-"))
+            .filter(_.endsWith(".jar"))
+            .map(_.stripSuffix(".jar"))
+            .filter(!_.contains("-"))
+            .headOption
+            .getOrElse {
+              sys.error(s"Cannot get Scala 2.13 version pulled by Scala ${scalaVersion()}")
+            }
       }
     }
     def shapelessVersion = Task {

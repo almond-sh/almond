@@ -28,8 +28,10 @@ trait AlmondPublishModule extends PublishModule with ScalaModule {
     val extraOptions =
       if (sv >= Version("2.12.0") && sv <= Version("2.12.18"))
         Seq("-target:8")
-      else
+      else if (sv < Version("3.8.0"))
         Seq("--release", "8")
+      else
+        Seq("--release", "17")
     super.scalacOptions() ++ extraOptions
   }
 }
