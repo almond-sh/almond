@@ -1,5 +1,6 @@
 package almondbuild.modules
 
+import coursier.version.Version
 import mill.*
 import mill.api.*
 import mill.javalib.publish.*
@@ -23,9 +24,9 @@ trait AlmondPublishModule extends PublishModule with ScalaModule {
     "8"
   )
   def scalacOptions = Task {
-    val sv = scalaVersion()
+    val sv = Version(scalaVersion())
     val extraOptions =
-      if (sv.startsWith("2.12.") && sv.stripPrefix("2.12.").toIntOption.exists(_ <= 18))
+      if (sv >= Version("2.12.0") && sv <= Version("2.12.18"))
         Seq("-target:8")
       else
         Seq("--release", "8")
