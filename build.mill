@@ -674,7 +674,7 @@ trait Integration extends SbtModule {
   object test extends SbtTests {
     object helper extends ScalaModule {
       def scalaVersion = ScalaVersions.scala3Latest
-      def scala213 = Task {
+      def libraryPropertiesScalaVersion = Task {
         runClasspath()
           .map(_.path)
           .map(_.last)
@@ -714,7 +714,7 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
         s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
-        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}",
+        s"-Dalmond.test.library-properties-scala-version=${helper.libraryPropertiesScalaVersion()}",
         s"-Dalmond.test.shapeless-version-pulled-by-kernel=${shapelessVersion()}"
       )
     }
