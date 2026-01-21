@@ -47,9 +47,9 @@ object KernelLauncher {
     sys.error("almond.test.scala213-version Java property not set")
   )
 
-  lazy val testScala213VersionPulledByScala3 = sys.props.getOrElse(
-    "almond.test.scala213-pulled-by-3-version",
-    sys.error("almond.test.scala213-pulled-by-3-version Java property not set")
+  lazy val testLibraryPropertiesScalaVersion = sys.props.getOrElse(
+    "almond.test.library-properties-scala-version",
+    sys.error("almond.test.library-properties-scala-version Java property not set")
   )
 
   lazy val kernelShapelessVersion = sys.props.getOrElse(

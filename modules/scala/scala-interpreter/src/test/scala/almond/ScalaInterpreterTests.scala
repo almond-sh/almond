@@ -14,7 +14,14 @@ import utest._
 
 object ScalaInterpreterTests extends TestSuite {
 
-  private val sbv = scala.util.Properties.versionNumberString.split('.').take(2).mkString(".")
+  private val sbv = {
+    val sv =
+      if (scala.util.Properties.versionNumberString.startsWith("2."))
+        scala.util.Properties.versionNumberString
+      else
+        "2.13.16"
+    sv.split('.').take(2).mkString(".")
+  }
 
   private def newInterpreter(): Interpreter =
     new ScalaInterpreter(

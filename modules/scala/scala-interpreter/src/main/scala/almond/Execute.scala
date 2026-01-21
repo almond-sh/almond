@@ -177,8 +177,13 @@ final class Execute(
       options.scalacOptions.toSeq.map(_.value.value)
     )
 
-    val params       = ScalaParameters(ammInterp.scalaVersion)
-    val compatParams = ScalaParameters(scala.util.Properties.versionNumberString)
+    val params = ScalaParameters(ammInterp.scalaVersion)
+    val compatParams = ScalaParameters(
+      if (scala.util.Properties.versionNumberString.startsWith("2."))
+        scala.util.Properties.versionNumberString
+      else
+        "2.13.16" // kind of meh to hardcode that
+    )
     val deps = options.dependencies.map { dep =>
       val params0 =
         if (dep.userParams.exists(_._1 == "compat")) compatParams
