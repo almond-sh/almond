@@ -220,7 +220,8 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
       "3.6.2"   -> Version("0.14.2"),
       "3.6.4"   -> Version("0.14.2"),
       "3.7.3"   -> Version("0.14.2"),
-      "3.8.0"   -> Version("0.14.5")
+      "3.8.0"   -> Version("0.14.5"),
+      "3.8.1"   -> Version("0.14.5")
     )
     val base = super.mimaPreviousVersions()
     minVersionMap.get(scalaVersion()) match {
