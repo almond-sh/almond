@@ -130,9 +130,9 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
       runner.withSession() { implicit session =>
 
         execute(
-          """//> using scala "2.12.20"
-            |//> using option "-Xfatal-warnings"
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScala212Version}"
+             |//> using option "-Xfatal-warnings"
+             |""".stripMargin,
           ""
         )
 
@@ -165,9 +165,9 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
       runner.withSession() { implicit session =>
 
         execute(
-          """//> using scala "2.12.20"
-            |//> using option "-Xfatal-warnings"
-            |""".stripMargin,
+          s"""//> using scala "${KernelLauncher.testScala212Version}"
+             |//> using option "-Xfatal-warnings"
+             |""".stripMargin,
           ""
         )
 
