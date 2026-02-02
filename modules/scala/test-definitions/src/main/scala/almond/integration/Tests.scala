@@ -2515,4 +2515,17 @@ object Tests {
         )
       )
     }
+
+  def unclosedStringLitteral()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """"aaa""",
+        partialErrors = Seq(
+          (
+            "scala.cli.directivehandler.MalformedDirectiveError",
+            "unclosed string literalunclosed string literal"
+          )
+        )
+      )
+    }
 }
