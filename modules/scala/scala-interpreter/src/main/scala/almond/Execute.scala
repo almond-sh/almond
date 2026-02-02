@@ -557,11 +557,14 @@ final class Execute(
       case Success(Right(finalCode)) =>
         val path      = Left(s"cell$currentLine0.sc")
         val scopePath = ScopePath(Left("."), os.sub)
-        handlers.parse(finalCode, path, scopePath) match {
-          case Left(err) =>
-            log.error(s"exception while processing directives (${err.getMessage})", err)
+        Try(handlers.parse(finalCode, path, scopePath)) match {
+          case Failure(err) =>
+            log.error(s"Unexpected exception while processing directives (${err.getMessage})", err)
             Execute.error(colors0(), Some(err), err.getMessage)
-          case Right(res) =>
+          case Success(Left(err)) =>
+            log.error(s"Exception while processing directives (${err.getMessage})", err)
+            Execute.error(colors0(), Some(err), err.getMessage)
+          case Success(Right(res)) =>
             val maybeOptions = res
               .flatMap(_.global.map(_.kernelOptions).toSeq)
               .sequence
