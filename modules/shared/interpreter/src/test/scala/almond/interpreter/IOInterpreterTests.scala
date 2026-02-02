@@ -29,7 +29,7 @@ object IOInterpreterTests extends TestSuite {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
-          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime, ec)
 
         val ios = Seq(
           // the "cancel" completion checks are only completed if they are cancelled
@@ -58,7 +58,7 @@ object IOInterpreterTests extends TestSuite {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
-          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime, ec)
 
         val ios = Seq(
           // the "cancel" completions are only completed if they are cancelled
@@ -87,7 +87,7 @@ object IOInterpreterTests extends TestSuite {
 
         val interpreter: Interpreter = new TestInterpreter
         val ioInterpreter: IOInterpreter =
-          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime)
+          new InterpreterToIOInterpreter(interpreter, ec, LoggerContext.nop, ioRuntime, ec)
 
         val ios = Seq(
           // the "cancel" inspections are only completed if they are cancelled

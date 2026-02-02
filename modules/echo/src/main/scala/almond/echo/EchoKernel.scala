@@ -51,9 +51,11 @@ object EchoKernel extends CaseApp[Options] {
     val zeromqThreads = ZeromqThreads.create("echo-kernel")
     val kernelThreads = KernelThreads.create("echo-kernel")
     val interpreterEc = singleThreadedExecutionContextExecutorService("echo-interpreter")
+    val cancellablesEc =
+      singleThreadedExecutionContextExecutorService("echo-interpreter-cancellables")
 
     log.debug("Running kernel")
-    Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, logCtx)
+    Kernel.create(new EchoInterpreter, interpreterEc, kernelThreads, cancellablesEc, logCtx)
       .flatMap(_.runOnConnectionFile(
         connectionFile,
         "echo",
