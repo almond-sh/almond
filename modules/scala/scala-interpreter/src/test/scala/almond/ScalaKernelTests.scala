@@ -993,6 +993,11 @@ object ScalaKernelTests extends TestSuite {
         assert(evaluatorHookThreadLocal.get().isEmpty)
       }
     }
+
+    test("unclosed string litteral") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.unclosedStringLitteral()
+    }
   }
 
   val evaluatorHookThreadLocal = ThreadLocal.withInitial(() => "")
