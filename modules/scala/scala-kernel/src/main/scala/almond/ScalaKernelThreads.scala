@@ -9,12 +9,14 @@ import scala.concurrent.ExecutionContextExecutorService
 final case class ScalaKernelThreads(
   interpreterEc: ExecutionContextExecutorService,
   updateBackgroundVariablesEc: ExecutionContextExecutorService,
+  cancellableEc: ExecutionContextExecutorService,
   zeromqThreads: ZeromqThreads,
   kernelThreads: KernelThreads
 ) extends AutoCloseable {
   def close(): Unit = {
     interpreterEc.shutdown()
     updateBackgroundVariablesEc.shutdown()
+    cancellableEc.shutdown()
     zeromqThreads.close()
     kernelThreads.attemptShutdown()
   }
@@ -29,6 +31,8 @@ object ScalaKernelThreads {
         ThreadUtil.singleThreadedExecutionContextExecutorService(
           name + "-update-background-variables"
         ),
+      cancellableEc =
+        ThreadUtil.singleThreadedExecutionContextExecutorService(name + "-cancellables"),
       zeromqThreads = ZeromqThreads.create(name),
       kernelThreads = KernelThreads.create(name)
     )

@@ -313,6 +313,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       else LauncherInterpreter.Colors.blackWhite
 
     val interpreterEc = singleThreadedExecutionContextExecutorService("scala-launcher-interpreter")
+    val cancellablesEc =
+      singleThreadedExecutionContextExecutorService("scala-launcher-cancellables")
 
     val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
@@ -322,19 +324,20 @@ object Launcher extends CaseApp[LauncherOptions] {
       options
     )
 
-    val (run, conn) = Kernel.create(interpreter, interpreterEc, kernelThreads, logCtx)
-      .flatMap(_.runOnConnectionFileAllowClose(
-        connectionFile,
-        "scala",
-        zeromqThreads,
-        Nil,
-        autoClose = false,
-        lingerDuration = Duration.Inf, // unused here
-        bindToRandomPorts =
-          if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
-          else None
-      ))
-      .unsafeRunSync()(kernelThreads.ioRuntime)
+    val (run, conn) =
+      Kernel.create(interpreter, interpreterEc, kernelThreads, cancellablesEc, logCtx)
+        .flatMap(_.runOnConnectionFileAllowClose(
+          connectionFile,
+          "scala",
+          zeromqThreads,
+          Nil,
+          autoClose = false,
+          lingerDuration = Duration.Inf, // unused here
+          bindToRandomPorts =
+            if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
+            else None
+        ))
+        .unsafeRunSync()(kernelThreads.ioRuntime)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(kernelThreads.ioRuntime)
 
     val leftoverMessagesFileOpt =
