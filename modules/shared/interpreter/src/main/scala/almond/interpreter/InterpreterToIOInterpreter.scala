@@ -19,7 +19,8 @@ final class InterpreterToIOInterpreter(
   interpreter: Interpreter,
   interpreterEc: ExecutionContext,
   logCtx: LoggerContext,
-  ioRuntime: IORuntime
+  ioRuntime: IORuntime,
+  cancellableEc: ExecutionContext
 ) extends IOInterpreter {
 
   private val log = logCtx(getClass)
@@ -110,7 +111,8 @@ final class InterpreterToIOInterpreter(
     {
       code =>
         interpreter.asyncIsComplete(code)
-    }
+    },
+    cancellableEc
   )
 
   private val completionCancellable = new Cancellable[(String, Int), Completion](
@@ -126,7 +128,8 @@ final class InterpreterToIOInterpreter(
     {
       case (code, pos) =>
         interpreter.asyncComplete(code, pos)
-    }
+    },
+    cancellableEc
   )
 
   private val inspectionCancellable = new Cancellable[(String, Int, Int), Option[Inspection]](
@@ -142,7 +145,8 @@ final class InterpreterToIOInterpreter(
     {
       case (code, pos, detailLevel) =>
         interpreter.asyncInspect(code, pos, detailLevel)
-    }
+    },
+    cancellableEc
   )
 
   override def isComplete(code: String): IO[Option[IsCompleteResult]] =

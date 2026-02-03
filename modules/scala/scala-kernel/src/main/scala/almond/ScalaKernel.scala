@@ -254,6 +254,7 @@ object ScalaKernel extends CaseApp[Options] {
         interpreter,
         threads.interpreterEc,
         threads.kernelThreads,
+        threads.cancellableEc,
         logCtx,
         fmtMessageHandler,
         options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet

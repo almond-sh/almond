@@ -484,12 +484,19 @@ object Kernel {
     interpreter: Interpreter,
     interpreterEc: ExecutionContext,
     kernelThreads: KernelThreads,
+    cancellableEc: ExecutionContext,
     logCtx: LoggerContext,
     extraHandler: MessageHandler,
     noExecuteInputFor: Set[String]
   ): IO[Kernel] =
     create(
-      new InterpreterToIOInterpreter(interpreter, interpreterEc, logCtx, kernelThreads.ioRuntime),
+      new InterpreterToIOInterpreter(
+        interpreter,
+        interpreterEc,
+        logCtx,
+        kernelThreads.ioRuntime,
+        cancellableEc
+      ),
       kernelThreads,
       logCtx,
       extraHandler,
@@ -500,12 +507,14 @@ object Kernel {
     interpreter: Interpreter,
     interpreterEc: ExecutionContext,
     kernelThreads: KernelThreads,
+    cancellableEc: ExecutionContext,
     logCtx: LoggerContext = LoggerContext.nop
   ): IO[Kernel] =
     create(
       interpreter,
       interpreterEc,
       kernelThreads,
+      cancellableEc,
       logCtx,
       MessageHandler.empty,
       Set.empty

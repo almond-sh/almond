@@ -12,8 +12,9 @@ import utest._
 
 object EvaluatorTests extends TestSuite {
 
-  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
-  val bgVarEc       = new SequentialExecutionContext
+  val interpreterEc  = singleThreadedExecutionContextExecutorService("test-interpreter")
+  val cancellablesEc = singleThreadedExecutionContextExecutorService("test-interpreter")
+  val bgVarEc        = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
 
@@ -23,7 +24,7 @@ object EvaluatorTests extends TestSuite {
       println(s"Don't know how to shutdown $interpreterEc")
   }
 
-  val runner = new SessionRunner(interpreterEc, bgVarEc, threads)
+  val runner = new SessionRunner(interpreterEc, cancellablesEc, bgVarEc, threads)
 
   def ifVarUpdates(s: String): String =
     if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) s
