@@ -90,20 +90,17 @@ final class Execute(
     currentInputManagerOpt0.flatMap { m =>
 
       val res = {
-        implicit val ec =
-          ExecutionContext.global // just using that one to map over an existing future…
         log.info("Awaiting input")
-        Await.result(
-          m.readInput()
-            .map(s => Success(s + System.lineSeparator()))
-            .recover { case t => Failure(t) },
-          Duration.Inf
-        )
+
+        try Success(Await.result(m.readInput(), Duration.Inf))
+        catch {
+          case t: Throwable => Failure(t)
+        }
       }
       log.info(s"Received input ${res.map { case "" => "[empty]"; case _ => "[non empty]" }}")
 
       res match {
-        case Success(s)                                    => Some(s)
+        case Success(s)                                    => Some(s + System.lineSeparator())
         case Failure(_: InputManager.NoMoreInputException) => None
         case Failure(e) => throw new Exception("Error getting more input", e)
       }

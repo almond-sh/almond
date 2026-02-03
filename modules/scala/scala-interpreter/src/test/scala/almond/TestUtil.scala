@@ -120,6 +120,7 @@ object TestUtil {
   def kernelRunner[T](
     threads: KernelThreads,
     interpreterEc: ExecutionContext,
+    cancellablesEc: ExecutionContext,
     processParams: ScalaInterpreterParams => ScalaInterpreterParams = identity
   ): KernelRunner = KernelRunner {
 
@@ -144,7 +145,7 @@ object TestUtil {
         logCtx = logCtx
       )
 
-      Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
   }
 
@@ -326,6 +327,7 @@ object TestUtil {
 
   class SessionRunner(
     interpreterEc: ExecutionContext,
+    cancellablesEc: ExecutionContext,
     bgVarEc: ExecutionContext,
     threads: KernelThreads
   ) {
@@ -359,7 +361,7 @@ object TestUtil {
         logCtx = logCtx
       )
 
-      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       t.unsafeRunTimedOrThrow(threads.ioRuntime)
