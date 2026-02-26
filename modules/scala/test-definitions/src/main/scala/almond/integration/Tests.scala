@@ -2151,7 +2151,8 @@ object Tests {
                   |  "version": "5.4"
                   |}""".stripMargin.getBytes(StandardCharsets.UTF_8)
               )
-            )
+            ),
+            date = None
           )
         ),
         expectError = true,

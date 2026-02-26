@@ -28,7 +28,8 @@ object MessageTests extends TestSuite {
               username = "",
               session = "66fee418-b43a-42b2-bba9-cc91ffac014a",
               msg_type = "execute_request",
-              version = Some("5.2")
+              version = Some("5.2"),
+              date = Some("2018-09-06T08:27:35.616295Z")
             ),
             RawJson("""{"silent":false,"store_history":true}""".bytes)
           )
@@ -55,7 +56,8 @@ object MessageTests extends TestSuite {
               username = "",
               session = "66fee418-b43a-42b2-bba9-cc91ffac014a",
               msg_type = "execute_request",
-              version = Some("5.2")
+              version = Some("5.2"),
+              date = Some("2018-09-06T08:27:35.616295Z")
             ),
             RawJson("""{"silent":false,"store_history":true}""".bytes)
           )
@@ -68,6 +70,35 @@ object MessageTests extends TestSuite {
 
         assert(res.map(_.clearMetadata) == expectedRes.map(_.clearMetadata))
         assert(metadata == expectedMetadata)
+      }
+
+      test("legacy-no-date") {
+        // Test backward compatibility: headers without date field (classic Jupyter UI)
+        val rawMsg = RawMessage(
+          Nil,
+          """{"username":"","version":"5.0","session":"66fee418-b43a-42b2-bba9-cc91ffac014a","msg_id":"40fe2409-d5ad-4a5d-a71c-31411eeb2ea5","msg_type":"execute_request"}""".bytes,
+          "{}".bytes,
+          "{}".bytes,
+          """{"silent":false,"store_history":true}""".bytes
+        )
+
+        val res = Message.parse[RawJson](rawMsg).map(_.clearRawHeaderContent)
+        val expectedRes = Right(
+          Message(
+            Header(
+              msg_id = "40fe2409-d5ad-4a5d-a71c-31411eeb2ea5",
+              username = "",
+              session = "66fee418-b43a-42b2-bba9-cc91ffac014a",
+              msg_type = "execute_request",
+              version = Some("5.0"),
+              date = None
+            ),
+            RawJson("""{"silent":false,"store_history":true}""".bytes)
+          )
+        )
+
+        assert(res == expectedRes)
+        assert(res.map(_.header.date) == Right(None))
       }
     }
   }

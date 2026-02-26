@@ -1,5 +1,6 @@
 package almond.protocol
 
+import java.time.Instant
 import java.util.UUID
 
 import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -11,9 +12,7 @@ final class Header(
   val session: String,
   val msg_type: String,
   val version: Option[String],
-  // https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#general-message-format says an ISO 8601 date
-  // should be mandatory as of protocol version 5.1, but it seems the classic UI doesn't write it…
-  // date: Instant
+  val date: Option[String],
   val rawContentOpt: Option[RawJson]
 ) {
   private def copyClearRawContent(
@@ -21,7 +20,8 @@ final class Header(
     username: String = username,
     session: String = session,
     msg_type: String = msg_type,
-    version: Option[String] = version
+    version: Option[String] = version,
+    date: Option[String] = date
   ): Header =
     new Header(
       msg_id = msg_id,
@@ -29,12 +29,13 @@ final class Header(
       session = session,
       msg_type = msg_type,
       version = version,
+      date = date,
       rawContentOpt = None
     )
   def withMsgId(msgId: String): Header =
-    copyClearRawContent(msg_id = msgId)
+    copyClearRawContent(msg_id = msgId, date = Some(Instant.now().toString))
   def withMsgType(msgType: String): Header =
-    copyClearRawContent(msg_type = msgType)
+    copyClearRawContent(msg_type = msgType, date = Some(Instant.now().toString))
   def clearRawContent(): Header =
     copyClearRawContent()
 
@@ -46,6 +47,7 @@ final class Header(
       session == that.session &&
       msg_type == that.msg_type &&
       version == that.version &&
+      date == that.date &&
       rawContentOpt == that.rawContentOpt
     }
 }
@@ -57,7 +59,8 @@ object Header {
     username: String,
     session: String,
     msg_type: String,
-    version: Option[String]
+    version: Option[String],
+    date: Option[String] = Some(Instant.now().toString)
   ): Header =
     new Header(
       msg_id = msg_id,
@@ -65,6 +68,7 @@ object Header {
       session = session,
       msg_type = msg_type,
       version = version,
+      date = date,
       rawContentOpt = None
     )
 
@@ -74,7 +78,8 @@ object Header {
     session: String,
     msg_type: String,
     version: Option[String],
-    rawContentOpt: Option[RawJson]
+    rawContentOpt: Option[RawJson],
+    date: Option[String]
   ): Header =
     new Header(
       msg_id = msg_id,
@@ -82,6 +87,7 @@ object Header {
       session = session,
       msg_type = msg_type,
       version = version,
+      date = date,
       rawContentOpt = rawContentOpt
     )
 
@@ -90,7 +96,8 @@ object Header {
     username: String,
     session: String,
     msg_type: String,
-    version: Option[String]
+    version: Option[String],
+    date: Option[String] = None
   ) {
     def toHeader(rawContentOpt: Option[RawJson]): Header =
       new Header(
@@ -99,6 +106,7 @@ object Header {
         session = session,
         msg_type = msg_type,
         version = version,
+        date = date,
         rawContentOpt = rawContentOpt
       )
   }
@@ -112,7 +120,8 @@ object Header {
         username = header.username,
         session = header.session,
         msg_type = header.msg_type,
-        version = header.version
+        version = header.version,
+        date = header.date
       )
   }
 
@@ -126,7 +135,8 @@ object Header {
       username = user,
       session = sessionId,
       msg_type = msgType.messageType,
-      version = Some(Protocol.versionStr)
+      version = Some(Protocol.versionStr),
+      date = Some(Instant.now().toString)
     )
 
   implicit lazy val codec: JsonValueCodec[Header] =
