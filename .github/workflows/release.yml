@@ -15,7 +15,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/setup-action@v1.3
+    - uses: coursier/setup-action@v2.0
       with:
         jvm: 21
     - run: |
@@ -44,7 +44,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/setup-action@v1.3
+    - uses: coursier/setup-action@v2.0
       with:
         jvm: 21
     - run: ./mill -i ci.uploadLaunchers
@@ -62,7 +62,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/setup-action@v1.3
+    - uses: coursier/setup-action@v2.0
       with:
         jvm: 21
     - run: scripts/update-docker-images.sh
@@ -79,7 +79,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/setup-action@v1.3
+    - uses: coursier/setup-action@v2.0
       with:
         jvm: 21
         apps: cs
