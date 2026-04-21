@@ -242,11 +242,33 @@ class KernelLauncher(
     jarLauncher0
   }
 
-  private lazy val threads = ZeromqThreads.create("almond-tests")
+  @volatile private var threads = ZeromqThreads.create("almond-tests")
+  private val threadsLock       = new Object
 
   // not sure why, closing the context right after running a test on Windows
   // creates a deadlock (on the CI, at least)
   private def perTestZeroMqContext = !Properties.isWin
+
+  private def replaceSharedZeromqThreadsAfterCloseFailure(
+    failedThreads: ZeromqThreads,
+    output: TestOutput,
+    cause: Throwable
+  ): Unit =
+    if (!perTestZeroMqContext)
+      threadsLock.synchronized {
+        if (threads eq failedThreads) {
+          threads = ZeromqThreads.create("almond-tests")
+          output.printStream.println(
+            "Recreated shared ZeroMQ context and threads after close failure"
+          )
+          cause.printStackTrace(output.printStream)
+          failedThreads.closePools()
+        }
+        else
+          output.printStream.println(
+            s"Shared ZeroMQ context and threads were already recreated after close failure: $cause"
+          )
+      }
 
   private def stackTracePrinterThread(output: TestOutput): Thread =
     new Thread("stack-trace-printer") {
@@ -282,6 +304,7 @@ class KernelLauncher(
   def session(
     conn: Connection,
     ctx: ZMQ.Context,
+    zeromqThreads: ZeromqThreads,
     output: TestOutput,
     ioRuntime: IORuntime
   ): Session with AutoCloseable =
@@ -313,11 +336,17 @@ class KernelLauncher(
       }
 
       def close(): Unit = {
-        conn.close(partial = false, lingerDuration = lingerDuration)
-          .unsafeRunTimed(2.minutes)(ioRuntime)
-          .getOrElse {
-            sys.error("Timeout when closing ZeroMQ connections")
-          }
+        try
+          conn.close(partial = false, lingerDuration = lingerDuration)
+            .unsafeRunTimed(2.minutes)(ioRuntime)
+            .getOrElse {
+              sys.error("Timeout when closing ZeroMQ connections")
+            }
+        catch {
+          case NonFatal(e) =>
+            replaceSharedZeromqThreadsAfterCloseFailure(zeromqThreads, output, e)
+            throw e
+        }
 
         if (perTestZeroMqContext) {
           val t = stackTracePrinterThread(output)
@@ -325,7 +354,7 @@ class KernelLauncher(
             t.start()
             output.printStream.println("Closing test ZeroMQ context")
             IO(ctx.close())
-              .evalOn(threads.pollingEces)
+              .evalOn(zeromqThreads.pollingEces)
               .unsafeRunTimed(2.minutes)(ioRuntime)
               .getOrElse {
                 sys.error("Timeout when closing ZeroMQ context")
@@ -531,9 +560,10 @@ class KernelLauncher(
           stderr = output.processOutput
         )
 
+        val zeromqThreads = threads
         val ctx =
           if (perTestZeroMqContext) ZMQ.context(4)
-          else threads.context
+          else zeromqThreads.context
 
         val conn = {
           val updatedParams =
@@ -569,7 +599,7 @@ class KernelLauncher(
           val conn0 = updatedParams
             .channels(
               bind = false,
-              threads.copy(context = ctx),
+              zeromqThreads.copy(context = ctx),
               lingerPeriod = Some(Duration.Inf),
               logCtx = TestLogging.logCtxForOutput(output),
               identityOpt = Some(UUID.randomUUID().toString),
@@ -587,7 +617,7 @@ class KernelLauncher(
           conn0
         }
 
-        val sess = session(conn, ctx, output, ioRuntime)
+        val sess = session(conn, ctx, zeromqThreads, output, ioRuntime)
         sessions = sess :: sessions
         sess
       }
@@ -634,13 +664,13 @@ class KernelLauncher(
       }
     }
 
-  def withKernel[T](f: Runner => T): T = {
+  def withKernel[T](f: Runner => T)(implicit forceVerbose: AlmondFunSuite.ForceVerbose): T = {
 
     var runner0: Runner with AutoCloseable = null
 
     val output = new TestOutput(
-      enableOutputFrame = enableOutputFrame,
-      enableSilentOutput = enableSilentOutput
+      enableOutputFrame = !forceVerbose.force && enableOutputFrame,
+      enableSilentOutput = !forceVerbose.force && enableSilentOutput
     )
 
     var success = false

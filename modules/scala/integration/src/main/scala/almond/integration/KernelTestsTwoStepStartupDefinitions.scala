@@ -7,7 +7,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
 
   def kernelLauncher: KernelLauncher
 
-  test("Directives and code in first cell 3") {
+  test0("Directives and code in first cell 3") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -23,7 +23,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("Directives and code in first cell 213") {
+  test0("Directives and code in first cell 213") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -37,7 +37,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("Directives and code in first cell 212") {
+  test0("Directives and code in first cell 212") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -51,7 +51,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("Directives and code in first cell short 213") {
+  test0("Directives and code in first cell short 213") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -65,7 +65,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("Directives and code in first cell short 212") {
+  test0("Directives and code in first cell short 212") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -79,7 +79,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("Several directives and comments") {
+  test0("Several directives and comments") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -99,7 +99,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("Java option on command-line") {
+  test0("Java option on command-line") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession("--java-opt", "-Dfoo=thing") { implicit session =>
