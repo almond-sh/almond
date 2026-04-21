@@ -2392,9 +2392,6 @@ object Tests {
           )
       }
 
-      val listing0 = os.walk(dir).filter(os.isFile).map(_.subRelativeTo(dir))
-      pprint.err.log(listing0)
-
       runner.withSession("--pkg-name", "foo.other", "--output-dir", dir.toString) {
         implicit session =>
           execute(
@@ -2434,9 +2431,6 @@ object Tests {
             partialErrors = Seq(("java.lang.ClassNotFoundException", "foo.thing.cmd1$Helper$C"))
           )
       }
-
-      val listing1 = os.walk(dir).filter(os.isFile).map(_.subRelativeTo(dir))
-      pprint.err.log(listing1)
     }
     finally
       os.remove.all(dir)
