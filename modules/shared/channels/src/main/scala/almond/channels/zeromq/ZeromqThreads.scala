@@ -70,11 +70,15 @@ final class ZeromqThreads(
     )
 
   def close(): Unit = {
+    closePools()
+    context.close()
+  }
+
+  private[almond] def closePools(): Unit = {
     for (c <- Channel.channels)
       channelEces(c).shutdown()
     selectorOpenCloseEces.shutdown()
     pollingEces.shutdown()
-    context.close()
   }
 
   @deprecated("Use channelEces instead", "0.14.2")
