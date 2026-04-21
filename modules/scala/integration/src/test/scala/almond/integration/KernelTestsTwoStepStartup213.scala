@@ -10,7 +10,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
   lazy val kernelLauncher =
     new KernelLauncher(KernelLauncher.LauncherType.Jvm, KernelLauncher.testScala213Version)
 
-  test("mixed directives") {
+  test0("mixed directives") { implicit forceVerbose =>
     val expectedError =
       if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
@@ -50,7 +50,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
-  test("mixed directives in first cell") {
+  test0("mixed directives in first cell") { implicit forceVerbose =>
     val expectedError =
       if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
@@ -89,7 +89,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
-  test("mixed directives single cell") {
+  test0("mixed directives single cell") { implicit forceVerbose =>
     val expectedError =
       if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
@@ -124,7 +124,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
-  test("mixed directives several kernel options") {
+  test0("mixed directives several kernel options") { implicit forceVerbose =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -159,7 +159,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
-  test("late launcher directives") {
+  test0("late launcher directives") { implicit forceVerbose =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -203,7 +203,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
-  test("custom startup directives") {
+  test0("custom startup directives") { implicit forceVerbose =>
 
     val tmpDir = os.temp.dir(prefix = "almond-custom-directives-test-")
 

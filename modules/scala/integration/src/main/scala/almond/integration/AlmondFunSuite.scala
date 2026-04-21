@@ -12,7 +12,14 @@ abstract class AlmondFunSuite extends munit.FunSuite {
   def mightRetry: Boolean   = false
   override def munitTimeout = 5.minutes
 
-  override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit = {
+  override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit =
+    test0(options)(_ => body)(loc)
+
+  def test0(name: String)(body: AlmondFunSuite.ForceVerbose => Any)(implicit loc: Location): Unit =
+    test0(new TestOptions(name))(body)(loc)
+  def test0(options: TestOptions)(body: AlmondFunSuite.ForceVerbose => Any)(implicit
+    loc: Location
+  ): Unit = {
     val className = getClass.getName
     val (classNameInit, classNameLast) = {
       val a = className.split('.')
@@ -27,7 +34,7 @@ abstract class AlmondFunSuite extends munit.FunSuite {
           AlmondFunSuite.retriedTestsCount.get() < AlmondFunSuite.maxRetriedTests
         if (mightRetry0) {
           val resOpt =
-            try Right(body)
+            try Right(body(AlmondFunSuite.ForceVerbose.nop))
             catch {
               case NonFatal(e) =>
                 Left(e)
@@ -47,7 +54,7 @@ abstract class AlmondFunSuite extends munit.FunSuite {
           }
         }
         else
-          body
+          body(AlmondFunSuite.ForceVerbose.forceIfCI)
       }
 
       System.err.println()
@@ -92,4 +99,11 @@ object AlmondFunSuite {
   val maxRetriedTests           = if (System.getenv("CI") == null) 1 else 6
   def retryAttempts             = if (System.getenv("CI") == null) 1 else 3
   private val retriedTestsCount = new AtomicInteger
+
+  case class ForceVerbose(force: Boolean)
+
+  object ForceVerbose {
+    def nop: ForceVerbose       = ForceVerbose(false)
+    def forceIfCI: ForceVerbose = ForceVerbose(System.getenv("CI") != null)
+  }
 }

@@ -15,28 +15,28 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     versionString.takeWhile(_ != '.').toInt
   }
 
-  test("jvm-repr") {
+  test0("jvm-repr") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.jvmRepr()
     }
   }
 
-  test("updatable display") {
+  test0("updatable display") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.updatableDisplay()
     }
   }
 
-  test("auto-update Future results upon completion") {
+  test0("auto-update Future results upon completion") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.autoUpdateFutureUponCompletion(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("auto-update Future results in background upon completion") {
+  test0("auto-update Future results in background upon completion") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.autoUpdateFutureInBackgroundUponCompletion(
@@ -45,56 +45,56 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
-  test("toree AddJar file") {
+  test0("toree AddJar file") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeAddJarFile(kernelLauncher.defaultScalaVersion, sameCell = false)
     }
   }
 
-  test("toree AddJar file same cell") {
+  test0("toree AddJar file same cell") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeAddJarFile(kernelLauncher.defaultScalaVersion, sameCell = true)
     }
   }
 
-  test("toree AddJar URL") {
+  test0("toree AddJar URL") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeAddJarURL(kernelLauncher.defaultScalaVersion, sameCell = false)
     }
   }
 
-  test("toree AddJar URL same cell") {
+  test0("toree AddJar URL same cell") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeAddJarURL(kernelLauncher.defaultScalaVersion, sameCell = true)
     }
   }
 
-  test("toree Html") {
+  test0("toree Html") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeHtml()
     }
   }
 
-  test("toree AddJar custom protocol") {
+  test0("toree AddJar custom protocol") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeAddJarCustomProtocol(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("toree custom cell magic") {
+  test0("toree custom cell magic") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.toreeCustomCellMagic()
     }
   }
 
-  test("compile only") {
+  test0("compile only") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.compileOnly()
@@ -102,7 +102,7 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
   }
 
   if (kernelLauncher.defaultScalaVersion.startsWith("2."))
-    test("extra class path") {
+    test0("extra class path") { implicit forceVersion =>
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
         almond.integration.Tests.extraCp(
@@ -113,91 +113,91 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
 
   if (kernelLauncher.defaultScalaVersion.startsWith("2.") && javaMajorVersion >= 11)
-    test("inspections") {
+    test0("inspections") { implicit forceVersion =>
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
         almond.integration.Tests.inspections(kernelLauncher.defaultScalaVersion)
       }
     }
 
-  test("compilation error") {
+  test0("compilation error") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.compilationError(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("add dependency") {
+  test0("add dependency") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.addDependency(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("add repository") {
+  test0("add repository") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.addRepository(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("add scalac option") {
+  test0("add scalac option") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.addScalacOption(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("completion") {
+  test0("completion") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.completion(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("simple exception handler") {
+  test0("simple exception handler") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.exceptionHandler()
     }
   }
 
-  test("more exception handlers") {
+  test0("more exception handlers") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.moreExceptionHandlers()
     }
   }
 
-  test("jackson api") {
+  test0("jackson api") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.almondJackson(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("custom wrapper name") {
+  test0("custom wrapper name") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.customWrapperName()
     }
   }
 
-  test("jackson api") {
+  test0("jackson api") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.almondJackson(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("package cells") {
+  test0("package cells") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.packageCells(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("custom package name") {
+  test0("custom package name") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.customPkgName()
@@ -207,7 +207,7 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
   // Disabled in Scala 3 for now, as the output directory isn't
   // write-only there. That needs fixing in Ammonite.
   if (kernelLauncher.defaultScalaVersion.startsWith("2."))
-    test("output directory") {
+    test0("output directory") { implicit forceVersion =>
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
         almond.integration.Tests.outputDirectory()
@@ -215,21 +215,21 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
 
   // Doesn't pass, might need fixing in Ammonite
-  // test("custom short package name") {
+  // test0("custom short package name") {
   //   kernelLauncher.withKernel { implicit runner =>
   //     implicit val sessionId: SessionId = SessionId()
   //     almond.integration.Tests.customShortPkgName()
   //   }
   // }
 
-  test("throwable getMessage throws") {
+  test0("throwable getMessage throws") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.throwableGetMessageThrows(kernelLauncher.defaultScalaVersion)
     }
   }
 
-  test("throwable getStackTrace throws") {
+  test0("throwable getStackTrace throws") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.throwableGetStackTraceThrows(kernelLauncher.defaultScalaVersion)

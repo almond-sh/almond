@@ -634,13 +634,13 @@ class KernelLauncher(
       }
     }
 
-  def withKernel[T](f: Runner => T): T = {
+  def withKernel[T](f: Runner => T)(implicit forceVerbose: AlmondFunSuite.ForceVerbose): T = {
 
     var runner0: Runner with AutoCloseable = null
 
     val output = new TestOutput(
-      enableOutputFrame = enableOutputFrame,
-      enableSilentOutput = enableSilentOutput
+      enableOutputFrame = !forceVerbose.force && enableOutputFrame,
+      enableSilentOutput = !forceVerbose.force && enableSilentOutput
     )
 
     var success = false
