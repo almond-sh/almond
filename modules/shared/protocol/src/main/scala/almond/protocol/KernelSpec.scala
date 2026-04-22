@@ -49,11 +49,13 @@ object KernelSpec {
           if (in.isNextToken('{'.toByte)) {
             if (!in.isNextToken('}'.toByte)) {
               in.rollbackToken()
-              do {
+              var hasMore = true
+              while (hasMore) {
                 val k = in.readKeyAsString()
                 val v = in.readString(null)
                 result = result + (k -> v)
-              } while (in.isNextToken(','.toByte))
+                hasMore = in.isNextToken(','.toByte)
+              }
               if (!in.isCurrentToken('}'.toByte)) in.objectEndOrCommaError()
             }
           }
