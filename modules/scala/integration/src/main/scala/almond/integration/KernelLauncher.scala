@@ -154,9 +154,6 @@ class KernelLauncher(
 
   private lazy val ioRuntime = IORuntime.global
 
-  /** How long we should wait for messages when closing zeromq connections? */
-  def lingerDuration: Duration = 30.seconds
-
   /** How long after session start should we time out if a session takes too long to run */
   def sessionTimeout: Duration = 3.minutes
 
@@ -337,7 +334,7 @@ class KernelLauncher(
 
       def close(): Unit = {
         try
-          conn.close(partial = false, lingerDuration = lingerDuration)
+          conn.close(partial = false, lingerDuration = Duration.Zero)
             .unsafeRunTimed(2.minutes)(ioRuntime)
             .getOrElse {
               sys.error("Timeout when closing ZeroMQ connections")
