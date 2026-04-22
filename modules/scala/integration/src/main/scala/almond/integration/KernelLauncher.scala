@@ -451,7 +451,7 @@ class KernelLauncher(
               case "{connection_file}" => connFile: os.Shellable
               case arg                 => arg: os.Shellable
             }
-        (f, spec.env)
+        (f, spec.env.map)
       }
 
       def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T =

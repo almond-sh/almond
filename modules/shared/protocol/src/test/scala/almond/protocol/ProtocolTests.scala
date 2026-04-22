@@ -15,7 +15,7 @@ object ProtocolTests extends TestSuite {
           argv = List("java", "--connection-file", "{connection_file}"),
           display_name = "Scala",
           language = "scala",
-          env = Map("COURSIER_REPOSITORIES" -> "repo-dummy")
+          env = ActualMap(Map("COURSIER_REPOSITORIES" -> "repo-dummy"))
         )
         val json = writeToString(spec)
         assert(json.contains(""""env":{"COURSIER_REPOSITORIES":"repo-dummy"}"""))

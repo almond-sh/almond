@@ -7,7 +7,7 @@ import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
 
 import almond.kernel.util.JupyterPath
-import almond.protocol.KernelSpec
+import almond.protocol.{ActualMap, KernelSpec}
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
@@ -310,7 +310,7 @@ object Install {
         display_name = options.displayName.getOrElse(defaultDisplayName),
         language = language,
         interrupt_mode = interruptMode,
-        env = env
+        env = ActualMap(env)
       ),
       path,
       logo64PngOpt = logoOpt,
