@@ -433,9 +433,9 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
   def moduleDeps = Seq(
-    scala.`coursier-logger`(ScalaVersions.scala3Compat),
-    scala.`shared-directives`(ScalaVersions.scala3Compat),
-    shared.kernel(ScalaVersions.scala3Compat)
+    scala.`coursier-logger`(ScalaVersions.scala3Lts),
+    scala.`shared-directives`(ScalaVersions.scala3Lts),
+    shared.kernel(ScalaVersions.scala3Lts)
   )
   def mvnDeps = Seq(
     Deps.caseApp,
