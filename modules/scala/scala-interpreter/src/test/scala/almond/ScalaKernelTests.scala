@@ -1,7 +1,7 @@
 package almond
 
 import java.io.{ByteArrayOutputStream, File, PrintStream}
-import java.net.{URL, URLClassLoader}
+import java.net.{URI, URLClassLoader}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
@@ -266,7 +266,7 @@ object ScalaKernelTests extends TestSuite {
       val loader = new URLClassLoader(Array(), interpreterParams.initialClassLoader) {
         override def getResource(name: String) =
           if (name == "foo")
-            new URL("https://google.fr")
+            URI.create("https://google.fr").toURL
           else
             super.getResource(name)
       }
