@@ -58,7 +58,7 @@ object Deps {
   def jvmRepr                  = mvn"com.github.jupyter:jvm-repr:0.4.0"
   def mdoc                     = mvn"org.scalameta::mdoc:2.8.0"
   def mtags                    = mvn"org.scalameta:::mtags:1.6.3"
-  def munit                    = mvn"org.scalameta::munit:1.2.1"
+  def munit                    = mvn"org.scalameta::munit:1.2.4"
   def osLib                    = mvn"com.lihaoyi::os-lib:0.11.5"
   def pprint                   = mvn"com.lihaoyi::pprint:0.9.0"
   def scalafmtDynamic          = mvn"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
