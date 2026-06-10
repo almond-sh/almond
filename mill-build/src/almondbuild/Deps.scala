@@ -41,7 +41,7 @@ object Deps {
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
   def coursier =
     mvn"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
-  def coursierApi         = mvn"io.get-coursier:interface:1.0.29-M2"
+  def coursierApi         = mvn"io.get-coursier:interface:1.0.29-M4"
   def coursierLauncher    = mvn"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def coursierVersions    = mvn"io.get-coursier::versions:0.5.1"
   def dependencyInterface = mvn"io.get-coursier::dependency-interface:0.3.2"
