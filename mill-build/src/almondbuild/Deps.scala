@@ -60,7 +60,7 @@ object Deps {
   def mtags                    = mvn"org.scalameta:::mtags:1.6.3"
   def munit                    = mvn"org.scalameta::munit:1.2.1"
   def osLib                    = mvn"com.lihaoyi::os-lib:0.11.5"
-  def pprint                   = mvn"com.lihaoyi::pprint:0.9.0"
+  def pprint                   = mvn"com.lihaoyi::pprint:0.9.6"
   def scalafmtDynamic          = mvn"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaparse               = mvn"com.lihaoyi::scalaparse:3.1.1"
   def scalapy                  = mvn"me.shadaj::scalapy-core:0.5.2"
