@@ -46,7 +46,7 @@ object Deps {
   def coursierVersions    = mvn"io.get-coursier::versions:0.5.1"
   def dependencyInterface = mvn"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = mvn"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
-  def expecty             = mvn"com.eed3si9n.expecty::expecty:0.17.0"
+  def expecty             = mvn"com.eed3si9n.expecty::expecty:0.17.1"
   def fansi               = mvn"com.lihaoyi::fansi:0.5.1"
   def fs2                 = mvn"co.fs2::fs2-core:3.12.2"
   def jansi               = mvn"org.fusesource.jansi:jansi:2.4.2"
