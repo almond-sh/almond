@@ -100,8 +100,8 @@ object LoggerTests extends TestSuite {
 
         ps.close()
 
-        val tab = "\t"
-        val bt  = "\\"
+        val tab         = "\t"
+        val bt          = "\\"
         val expectedRes =
           if (scala.util.Properties.versionNumberString.startsWith("2.11."))
             s"""ERROR /o$bt Errr

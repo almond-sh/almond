@@ -146,7 +146,7 @@ final class ScalaInterpreterInspections(
                   }
 
                 if (documentation.isPresent) {
-                  val docstring = documentation.get().docstring
+                  val docstring      = documentation.get().docstring
                   val finalDocstring =
                     if (Properties.isWin)
                       docstring.linesIterator

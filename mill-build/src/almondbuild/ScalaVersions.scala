@@ -7,7 +7,7 @@ object ScalaVersions {
   def scala212       = "2.12.21"
   val binaries       = Seq(scala3Compat, scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
-  val all = Seq(
+  val all            = Seq(
     scala3Latest,
     "3.8.0",
     "3.7.3",

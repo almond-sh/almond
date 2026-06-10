@@ -37,7 +37,7 @@ object ScalaInterpreterCompletions {
       case m: ammonite.compiler.CompilerLifecycleManager => m
       case _                                             => ???
     }
-    val pressy = compilerManager0.pressy.compiler
+    val pressy      = compilerManager0.pressy.compiler
     val currentFile = new BatchSourceFile(
       ammonite.compiler.Compiler.makeFile(allCode.getBytes, name = "Current.sc"),
       allCode
@@ -52,7 +52,7 @@ object ScalaInterpreterCompletions {
     val (i, all): (Int, Seq[(String, Option[String], String)]) =
       run.map(_.prefixed).toEither match {
         case Right((i0, all0)) => i0 -> all0
-        case Left(ex) =>
+        case Left(ex)          =>
           log.info("Ignoring exception during completion", ex)
           (0, Seq.empty)
       }
@@ -137,7 +137,7 @@ object ScalaInterpreterCompletions {
       // - There's a public-but-incomplete implementation of rule-based backquoting in
       //   Printers.quotedName
       val nullOutputStream = new OutputStream() { def write(b: Int): Unit = {} }
-      val backQuoter = new pressy.CodePrinter(
+      val backQuoter       = new pressy.CodePrinter(
         new PrintWriter(nullOutputStream),
         printRootPkg = false
       ) {
@@ -269,7 +269,7 @@ object ScalaInterpreterCompletions {
               else "`" + res
             }
             dependencyCompleteOpt match {
-              case None => (0, Seq.empty[(String, Option[String], String)])
+              case None           => (0, Seq.empty[(String, Option[String], String)])
               case Some(complete) =>
                 val input              = selector.name.decoded
                 val (pos, completions) = complete(input)

@@ -187,7 +187,7 @@ final case class ClientStreams(
       .collect {
         case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
           m.decodeAs[Execute.Reply] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) =>
               m.content match {
                 case s: Execute.Reply.Success =>
@@ -198,7 +198,7 @@ final case class ClientStreams(
         case Left((Channel.Publish, m))
             if m.header.msg_type == "stream" =>
           m.decodeAs[Execute.Stream] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) =>
               if (m.content.name == "stdout")
                 Seq(m.content.text)
@@ -222,7 +222,7 @@ final case class ClientStreams(
         case Left((Channel.Publish, m))
             if m.header.msg_type == "stream" =>
           m.decodeAs[Execute.Stream] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) =>
               if (m.content.name == "stderr")
                 Seq(m.content.text)
@@ -239,7 +239,7 @@ final case class ClientStreams(
       .collect {
         case Left((Channel.Publish, m)) if m.header.msg_type == Execute.errorType.messageType =>
           m.decodeAs[Execute.Error] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) =>
               m.content match {
                 case e: Execute.Error => Seq(e)
@@ -256,7 +256,7 @@ final case class ClientStreams(
       .collect {
         case Left((Channel.Requests, m)) if m.header.msg_type == Inspect.replyType.messageType =>
           m.decodeAs[Inspect.Reply] match {
-            case Left(_) => Nil
+            case Left(_)  => Nil
             case Right(m) =>
               m.content.data
                 .get("text/html")
