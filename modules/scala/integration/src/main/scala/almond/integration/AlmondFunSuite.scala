@@ -9,8 +9,10 @@ import scala.util.control.NonFatal
 
 abstract class AlmondFunSuite extends munit.FunSuite {
 
-  def mightRetry: Boolean   = false
-  override def munitTimeout = 5.minutes
+  def mightRetry: Boolean = false
+  // Windows CI runners are noticeably slower, give tests more time there
+  override def munitTimeout =
+    if (scala.util.Properties.isWin) 10.minutes else 5.minutes
 
   override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit =
     test0(options)(_ => body)(loc)
