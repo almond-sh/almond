@@ -102,7 +102,7 @@ object KernelLauncher {
     def withTmpDir[T](f: os.Path => T): T = {
       val tmpDir = baseTmpDir / s"test-${tmpCount.incrementAndGet()}"
       os.makeDir.all(tmpDir)
-      val tmpDir0 = os.Path(tmpDir.toIO.getCanonicalFile)
+      val tmpDir0           = os.Path(tmpDir.toIO.getCanonicalFile)
       def removeAll(): Unit =
         try os.remove.all(tmpDir0)
         catch {
@@ -139,7 +139,7 @@ object KernelLauncher {
     else
       f match {
         case Some(t) => t
-        case None =>
+        case None    =>
           Thread.sleep(math.min(period, retryUntil - now))
           retryPeriodicallyUntil(retryUntil, period)(f)
       }
@@ -164,8 +164,8 @@ class KernelLauncher(
   def kernelBindToRandomPorts: Boolean = true
 
   private def generateLauncher(output: TestOutput, extraOptions: Seq[String] = Nil): os.Path = {
-    val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
-    val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
+    val perms: os.PermSet    = if (Properties.isWin) null else "rwx------"
+    val tmpDir               = os.temp.dir(prefix = "almond-tests", perms = perms)
     val (jarDest, extraOpts) =
       if (Properties.isWin)
         (tmpDir / "launcher", Seq("--bat"))
@@ -228,7 +228,7 @@ class KernelLauncher(
     jarDest
   }
 
-  private var jarLauncher0: os.Path = null
+  private var jarLauncher0: os.Path           = null
   private def jarLauncher(output: TestOutput) = {
     if (jarLauncher0 == null)
       synchronized {
@@ -306,7 +306,7 @@ class KernelLauncher(
     ioRuntime: IORuntime
   ): Session with AutoCloseable =
     new Session with AutoCloseable {
-      def helperIORuntime = ioRuntime
+      def helperIORuntime                   = ioRuntime
       def run(streams: ClientStreams): Unit = {
 
         val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
@@ -314,7 +314,7 @@ class KernelLauncher(
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
           fib2 <- streams.sink(conn.stream().interruptWhen(s)).compile.drain.start
-          _ <- fib1.join.attempt.flatMap {
+          _    <- fib1.join.attempt.flatMap {
             case Left(e)  => IO.raiseError(new Exception(e))
             case Right(r) => IO.pure(r)
           }
@@ -558,7 +558,7 @@ class KernelLauncher(
         )
 
         val zeromqThreads = threads
-        val ctx =
+        val ctx           =
           if (perTestZeroMqContext) ZMQ.context(4)
           else zeromqThreads.context
 

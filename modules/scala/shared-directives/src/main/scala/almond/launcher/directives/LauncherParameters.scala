@@ -29,7 +29,7 @@ final case class LauncherParameters(
   def processCustomDirectives(options: KernelOptions): (LauncherParameters, KernelOptions) = {
 
     var tmpFile0: os.Path = null
-    lazy val tmpFile = {
+    lazy val tmpFile      = {
       tmpFile0 = os.temp(prefix = "almond-launcher-params-", suffix = ".json")
       tmpFile0
     }
@@ -145,8 +145,8 @@ object LauncherParameters {
   }
 
   private object AsJson {
-    def empty: AsJson                          = AsJson(None, Nil, None, None)
-    implicit val codec: JsonValueCodec[AsJson] = JsonCodecMaker.makeWithRequiredCollectionFields
+    def empty: AsJson                            = AsJson(None, Nil, None, None)
+    implicit val codec: JsonValueCodec[AsJson]   = JsonCodecMaker.makeWithRequiredCollectionFields
     def from(params: LauncherParameters): AsJson =
       AsJson(
         jvm = params.jvm,

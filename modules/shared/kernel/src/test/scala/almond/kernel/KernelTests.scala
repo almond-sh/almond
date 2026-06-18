@@ -104,7 +104,7 @@ object KernelTests extends TestSuite {
           ).contains("exit"))
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", Execute.requestType, sessionId),
           Execute.Request("comm-open:foo")
@@ -149,7 +149,7 @@ object KernelTests extends TestSuite {
         "execute_reply"
       )
 
-      val (commMsgTypes, stdMsgTypes) = msgTypes.partition(_.startsWith("comm_"))
+      val (commMsgTypes, stdMsgTypes)                 = msgTypes.partition(_.startsWith("comm_"))
       val (expectedCommMsgTypes, expectedStdMsgTypes) =
         expectedMsgTypes.partition(_.startsWith("comm_"))
 
@@ -163,7 +163,7 @@ object KernelTests extends TestSuite {
         (_, m) => IO.pure(m.header.msg_type == "history_reply")
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", History.requestType, sessionId),
           History.Request(output = false, raw = false, History.AccessType.Range)
@@ -173,7 +173,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+      val t           = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -193,7 +193,7 @@ object KernelTests extends TestSuite {
           IO.pure(false)
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", Shutdown.requestType, sessionId),
           Shutdown.Request(restart = false)
@@ -203,7 +203,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+      val t           = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -235,7 +235,7 @@ object KernelTests extends TestSuite {
       val rawMetadata = """{ "a": 2, "b": [true, false, "s"] }"""
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", Complete.requestType, sessionId),
           Complete.Request(s"meta:$rawMetadata", 5)

@@ -13,7 +13,7 @@ import scala.collection.JavaConverters._
 trait Display {
   def data(): Map[String, String]
   def metadata(): Map[String, String] = Map()
-  def displayData(): DisplayData =
+  def displayData(): DisplayData      =
     DisplayData()
       .withDetailedData(data().map { case (k, v) => (k, DisplayData.Value.String(v)) })
       .withDetailedMetadata(metadata().map { case (k, v) => (k, DisplayData.Value.String(v)) })
