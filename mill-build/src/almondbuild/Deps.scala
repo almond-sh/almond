@@ -49,7 +49,7 @@ object Deps {
   def expecty             = mvn"com.eed3si9n.expecty::expecty:0.17.0"
   def fansi               = mvn"com.lihaoyi::fansi:0.5.1"
   def fs2                 = mvn"co.fs2::fs2-core:3.13.0"
-  def jansi               = mvn"org.fusesource.jansi:jansi:2.4.2"
+  def jansi               = mvn"org.fusesource.jansi:jansi:2.4.3"
   def jeromq              = mvn"org.zeromq:jeromq:0.5.4"
   def jsoniterScalaCore =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
