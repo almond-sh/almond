@@ -277,7 +277,7 @@ object Tests {
               |def thing(s: String) = ""; val res1_1 = thing(Array(2))
               |                                                   ^
               |Compilation Failed""".stripMargin
-          else if (scalaVersion.startsWith("3.3.") || scalaVersion.startsWith("3.4."))
+          else if (scalaVersion.startsWith("3.3."))
             """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
               |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
               |  |                                              ^^^^^^^^
@@ -931,7 +931,7 @@ object Tests {
             |        ^
             |No warnings can be incurred under -Xfatal-warnings.
             |Compilation Failed""".stripMargin
-        else if ((0 to 3).exists(min => scalaVersion.startsWith(s"3.$min.")))
+        else if (scalaVersion.startsWith("3.3."))
           // FIXME The line number is wrong here
           """-- Error: cmd2.sc:3:8 ----------------------------------------------------------
             |3 |val n = getValue()
