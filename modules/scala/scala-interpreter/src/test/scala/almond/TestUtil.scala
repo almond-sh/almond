@@ -394,16 +394,16 @@ object TestUtil {
     }
   }
 
-  def comparePublishMessageTypes(expected: Seq[Set[String]], got: Seq[String]): Boolean =
-    expected.map(_.size).sum == got.length && {
-      val it = got.iterator
-        // Workaround for https://github.com/scala/bug/issues/12803
-        .map(identity)
-      expected.forall { expectedGroup =>
-        val got0 = it.take(expectedGroup.size).toSet
-        expectedGroup == got0
-      }
-    }
+  def comparePublishMessageTypes(expected: Seq[Set[String]], got: Seq[String]): Boolean = {
+    // Variable-display updates (update_display_data) are published from a background
+    // executor, so their ordering relative to the execute_input of subsequent cells is
+    // not deterministic. We therefore only compare the multiset of published message
+    // types here; the ordering and content of the displays themselves are checked
+    // separately by the callers (via their displayData assertions).
+    def counts(types: Iterable[String]): Map[String, Int] =
+      types.groupBy(identity).map { case (tpe, occurrences) => tpe -> occurrences.size }
+    counts(expected.flatten) == counts(got)
+  }
 
   lazy val initialClassLoader = {
 

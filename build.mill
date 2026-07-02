@@ -212,16 +212,8 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
       "2.12.21" -> Version("0.14.5"),
       "2.13.17" -> Version("0.14.2"),
       "2.13.18" -> Version("0.14.5"),
-      "3.3.6"   -> Version("0.14.2"),
       "3.3.7"   -> Version("0.14.2"),
-      "3.4.2"   -> Version("0.14.2"),
-      "3.5.0"   -> Version("0.14.2"),
-      "3.5.1"   -> Version("0.14.2"),
-      "3.5.2"   -> Version("0.14.2"),
-      "3.6.2"   -> Version("0.14.2"),
-      "3.6.4"   -> Version("0.14.2"),
       "3.7.3"   -> Version("0.14.2"),
-      "3.8.0"   -> Version("0.14.5"),
       "3.8.1"   -> Version("0.14.5")
     )
     val base = super.mimaPreviousVersions()
