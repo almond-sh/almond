@@ -246,26 +246,31 @@ class KernelLauncher(
   // creates a deadlock (on the CI, at least)
   private def perTestZeroMqContext = !Properties.isWin
 
+  // Recreate the shared ZeroMQ executors after a close failure. Even when each test gets its own
+  // ZeroMQ context (perTestZeroMqContext), the polling / open-close thread pools are shared and
+  // single-threaded, so a close that timed out leaves the operation stuck on them - every later
+  // test then queues up behind that stuck thread and fails with "Timeout when opening ZeroMQ
+  // connections". Swapping in fresh pools lets the following tests make progress, and abandons the
+  // stuck ones rather than letting one hung close take down the whole suite.
   private def replaceSharedZeromqThreadsAfterCloseFailure(
     failedThreads: ZeromqThreads,
     output: TestOutput,
     cause: Throwable
   ): Unit =
-    if (!perTestZeroMqContext)
-      threadsLock.synchronized {
-        if (threads eq failedThreads) {
-          threads = ZeromqThreads.create("almond-tests")
-          output.printStream.println(
-            "Recreated shared ZeroMQ context and threads after close failure"
-          )
-          cause.printStackTrace(output.printStream)
-          failedThreads.closePools()
-        }
-        else
-          output.printStream.println(
-            s"Shared ZeroMQ context and threads were already recreated after close failure: $cause"
-          )
+    threadsLock.synchronized {
+      if (threads eq failedThreads) {
+        threads = ZeromqThreads.create("almond-tests")
+        output.printStream.println(
+          "Recreated shared ZeroMQ context and threads after close failure"
+        )
+        cause.printStackTrace(output.printStream)
+        failedThreads.closePools()
       }
+      else
+        output.printStream.println(
+          s"Shared ZeroMQ context and threads were already recreated after close failure: $cause"
+        )
+    }
 
   private def stackTracePrinterThread(output: TestOutput): Thread =
     new Thread("stack-trace-printer") {
@@ -297,6 +302,41 @@ class KernelLauncher(
         finally
           output.printStream.println("stack-trace-printer thread exiting")
     }
+
+  // Terminate a per-test ZeroMQ context on a dedicated thread, with a hard deadline. Terminating a
+  // context is a blocking native call that can hang if a socket is still busy, so we never run it on
+  // the test thread directly: if it doesn't return in time we abandon it rather than deadlocking the
+  // test run. When we already hit a connection close failure, a stuck termination is expected, so we
+  // just log it; otherwise it's unexpected and treated as an error.
+  private def closeTestContext(
+    ctx: ZMQ.Context,
+    output: TestOutput,
+    abandonOnTimeout: Boolean
+  ): Unit = {
+    val printer = stackTracePrinterThread(output)
+    val closer =
+      new Thread("close-test-zeromq-context") {
+        setDaemon(true)
+        override def run(): Unit = ctx.close()
+      }
+    try {
+      printer.start()
+      output.printStream.println("Closing test ZeroMQ context")
+      closer.start()
+      closer.join(2.minutes.toMillis)
+      if (closer.isAlive)
+        if (abandonOnTimeout)
+          output.printStream.println(
+            "Timeout when closing test ZeroMQ context after a connection close failure, abandoning it"
+          )
+        else
+          sys.error("Timeout when closing ZeroMQ context")
+      else
+        output.printStream.println("Test ZeroMQ context closed")
+    }
+    finally
+      printer.interrupt()
+  }
 
   def session(
     conn: Connection,
@@ -333,34 +373,28 @@ class KernelLauncher(
       }
 
       def close(): Unit = {
-        try
-          conn.close(partial = false, lingerDuration = Duration.Zero)
-            .unsafeRunTimed(2.minutes)(ioRuntime)
-            .getOrElse {
-              sys.error("Timeout when closing ZeroMQ connections")
-            }
-        catch {
-          case NonFatal(e) =>
-            replaceSharedZeromqThreadsAfterCloseFailure(zeromqThreads, output, e)
-            throw e
-        }
-
-        if (perTestZeroMqContext) {
-          val t = stackTracePrinterThread(output)
+        val connCloseError =
           try {
-            t.start()
-            output.printStream.println("Closing test ZeroMQ context")
-            IO(ctx.close())
-              .evalOn(zeromqThreads.pollingEces)
+            conn.close(partial = false, lingerDuration = Duration.Zero)
               .unsafeRunTimed(2.minutes)(ioRuntime)
               .getOrElse {
-                sys.error("Timeout when closing ZeroMQ context")
+                sys.error("Timeout when closing ZeroMQ connections")
               }
-            output.printStream.println("Test ZeroMQ context closed")
+            None
           }
-          finally
-            t.interrupt()
-        }
+          catch {
+            case NonFatal(e) =>
+              replaceSharedZeromqThreadsAfterCloseFailure(zeromqThreads, output, e)
+              Some(e)
+          }
+
+        // Always reclaim the per-test ZeroMQ context, even when closing the connection above failed
+        // or timed out - otherwise its native IO threads and file descriptors leak, and on a busy CI
+        // runner that snowballs into the following tests failing to open connections.
+        if (perTestZeroMqContext)
+          closeTestContext(ctx, output, abandonOnTimeout = connCloseError.isDefined)
+
+        connCloseError.foreach(throw _)
       }
     }
 
@@ -589,8 +623,9 @@ class KernelLauncher(
           val delay =
             if (kernelBindToRandomPorts)
               // we already waited for the connection file to be updated, the kernel should already be
-              // listening for connections at that time
-              20.seconds
+              // listening for connections at that time - but allow a generous margin, as a cold
+              // kernel JVM handshake can be slow on busy / noisy CI runners
+              45.seconds
             else
               2.minutes
           val conn0 = updatedParams
@@ -626,7 +661,17 @@ class KernelLauncher(
           case Some(output0) => output0.printStream
           case None          => System.err
         }
-        sessions.foreach(_.close())
+        // Close every session but don't let a failing one short-circuit the kernel process / temp
+        // dir cleanup below - a leaked kernel JVM keeps consuming CPU and memory and drags down the
+        // following tests. We surface the first session close error after everything is reaped.
+        var sessionCloseError = Option.empty[Throwable]
+        sessions.foreach { sess =>
+          try sess.close()
+          catch {
+            case NonFatal(e) =>
+              if (sessionCloseError.isEmpty) sessionCloseError = Some(e)
+          }
+        }
         sessions = Nil
         jupyterDirs.foreach { dir =>
           try os.remove.all(dir)
@@ -658,6 +703,7 @@ class KernelLauncher(
             ps.println("Kernel already exited")
           proc = null
         }
+        sessionCloseError.foreach(throw _)
       }
     }
 
