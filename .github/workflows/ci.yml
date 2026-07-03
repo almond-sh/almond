@@ -15,7 +15,7 @@ jobs:
       matrix:
         OS: ["ubuntu-latest", "windows-latest"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -45,7 +45,7 @@ jobs:
           - OS: macos-15
             SCALA: 2.13.18
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -73,7 +73,7 @@ jobs:
         OS: ["ubuntu-22.04", macos-15, windows-latest]
         GROUP: ["212", "213", "3"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -97,7 +97,7 @@ jobs:
   bincompat:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -110,7 +110,7 @@ jobs:
   website:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -125,7 +125,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -138,7 +138,7 @@ jobs:
   publishLocal:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
