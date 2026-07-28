@@ -41,7 +41,7 @@ pyrsistent==0.18.1
 python-dateutil==2.8.2
 pyzmq==23.2.1
 six==1.16.0
-soupsieve==2.3.2.post1
+soupsieve==2.8.4
 stack-data==0.4.0
 tinycss2==1.1.1
 tornado==6.5.7
