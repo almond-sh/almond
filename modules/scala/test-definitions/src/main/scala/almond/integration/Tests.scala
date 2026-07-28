@@ -58,7 +58,7 @@ object Tests {
   ): Unit = {
 
     val isScala2   = scalaVersion.startsWith("2.")
-    val isScala213 = scalaVersion.startsWith("2.13.")
+    val isScala212 = scalaVersion.startsWith("2.12.")
 
     runner.withSession() { implicit session =>
 
@@ -80,9 +80,11 @@ object Tests {
         "Thread.sleep(6000L)",
         "",
         // the update originates from the previous cell, but arrives while the third one is running
+        // the kernel uses the pprint version pulled by Ammonite, which still prints field names
+        // for 1-arity case classes on Scala 3 (unlike the more recent pprint used in unit tests)
         displaysTextUpdates = Seq(
-          if (isScala213) "f: Future[Int] = Success(value = 2)"
-          else "f: Future[Int] = Success(2)"
+          if (isScala212) "f: Future[Int] = Success(2)"
+          else "f: Future[Int] = Success(value = 2)"
         )
       )
     }
@@ -96,7 +98,7 @@ object Tests {
     // same as above, except no cell is running when the future completes
 
     val isScala2   = scalaVersion.startsWith("2.")
-    val isScala213 = scalaVersion.startsWith("2.13.")
+    val isScala212 = scalaVersion.startsWith("2.12.")
 
     runner.withSession() { implicit session =>
       execute(
@@ -112,8 +114,8 @@ object Tests {
         "",
         displaysText = Seq("f: Future[Int] = [running]"),
         displaysTextUpdates = Seq(
-          if (isScala213) "f: Future[Int] = Success(value = 2)"
-          else "f: Future[Int] = Success(2)"
+          if (isScala212) "f: Future[Int] = Success(2)"
+          else "f: Future[Int] = Success(value = 2)"
         ),
         waitForUpdateDisplay = true
       )
