@@ -46,5 +46,6 @@ stack-data==0.4.0
 tinycss2==1.1.1
 tornado==6.5.7
 traitlets==5.3.0
+typing_extensions==4.16.0
 wcwidth==0.2.5
 webencodings==0.5.1
