@@ -179,8 +179,14 @@ final class ScalaInterpreterInspections(
               docstringsOpt.fold[Frag](Seq.empty[Frag])(pre(_))
             )
 
+            val wholeText = typeStr + docstringsOpt.fold("")(newLine + newLine + _)
+
+            // A text/plain alternative alongside the HTML: the VS Code Jupyter PowerToys
+            // Contextual Help panel drops any inspect_request reply whose data has no
+            // text/plain key, and reports it to the user as "No response from kernel".
             val res = Inspection.fromDisplayData(
               DisplayData.html(wholeHtml.toString)
+                .add(DisplayData.ContentType.text, wholeText)
             )
 
             Some(res)
