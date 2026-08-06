@@ -276,25 +276,30 @@ object ScalaInterpreterTests extends TestSuite {
           .map(raw => readFromArray(raw.value)(stringCodec))
           .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
 
+      // No source JAR gets indexed in these tests, so no scaladoc is ever found,
+      // and the inspection results are only made of the type of the tree.
+      def expected(typeStr: String): String =
+        s"<div><pre>$typeStr</pre></div>"
+
       test("tree shapes") {
         if (TestUtil.isScala2) {
           val interpreter = newInterpreter()
 
           val defCode = "def increment(n: Int): Int = n + 1"
-          assert(html(interpreter, defCode, defCode.indexOf("increment") + 1).contains("Int"))
+          val defRes  = html(interpreter, defCode, defCode.indexOf("increment") + 1)
+          val expectedDefRes =
+            if (isScala212) expected("(n: Int)Int")
+            else expected("(n: Int): Int")
+          assert(defRes == expectedDefRes)
 
           val inferredValCode = "val message = List(1, 2, 3).mkString"
-          assert(
+          val inferredValRes =
             html(interpreter, inferredValCode, inferredValCode.indexOf("message") + 1)
-              .contains("String")
-          )
+          assert(inferredValRes == expected("String"))
 
           val typedValCode = "val count: Long = 2L"
-          assert(html(
-            interpreter,
-            typedValCode,
-            typedValCode.indexOf("count") + 1
-          ).contains("Long"))
+          val typedValRes  = html(interpreter, typedValCode, typedValCode.indexOf("count") + 1)
+          assert(typedValRes == expected("Long"))
         }
         else
           "disabled"
@@ -306,9 +311,10 @@ object ScalaInterpreterTests extends TestSuite {
           val code        = "import scala.collection.mutable.ArrayBuffer"
           val pos         = code.indexOf("mutable") + 1
 
-          val results = (1 to 25).map(_ => html(interpreter, code, pos))
-          assert(results.forall(_.nonEmpty))
-          assert(results.forall(!_.contains("&lt;unknown&gt;")))
+          // in particular, none of those should be "<unknown>"
+          val expectedRes = expected("import scala.collection.mutable.ArrayBuffer")
+          val results     = (1 to 25).map(_ => html(interpreter, code, pos))
+          assert(results.forall(_ == expectedRes))
         }
         else
           "disabled"
@@ -324,7 +330,7 @@ object ScalaInterpreterTests extends TestSuite {
             constructorCode,
             constructorCode.indexOf("String") + 1
           )
-          assert(constructorHtml.contains("String"))
+          assert(constructorHtml == expected("String"))
 
           val inheritedCode = "List(1, 2, 3).isEmpty"
           val inheritedHtml = html(
@@ -332,7 +338,7 @@ object ScalaInterpreterTests extends TestSuite {
             inheritedCode,
             inheritedCode.indexOf("isEmpty") + 1
           )
-          assert(inheritedHtml.contains("Boolean"))
+          assert(inheritedHtml == expected("Boolean"))
         }
         else
           "disabled"
