@@ -479,6 +479,17 @@ object ScalaInterpreterTests extends TestSuite {
       }
     }
 
+    test("inspection") {
+      if (TestUtil.isScala2) {
+        val code          = "List"
+        val inspectionOpt = interpreter.inspect(code, code.length, detailLevel = 0)
+        val data          = inspectionOpt.toSeq.flatMap(_.data)
+
+        assert(data.exists(_._1 == "text/html"))
+        assert(data.exists(_._1 == "text/plain"))
+      }
+    }
+
     test("dependencies") {
       test("auto dependency") {
         test("example") {
