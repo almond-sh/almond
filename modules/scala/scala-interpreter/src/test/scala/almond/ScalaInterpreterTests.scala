@@ -4,11 +4,13 @@ import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.interpreter.{Completion, Interpreter}
+import almond.protocol.Codecs.stringCodec
 import almond.protocol.RawJson
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
 import ammonite.util.Colors
+import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
 import utest._
 
@@ -265,6 +267,76 @@ object ScalaInterpreterTests extends TestSuite {
         else "disabled"
       }
 
+    }
+
+    test("inspection") {
+      def html(interpreter: Interpreter, code: String, pos: Int): String =
+        interpreter.inspect(code, pos, detailLevel = 1)
+          .flatMap(_.data.get("text/html"))
+          .map(raw => readFromArray(raw.value)(stringCodec))
+          .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
+
+      test("tree shapes") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+
+          val defCode = "def increment(n: Int): Int = n + 1"
+          assert(html(interpreter, defCode, defCode.indexOf("increment") + 1).contains("Int"))
+
+          val inferredValCode = "val message = List(1, 2, 3).mkString"
+          assert(
+            html(interpreter, inferredValCode, inferredValCode.indexOf("message") + 1)
+              .contains("String")
+          )
+
+          val typedValCode = "val count: Long = 2L"
+          assert(html(
+            interpreter,
+            typedValCode,
+            typedValCode.indexOf("count") + 1
+          ).contains("Long"))
+        }
+        else
+          "disabled"
+      }
+
+      test("import tree fallback") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+          val code        = "import scala.collection.mutable.ArrayBuffer"
+          val pos         = code.indexOf("mutable") + 1
+
+          val results = (1 to 25).map(_ => html(interpreter, code, pos))
+          assert(results.forall(_.nonEmpty))
+          assert(results.forall(!_.contains("&lt;unknown&gt;")))
+        }
+        else
+          "disabled"
+      }
+
+      test("constructor and inherited documentation") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+
+          val constructorCode = "new java.lang.String(Array[Byte](65))"
+          val constructorHtml = html(
+            interpreter,
+            constructorCode,
+            constructorCode.indexOf("String") + 1
+          )
+          assert(constructorHtml.contains("String"))
+
+          val inheritedCode = "List(1, 2, 3).isEmpty"
+          val inheritedHtml = html(
+            interpreter,
+            inheritedCode,
+            inheritedCode.indexOf("isEmpty") + 1
+          )
+          assert(inheritedHtml.contains("Boolean"))
+        }
+        else
+          "disabled"
+      }
     }
 
     test("predef code") {
