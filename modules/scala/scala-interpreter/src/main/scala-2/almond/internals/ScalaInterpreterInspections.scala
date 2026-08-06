@@ -168,7 +168,7 @@ final class ScalaInterpreterInspections(
                         Optional.empty[SymbolDocumentation]()
                     }
 
-                if (documentation.isPresent) {
+                if (documentation.isPresent && documentation.get().docstring.nonEmpty) {
                   val docstring = documentation.get().docstring
                   val finalDocstring =
                     if (Properties.isWin)
