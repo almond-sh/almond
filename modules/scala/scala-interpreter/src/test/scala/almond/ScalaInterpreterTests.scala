@@ -4,11 +4,13 @@ import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.interpreter.{Completion, Interpreter}
+import almond.protocol.Codecs.stringCodec
 import almond.protocol.RawJson
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil._
 import almond.amm.AmmInterpreter
 import ammonite.util.Colors
+import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
 import utest._
 
@@ -265,6 +267,82 @@ object ScalaInterpreterTests extends TestSuite {
         else "disabled"
       }
 
+    }
+
+    test("inspection") {
+      def html(interpreter: Interpreter, code: String, pos: Int): String =
+        interpreter.inspect(code, pos, detailLevel = 1)
+          .flatMap(_.data.get("text/html"))
+          .map(raw => readFromArray(raw.value)(stringCodec))
+          .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
+
+      // No source JAR gets indexed in these tests, so no scaladoc is ever found,
+      // and the inspection results are only made of the type of the tree.
+      def expected(typeStr: String): String =
+        s"<div><pre>$typeStr</pre></div>"
+
+      test("tree shapes") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+
+          val defCode = "def increment(n: Int): Int = n + 1"
+          val defRes  = html(interpreter, defCode, defCode.indexOf("increment") + 1)
+          val expectedDefRes =
+            if (isScala212) expected("(n: Int)Int")
+            else expected("(n: Int): Int")
+          assert(defRes == expectedDefRes)
+
+          val inferredValCode = "val message = List(1, 2, 3).mkString"
+          val inferredValRes =
+            html(interpreter, inferredValCode, inferredValCode.indexOf("message") + 1)
+          assert(inferredValRes == expected("String"))
+
+          val typedValCode = "val count: Long = 2L"
+          val typedValRes  = html(interpreter, typedValCode, typedValCode.indexOf("count") + 1)
+          assert(typedValRes == expected("Long"))
+        }
+        else
+          "disabled"
+      }
+
+      test("import tree fallback") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+          val code        = "import scala.collection.mutable.ArrayBuffer"
+          val pos         = code.indexOf("mutable") + 1
+
+          // in particular, none of those should be "<unknown>"
+          val expectedRes = expected("import scala.collection.mutable.ArrayBuffer")
+          val results     = (1 to 25).map(_ => html(interpreter, code, pos))
+          assert(results.forall(_ == expectedRes))
+        }
+        else
+          "disabled"
+      }
+
+      test("constructor and inherited documentation") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+
+          val constructorCode = "new java.lang.String(Array[Byte](65))"
+          val constructorHtml = html(
+            interpreter,
+            constructorCode,
+            constructorCode.indexOf("String") + 1
+          )
+          assert(constructorHtml == expected("String"))
+
+          val inheritedCode = "List(1, 2, 3).isEmpty"
+          val inheritedHtml = html(
+            interpreter,
+            inheritedCode,
+            inheritedCode.indexOf("isEmpty") + 1
+          )
+          assert(inheritedHtml == expected("Boolean"))
+        }
+        else
+          "disabled"
+      }
     }
 
     test("predef code") {
