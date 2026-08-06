@@ -165,7 +165,6 @@ final case class InterpreterMessageHandlers(
 
   def otherHandlers: MessageHandler =
     kernelInfoHandler.orElse(
-      kernelInfoControlHandler,
       completeHandler,
       interruptHandler,
       shutdownHandler,
@@ -217,35 +216,22 @@ final case class InterpreterMessageHandlers(
     }
 
   def kernelInfoHandler: MessageHandler =
+    // Protocol 5.5 allows this request on both channels. Control requests don't publish
+    // busy / idle statuses, so that they can be answered independently of cell execution.
     blocking(
-      Channel.Requests,
+      Set(Channel.Requests, Channel.Control),
       MessageType[Unit](KernelInfo.requestType.messageType),
       queueEc,
-      logCtx
-    ) { (message, queue) =>
+      logCtx,
+      publishStatus = _ == Channel.Requests
+    ) { (channel, message, queue) =>
 
       for {
         info <- interpreter.kernelInfo
         _ <- message
           .reply(KernelInfo.replyType, info)
-          .enqueueOn(Channel.Requests, queue)
+          .enqueueOn(channel, queue)
       } yield ()
-    }
-
-  // Protocol 5.5 added kernel_info_request on the control channel ("This is the same kernel
-  // info message as that received on the Shell channel"), and the VS Code Jupyter extension
-  // sends it there. Answered off the execute queue, without the busy/idle status publication
-  // of kernelInfoHandler, so that it is still answered while a cell is running.
-  def kernelInfoControlHandler: MessageHandler =
-    MessageHandler(
-      Channel.Control,
-      MessageType[Unit](KernelInfo.requestType.messageType)
-    ) { message =>
-      Stream.eval(interpreter.kernelInfo).flatMap { info =>
-        message
-          .reply(KernelInfo.replyType, info)
-          .streamOn(Channel.Control)
-      }
     }
 
   def shutdownHandler: MessageHandler =
