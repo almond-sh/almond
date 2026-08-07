@@ -36,7 +36,7 @@ final class IFrame private (
   private def html: String = {
     val widthPart  = width.fold("")(w => s"""width="$w"""")
     val heightPart = height.fold("")(h => s"""height="$h"""")
-    val url = src + {
+    val url        = src + {
       if (params.isEmpty) ""
       else {
         def encode(s: String): String =
