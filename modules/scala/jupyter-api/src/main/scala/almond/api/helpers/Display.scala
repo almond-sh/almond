@@ -136,7 +136,7 @@ object Display {
       val connection = new URL(url).openConnection()
       connection.setConnectTimeout(5000)
       connection.connect()
-      val contentType = format.map(_.contentType).getOrElse(connection.getContentType)
+      val contentType       = format.map(_.contentType).getOrElse(connection.getContentType)
       val (mimeType, value) = if (embed) {
         if (!imageTypes.contains(contentType))
           throw new IOException("Unknown or unsupported content type: " + contentType)

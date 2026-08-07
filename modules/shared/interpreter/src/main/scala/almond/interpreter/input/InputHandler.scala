@@ -35,7 +35,7 @@ final class InputHandler(
     new InputManager {
       private val list  = new ConcurrentHashMap[String, Unit]
       private var done0 = false
-      def done(): Unit = {
+      def done(): Unit  = {
         for ((id, ()) <- list.asScala.toSeq; p <- Option(ongoing.remove(id)))
           if (!p.isCompleted)
             p.failure(new InputManager.NoMoreInputException)
