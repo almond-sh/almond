@@ -10,11 +10,13 @@ final case class KernelSpec(
   display_name: String,
   language: String,
   interrupt_mode: Option[String] = None,
-  env: Map[String, String] = Map.empty,
+  // ActualMap is used instead of Map[String, String] to work around a
+  // jsoniter-scala Scala 3 macro issue that incorrectly serializes
+  // Map[String, String] as an array of pairs (see issue #1499).
+  env: ActualMap[String] = ActualMap(Map.empty),
   metadata: Option[RawJson] = None
 )
 
 object KernelSpec {
-  implicit val codec: JsonValueCodec[KernelSpec] =
-    JsonCodecMaker.make
+  implicit val codec: JsonValueCodec[KernelSpec] = JsonCodecMaker.make
 }
