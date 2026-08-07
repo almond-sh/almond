@@ -67,7 +67,7 @@ object Deps {
   def scalaReflect(sv: String) = mvn"org.scala-lang:scala-reflect:$sv"
   def scalaRx                  = mvn"com.lihaoyi::scalarx:0.4.3"
   def scalatags                = mvn"com.lihaoyi::scalatags:0.13.1"
-  def slf4jNop                 = mvn"org.slf4j:slf4j-nop:1.7.36"
+  def slf4jNop                 = mvn"org.slf4j:slf4j-nop:2.0.18"
   def sourcecode               = mvn"com.lihaoyi::sourcecode:0.3.0"
   def testUtil                 = mvn"io.github.alexarchambault::test-util:0.1.7"
   def upickle =
