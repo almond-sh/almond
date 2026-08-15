@@ -28,7 +28,14 @@ jobs:
           ./mill -i '__['"$SV"'].publishLocal'
         done
         ./mill -i __.publishLocal
-        ./mill -i mill.scalalib.SonatypeCentralPublishModule/
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          ./mill -i mill.scalalib.SonatypeCentralPublishModule/ --bundleName "almond-${GITHUB_REF#refs/tags/v}"
+        else
+          for tag in $(git tag --points-at HEAD); do
+            git tag -d "$tag"
+          done
+          ./mill -i mill.scalalib.SonatypeCentralPublishModule/
+        fi
       shell: bash
       env:
         MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY_BASE64 }}
