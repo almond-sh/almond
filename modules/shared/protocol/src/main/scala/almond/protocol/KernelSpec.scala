@@ -18,5 +18,8 @@ final case class KernelSpec(
 )
 
 object KernelSpec {
+  private implicit val stringCodec: JsonValueCodec[String]                     = JsonCodecMaker.make
+  private implicit val actualStringMapCodec: JsonValueCodec[ActualMap[String]] = ActualMap.codec
+
   implicit val codec: JsonValueCodec[KernelSpec] = JsonCodecMaker.make
 }
