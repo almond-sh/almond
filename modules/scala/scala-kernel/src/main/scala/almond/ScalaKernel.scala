@@ -13,7 +13,6 @@ import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp._
-import cats.effect.unsafe.IORuntime
 import coursier.cputil.ClassPathUtil
 
 import java.nio.file.Paths
@@ -206,7 +205,8 @@ object ScalaKernel extends CaseApp[Options] {
           .map(_.trim)
           .filter(_.nonEmpty)
           .map(_.split('.').filter(_.nonEmpty).toSeq)
-          .getOrElse(AmmInterpreter.defaultPkgName)
+          .getOrElse(AmmInterpreter.defaultPkgName),
+        logCode = options.logCode
       ),
       logCtx = logCtx
     )
@@ -254,6 +254,7 @@ object ScalaKernel extends CaseApp[Options] {
         interpreter,
         threads.interpreterEc,
         threads.kernelThreads,
+        threads.cancellableEc,
         logCtx,
         fmtMessageHandler,
         options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet

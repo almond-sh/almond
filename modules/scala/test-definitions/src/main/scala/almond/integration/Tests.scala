@@ -241,7 +241,7 @@ object Tests {
   ): Unit = {
     runner.withSession() { implicit session =>
       execute(
-        """System.err.print("test err"); System.out.print("test out")""",
+        """System.err.print("test" + " err"); System.out.print("test" + " out")""",
         "",
         stdout = "test out",
         stderr = "test err"
@@ -255,6 +255,57 @@ object Tests {
         assert(consoleOut.contains("test out"))
         assert(consoleErr.contains("test err"))
       }
+    }
+  }
+
+  def quietOutputCompilationError(
+    consoleOut: => String,
+    consoleErr: => String,
+    quiet: Boolean,
+    scalaVersion: String
+  )(implicit sessionId: SessionId, runner: Runner): Unit = {
+    runner.withSession() { implicit session =>
+      execute(
+        """def thing(s: String) = ""; thing(Array(2))""",
+        expectError = true,
+        stdout = "",
+        stderr =
+          if (scalaVersion.startsWith("2."))
+            """cmd1.sc:1: type mismatch;
+              | found   : Array[Int]
+              | required: String
+              |def thing(s: String) = ""; val res1_1 = thing(Array(2))
+              |                                                   ^
+              |Compilation Failed""".stripMargin
+          else if (scalaVersion.startsWith("3.3.") || scalaVersion.startsWith("3.4."))
+            """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
+              |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
+              |  |                                              ^^^^^^^^
+              |  |Found:    Array[Int]
+              |  |Required: String
+              |  |
+              |  |One of the following imports might make progress towards fixing the problem:
+              |  |
+              |  |  import sourcecode.Text.generate
+              |  |  import utest.framework.GoldenFix.Span.generate
+              |  |
+              |  |
+              |  | longer explanation available when compiling with `-explain`
+              |Compilation Failed""".stripMargin
+          else
+            """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
+              |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
+              |  |                                              ^^^^^^^^
+              |  |                                              Found:    Array[Int]
+              |  |                                              Required: String
+              |  |
+              |  | longer explanation available when compiling with `-explain`
+              |Compilation Failed""".stripMargin
+      )
+
+      val expectedMessage =
+        if (scalaVersion.startsWith("2.")) "type mismatch;" else "Type Mismatch Error"
+      assert(!quiet == consoleErr.contains(expectedMessage))
     }
   }
 
@@ -379,11 +430,7 @@ object Tests {
     }
 
   def toreeHtml()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    val launcherOptions =
-      if (runner.differedStartUp)
-        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
-      else
-        Seq("--shared", "sh.almond::toree-hooks")
+    val launcherOptions = Seq("--shared", "sh.almond::toree-hooks")
     runner.withLauncherOptionsSession(launcherOptions: _*)("--toree-magics", "--toree-api") {
       implicit session =>
 
@@ -550,11 +597,7 @@ object Tests {
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
-    val launcherOptions =
-      if (runner.differedStartUp)
-        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
-      else
-        Seq("--shared", "sh.almond::toree-hooks")
+    val launcherOptions = Seq("--shared", "sh.almond::toree-hooks")
     runner.withLauncherOptionsSession(launcherOptions: _*)(
       "--toree-magics",
       "--predef",
@@ -719,10 +762,6 @@ object Tests {
 
     runner.withSession("--extra-class-path", extraJars.mkString(File.pathSeparator)) {
       implicit session =>
-        if (runner.differedStartUp)
-          // In two step start up, we need the actual kernel to have started to get inspection results
-          execute("val n = 2", "n: Int = 2")
-
         val code   = "os.read"
         val result = inspect(code, code.length - 3, detailed = true)
         val expected = Seq(
@@ -839,13 +878,26 @@ object Tests {
           |""".stripMargin,
         """defined function getValue0
           |n0: Int = 2""".stripMargin,
-        ignoreStreams = true
+        stderr =
+          if (scalaVersion.startsWith("2."))
+            """cmd1.sc:3: method getValue0 in class Helper is deprecated (since 0.1): foo
+              |val n0 = getValue0()
+              |         ^
+              |""".stripMargin
+          else
+            """-- Warning: cmd1.sc:3:9 --------------------------------------------------------
+              |3 |val n0 = getValue0()
+              |  |         ^^^^^^^^^
+              |  |         method getValue0 in class Helper is deprecated since 0.1: foo
+              |""".stripMargin
       )
 
       val scalaVersion0 = Version(scalaVersion)
       val errorMessage =
         if (scalaVersion.startsWith("2.13."))
           if (scalaVersion0 >= Version("2.13.15"))
+            // we pass -deprecation, so we shouldn't get an advice about adding -deprecation
+            // com-lihaoyi/Ammonite#1703 or a related PR should fix that
             """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
               |No warnings can be incurred under -Werror.
               |Compilation Failed""".stripMargin
@@ -2281,6 +2333,94 @@ object Tests {
     runner: Runner
   ): Unit =
     customPkgNameTest("notebook")
+
+  def throwableGetMessageThrows(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """class TestException extends Exception("") {
+          |  override def getMessage: String = throw new NullPointerException
+          |}
+          |""".stripMargin,
+        "defined class TestException"
+      )
+
+      val stackTrace =
+        if (scalaVersion.startsWith("2.12."))
+          Seq(
+            "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
+            "ammonite.$sess.cmd2$.<init>(cmd2.sc:6)",
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:-1)"
+          )
+        else if (scalaVersion.startsWith("2.13."))
+          Seq(
+            "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:6)"
+          )
+        else
+          Seq(
+            "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65434)"
+          )
+
+      execute(
+        "throw new TestException",
+        errors = Seq(
+          (
+            "ammonite.$sess.cmd1$Helper$TestException",
+            "[no message: caught java.lang.NullPointerException]",
+            List(
+              "ammonite.$sess.cmd1$Helper$TestException: [no message: caught java.lang.NullPointerException]",
+              "    ammonite.$sess.cmd1$Helper$TestException"
+            ) ++ stackTrace.map("      " + _)
+          )
+        )
+      )
+    }
+
+  def throwableGetStackTraceThrows(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """class TestException extends Exception("") {
+          |  override def getStackTrace: Array[StackTraceElement] = throw new NullPointerException
+          |}
+          |""".stripMargin,
+        "defined class TestException"
+      )
+
+      execute(
+        "throw new TestException",
+        errors = Seq(
+          (
+            "ammonite.$sess.cmd1$Helper$TestException",
+            "",
+            List(
+              "ammonite.$sess.cmd1$Helper$TestException",
+              "    ammonite.$sess.cmd1$Helper$TestException: ",
+              "      Caught java.lang.NullPointerException while trying to get stack trace"
+            )
+          )
+        )
+      )
+    }
+
+  def unclosedStringLitteral()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """"aaa""",
+        partialErrors = Seq(
+          (
+            "scala.cli.directivehandler.MalformedDirectiveError",
+            "unclosed string literalunclosed string literal"
+          )
+        )
+      )
+    }
 
   def outputDirectory()(implicit
     sessionId: SessionId,

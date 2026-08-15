@@ -148,7 +148,11 @@ final case class Options(
 
   @HelpMessage("Package name where user code should be compiled - defaults to ammonite.$sess")
   @Hidden
-    pkgName: Option[String] = None
+    pkgName: Option[String] = None,
+
+  @HelpMessage("Log raw code about to be compiled (after post-processing, raw code passed to the compiler)")
+  @Hidden
+    logCode: Boolean = false
 ) {
   // format: on
 

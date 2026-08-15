@@ -38,20 +38,12 @@ def writeKernelJson(
 
 def jupyterServer(
   launcher: Path,
-  specialLauncher: Path,
   jupyterDir: Path,
   args: Seq[String],
   workspace: os.Path
 ): Unit = {
 
   writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
-  writeKernelJson(
-    specialLauncher,
-    jupyterDir,
-    specialKernelId,
-    "Scala (special, sources)",
-    "--quiet=false"
-  )
 
   os.makeDir.all(workspace / "notebooks")
   val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
@@ -73,14 +65,12 @@ def jupyterServer(
 
 def jupyterConsole(
   launcher: Path,
-  specialLauncher: Path,
   jupyterDir: Path,
   args: Seq[String],
   workspace: os.Path
 ): Unit = {
 
   writeKernelJson(launcher, jupyterDir, kernelId, "Scala (sources)")
-  writeKernelJson(specialLauncher, jupyterDir, specialKernelId, "Scala (special, sources)")
 
   val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
   val b   = new ProcessBuilder(jupyterCommand ++ args: _*).directory(workspace.toIO).inheritIO()

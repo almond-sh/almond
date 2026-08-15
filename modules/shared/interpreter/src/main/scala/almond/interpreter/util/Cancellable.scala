@@ -2,6 +2,7 @@ package almond.interpreter.util
 
 import cats.effect.IO
 
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 /** Handles cancellation of prior running requests, in case a new one is incoming.
@@ -12,7 +13,8 @@ import scala.util.{Failure, Success}
   */
 final class Cancellable[A, B](
   sync: A => IO[B],
-  asyncOpt: A => Option[CancellableFuture[B]]
+  asyncOpt: A => Option[CancellableFuture[B]],
+  ec: ExecutionContext
 ) {
 
   private var runningCompletionOpt  = Option.empty[CancellableFuture[B]]
@@ -41,7 +43,7 @@ final class Cancellable[A, B](
       case Left(io) => io
       case Right(f) =>
         IO.async[B] { cb =>
-          import scala.concurrent.ExecutionContext.Implicits.global // meh
+          implicit val ec0 = ec
           f.future.onComplete { res =>
             runningCompletionLock.synchronized {
               runningCompletionOpt = runningCompletionOpt.filter(_ != f)

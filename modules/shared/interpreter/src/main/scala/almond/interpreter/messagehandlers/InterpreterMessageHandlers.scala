@@ -293,7 +293,7 @@ object InterpreterMessageHandlers {
       message
         .publish(Execute.displayDataType, content)
         .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(IORuntime.global)
+        .unsafeRunSync()(ioRuntime)
     }
 
     def updateDisplay(displayData: DisplayData): Unit =

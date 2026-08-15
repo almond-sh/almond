@@ -15,7 +15,6 @@ import almond.util.ThreadUtil.{
   singleThreadedExecutionContextExecutorService
 }
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import utest._
 
@@ -25,7 +24,8 @@ object KernelTests extends TestSuite {
 
   val logCtx = LoggerContext.nop // debug: LoggerContext.stderr(almond.logger.Level.Debug)
 
-  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
+  val interpreterEc  = singleThreadedExecutionContextExecutorService("test-interpreter")
+  val cancellablesEc = singleThreadedExecutionContextExecutorService("test-cancellables")
 
   val threads = KernelThreads.create("test")
 
@@ -80,7 +80,7 @@ object KernelTests extends TestSuite {
           threads.ioRuntime
         )
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
@@ -125,7 +125,7 @@ object KernelTests extends TestSuite {
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -173,7 +173,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -203,7 +203,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -249,7 +249,7 @@ object KernelTests extends TestSuite {
       val streams =
         ClientStreams.create(input, stopWhen, ignoreExpectedReplies, ioRuntime = threads.ioRuntime)
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, logCtx)
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)

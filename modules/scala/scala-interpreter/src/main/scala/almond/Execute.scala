@@ -19,6 +19,7 @@ import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHa
 import almond.interpreter.input.InputManager
 import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
+import almond.logger.internal.PrintStreamLogger
 import almond.protocol.{Execute => ProtocolExecute}
 import ammonite.compiler.Parsers
 import ammonite.compiler.iface.Preprocessor
@@ -36,6 +37,7 @@ import scala.cli.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** Wraps contextual things around when executing code (capturing output, stdin via front-ends,
@@ -88,20 +90,17 @@ final class Execute(
     currentInputManagerOpt0.flatMap { m =>
 
       val res = {
-        implicit val ec =
-          ExecutionContext.global // just using that one to map over an existing future…
         log.info("Awaiting input")
-        Await.result(
-          m.readInput()
-            .map(s => Success(s + System.lineSeparator()))
-            .recover { case t => Failure(t) },
-          Duration.Inf
-        )
+
+        try Success(Await.result(m.readInput(), Duration.Inf))
+        catch {
+          case t: Throwable => Failure(t)
+        }
       }
       log.info(s"Received input ${res.map { case "" => "[empty]"; case _ => "[non empty]" }}")
 
       res match {
-        case Success(s)                                    => Some(s)
+        case Success(s)                                    => Some(s + System.lineSeparator())
         case Failure(_: InputManager.NoMoreInputException) => None
         case Failure(e) => throw new Exception("Error getting more input", e)
       }
@@ -133,16 +132,29 @@ final class Execute(
   private var currentLine0          = initialCellCount
   private var currentNoHistoryLine0 = Int.MaxValue / 2
 
-  private val printer0 = Printer(
-    capture0.out,
-    capture0.err,
-    resultStream,
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s + System.lineSeparator())),
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stderr(s + System.lineSeparator())),
-    // to stdout in notebooks, not to get a red background,
-    // but stderr in the console, not to pollute stdout
-    s => currentPublishOpt0.fold(Console.err.println(s))(_.stdout(s + System.lineSeparator()))
-  )
+  private val printer0 = {
+    def doPrint(s: String, toClientStdout: Boolean = false): Unit =
+      currentPublishOpt0 match {
+        case None => Console.err.println(s)
+        case Some(outputHandler) =>
+          if (!quiet)
+            capture0.originalErr.getOrElse(System.err).println(s)
+          if (toClientStdout)
+            outputHandler.stdout(s + System.lineSeparator())
+          else
+            outputHandler.stderr(s + System.lineSeparator())
+      }
+    Printer(
+      capture0.out,
+      capture0.err,
+      resultStream,
+      doPrint(_),
+      doPrint(_),
+      // to stdout in notebooks, not to get a red background,
+      // but stderr in the console, not to pollute stdout
+      doPrint(_, toClientStdout = true)
+    )
+  }
 
   private def useOptions(
     ammInterp: ammonite.interp.Interpreter,
@@ -174,7 +186,8 @@ final class Execute(
       if (deps.isEmpty) Right(Nil)
       else ammInterp.loadIvy(deps: _*)
     loadDepsRes.map { loaded =>
-      ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+      if (loaded.nonEmpty)
+        ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
       ()
     }
   }
@@ -541,11 +554,14 @@ final class Execute(
       case Success(Right(finalCode)) =>
         val path      = Left(s"cell$currentLine0.sc")
         val scopePath = ScopePath(Left("."), os.sub)
-        handlers.parse(finalCode, path, scopePath) match {
-          case Left(err) =>
-            log.error(s"exception while processing directives (${err.getMessage})", err)
+        Try(handlers.parse(finalCode, path, scopePath)) match {
+          case Failure(err) =>
+            log.error(s"Unexpected exception while processing directives (${err.getMessage})", err)
             Execute.error(colors0(), Some(err), err.getMessage)
-          case Right(res) =>
+          case Success(Left(err)) =>
+            log.error(s"Exception while processing directives (${err.getMessage})", err)
+            Execute.error(colors0(), Some(err), err.getMessage)
+          case Success(Right(res)) =>
             val maybeOptions = res
               .flatMap(_.global.map(_.kernelOptions).toSeq)
               .sequence
@@ -616,7 +632,10 @@ final class Execute(
                         }
 
                       case Res.Exception(ex, msg) =>
-                        log.error(s"exception in user code (${ex.getMessage})", ex)
+                        log.error(
+                          s"exception in user code (${PrintStreamLogger.exceptionString(ex)})",
+                          ex
+                        )
                         Execute.error(colors0(), Some(ex), msg)
 
                       case Res.Skip =>

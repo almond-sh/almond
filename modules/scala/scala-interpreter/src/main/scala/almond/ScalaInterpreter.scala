@@ -151,7 +151,9 @@ final class ScalaInterpreter(
       addToreeApiCompatibilityImport = params.toreeApiCompatibility,
       initialSettings = params.initialSettings,
       wrapperNamePrefix = params.wrapperNamePrefix,
-      pkgName = params.pkgName
+      pkgName = params.pkgName,
+      evaluatorHookOpt = params.evaluatorHookOpt,
+      logCode = params.logCode
     )
 
     execute0.loadOptions(interp, params.upfrontKernelOptions)

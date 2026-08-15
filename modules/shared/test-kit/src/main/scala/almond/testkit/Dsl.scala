@@ -27,7 +27,6 @@ object Dsl {
       implicit sessionId: SessionId
     ): T
 
-    def differedStartUp: Boolean = false
     def output: Option[TestOutput]
   }
 

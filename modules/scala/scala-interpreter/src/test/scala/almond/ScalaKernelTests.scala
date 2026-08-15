@@ -28,17 +28,19 @@ import utest._
 import scala.collection.compat._
 import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters._
+import java.net.URI
 
 object ScalaKernelTests extends TestSuite {
 
   import almond.interpreter.TestInterpreter.StringBOps
 
-  val interpreterEc = singleThreadedExecutionContextExecutorService("test-interpreter")
-  val bgVarEc       = new SequentialExecutionContext
+  val interpreterEc  = singleThreadedExecutionContextExecutorService("test-interpreter")
+  val cancellablesEc = singleThreadedExecutionContextExecutorService("test-cancellables")
+  val bgVarEc        = new SequentialExecutionContext
 
   val threads = KernelThreads.create("test")
 
-  implicit def runner: Dsl.Runner = TestUtil.kernelRunner(threads, interpreterEc)
+  implicit def runner: Dsl.Runner = TestUtil.kernelRunner(threads, interpreterEc, cancellablesEc)
 
   val maybePostImportNewLine = if (TestUtil.isScala2) "" else System.lineSeparator()
 
@@ -86,7 +88,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       // How the pseudo-client behaves
@@ -164,7 +166,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -240,7 +242,6 @@ object ScalaKernelTests extends TestSuite {
 
     test("auto-update Future results upon completion") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
-      ammonite.compiler.CompilerBuilder.scalaVersion
       almond.integration.Tests.autoUpdateFutureUponCompletion(scalaVersion)
     }
 
@@ -282,7 +283,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -311,6 +312,7 @@ object ScalaKernelTests extends TestSuite {
       implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
         threads,
         interpreterEc,
+        cancellablesEc,
         processParams = _.copy(trapOutput = true)
       )
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -323,6 +325,7 @@ object ScalaKernelTests extends TestSuite {
         implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
           threads,
           interpreterEc,
+          cancellablesEc,
           processParams = _.copy(quiet = false)
         )
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -331,16 +334,55 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
+    test("quiet=false compilation error") {
+      withConsoleRedirect { (stdout, stderr) =>
+        implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+          threads,
+          interpreterEc,
+          cancellablesEc,
+          processParams = _.copy(quiet = false)
+        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        almond.integration.Tests.quietOutputCompilationError(
+          stdout,
+          stderr,
+          quiet = false,
+          scalaVersion
+        )
+      }
+    }
+
     test("quiet=true") {
       withConsoleRedirect { (stdout, stderr) =>
         implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
           threads,
           interpreterEc,
+          cancellablesEc,
           processParams = _.copy(quiet = true)
         )
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
         almond.integration.Tests.quietOutput(stdout, stderr, quiet = true)
+      }
+    }
+
+    test("quiet=true compilation error") {
+      withConsoleRedirect { (stdout, stderr) =>
+        implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+          threads,
+          interpreterEc,
+          cancellablesEc,
+          processParams = _.copy(quiet = true)
+        )
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        almond.integration.Tests.quietOutputCompilationError(
+          stdout,
+          stderr,
+          quiet = true,
+          scalaVersion
+        )
       }
     }
 
@@ -365,7 +407,7 @@ object ScalaKernelTests extends TestSuite {
           logCtx = logCtx
         )
 
-        val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+        val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
           .unsafeRunTimedOrThrow(threads.ioRuntime)
 
         implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -465,7 +507,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -599,7 +641,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -662,7 +704,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -748,7 +790,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -801,7 +843,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -850,7 +892,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -884,7 +926,7 @@ object ScalaKernelTests extends TestSuite {
         logCtx = logCtx
       )
 
-      val kernel = Kernel.create(interpreter, interpreterEc, threads, logCtx)
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .unsafeRunTimedOrThrow(threads.ioRuntime)
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
@@ -924,6 +966,48 @@ object ScalaKernelTests extends TestSuite {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.metadata()
     }
+
+    test("evaluator hook") {
+      import almond.testkit.Dsl._
+
+      implicit val runner: Dsl.Runner = TestUtil.kernelRunner(
+        threads,
+        interpreterEc,
+        cancellablesEc,
+        processParams = _.copy(
+          evaluatorHookOpt = Some(
+            new almond.amm.HookEvaluator.Hook {
+              def wrap[T](f: => T): T = {
+                val current = evaluatorHookThreadLocal.get()
+                try {
+                  evaluatorHookThreadLocal.set("the value")
+                  f
+                }
+                finally
+                  evaluatorHookThreadLocal.set(current)
+              }
+            }
+          )
+        )
+      )
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      runner.withSession() { implicit session =>
+        assert(evaluatorHookThreadLocal.get().isEmpty)
+        execute(
+          "val value = almond.ScalaKernelTests.evaluatorHookThreadLocal.get()",
+          """value: String = "the value""""
+        )
+        assert(evaluatorHookThreadLocal.get().isEmpty)
+      }
+    }
+
+    test("unclosed string litteral") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.unclosedStringLitteral()
+    }
   }
+
+  val evaluatorHookThreadLocal = ThreadLocal.withInitial(() => "")
 
 }

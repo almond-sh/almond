@@ -84,7 +84,9 @@ object AmmInterpreter {
     addToreeApiCompatibilityImport: Boolean,
     initialSettings: Seq[String],
     wrapperNamePrefix: String,
-    pkgName: Seq[String]
+    pkgName: Seq[String],
+    evaluatorHookOpt: Option[HookEvaluator.Hook],
+    logCode: Boolean
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -175,7 +177,8 @@ object AmmInterpreter {
             variableInspectorEnabled,
             outputDir0,
             initialSettings,
-            logCtx
+            logCtx,
+            logCode
           )
 
           override val eval: Evaluator = {
@@ -183,7 +186,12 @@ object AmmInterpreter {
             if (compileOnly)
               new CompileOnlyEvaluator(() => headFrame, baseEval)
             else
-              baseEval
+              evaluatorHookOpt match {
+                case Some(evaluatorHook) =>
+                  HookEvaluator(baseEval, evaluatorHook)
+                case None =>
+                  baseEval
+              }
           }
         }
 
@@ -298,13 +306,6 @@ object AmmInterpreter {
       log.debug("Initializing Ammonite interpreter")
 
       ammInterp0.compilerManager.init()
-
-      log.debug("Processing scalac args")
-
-      ammInterp0
-        .compilerManager
-        .asInstanceOf[AlmondCompilerLifecycleManager]
-        .preConfigure()
 
       log.info("Ammonite interpreter initialized")
 

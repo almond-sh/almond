@@ -18,6 +18,9 @@ final class CaptureImpl(
   private val systemOut = System.out
   private val systemErr = System.err
 
+  def originalErr: Option[PrintStream] =
+    Some(systemErr)
+
   val out: PrintStream =
     new FunctionOutputStream(
       inputBufferSize,

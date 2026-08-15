@@ -3,7 +3,7 @@ import $ivy.`io.get-coursier.util::get-cs:0.1.1`
 import $ivy.`com.github.lolgab::mill-mima::0.1.1`
 import $ivy.`io.github.alexarchambault.mill::mill-native-image-upload:0.1.26`
 
-import $file.project.deps, deps.{Deps, DepOps, ScalaVersions, Versions}
+import $file.project.deps, deps.{Deps, ScalaVersions, Versions}
 import $file.project.jupyterserver, jupyterserver.{jupyterConsole => jupyterConsole0, jupyterServer}
 import $file.scripts.website0.Website, Website.Relativize
 import $file.project.settings, settings.{
@@ -217,7 +217,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Bloop
       else
         Agg.empty
     metabrowse ++ Agg(
-      Deps.coursier.withDottyCompat(crossScalaVersion),
+      Deps.coursier,
       Deps.coursierApi,
       Deps.dependencyInterface,
       Deps.directiveHandler,
@@ -267,7 +267,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   def ivyDeps = Agg(
     Deps.caseApp,
     Deps.classPathUtil,
-    Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
+    Deps.scalafmtDynamic
   )
   object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
@@ -368,37 +368,6 @@ trait SharedDirectives extends Cross.Module[String] with AlmondModule {
   )
 }
 
-trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
-    with Bloop.Module {
-  private def sv   = ScalaVersions.scala3Latest
-  def scalaVersion = sv
-  def moduleDeps = Seq(
-    scala.`coursier-logger`(ScalaVersions.scala3Compat),
-    scala.`shared-directives`(ScalaVersions.scala3Compat),
-    shared.kernel(ScalaVersions.scala3Compat)
-  )
-  def ivyDeps = Agg(
-    Deps.caseApp,
-    Deps.coursierLauncher,
-    Deps.fansi,
-    Deps.scalaparse
-  )
-
-  def propertyFilePath = "almond/launcher/launcher.properties"
-  def propertyExtra = T {
-    val mainClass = scala.`scala-kernel`(ScalaVersions.scala3Latest).mainClass().getOrElse {
-      sys.error("No main class found")
-    }
-    Seq(
-      "kernel-main-class"        -> mainClass,
-      "ammonite-version"         -> Versions.ammonite,
-      "default-scala212-version" -> ScalaVersions.scala212,
-      "default-scala213-version" -> ScalaVersions.scala213,
-      "default-scala-version"    -> ScalaVersions.scala3Latest
-    )
-  }
-}
-
 trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with Mima {
   def crossScalaVersion = crossValue
   def ivyDeps = Agg(
@@ -473,7 +442,6 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.all)
   object `coursier-logger`   extends Cross[CoursierLogger](ScalaVersions.binaries)
   object `shared-directives` extends Cross[SharedDirectives](ScalaVersions.binaries)
-  object launcher            extends Launcher
   object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx` extends Cross[AlmondRx](Seq(ScalaVersions.scala212, ScalaVersions.scala213))
   object `json-api-jackson` extends Cross[JsonApiJackson](ScalaVersions.binaries)
@@ -540,7 +508,7 @@ trait TestDefinitions extends Cross.Module[String] with AlmondUnpublishedModule 
   def ivyDeps = T {
     Agg(
       Deps.coursierApi,
-      Deps.coursierVersions.withDottyCompat(crossScalaVersion),
+      Deps.coursierVersions,
       Deps.upickle
     )
   }
@@ -567,14 +535,7 @@ trait KernelLocalRepo extends Cross.Module[String] with LocalRepo {
       scala.`toree-hooks`(ScalaVersions.binary(testScalaVersion)),
       scala.`json-api-jackson`(ScalaVersions.binary(testScalaVersion)),
       scala.`coursier-logger`(ScalaVersions.binary(testScalaVersion)),
-      scala.`shared-directives`(ScalaVersions.binary(testScalaVersion)),
-      scala.launcher,
-      shared.kernel(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.interpreter(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.`interpreter-api`(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.protocol(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.channels(ScalaVersions.binary(ScalaVersions.scala3Latest)),
-      shared.logger(ScalaVersions.binary(ScalaVersions.scala3Latest))
+      scala.`shared-directives`(ScalaVersions.binary(testScalaVersion))
     ) ++ scalaVersionSpecific
   }
   def version = scala.`scala-kernel`(testScalaVersion).publishVersion()
@@ -596,23 +557,6 @@ trait Integration extends SbtModule {
   )
 
   object test extends SbtTests with TestCommand {
-    object helper extends ScalaModule {
-      def scalaVersion = ScalaVersions.scala3Latest
-      def scala213 = T {
-        runClasspath()
-          .map(_.path)
-          .map(_.last)
-          .filter(_.startsWith("scala-library-2.13."))
-          .map(_.stripPrefix("scala-library-"))
-          .filter(_.endsWith(".jar"))
-          .map(_.stripSuffix(".jar"))
-          .filter(!_.contains("-"))
-          .headOption
-          .getOrElse {
-            sys.error(s"Cannot get Scala 2.13 version pulled by Scala ${scalaVersion()}")
-          }
-      }
-    }
     def shapelessVersion = T {
       scala.`scala-kernel`(ScalaVersions.scala213)
         .compileClasspath()
@@ -631,17 +575,14 @@ trait Integration extends SbtModule {
     def forkArgs = T {
       scala.`local-repo`(ScalaVersions.scala212).localRepo()
       scala.`local-repo`(ScalaVersions.scala213).localRepo()
-      scala.`local-repo`(ScalaVersions.scala3Latest).localRepo()
-      val version = scala.`local-repo`(ScalaVersions.scala3Latest).version()
+      val version = scala.`local-repo`(ScalaVersions.scala213).version()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${(T.workspace / scala.`local-repo`(ScalaVersions.scala3Latest).repoRoot).toString.replace("{VERSION}", version)}",
+        s"-Dalmond.test.local-repo=${(T.workspace / scala.`local-repo`(ScalaVersions.scala213).repoRoot).toString.replace("{VERSION}", version)}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${GetCs.cs(Deps.coursier.dep.version, "2.1.2")}",
-        s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
         s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
-        s"-Dalmond.test.scala213-pulled-by-3-version=${helper.scala213()}",
         s"-Dalmond.test.shapeless-version-pulled-by-kernel=${shapelessVersion()}"
       )
     }
@@ -773,17 +714,13 @@ object dev extends Module {
     val launcher =
       if (fast) scala.`scala-kernel`(sv).fastLauncher
       else scala.`scala-kernel`(sv).launcher
-    val specialLauncher =
-      if (fast) scala.launcher.fastLauncher
-      else scala.launcher.launcher
     T.command {
-      val jupyterDir       = T.ctx().dest / "jupyter"
-      val launcher0        = launcher().path.toNIO
-      val specialLauncher0 = specialLauncher().path.toNIO
+      val jupyterDir = T.ctx().dest / "jupyter"
+      val launcher0  = launcher().path.toNIO
       if (console)
-        jupyterConsole0(launcher0, specialLauncher0, jupyterDir.toNIO, args0, T.workspace)
+        jupyterConsole0(launcher0, jupyterDir.toNIO, args0, T.workspace)
       else
-        jupyterServer(launcher0, specialLauncher0, jupyterDir.toNIO, args0, T.workspace)
+        jupyterServer(launcher0, jupyterDir.toNIO, args0, T.workspace)
     }
   }
 
@@ -805,9 +742,6 @@ object dev extends Module {
   def scala213() = T.command {
     println(ScalaVersions.scala213)
   }
-  def scala3() = T.command {
-    println(ScalaVersions.scala3Latest)
-  }
   def scalaVersions() = T.command {
     for (sv <- ScalaVersions.all)
       mill.api.SystemStreams.original.out.println(sv)
@@ -818,18 +752,8 @@ object dev extends Module {
     println(launcher)
   }
 
-  def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = T.command {
-    val launcher = scala.launcher.launcher().path.toNIO
-    println(launcher)
-  }
-
   def launcherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
     val launcher = scala.`scala-kernel`(scalaVersion).fastLauncher().path.toNIO
-    println(launcher)
-  }
-
-  def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = T.command {
-    val launcher = scala.launcher.fastLauncher().path.toNIO
     println(launcher)
   }
 }
@@ -843,8 +767,7 @@ object ci extends Module {
     }
     val scalaVersions = Seq(
       ScalaVersions.scala212,
-      ScalaVersions.scala213,
-      ScalaVersions.scala3Latest
+      ScalaVersions.scala213
     )
     val launchers = scalaVersions.map { sv =>
       val sbv    = sv.split('.').take(2).mkString(".")
