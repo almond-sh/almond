@@ -204,6 +204,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  test("output directory") {
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.outputDirectory()
+    }
+  }
+
   // Doesn't pass, might need fixing in Ammonite
   // test("custom short package name") {
   //   kernelLauncher.withKernel { implicit runner =>
