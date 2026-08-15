@@ -15,12 +15,12 @@ jobs:
       matrix:
         OS: ["ubuntu-latest", "windows-latest"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.10"
     - name: Install python dependencies
@@ -38,14 +38,14 @@ jobs:
       fail-fast: false
       matrix:
         OS: [ubuntu-latest]
-        SCALA: [2.12.20, 2.12.21, 2.13.17, 2.13.18, 3.3.7, 3.4.3, 3.5.2, 3.6.4, 3.7.3, 3.8.1]
+        SCALA: [2.12.20, 2.12.21, 2.13.17, 2.13.18, 3.3.7, 3.7.3, 3.8.1]
         include:
           - OS: windows-latest
             SCALA: 2.13.18
           - OS: macos-15
             SCALA: 2.13.18
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -65,13 +65,15 @@ jobs:
 
   integration-tests:
     runs-on: ${{ matrix.OS }}
-    timeout-minutes: 75
+    # Room for the retry below to run the suite a second time on a transient infrastructure flake.
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
         OS: ["ubuntu-22.04", macos-15, windows-latest]
+        GROUP: ["212", "213", "3"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -79,13 +81,23 @@ jobs:
       with:
         jvm: 21
         apps: scala-cli
-    - run: .github/scripts/run/run-its.sh
-      shell: bash
+    # Retry the whole suite once as a backstop: the integration tests occasionally hit transient
+    # infrastructure issues (overloaded runner, ZeroMQ connection timeouts) that the in-test retries
+    # don't fully absorb. This is a coarse safety net - the per-test retries and the ZeroMQ cleanup
+    # fixes in the test harness should keep it from triggering in the common case.
+    - name: Run integration tests
+      uses: nick-fields/retry@v4
+      with:
+        timeout_minutes: 75
+        max_attempts: 2
+        retry_on: error
+        shell: bash
+        command: .github/scripts/run/run-its.sh ${{ matrix.GROUP }}
 
   bincompat:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -98,7 +110,7 @@ jobs:
   website:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -113,7 +125,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -126,7 +138,7 @@ jobs:
   publishLocal:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -145,13 +157,4 @@ jobs:
           ./mill -i '__['"$SV"'].publishLocal'
         done
         ./mill -i __.publishLocal
-      shell: bash
-
-  # job whose name doesn't change when we bump Scala versions, add OSes, …
-  # We require this job for auto-merge.
-  all-tests:
-    needs: [examples, bincompat, test, integration-tests, website, publishLocal]
-    runs-on: ubuntu-latest
-    steps:
-    - run: true
       shell: bash

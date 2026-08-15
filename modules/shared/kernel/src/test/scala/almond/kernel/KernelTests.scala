@@ -8,7 +8,8 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.{Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
-import almond.protocol.{Complete, Execute, Header, History, Input, RawJson, Shutdown}
+import almond.protocol.{Complete, Execute, Header, History, Input, KernelInfo, RawJson, Shutdown}
+import almond.protocol.Codecs.unitCodec
 import almond.testkit.ClientStreams
 import almond.util.ThreadUtil.{
   attemptShutdownExecutionContext,
@@ -184,6 +185,29 @@ object KernelTests extends TestSuite {
       val expectedMsgTypes = Seq(History.replyType.messageType)
 
       assert(msgTypes == expectedMsgTypes)
+    }
+
+    test("kernel info request on control channel") {
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (channel, m) =>
+          IO.pure(channel == Channel.Control && m.header.msg_type == "kernel_info_reply")
+
+      val input = Message(
+        Header.random("test", KernelInfo.requestType),
+        ()
+      ).streamOn(Channel.Control)
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val reply = streams.singleReply(Channel.Control, KernelInfo.replyType)
+      assert(reply.content.implementation == "test")
     }
 
     test("shutdown request") {

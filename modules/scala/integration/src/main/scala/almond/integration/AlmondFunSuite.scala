@@ -4,13 +4,15 @@ import munit.{Location, TestOptions}
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.util.control.NonFatal
 
 abstract class AlmondFunSuite extends munit.FunSuite {
 
-  def mightRetry: Boolean   = false
-  override def munitTimeout = 5.minutes
+  def mightRetry: Boolean = false
+  // Windows CI runners are noticeably slower, give tests more time there
+  override def munitTimeout =
+    if (scala.util.Properties.isWin) 10.minutes else 5.minutes
 
   override def test(options: TestOptions)(body: => Any)(implicit loc: Location): Unit =
     test0(options)(_ => body)(loc)
@@ -50,6 +52,15 @@ abstract class AlmondFunSuite extends munit.FunSuite {
                   s"${Console.BOLD}${options.name}${Console.RESET} failed, trying again"
               )
               e.printStackTrace(System.err)
+              // Back off before retrying, rather than immediately retrying into the same bad window.
+              // Most retries here are triggered by transient infrastructure hiccups (an overloaded
+              // runner, ZeroMQ connection timeouts), and a short pause gives the machine time to
+              // recover (GC, freeing file descriptors / ports) before we spin up another kernel.
+              val backoff = AlmondFunSuite.retryBackoff(attempt)
+              if (backoff > Duration.Zero) {
+                System.err.println(s"Waiting $backoff before retrying")
+                Thread.sleep(backoff.toMillis)
+              }
               runBody(attempt + 1)
           }
         }
@@ -99,6 +110,11 @@ object AlmondFunSuite {
   val maxRetriedTests           = if (System.getenv("CI") == null) 1 else 6
   def retryAttempts             = if (System.getenv("CI") == null) 1 else 3
   private val retriedTestsCount = new AtomicInteger
+
+  /** Backoff before the retry following the given (1-based) failed attempt. */
+  def retryBackoff(attempt: Int): FiniteDuration =
+    if (System.getenv("CI") == null) Duration.Zero
+    else (attempt * 5).seconds
 
   case class ForceVerbose(force: Boolean)
 

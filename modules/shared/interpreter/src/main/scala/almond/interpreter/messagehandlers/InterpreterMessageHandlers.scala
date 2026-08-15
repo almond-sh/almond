@@ -216,18 +216,21 @@ final case class InterpreterMessageHandlers(
     }
 
   def kernelInfoHandler: MessageHandler =
+    // Protocol 5.5 allows this request on both channels. Control requests don't publish
+    // busy / idle statuses, so that they can be answered independently of cell execution.
     blocking(
-      Channel.Requests,
+      Set(Channel.Requests, Channel.Control),
       MessageType[Unit](KernelInfo.requestType.messageType),
       queueEc,
-      logCtx
-    ) { (message, queue) =>
+      logCtx,
+      publishStatus = _ == Channel.Requests
+    ) { (channel, message, queue) =>
 
       for {
         info <- interpreter.kernelInfo
         _ <- message
           .reply(KernelInfo.replyType, info)
-          .enqueueOn(Channel.Requests, queue)
+          .enqueueOn(channel, queue)
       } yield ()
     }
 

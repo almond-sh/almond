@@ -119,33 +119,56 @@ final class ScalaInterpreterInspections(
                   None
                 }
               )
-              .getOrElse(tree.toString)
+              // `tree.toString` used to be the fallback here, but printing a tree calls
+              // symName -> isErroneous -> Symbol.info, which is another off-PC-thread
+              // symbol read and trips assertCorrectThread. typeOfTree now produces this
+              // fallback from inside its own askForResponse block instead.
+              .getOrElse("<unknown>")
 
             val docstringsOpt = {
               val symbol = tree.symbol
               if (symbol == null)
                 None
               else {
-                val sym = {
-                  if (!symbol.isJava && symbol.isPrimaryConstructor) symbol.owner
-                  else symbol
-                }.toSemantic
+                // Both `.toSemantic` and `allOverriddenSymbols` read symbol infos, which
+                // the presentation compiler only allows from its own thread. Computing
+                // them here, and in particular handing Docstrings a thunk that it
+                // invokes later from parentDocumentation, trips
+                // Global.assertCorrectThread; that AssertionError is not NonFatal, so it
+                // terminates the kernel. Compute both on the PC thread instead, and pass
+                // a thunk that only returns the finished value.
+                val symbolInfo = pressy.askForResponse { () =>
+                  val s = {
+                    if (!symbol.isJava && symbol.isPrimaryConstructor) symbol.owner
+                    else symbol
+                  }.toSemantic
+                  (s, symbol.allOverriddenSymbols.map(_.toSemantic).toList.asJava)
+                }.get.swap.toOption
+
+                val (sym, parents) = symbolInfo.getOrElse(
+                  ("", java.util.Collections.emptyList[String]())
+                )
                 log.debug(s"Symbol for '${code.take(pos)}|${code.drop(pos)}' is $sym")
 
                 val documentation =
-                  try
-                    docs.documentation(
-                      sym,
-                      () => symbol.allOverriddenSymbols.map(_.toSemantic).toList.asJava,
-                      scala.meta.pc.ContentType.MARKDOWN
-                    )
-                  catch {
-                    case e: IndexingExceptions.InvalidSymbolException =>
-                      log.warn(s"Ignoring exception when trying to get scaladoc of $sym", e)
-                      Optional.empty[SymbolDocumentation]()
-                  }
+                  if (sym.isEmpty)
+                    Optional.empty[SymbolDocumentation]()
+                  else
+                    try
+                      docs.documentation(
+                        sym,
+                        () => parents,
+                        scala.meta.pc.ContentType.MARKDOWN
+                      )
+                    catch {
+                      // widened from InvalidSymbolException: a failed docstring lookup
+                      // should cost an inspection, not the whole kernel
+                      case e: Throwable =>
+                        log.warn(s"Ignoring exception when trying to get scaladoc of $sym", e)
+                        Optional.empty[SymbolDocumentation]()
+                    }
 
-                if (documentation.isPresent) {
+                if (documentation.isPresent && documentation.get().docstring.nonEmpty) {
                   val docstring = documentation.get().docstring
                   val finalDocstring =
                     if (Properties.isWin)
@@ -179,8 +202,14 @@ final class ScalaInterpreterInspections(
               docstringsOpt.fold[Frag](Seq.empty[Frag])(pre(_))
             )
 
+            val wholeText = typeStr + docstringsOpt.fold("")(newLine + newLine + _)
+
+            // A text/plain alternative alongside the HTML: the VS Code Jupyter PowerToys
+            // Contextual Help panel drops any inspect_request reply whose data has no
+            // text/plain key, and reports it to the user as "No response from kernel".
             val res = Inspection.fromDisplayData(
               DisplayData.html(wholeHtml.toString)
+                .add(DisplayData.ContentType.text, wholeText)
             )
 
             Some(res)
@@ -205,10 +234,16 @@ object ScalaInterpreterInspections {
       }
 
       stringOrTree match {
-        case Right(string)                    => Some(string)
-        case Left(null)                       => None
-        case Left(tree) if tree.tpe ne NoType => Some(tree.tpe.widen.toString)
-        case _                                => None
+        case Right(string) => Some(string)
+        case Left(null)    => None
+        // askTypeAt can hand back a tree that has not been typed yet while a background
+        // compile is in flight, so `tpe` needs a null check as well as the NoType one.
+        case Left(tree) if (tree.tpe ne null) && (tree.tpe ne NoType) =>
+          Some(tree.tpe.widen.toString)
+        // last resort: print the tree. This has to happen here, on the PC thread,
+        // because printing reads symbol infos (symName -> isErroneous -> Symbol.info).
+        case Left(tree) => Some(tree.toString)
+        case _          => None
       }
     }
 
