@@ -3,7 +3,7 @@ package almondbuild
 import coursier.version.Version
 
 object ScalaVersions {
-  def scala3Latest   = "3.8.1"
+  def scala3Latest   = "3.8.4"
   def scala3Compat   = "3.3.7"
   def scala213       = "2.13.18"
   def scala212       = "2.12.21"
@@ -11,7 +11,6 @@ object ScalaVersions {
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
-    "3.7.3",
     scala3Compat,
     scala213,
     "2.13.17",

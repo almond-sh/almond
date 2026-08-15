@@ -29,11 +29,11 @@ object Deps {
       }
   }
 
-  def ammoniteCompiler = mvn"com.lihaoyi:::ammonite-compiler:${Versions.ammonite}"
+  def ammoniteCompiler = mvn"sh.almond.ammonite:::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
-    mvn"com.lihaoyi:::ammonite-repl:${Versions.ammonite}"
+    mvn"sh.almond.ammonite:::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))
-  def ammoniteReplApi    = mvn"com.lihaoyi:::ammonite-repl-api:${Versions.ammonite}"
+  def ammoniteReplApi    = mvn"sh.almond.ammonite:::ammonite-repl-api:${Versions.ammonite}"
   def ammoniteSpark      = mvn"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = mvn"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = mvn"com.github.alexarchambault::case-app:${Versions.caseApp}"
