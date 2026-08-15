@@ -901,6 +901,13 @@ object dev extends Module {
     for (sv <- ScalaVersions.all)
       mill.api.SystemStreams.original.out.println(sv)
   }
+  def ciScalaVersionsJson() = Task.Command {
+    val json = ujson.Obj(
+      "all"      -> ujson.Arr(ScalaVersions.ci.map(ujson.Str(_))*),
+      "scala213" -> ScalaVersions.scala213
+    )
+    mill.api.SystemStreams.original.out.println(json.render())
+  }
 
   def launcher(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher = scala.`scala-kernel`(scalaVersion).launcher().path.toNIO
