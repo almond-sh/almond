@@ -145,13 +145,29 @@ object MessageHandler {
     channel: Channel,
     messageType: MessageType[T],
     queueEc: ExecutionContext,
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    publishStatus: Boolean = true
   )(
     handler: (Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
   ): MessageHandler =
     MessageHandler(channel, messageType) { message =>
-      blockingTaskStream(message, queueEc, logCtx) { queue =>
+      blockingTaskStream(message, queueEc, logCtx, publishStatus = publishStatus) { queue =>
         handler(message, queue)
+      }
+    }
+
+  def blocking[T: JsonValueCodec](
+    channels: Set[Channel],
+    messageType: MessageType[T],
+    queueEc: ExecutionContext,
+    logCtx: LoggerContext,
+    publishStatus: Channel => Boolean
+  )(
+    handler: (Channel, Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
+  ): MessageHandler =
+    MessageHandler(channels, messageType) { (channel, message) =>
+      blockingTaskStream(message, queueEc, logCtx, publishStatus = publishStatus(channel)) { queue =>
+        handler(channel, message, queue)
       }
     }
 
@@ -176,7 +192,8 @@ object MessageHandler {
   private def blockingTaskStream(
     currentMessage: Message[_],
     queueEc: ExecutionContext,
-    logCtx: LoggerContext
+    logCtx: LoggerContext,
+    publishStatus: Boolean
   )(
     run: Queue[IO, (Channel, RawMessage)] => IO[Unit]
   ): Stream[IO, (Channel, RawMessage)] = {
@@ -199,13 +216,13 @@ object MessageHandler {
       main = run(queue)
       _ <- {
         val t = for {
-          _ <- status(queue, Status.busy)
+          _ <- if (publishStatus) status(queue, Status.busy) else IO.unit
           _ <- main.attempt.map { a =>
             a.left.foreach { e =>
               log.error(s"Error while processing ${currentMessage.header.msg_type} message", e)
             }
           }
-          _ <- status(queue, Status.idle)
+          _ <- if (publishStatus) status(queue, Status.idle) else IO.unit
           _ <- queue.offer(poisonPill)
         } yield ()
 
