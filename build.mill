@@ -480,7 +480,7 @@ trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondM
     scala.`jupyter-api`()
   )
   def mvnDeps = Seq(
-    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.19.2"
+    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.19.4"
   )
   override def mimaPreviousVersions = Task {
     // module added only in 0.14.2
@@ -900,6 +900,13 @@ object dev extends Module {
   def scalaVersions() = Task.Command {
     for (sv <- ScalaVersions.all)
       mill.api.SystemStreams.original.out.println(sv)
+  }
+  def ciScalaVersionsJson() = Task.Command {
+    val json = ujson.Obj(
+      "all"      -> ujson.Arr(ScalaVersions.ci.map(ujson.Str(_))*),
+      "scala213" -> ScalaVersions.scala213
+    )
+    mill.api.SystemStreams.original.out.println(json.render())
   }
 
   def launcher(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
