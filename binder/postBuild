@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -e
+
+ALMOND_VERSION=0.14.5
+
+# Install coursier
+curl -fL "https://github.com/coursier/launchers/raw/master/cs-x86_64-pc-linux.gz" | gzip -d > cs
+chmod +x cs
+
+# Install almond for Scala 2.13
+./cs launch "almond:${ALMOND_VERSION}" --scala 2.13 -- \
+  --install \
+  --id scala213 \
+  --display-name "Scala (2.13)" \
+  --env "JAVA_OPTS=-XX:MaxRAMPercentage=80.0" \
+  </dev/null 2>&1 | grep -v '^Download'
+
+rm -f cs
+
+# Set indentation to two spaces
+JUPYTER_CONFIG_DIR=$(jupyter --config-dir)
+# JupyterLab notebook
+mkdir -p "$JUPYTER_CONFIG_DIR/lab/user-settings/@jupyterlab/notebook-extension/"
+cat > "$JUPYTER_CONFIG_DIR/lab/user-settings/@jupyterlab/notebook-extension/tracker.jupyterlab-settings" <<- EOF
+{
+    "codeCellConfig": {
+      "tabSize": 2
+    }
+}
+EOF
