@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.interpreter.util.CancellableFuture
-import almond.protocol.{Execute, RawJson}
+import almond.protocol.{Execute, KernelInfo, RawJson}
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
@@ -72,7 +72,19 @@ final class TestInterpreter extends Interpreter {
   private var count = 0
   def currentLine() = count
 
-  def kernelInfo() = ???
+  def kernelInfo() =
+    KernelInfo(
+      implementation = "test",
+      implementation_version = "1.0.0",
+      language_info = KernelInfo.LanguageInfo(
+        name = "test",
+        version = "1.0.0",
+        mimetype = "text/plain",
+        file_extension = ".test",
+        nbconvert_exporter = "script"
+      ),
+      banner = "Test interpreter"
+    )
 
   override def asyncComplete(code: String, pos: Int) = {
 

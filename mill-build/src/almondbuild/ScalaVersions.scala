@@ -1,7 +1,9 @@
 package almondbuild
 
+import coursier.version.Version
+
 object ScalaVersions {
-  def scala3Latest   = "3.8.1"
+  def scala3Latest   = "3.8.4"
   def scala3Compat   = "3.3.8"
   def scala213       = "2.13.18"
   def scala212       = "2.12.21"
@@ -9,7 +11,6 @@ object ScalaVersions {
   val scala2Binaries = Seq(scala213, scala212)
   val all = Seq(
     scala3Latest,
-    "3.7.3",
     scala3Compat,
     scala213,
     "2.13.17",
@@ -21,6 +22,15 @@ object ScalaVersions {
     "2.12.19",
     "2.12.18"
   ).distinct
+  val ci = {
+    val (scala2, scala3) = all.partition(_.startsWith("2."))
+    val scala2Latest = scala2
+      .groupBy(_.split('.').take(2).mkString("."))
+      .values
+      .flatMap(_.sortBy(Version(_))(using Ordering[Version].reverse).take(2))
+      .toSeq
+    (scala3 ++ scala2Latest).sortBy(Version(_))(using Ordering[Version].reverse)
+  }
 
   def binary(sv: String) =
     if (sv.startsWith("2.12.")) scala212

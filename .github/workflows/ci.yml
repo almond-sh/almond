@@ -8,6 +8,21 @@ on:
   pull_request:
 
 jobs:
+  scala-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      json: ${{ steps.versions.outputs.json }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/setup-action@v3.0
+      with:
+        jvm: 21
+    - id: versions
+      run: echo "json=$(./mill -i dev.ciScalaVersionsJson)" >> "$GITHUB_OUTPUT"
+
   examples:
     runs-on: ${{ matrix.OS }}
     strategy:
@@ -15,12 +30,12 @@ jobs:
       matrix:
         OS: ["ubuntu-latest", "windows-latest"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.10"
     - name: Install python dependencies
@@ -33,19 +48,20 @@ jobs:
     - run: ./mill -i scala.examples.test
 
   test:
+    needs: scala-versions
     runs-on: ${{ matrix.OS }}
     strategy:
       fail-fast: false
       matrix:
         OS: [ubuntu-latest]
-        SCALA: [2.12.20, 2.12.21, 2.13.17, 2.13.18, 3.3.7, 3.7.3, 3.8.1]
+        SCALA: ${{ fromJSON(needs.scala-versions.outputs.json).all }}
         include:
           - OS: windows-latest
-            SCALA: 2.13.18
+            SCALA: ${{ fromJSON(needs.scala-versions.outputs.json).scala213 }}
           - OS: macos-15
-            SCALA: 2.13.18
+            SCALA: ${{ fromJSON(needs.scala-versions.outputs.json).scala213 }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -71,8 +87,9 @@ jobs:
       fail-fast: false
       matrix:
         OS: ["ubuntu-22.04", macos-15, windows-latest]
+        GROUP: ["212", "213", "3"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -85,18 +102,18 @@ jobs:
     # don't fully absorb. This is a coarse safety net - the per-test retries and the ZeroMQ cleanup
     # fixes in the test harness should keep it from triggering in the common case.
     - name: Run integration tests
-      uses: nick-fields/retry@v3
+      uses: nick-fields/retry@v4
       with:
         timeout_minutes: 75
         max_attempts: 2
         retry_on: error
         shell: bash
-        command: .github/scripts/run/run-its.sh
+        command: .github/scripts/run/run-its.sh ${{ matrix.GROUP }}
 
   bincompat:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -109,7 +126,7 @@ jobs:
   website:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -124,7 +141,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
@@ -137,7 +154,7 @@ jobs:
   publishLocal:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
