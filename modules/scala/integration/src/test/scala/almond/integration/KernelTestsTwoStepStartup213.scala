@@ -12,7 +12,13 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
 
   test0("mixed directives") { implicit forceVerbose =>
     val expectedError =
-      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
+      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.18"))
+        """cmd2.sc:6: method foo in class Helper is deprecated
+          |val res2_1 = foo()
+          |             ^
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
+      else if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
           |No warnings can be incurred under -Werror.
           |Compilation Failed""".stripMargin
@@ -52,7 +58,13 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
 
   test0("mixed directives in first cell") { implicit forceVerbose =>
     val expectedError =
-      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
+      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.18"))
+        """cmd2.sc:4: method foo in class Helper is deprecated
+          |val res2_1 = foo()
+          |             ^
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
+      else if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
           |No warnings can be incurred under -Werror.
           |Compilation Failed""".stripMargin
@@ -91,7 +103,13 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
 
   test0("mixed directives single cell") { implicit forceVerbose =>
     val expectedError =
-      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
+      if (Version(KernelLauncher.testScala213Version) >= Version("2.13.18"))
+        """cmd1.sc:7: method foo in class Helper is deprecated
+          |val res1_1 = foo()
+          |             ^
+          |No warnings can be incurred under -Werror.
+          |Compilation Failed""".stripMargin
+      else if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
           |No warnings can be incurred under -Werror.
           |Compilation Failed""".stripMargin

@@ -913,7 +913,7 @@ object Tests {
       val scalaVersion0 = Version(scalaVersion)
       val errorMessage =
         if (scalaVersion.startsWith("2.13."))
-          if (scalaVersion0 >= Version("2.13.15"))
+          if (scalaVersion0 >= Version("2.13.15") && scalaVersion0 < Version("2.13.18"))
             // we pass -deprecation, so we shouldn't get an advice about adding -deprecation
             // com-lihaoyi/Ammonite#1703 or a related PR should fix that
             """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
