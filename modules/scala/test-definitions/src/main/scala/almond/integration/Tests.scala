@@ -80,6 +80,8 @@ object Tests {
         "Thread.sleep(6000L)",
         "",
         // the update originates from the previous cell, but arrives while the third one is running
+        // the kernel uses the pprint version pulled by Ammonite, which still prints field names
+        // for 1-arity case classes on Scala 3 (unlike the more recent pprint used in unit tests)
         displaysTextUpdates = Seq(
           if (isScala212) "f: Future[Int] = Success(2)"
           else "f: Future[Int] = Success(value = 2)"
