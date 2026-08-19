@@ -33,7 +33,7 @@ final class ZeromqThreads(
 
   override def canEqual(that: Any): Boolean =
     that.isInstanceOf[ZeromqThreads]
-  override def productArity: Int = 4
+  override def productArity: Int           = 4
   override def productElement(n: Int): Any =
     n match {
       case 0 => channelEces
@@ -97,7 +97,7 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
   private def eces(ec: ExecutionContext): ExecutionContextExecutorService =
     ec match {
       case eces0: ExecutionContextExecutorService => eces0
-      case _ =>
+      case _                                      =>
         new ExecutionContextExecutorService {
           import java.util.{Collection, List => JList}
           import java.util.concurrent.{Callable, Future, TimeUnit}
@@ -156,7 +156,7 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
 
   def create(name: String, zmqIOThreads: Int = 4): ZeromqThreads = {
 
-    val ctx = ZMQ.context(zmqIOThreads)
+    val ctx               = ZMQ.context(zmqIOThreads)
     val zeromqOpenCloseEc = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(
       2,
       daemonThreadFactory(s"$name-zeromq-open-close")

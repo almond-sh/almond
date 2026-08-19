@@ -9,7 +9,7 @@ object ScalaVersions {
   def scala212       = "2.12.21"
   val binaries       = Seq(scala3Compat, scala213, scala212)
   val scala2Binaries = Seq(scala213, scala212)
-  val all = Seq(
+  val all            = Seq(
     scala3Latest,
     scala3Compat,
     scala213,
@@ -24,7 +24,7 @@ object ScalaVersions {
   ).distinct
   val ci = {
     val (scala2, scala3) = all.partition(_.startsWith("2."))
-    val scala2Latest = scala2
+    val scala2Latest     = scala2
       .groupBy(_.split('.').take(2).mkString("."))
       .values
       .flatMap(_.sortBy(Version(_))(using Ordering[Version].reverse).take(2))

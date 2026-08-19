@@ -5,7 +5,7 @@ import java.util.{Properties => JProperties}
 
 object Properties {
 
-  private lazy val path = os.resource / "almond" / "launcher" / "launcher.properties"
+  private lazy val path  = os.resource / "almond" / "launcher" / "launcher.properties"
   private lazy val props = {
     val content = os.read.bytes(path)
 
