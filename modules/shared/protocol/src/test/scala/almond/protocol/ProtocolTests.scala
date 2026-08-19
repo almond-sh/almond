@@ -25,8 +25,8 @@ object ProtocolTests extends TestSuite {
     }
     test("history_request") {
       test("simple") {
-        val input  = """{"raw":true,"output":false,"hist_access_type":"tail","n":1000}"""
-        val result = readFromString(input)(History.requestCodec)
+        val input    = """{"raw":true,"output":false,"hist_access_type":"tail","n":1000}"""
+        val result   = readFromString(input)(History.requestCodec)
         val expected = History.Request(
           output = false,
           raw = true,

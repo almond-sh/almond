@@ -68,7 +68,7 @@ object Install {
     val logoContentOpt = logo64PngOpt.map(url => readFully(url.openStream()))
 
     val jupyterDir = jupyterPath match {
-      case Left(p) => p
+      case Left(p)  => p
       case Right(j) =>
         j.paths.headOption.getOrElse(
           throw new InstallException.JupyterDirectoryTypeNotFound(j.name)
@@ -264,7 +264,7 @@ object Install {
     val path =
       options.jupyterPath match {
         case Some(p) => Left(Paths.get(p))
-        case None =>
+        case None    =>
           Right(
             if (options.global)
               JupyterPath.System

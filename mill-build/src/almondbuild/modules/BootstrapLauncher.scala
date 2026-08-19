@@ -43,8 +43,8 @@ trait BootstrapLauncher extends SbtModule {
     windows: Boolean,
     fast: Boolean // !fast means standalone (can be copied to another machine, …)
   ): Unit = {
-    val sharedCp0 = sharedCp.filter(os.exists(_))
-    val cp0       = cp.filter(os.exists(_))
+    val sharedCp0                = sharedCp.filter(os.exists(_))
+    val cp0                      = cp.filter(os.exists(_))
     val sharedClassLoaderContent =
       if (fast)
         ClassLoaderContent(sharedCp0.distinct.map(toEntry(_, resourceIfNotFromCache = false)))
