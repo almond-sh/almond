@@ -73,6 +73,11 @@ object KernelLauncher {
     sys.error("almond.test.cs-launcher Java property not set")
   )
 
+  // Where the Ammonite snapshots we depend on live. Spelled as a URL rather than as the
+  // central:maven-snapshots alias, as the coursier embedded in the kernels we launch predates
+  // that alias, and ignores COURSIER_REPOSITORIES altogether when it can't parse it.
+  def mavenSnapshotsRepo = "https://central.sonatype.com/repository/maven-snapshots"
+
   object TmpDir {
 
     private lazy val baseTmpDir = {
@@ -574,11 +579,9 @@ class KernelLauncher(
 
         output.printStream.println(s"Running ${command.value.mkString(" ")}")
         val extraEnv = {
-          // The kernels we launch here embed a coursier that doesn't know the
-          // central:maven-snapshots alias yet, hence the URL rather than the alias
           val baseRepos = sys.env.getOrElse(
             "COURSIER_REPOSITORIES",
-            "ivy2Local|central|https://central.sonatype.com/repository/maven-snapshots"
+            s"ivy2Local|central|$mavenSnapshotsRepo"
           )
           Map(
             "COURSIER_REPOSITORIES" ->
