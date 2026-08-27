@@ -73,6 +73,16 @@ object KernelLauncher {
     sys.error("almond.test.cs-launcher Java property not set")
   )
 
+  /** Coursier arguments forcing the Scala artifacts to `scalaVersion`. */
+  def scalaForcedVersionArgs(scalaVersion: String): Seq[String] = {
+    val modules =
+      if (scalaVersion.startsWith("2."))
+        Seq("scala-library", "scala-compiler", "scala-reflect")
+      else
+        Seq("scala-library", "scala3-library_3", "scala3-compiler_3")
+    modules.flatMap(name => Seq("--force-version", s"org.scala-lang:$name:$scalaVersion"))
+  }
+
   // Where the Ammonite snapshots we depend on live. Spelled as a URL rather than as the
   // central:maven-snapshots alias, as the coursier embedded in the kernels we launch predates
   // that alias, and ignores COURSIER_REPOSITORIES altogether when it can't parse it.
@@ -195,13 +205,15 @@ class KernelLauncher(
       if (isTwoStepStartup)
         Seq(s"sh.almond:launcher_3:$almondVersion")
       else
+        // The kernel modules are published for binary Scala versions - "--scala" gives us the
+        // right ones, and the forced versions the Scala compiler of the version under test.
         Seq(
-          s"sh.almond:::scala-kernel:$almondVersion",
+          s"sh.almond::scala-kernel:$almondVersion",
           "--shared",
-          "sh.almond:::scala-kernel-api",
+          "sh.almond::scala-kernel-api",
           "--scala",
           defaultScalaVersion
-        )
+        ) ++ scalaForcedVersionArgs(defaultScalaVersion)
     val res = os.proc(
       cs,
       "bootstrap",

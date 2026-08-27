@@ -8,6 +8,12 @@ for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
   SCALA_MAJOR_VERSION=${SCALA_FULL_VERSION%.*}
   # remove all dots for the kernel id
   SCALA_MAJOR_VERSION_TRIMMED=$(echo ${SCALA_MAJOR_VERSION} | tr -d .)
+  # the suffix of the modules we publish, which are cross-published for binary Scala versions
+  if [[ ${SCALA_FULL_VERSION} == 3.* ]]; then
+    SCALA_SUFFIX=3
+  else
+    SCALA_SUFFIX=${SCALA_MAJOR_VERSION}
+  fi
   echo Installing almond ${ALMOND_VERSION} for Scala ${SCALA_FULL_VERSION}
   EXTRA_ARGS=()
   if [[ ${ALMOND_VERSION} == *-SNAPSHOT ]]; then
@@ -15,8 +21,9 @@ for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
   fi
   coursier bootstrap \
       -r jitpack \
-      -i user -I user:sh.almond:scala-kernel-api_${SCALA_FULL_VERSION}:${ALMOND_VERSION} \
-      sh.almond:scala-kernel_${SCALA_FULL_VERSION}:${ALMOND_VERSION} \
+      -i user -I user:sh.almond:scala-kernel-api_${SCALA_SUFFIX}:${ALMOND_VERSION} \
+      sh.almond:scala-kernel_${SCALA_SUFFIX}:${ALMOND_VERSION} \
+      --scala ${SCALA_FULL_VERSION} \
       --default=true --sources \
       -o almond ${EXTRA_ARGS[@]}
   ./almond --install --log info --metabrowse --id scala${SCALA_MAJOR_VERSION_TRIMMED} --display-name "Scala ${SCALA_MAJOR_VERSION}"

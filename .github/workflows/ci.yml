@@ -69,15 +69,24 @@ jobs:
       with:
         jvm: 21
         apps:
-    - run: ./mill -i "__[$SCALA].test"
+    # Modules are built once per binary Scala version, and their tests once per full Scala
+    # version - the former selector runs the tests of the modules that have no full Scala
+    # version cross, the latter the tests of those that do.
+    - run: |
+        ./mill -i "__[$BINARY_SCALA].test"
+        ./mill -i "__.test[$SCALA]"
       shell: bash
       if: runner.os != 'Windows'
       env:
-        SCALA: ${{ matrix.SCALA }}
-    - run: ./mill -i __[%SCALA%].test
+        SCALA: ${{ matrix.SCALA.scalaVersion }}
+        BINARY_SCALA: ${{ matrix.SCALA.binaryScalaVersion }}
+    - run: |
+        ./mill -i __[%BINARY_SCALA%].test
+        ./mill -i __.test[%SCALA%]
       if: runner.os == 'Windows'
       env:
-        SCALA: ${{ matrix.SCALA }}
+        SCALA: ${{ matrix.SCALA.scalaVersion }}
+        BINARY_SCALA: ${{ matrix.SCALA.binaryScalaVersion }}
 
   integration-tests:
     runs-on: ${{ matrix.OS }}
@@ -167,7 +176,7 @@ jobs:
         echo "-Xmx2g" > .mill-jvm-opts
         cat .mill-jvm-opts.bak | grep -v Xmx >> .mill-jvm-opts
         # sometimes running into memory issues when attempting __.publishLocal upfront
-        for SV in $(./mill -i dev.scalaVersions); do
+        for SV in $(./mill -i dev.binaryScalaVersions); do
           ./mill -i '__['"$SV"'].compile'
           ./mill -i '__['"$SV"'].docJar'
           ./mill -i '__['"$SV"'].publishLocal'

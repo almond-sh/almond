@@ -46,9 +46,9 @@ From the JupyterLab instance, select the kernel "Scala (sources)".
 
 Optionally, pass a Scala version and / or JupyterLab options, like
 ```text
-$ ./mill -i dev.jupyterFast 2.12.13
+$ ./mill -i dev.jupyterFast 2.12.21
 $ ./mill -i dev.jupyterFast --ip=192.168.0.1
-$ ./mill -i dev.jupyterFast 2.12.13 --ip=192.168.0.1
+$ ./mill -i dev.jupyterFast 2.12.21 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.)
 
@@ -59,16 +59,17 @@ $ ./mill dev.launcherFast
 ```
 
 Once done building, this should print the path to the kernel launcher, like
-`out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher`.
+`out/scala/scala-kernel/2.13.14/unixLauncherFast/dest/launcher` (2.13.14 being the Scala
+version the modules published for Scala 2.13 are built with).
 
 Optionally, pass a Scala version, like
 ```text
-$ ./mill dev.launcherFast --scalaVersion 2.12.13
+$ ./mill dev.launcherFast --scalaVersion 2.12.21
 ```
 
 You can then run that launcher to install it on your system:
 ```text
-$ out/scala/scala-kernel/2.13.4/unixLauncherFast/dest/launcher --install
+$ out/scala/scala-kernel/2.13.14/unixLauncherFast/dest/launcher --install
 ```
 Pass `--help` or see [this page](install-options.md) for the available options.
 
@@ -88,51 +89,63 @@ version to `./mill dev.jupyter`, beware to pass the same version to `./mill -w d
 ### List available Scala versions
 ```text
 $ ./mill -i dev.scalaVersions
-2.13.4
-2.13.3
+2.13.18
+2.13.17
 …
+```
+
+The modules we publish are cross-published for binary Scala versions, and built with the
+oldest full Scala version we support for each of them - those are the cross values to pass
+to the modules themselves, while their tests are cross-built over the full Scala versions:
+```text
+$ ./mill -i dev.binaryScalaVersions
+3.3.8
+2.13.14
+2.12.18
 ```
 
 ### Print the latest supported Scala 2.13 version
 ```text
 $ ./mill dev.scala213
-2.13.4
+2.13.18
 ```
 
 ### Print the latest supported Scala 2.12 version
 ```text
 $ ./mill dev.scala212
-2.12.13
+2.12.21
 ```
 
 ### Compile all modules for a Scala version
 ```text
-$ ./mill '__[2.13.4].compile'
+$ ./mill '__[2.13.14].compile'
 ```
 
 ### Compile all modules for a Scala version and watch source changes
 ```text
-$ ./mill -w '__[2.13.4].compile'
+$ ./mill -w '__[2.13.14].compile'
 ```
 
 ### Compile all tests for a Scala version
 ```text
-$ ./mill '__[2.13.4].test.compile'
+$ ./mill '__[2.13.14].test.compile'
+$ ./mill '__.test[2.13.18].compile'
 ```
 
 ### Compile all tests for a Scala version and watch source changes
 ```text
-$ ./mill -w '__[2.13.4].test.compile'
+$ ./mill -w '__[2.13.14].test.compile'
 ```
 
 ### Run all tests for a Scala version and watch source changes
 ```text
-$ ./mill -w '__[2.13.4].test'
+$ ./mill -w '__[2.13.14].test'
+$ ./mill -w '__.test[2.13.18]'
 ```
 
 ### Compile specific modules
 ```text
-$ ./mill 'scala.scala-kernel[2.13.4].compile'
+$ ./mill 'scala.scala-kernel[2.13.14].compile'
 ```
 
 ### Generate Metals configuration files

@@ -43,6 +43,9 @@ object Launcher extends CaseApp[LauncherOptions] {
   ): (os.proc, String, Option[String]) = {
 
     val (scalaVersion, _) = LauncherInterpreter.computeScalaVersion(params0, options)
+    // The kernel modules are published for binary Scala versions, and get the Scala version
+    // the user asked for from the forced versions below.
+    val scalaParams = ScalaParameters(scalaVersion)
 
     def content(entries: Seq[(coursierapi.Artifact, File)]): ClassLoaderContent = {
       val entries0 = entries.map {
@@ -97,7 +100,6 @@ object Launcher extends CaseApp[LauncherOptions] {
         .map(e => (e.getKey, e.getValue))
     }
     val apiFiles = {
-      val scalaParams = ScalaParameters(scalaVersion)
       val extraDeps = options.sharedDependencies.map { str =>
         val dep = dependency.parser.DependencyParser.parse(str) match {
           case Left(err) =>
@@ -111,7 +113,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       }
       val dep = coursierapi.Dependency.of(
         "sh.almond",
-        s"scala-kernel-api_$scalaVersion",
+        s"scala-kernel-api_${scalaParams.scalaBinaryVersion}",
         Properties.version
       )
       fetch(dep, extraDeps = extraDeps) ++ fetch(dep, extraDeps = extraDeps, sources = true)
@@ -119,7 +121,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     val kernelFiles = {
       val dep = coursierapi.Dependency.of(
         "sh.almond",
-        s"scala-kernel_$scalaVersion",
+        s"scala-kernel_${scalaParams.scalaBinaryVersion}",
         Properties.version
       )
       val files = fetch(dep) ++ fetch(dep, sources = true)

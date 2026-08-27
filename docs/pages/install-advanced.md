@@ -16,9 +16,9 @@ fs2 versions upon users, these internal dependencies of Almond are effectively h
 from users.
 
 In more detail, isolation in Almond works this way: the
-[`scala-kernel-api` module](https://repo1.maven.org/maven2/sh/almond/scala-kernel-api_@SCALA213_VERSION@)
+[`scala-kernel-api` module](https://repo1.maven.org/maven2/sh/almond/scala-kernel-api_@SCALA213_BINARY_VERSION@)
 and its dependencies are user-facing. The rest of the Almond class path
-(the [`scala-kernel` module](https://repo1.maven.org/maven2/sh/almond/scala-kernel_@SCALA213_VERSION@)
+(the [`scala-kernel` module](https://repo1.maven.org/maven2/sh/almond/scala-kernel_@SCALA213_BINARY_VERSION@)
 and its dependencies, but for everything already pulled by `scala-kernel-api`) are internal
 dependencies, hidden from users.
 

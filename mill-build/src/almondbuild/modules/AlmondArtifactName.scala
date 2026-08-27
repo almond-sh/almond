@@ -5,7 +5,7 @@ import mill.api.*
 import mill.scalalib.*
 
 trait AlmondArtifactName extends SbtModule {
-  def artifactNameParts =
+  override def artifactNameParts =
     super.artifactNameParts()
       .dropWhile(_ == "scala")
       .dropWhile(_ == "shared")
