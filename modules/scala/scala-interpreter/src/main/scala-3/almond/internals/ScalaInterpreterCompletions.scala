@@ -2,6 +2,7 @@ package almond.internals
 
 import almond.logger.LoggerContext
 import ammonite.compiler.Compiler
+import ammonite.compiler.internal.CompilerInternals
 import dotty.tools.dotc.{CompilationUnit, Compiler => DottyCompiler, Run, ScalacCommand}
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
@@ -103,7 +104,7 @@ object ScalaInterpreterCompletions {
     }
     val ctx1   = ctx.fresh.setCompilationUnit(unit)
     val srcPos = SourcePosition(file, Span(index))
-    val (start, completions) = dotty.ammonite.compiler.AmmCompletion.completions(
+    val (start, completions) = CompilerInternals.completionMaker.completions(
       srcPos,
       dependencyCompleteOpt = dependencyCompleteOpt,
       enableDeep = false
@@ -196,7 +197,7 @@ object ScalaInterpreterCompletions {
     )
     implicit val ctx: Context = run.runContext.withSource(sourceFile)
 
-    val unit = Helper.nonSuspendableCompilationUnit(ctx.source)
+    val unit = CompilerInternals.compilationUnitMaker.notSuspendable(ctx.source)
     ctx
       .run
       .compileUnits(unit :: Nil, ctx)

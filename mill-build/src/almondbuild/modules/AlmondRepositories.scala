@@ -7,7 +7,8 @@ import mill.scalalib.*
 trait AlmondRepositories extends CoursierModule {
   def repositories = Task {
     super.repositories() ++ Seq(
-      "jitpack"
+      "jitpack",
+      "central:maven-snapshots"
     )
   }
 }

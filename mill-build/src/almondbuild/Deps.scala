@@ -29,11 +29,11 @@ object Deps {
       }
   }
 
-  def ammoniteCompiler = mvn"sh.almond.ammonite:::ammonite-compiler:${Versions.ammonite}"
+  def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
-    mvn"sh.almond.ammonite:::ammonite-repl:${Versions.ammonite}"
+    mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))
-  def ammoniteReplApi    = mvn"sh.almond.ammonite:::ammonite-repl-api:${Versions.ammonite}"
+  def ammoniteReplApi    = mvn"sh.almond.ammonite::ammonite-repl-api:${Versions.ammonite}"
   def ammoniteSpark      = mvn"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = mvn"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = mvn"com.github.alexarchambault::case-app:${Versions.caseApp}"
@@ -65,11 +65,18 @@ object Deps {
   def scalaparse               = mvn"com.lihaoyi::scalaparse:3.1.1"
   def scalapy                  = mvn"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = mvn"org.scala-lang:scala-reflect:$sv"
-  def scalaRx                  = mvn"com.lihaoyi::scalarx:0.4.3"
-  def scalatags                = mvn"com.lihaoyi::scalatags:0.13.1"
-  def slf4jNop                 = mvn"org.slf4j:slf4j-nop:1.7.36"
-  def sourcecode               = mvn"com.lihaoyi::sourcecode:0.3.0"
-  def testUtil                 = mvn"io.github.alexarchambault::test-util:0.1.7"
+  // Ammonite modules are cross-published for binary Scala versions only, and pull the Scala
+  // compiler of the oldest Scala version of their binary version. Depending on the compiler
+  // explicitly ensures we get the one of the Scala version we're built with, both here and
+  // in the POMs we publish.
+  def scalaCompiler(sv: String) =
+    if (sv.startsWith("2.")) mvn"org.scala-lang:scala-compiler:$sv"
+    else mvn"org.scala-lang::scala3-compiler:$sv"
+  def scalaRx    = mvn"com.lihaoyi::scalarx:0.4.3"
+  def scalatags  = mvn"com.lihaoyi::scalatags:0.13.1"
+  def slf4jNop   = mvn"org.slf4j:slf4j-nop:1.7.36"
+  def sourcecode = mvn"com.lihaoyi::sourcecode:0.3.0"
+  def testUtil   = mvn"io.github.alexarchambault::test-util:0.1.7"
   def upickle =
     mvn"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
   def utest = mvn"com.lihaoyi::utest:0.9.5"

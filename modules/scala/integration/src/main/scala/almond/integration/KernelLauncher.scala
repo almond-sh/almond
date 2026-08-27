@@ -182,6 +182,8 @@ class KernelLauncher(
       "-r",
       "central",
       "-r",
+      "central:maven-snapshots",
+      "-r",
       "jitpack"
     )
     val launcherArgs =
@@ -572,9 +574,11 @@ class KernelLauncher(
 
         output.printStream.println(s"Running ${command.value.mkString(" ")}")
         val extraEnv = {
+          // The kernels we launch here embed a coursier that doesn't know the
+          // central:maven-snapshots alias yet, hence the URL rather than the alias
           val baseRepos = sys.env.getOrElse(
             "COURSIER_REPOSITORIES",
-            "ivy2Local|central"
+            "ivy2Local|central|https://central.sonatype.com/repository/maven-snapshots"
           )
           Map(
             "COURSIER_REPOSITORIES" ->

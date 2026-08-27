@@ -187,6 +187,7 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
   def mvnDeps = Seq(
     Deps.ammoniteCompiler.exclude(("org.slf4j", "slf4j-api")),
     Deps.ammoniteReplApi.exclude(("org.slf4j", "slf4j-api")),
+    Deps.scalaCompiler(crossScalaVersion),
     Deps.jvmRepr,
     Deps.coursierApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.collectionCompat
@@ -262,7 +263,8 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
       Deps.directiveHandler,
       Deps.jansi,
       Deps.ammoniteCompiler.exclude(("net.java.dev.jna", "jna")),
-      Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna"))
+      Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna")),
+      Deps.scalaCompiler(crossScalaVersion)
     )
   }
   def compileMvnDeps = Seq(
