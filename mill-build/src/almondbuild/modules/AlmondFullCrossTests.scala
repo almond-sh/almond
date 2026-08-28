@@ -3,7 +3,6 @@ package almondbuild.modules
 import almondbuild.Deps
 import mill.*
 import mill.api.*
-import mill.javalib.api.JvmWorkerUtil
 import mill.scalalib.*
 
 /** Tests of a module published for a binary Scala version, built and run with one full Scala
@@ -14,7 +13,10 @@ import mill.scalalib.*
   * version of its binary version, while its tests are built and run with each full Scala version we
   * support, so those need to be pointed back at the Scala version of the test.
   */
-trait AlmondFullCrossTests extends Cross.Module[String] with AlmondTestModule {
+trait AlmondFullCrossTests extends Cross.Module[String] with AlmondTestModule
+    // AlmondForcedScalaVersion overrides the resolution parameters we would otherwise inherit
+    // from the module under test, which force the Scala version that module is built with
+    with AlmondForcedScalaVersion {
 
   /** A module built with exactly our Scala version, to get the compiler bridge from. */
   def scalaVersionSpecificModule: ScalaModule
@@ -36,20 +38,4 @@ trait AlmondFullCrossTests extends Cross.Module[String] with AlmondTestModule {
     super.mvnDeps() ++ Seq(Deps.scalaCompiler(scalaVersion()))
   }
 
-  // super here is the resolution of the module under test, which forces the Scala version that
-  // module is built with. Force ours back, both under the artifact names Mill spells out and
-  // under the ones the Scala 3 modules actually carry.
-  override def resolutionParams = Task.Anon {
-    val sv       = scalaVersion()
-    val org      = coursier.Organization(JvmWorkerUtil.scalaOrganization(sv))
-    val suffixes = if (JvmWorkerUtil.isScala3(sv)) Seq("", "_3") else Seq("")
-    super.resolutionParams().addForceVersion0(
-      Lib.scalaArtifacts(sv).toSeq.sorted.flatMap { name =>
-        suffixes.map { suffix =>
-          coursier.Module(org, coursier.ModuleName(name + suffix), Map.empty) ->
-            coursier.version.VersionConstraint(sv)
-        }
-      }*
-    )
-  }
 }

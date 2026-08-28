@@ -365,6 +365,51 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   }
   def mainClass = Some("almond.ScalaKernel")
 
+  /** Launchers of this kernel, running one specific full Scala version.
+    *
+    * We are built with the oldest full Scala version of our binary Scala version. These resolve our
+    * dependencies with one of the Scala versions we support instead, so that the kernel runs
+    *   - and compiles the code users type - with that one rather than with the one we are built
+    *     with.
+    */
+  object launchers extends Cross[Launchers](ScalaVersions.fullVersionsFor(crossValue))
+  trait Launchers  extends Cross.Module[String] with AlmondCrossSbtModule with AlmondRepositories
+      with TransitiveSources with ExternalSources with BootstrapLauncher
+      with AlmondForcedScalaVersion {
+    def crossScalaVersion = crossValue
+    def moduleDeps        = Seq(ScalaKernel.this)
+    def mvnDeps           = Seq(Deps.scalaCompiler(crossValue))
+    def mainClass         = ScalaKernel.this.mainClass()
+
+    /** The kernel API, whose dependencies go to the shared class loader, resolved like us. */
+    object api extends AlmondCrossSbtModule with AlmondRepositories with ExternalSources
+        with AlmondForcedScalaVersion {
+      def crossValue        = Launchers.this.crossValue
+      def crossScalaVersion = crossValue
+      def moduleDeps        = Seq(scala.`scala-kernel-api`(ScalaVersions.binary(crossValue)))
+      def mvnDeps           = Seq(Deps.scalaCompiler(crossValue))
+    }
+
+    def launcherClassPath = {
+      val mod = ScalaKernel.this
+      mod.transitiveJars() ++
+        mod.unmanagedClasspath() ++
+        resolvedRunMvnDeps() ++
+        mod.transitiveSourceJars() ++
+        externalSources()
+    }
+    def launcherSharedClassPath = {
+      val mod: AlmondModule & ExternalSources = scala.`scala-kernel-api`(
+        ScalaVersions.binary(crossValue)
+      )
+      mod.transitiveJars() ++
+        mod.unmanagedClasspath() ++
+        api.resolvedRunMvnDeps() ++
+        mod.transitiveSourceJars() ++
+        api.externalSources()
+    }
+  }
+
   def generatedSources: T[Seq[PathRef]] = Task {
     val constantsFileContent =
       s"""package almond.internal
@@ -580,9 +625,15 @@ object `local-repo` extends Module {
 
 trait Examples extends SbtModule {
   private def examplesScalaVersion = "2.12.20"
-  private def examplesKernel = scala.`scala-kernel`(ScalaVersions.binary(examplesScalaVersion))
-  def scalaVersion           = ScalaVersions.scala3Latest
-  def examplesDir            = Task.Source(BuildCtx.workspaceRoot / "examples")
+  // The kernel is published for Scala 2.12 and built with the oldest Scala 2.12 version we
+  // support - this launcher runs it with the Scala version above, which is the one the
+  // example notebooks are run with, and record.
+  private def examplesKernel =
+    scala.`scala-kernel`(ScalaVersions.binary(examplesScalaVersion)).launchers(
+      examplesScalaVersion
+    )
+  def scalaVersion = ScalaVersions.scala3Latest
+  def examplesDir  = Task.Source(BuildCtx.workspaceRoot / "examples")
   object test extends SbtTests {
     def testFramework = "munit.Framework"
     def mvnDeps = Task {
@@ -829,9 +880,10 @@ object dev extends Module {
         (sv, rem)
       case _ => (ScalaVersions.scala213, args)
     }
+    val kernelLauncher = scala.`scala-kernel`(ScalaVersions.binary(sv)).launchers(sv)
     val launcher =
-      if (fast) scala.`scala-kernel`(ScalaVersions.binary(sv)).fastLauncher
-      else scala.`scala-kernel`(ScalaVersions.binary(sv)).launcher
+      if (fast) kernelLauncher.fastLauncher
+      else kernelLauncher.launcher
     val specialLauncher =
       if (fast) scala.launcher.fastLauncher
       else scala.launcher.launcher
@@ -909,7 +961,9 @@ object dev extends Module {
   }
 
   def launcher(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
-    val launcher = scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launcher().path.toNIO
+    val launcher =
+      scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launchers(scalaVersion)
+        .launcher().path.toNIO
     println(launcher)
   }
 
@@ -920,7 +974,8 @@ object dev extends Module {
 
   def launcherFast(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher =
-      scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).fastLauncher().path.toNIO
+      scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launchers(scalaVersion)
+        .fastLauncher().path.toNIO
     println(launcher)
   }
 

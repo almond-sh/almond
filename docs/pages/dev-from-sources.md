@@ -59,8 +59,9 @@ $ ./mill dev.launcherFast
 ```
 
 Once done building, this should print the path to the kernel launcher, like
-`out/scala/scala-kernel/2.13.14/unixLauncherFast/dest/launcher` (2.13.14 being the Scala
-version the modules published for Scala 2.13 are built with).
+`out/scala/scala-kernel/2.13.14/launchers/2.13.18/unixLauncherFast/dest/launcher` (2.13.14
+being the Scala version the modules published for Scala 2.13 are built with, 2.13.18 the one
+the kernel runs).
 
 Optionally, pass a Scala version, like
 ```text
@@ -69,7 +70,7 @@ $ ./mill dev.launcherFast --scalaVersion 2.12.21
 
 You can then run that launcher to install it on your system:
 ```text
-$ out/scala/scala-kernel/2.13.14/unixLauncherFast/dest/launcher --install
+$ out/scala/scala-kernel/2.13.14/launchers/2.13.18/unixLauncherFast/dest/launcher --install
 ```
 Pass `--help` or see [this page](install-options.md) for the available options.
 

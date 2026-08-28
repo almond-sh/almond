@@ -71,10 +71,11 @@ jobs:
         apps:
     # Modules are built once per binary Scala version, and their tests once per full Scala
     # version - the former selector runs the tests of the modules that have no full Scala
-    # version cross, the latter the tests of those that do.
+    # version cross, the latter the tests of those that do. The latter names the test task
+    # explicitly, so that modules that merely happen to be named "test" are left out.
     - run: |
         ./mill -i "__[$BINARY_SCALA].test"
-        ./mill -i "__.test[$SCALA]"
+        ./mill -i "__.test[$SCALA].testForked"
       shell: bash
       if: runner.os != 'Windows'
       env:
@@ -82,7 +83,7 @@ jobs:
         BINARY_SCALA: ${{ matrix.SCALA.binaryScalaVersion }}
     - run: |
         ./mill -i __[%BINARY_SCALA%].test
-        ./mill -i __.test[%SCALA%]
+        ./mill -i __.test[%SCALA%].testForked
       if: runner.os == 'Windows'
       env:
         SCALA: ${{ matrix.SCALA.scalaVersion }}
