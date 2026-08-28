@@ -88,6 +88,19 @@ object KernelLauncher {
   // that alias, and ignores COURSIER_REPOSITORIES altogether when it can't parse it.
   def mavenSnapshotsRepo = "https://central.sonatype.com/repository/maven-snapshots"
 
+  /** Whether the kernels we launch need the snapshot repository above.
+    *
+    * Set by the build, which only adds that repository to the modules that actually depend on a
+    * snapshot - adding it here when the build didn't would have us hit it for nothing, and hide a
+    * kernel that resolves fine from release repositories only.
+    */
+  lazy val useMavenSnapshots = System.getenv("ALMOND_INTEGRATION_MAVEN_SNAPSHOTS") match {
+    case "true"  => true
+    case "false" => false
+    case null    => sys.error("ALMOND_INTEGRATION_MAVEN_SNAPSHOTS not set")
+    case other   => sys.error(s"Unrecognized ALMOND_INTEGRATION_MAVEN_SNAPSHOTS value '$other'")
+  }
+
   object TmpDir {
 
     private lazy val baseTmpDir = {
@@ -188,6 +201,9 @@ class KernelLauncher(
         val launcher = tmpDir / "launcher.jar"
         (launcher, Nil)
       }
+    val snapshotRepoArgs =
+      if (useMavenSnapshots) Seq("-r", "central:maven-snapshots")
+      else Nil
     val repoArgs = Seq(
       "--no-default",
       "-r",
@@ -195,9 +211,8 @@ class KernelLauncher(
       "-r",
       "ivy2Local",
       "-r",
-      "central",
-      "-r",
-      "central:maven-snapshots",
+      "central"
+    ) ++ snapshotRepoArgs ++ Seq(
       "-r",
       "jitpack"
     )
@@ -593,7 +608,8 @@ class KernelLauncher(
         val extraEnv = {
           val baseRepos = sys.env.getOrElse(
             "COURSIER_REPOSITORIES",
-            s"ivy2Local|central|$mavenSnapshotsRepo"
+            if (useMavenSnapshots) s"ivy2Local|central|$mavenSnapshotsRepo"
+            else "ivy2Local|central"
           )
           Map(
             "COURSIER_REPOSITORIES" ->

@@ -754,9 +754,25 @@ trait Integration extends SbtModule {
     def tmpDirBase = Task(persistent = true) {
       PathRef(Task.dest / "working-dir")
     }
-    def forkEnv = super.forkEnv() ++ Seq(
-      "ALMOND_INTEGRATION_TMP" -> tmpDirBase().path.toString
-    )
+
+    /** Whether the kernels we launch need the Maven snapshot repository.
+      *
+      * That is, whether the build adds it to any of the modules the launched kernels resolve from
+      * the local test repository.
+      */
+    private def localRepoRepositoryModules = `local-repo`.allModules.collect {
+      case mod: AlmondRepositories => mod
+    }
+    def useMavenSnapshots = Task {
+      Task.traverse(localRepoRepositoryModules)(_.repositories)()
+        .exists(_.contains(AlmondRepositories.mavenSnapshots))
+    }
+    def forkEnv = Task {
+      super.forkEnv() ++ Seq(
+        "ALMOND_INTEGRATION_TMP"             -> tmpDirBase().path.toString,
+        "ALMOND_INTEGRATION_MAVEN_SNAPSHOTS" -> useMavenSnapshots().toString
+      )
+    }
   }
 }
 
