@@ -10,10 +10,10 @@ object ScalaVersions {
 
   // Published modules are built once per binary Scala version, with the oldest full Scala
   // version we support for it: Scala 2 patch releases are only forward binary compatible, so
-  // building scala-interpreter_2.13 with 2.13.14 gives an artifact all the 2.13.x versions we
+  // building scala-interpreter_2.13 with 2.13.18 gives an artifact all the 2.13.x versions we
   // support can run, while building it with 2.13.18 wouldn't. For Scala 3, the LTS plays that
   // role, its TASTy files being readable by all the later Scala 3 versions we support.
-  def scala213Oldest = "2.13.14"
+  def scala213Oldest = "2.13.18"
   def scala212Oldest = "2.12.18"
 
   val binaries       = Seq(scala3Compat, scala213Oldest, scala212Oldest)
