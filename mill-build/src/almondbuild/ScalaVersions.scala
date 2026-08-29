@@ -14,7 +14,7 @@ object ScalaVersions {
   // support can run, while building it with 2.13.18 wouldn't. For Scala 3, the LTS plays that
   // role, its TASTy files being readable by all the later Scala 3 versions we support.
   def scala213Oldest = "2.13.14"
-  def scala212Oldest = "2.12.18"
+  def scala212Oldest = "2.12.21"
 
   val binaries       = Seq(scala3Compat, scala213Oldest, scala212Oldest)
   val scala2Binaries = Seq(scala213Oldest, scala212Oldest)
