@@ -266,9 +266,8 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   def mvnDeps = Seq(
     Deps.caseApp,
     Deps.classPathUtil,
-    // for coursier.Resolve, only in the top-level coursier module
-    Deps.coursier.withDottyCompat(crossScalaVersion),
     Deps.coursierApi,
+    Deps.coursierPaths,
     Deps.dependency,
     Deps.dependencyInterface,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)

@@ -39,11 +39,9 @@ object Deps {
   def caseApp            = mvn"com.github.alexarchambault::case-app:${Versions.caseApp}"
   def classPathUtil      = mvn"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
-  def coursier =
-    mvn"io.get-coursier::coursier:${Versions.coursier}".exclude(("org.slf4j", "slf4j-api"))
   // Version of the cs launcher the integration tests drive, on all platforms
   def csVersion           = Versions.coursier
-  def coursierApi         = mvn"io.get-coursier:interface:1.0.29-M4"
+  def coursierApi         = mvn"io.get-coursier:interface:1.0.29"
   def coursierLauncher    = mvn"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def coursierPaths       = mvn"io.get-coursier:coursier-paths:${Versions.coursier}"
   def coursierVersions    = mvn"io.get-coursier::versions:0.6.0"

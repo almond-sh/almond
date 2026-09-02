@@ -29,7 +29,7 @@ object ScalaKernel extends CaseApp[Options] {
     // should make scalac manage opened JARs more carefully
     sys.props("scala.classpath.closeZip") = "true"
 
-    coursier.Resolve.proxySetup()
+    coursierapi.ProxySetup.setup()
 
     if (Properties.isWin && System.console() != null && coursier.paths.Util.useJni())
       // Enable ANSI output in Windows terminal
