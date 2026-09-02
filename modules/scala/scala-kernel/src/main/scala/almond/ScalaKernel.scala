@@ -11,11 +11,12 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
 import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
-import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
+import almond.util.ThreadUtil.{daemonThreadFactory, singleThreadedExecutionContextExecutorService}
 import caseapp._
 import coursier.cputil.ClassPathUtil
 
 import java.nio.file.Paths
+import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
 import scala.language.reflectiveCalls
 import scala.concurrent.ExecutionContext
@@ -234,9 +235,20 @@ object ScalaKernel extends CaseApp[Options] {
     val fmtMessageHandler =
       if (options.scalafmt) {
         // thread shuts down after 1 minute of inactivity, automatically re-spawned
-        val fmtPool = ExecutionContext.fromExecutorService(
-          coursier.cache.internal.ThreadUtil.fixedThreadPool(1)
-        )
+        val fmtPool = ExecutionContext.fromExecutorService {
+          val executor = new ThreadPoolExecutor(
+            1,
+            1,
+            1L,
+            TimeUnit.MINUTES,
+            new LinkedBlockingQueue[Runnable],
+            // like the coursier pool this used to be, we don't want a fatal error in scalafmt
+            // to bring the whole kernel down
+            daemonThreadFactory("scalafmt", exitJvmOnFatalError = false)
+          )
+          executor.allowCoreThreadTimeOut(true)
+          executor
+        }
         val scalafmt = new Scalafmt(
           fmtPool,
           threads.kernelThreads.queueEc,
