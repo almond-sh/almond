@@ -3,7 +3,7 @@ package almondbuild
 import coursier.version.Version
 
 object ScalaVersions {
-  def scala3Latest = "3.8.4"
+  def scala3Latest = "3.9.0"
   def scala3Compat = "3.3.8"
   def scala213     = "2.13.18"
   def scala212     = "2.12.21"
