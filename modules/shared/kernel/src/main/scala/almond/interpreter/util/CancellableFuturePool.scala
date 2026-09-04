@@ -18,7 +18,7 @@ final class CancellableFuturePool(
   private val pool = Executors.newCachedThreadPool(
     // from scalaz.concurrent.Strategy.DefaultDaemonThreadFactory
     new ThreadFactory {
-      val defaultThreadFactory = Executors.defaultThreadFactory()
+      val defaultThreadFactory   = Executors.defaultThreadFactory()
       def newThread(r: Runnable) = {
         val t = defaultThreadFactory.newThread(r)
         t.setDaemon(true)

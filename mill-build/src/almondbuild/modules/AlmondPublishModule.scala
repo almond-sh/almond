@@ -36,7 +36,7 @@ object AlmondPublishModule extends ExternalModule {
       .trim()
 
   def computeBuildVersion(): String = {
-    val gitHead = os.proc("git", "rev-parse", "HEAD").call().out.trim()
+    val gitHead       = os.proc("git", "rev-parse", "HEAD").call().out.trim()
     val maybeExactTag = {
       val res = os.proc("git", "describe", "--exact-match", "--tags", "--always", gitHead)
         .call(stderr = os.Pipe, check = false)
@@ -46,7 +46,7 @@ object AlmondPublishModule extends ExternalModule {
         None
     }
     maybeExactTag.getOrElse {
-      val latestTaggedVersion0 = latestTaggedVersion()
+      val latestTaggedVersion0      = latestTaggedVersion()
       val commitsSinceTaggedVersion =
         os.proc("git", "rev-list", gitHead, "--not", latestTaggedVersion0, "--count")
           .call().out.trim()

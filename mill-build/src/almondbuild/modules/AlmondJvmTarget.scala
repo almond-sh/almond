@@ -16,7 +16,7 @@ trait AlmondJvmTarget extends AlmondScalacOptions {
     "8"
   )
   def scalacOptions = Task {
-    val sv = Version(scalaVersion())
+    val sv           = Version(scalaVersion())
     val extraOptions =
       if (sv >= Version("2.12.0") && sv <= Version("2.12.18"))
         Seq("-target:8")

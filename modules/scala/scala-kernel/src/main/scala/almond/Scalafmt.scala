@@ -28,7 +28,7 @@ final class Scalafmt(
   private lazy val interface =
     ScalafmtInterface.create(Thread.currentThread().getContextClassLoader)
 
-  private val confFilesMap = new ConcurrentHashMap[String, Path]
+  private val confFilesMap                 = new ConcurrentHashMap[String, Path]
   private def confFile(conf: String): Path = {
     val confFile = Files.createTempFile("test-scalafmt", ".conf")
     confFile.toFile.deleteOnExit()
@@ -87,7 +87,7 @@ final class Scalafmt(
           case (key, code) =>
             for {
               formatted <- IO(format(code)).evalOn(fmtPool)
-              _ <- msg
+              _         <- msg
                 .publish(
                   Format.responseType,
                   Format.Response(key = key, initial_code = code, code = Some(formatted)),
