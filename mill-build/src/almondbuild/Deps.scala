@@ -46,7 +46,7 @@ object Deps {
   def coursierApi         = mvn"io.get-coursier:interface:1.0.29-M4"
   def coursierLauncher    = mvn"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def coursierPaths       = mvn"io.get-coursier:coursier-paths:${Versions.coursier}"
-  def coursierVersions    = mvn"io.get-coursier::versions:0.5.3"
+  def coursierVersions    = mvn"io.get-coursier::versions:0.6.0"
   def dependency          = mvn"io.get-coursier::dependency:0.3.2"
   def dependencyInterface = mvn"io.get-coursier::dependency-interface:0.3.2"
   def directiveHandler    = mvn"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
