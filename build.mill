@@ -211,10 +211,10 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
       else
         Seq.empty
     metabrowse ++ Seq(
-      // only for coursier.util.ModuleMatcher, to match automatic dependencies with globs
-      Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
       Deps.coursierPaths,
+      // for dependency.ModuleMatcher, to match automatic dependencies with globs
+      Deps.dependency,
       Deps.dependencyInterface,
       Deps.directiveHandler,
       Deps.jansi,
@@ -267,6 +267,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     Deps.caseApp,
     Deps.classPathUtil,
     Deps.coursierApi,
+    Deps.coursierPaths,
     Deps.dependency,
     Deps.dependencyInterface,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
