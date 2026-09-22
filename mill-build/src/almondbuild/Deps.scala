@@ -30,7 +30,7 @@ object Deps {
   }
 
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
-  def ammoniteRepl =
+  def ammoniteRepl     =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))
   def ammoniteReplApi    = mvn"sh.almond.ammonite::ammonite-repl-api:${Versions.ammonite}"
@@ -53,7 +53,7 @@ object Deps {
   def fs2                 = mvn"co.fs2::fs2-core:3.14.0"
   def jansi               = mvn"org.fusesource.jansi:jansi:2.4.3"
   def jeromq              = mvn"org.zeromq:jeromq:0.5.4"
-  def jsoniterScalaCore =
+  def jsoniterScalaCore   =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
@@ -79,7 +79,7 @@ object Deps {
   def slf4jNop   = mvn"org.slf4j:slf4j-nop:1.7.36"
   def sourcecode = mvn"com.lihaoyi::sourcecode:0.3.0"
   def testUtil   = mvn"io.github.alexarchambault::test-util:0.1.7"
-  def upickle =
+  def upickle    =
     mvn"com.lihaoyi::upickle:3.1.4" // trying to use the same version as Ammonite, to avoid bin compat issues
   def utest = mvn"com.lihaoyi::utest:0.9.5"
 }

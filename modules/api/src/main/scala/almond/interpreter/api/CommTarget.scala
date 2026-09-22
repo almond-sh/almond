@@ -15,7 +15,7 @@ object CommTarget {
   def apply(onMessage: (String, Array[Byte]) => Unit): CommTarget =
     new CommTarget {
       def open(id: String, data: Array[Byte]): Unit = {}
-      def message(id: String, data: Array[Byte]) =
+      def message(id: String, data: Array[Byte])    =
         onMessage(id, data)
       def close(id: String, data: Array[Byte]): Unit = {}
     }
