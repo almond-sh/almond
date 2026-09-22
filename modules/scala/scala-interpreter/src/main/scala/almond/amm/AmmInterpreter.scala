@@ -295,7 +295,7 @@ object AmmInterpreter {
             throw new PredefException(msg, None)
           case Res.Exception(t, msg) =>
             throw new PredefException(msg, Some(t))
-          case Res.Skip =>
+          case Res.Skip    =>
           case Res.Exit(v) =>
             log.warn(s"Ignoring exit request from predef (exit value: $v)")
         }

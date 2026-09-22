@@ -48,9 +48,9 @@ object EchoKernel extends CaseApp[Options] {
       sys.exit(1)
     }
 
-    val zeromqThreads = ZeromqThreads.create("echo-kernel")
-    val kernelThreads = KernelThreads.create("echo-kernel")
-    val interpreterEc = singleThreadedExecutionContextExecutorService("echo-interpreter")
+    val zeromqThreads  = ZeromqThreads.create("echo-kernel")
+    val kernelThreads  = KernelThreads.create("echo-kernel")
+    val interpreterEc  = singleThreadedExecutionContextExecutorService("echo-interpreter")
     val cancellablesEc =
       singleThreadedExecutionContextExecutorService("echo-interpreter-cancellables")
 
