@@ -49,7 +49,12 @@ command again restarts JupyterLab, and
 ```text
 $ ./mill dev.jupyterStop
 ```
-stops it. Its output goes to `stderr.log` in the directory printed by the command.
+stops it. Its output goes to log files printed by the command. The command also
+returns their paths, so that `./mill show` prints them as JSON, which allows to
+start JupyterLab and follow its output in one go:
+```text
+$ ./mill show dev.jupyterFast | jq -r '.[]' | xargs tail -f
+```
 
 Neither JupyterLab nor Python need to be installed: the command downloads
 [uv](https://docs.astral.sh/uv/), which then sets up a Python environment with the
@@ -75,6 +80,28 @@ JupyterLab then displays its URLs with that address, accepts requests and websoc
 connections coming through it, and trusts the `X-Forwarded-*` headers set by the
 proxy. Other options (like `--no-browser` above, or `--port=…` to pick the local
 port the proxy forwards to) are passed to JupyterLab as is.
+
+## Get the command to run JupyterLab yourself
+
+```text
+$ ./mill show dev.jupyterCmdFast
+```
+
+This builds the launcher and writes the kernel specs like `dev.jupyterFast` does, but
+instead of starting JupyterLab, it prints the shell command line to do so, as a JSON
+string: a `cd` to the workspace, the environment variables to set, then the command
+itself, quoted as needed for POSIX shells:
+```text
+"cd /path/to/almond && JAVA_HOME=… PATH=… JUPYTER_PATH=… …/uv run --project /path/to/almond/examples --frozen jupyter lab …"
+```
+
+Pass it to `eval` to run JupyterLab, with jq for example:
+```text
+$ ( eval "$(./mill show dev.jupyterCmdFast | jq -r .)" )
+```
+(The subshell keeps the `cd` from changing the current directory of your shell.)
+Like `dev.jupyterFast`, it accepts a Scala version and JupyterLab options.
+`dev.jupyterCmd` does the same with a standalone launcher.
 
 ## Build a kernel launcher
 

@@ -835,7 +835,7 @@ object docs extends ScalaModule with AlmondRepositories {
 
 object dev extends Module {
 
-  def jupyter0(args: Seq[String], fast: Boolean, console: Boolean = false) = {
+  def jupyterSetup(args: Seq[String], fast: Boolean) = {
     val (sv, args0) = args match {
       case Seq(sv, rem @ _*) if sv.startsWith("2.") || sv.startsWith("3.") =>
         (sv, rem)
@@ -848,41 +848,70 @@ object dev extends Module {
     val specialLauncher =
       if (fast) scala.launcher.fastLauncher
       else scala.launcher.launcher
+    (sv, args0, launcher, specialLauncher)
+  }
+
+  /** Starts a JupyterLab server in the background, and returns the log files to tail to follow its
+    * output (`./mill show dev.jupyterFast …` prints them as JSON)
+    */
+  def jupyterServer0(args: Seq[String], fast: Boolean) = {
+    val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
     // persistent, so that the kernel specs under Task.dest stay around for the background server
     Task.Command(persistent = true) {
-      val jupyterDir       = Task.dest / "jupyter"
-      val launcher0        = launcher().path
-      val specialLauncher0 = specialLauncher().path
-      val version          = scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion()
-      val localRepoRoot    = `local-repo`.localRepo().path
-      val uv               = UvLauncher.uv(Versions.uv)
-      val javaHome         = JavaHomes.javaHome(Versions.jupyterJvm)
-      if (console)
-        JupyterServer.jupyterConsole(
-          uv,
-          javaHome,
-          launcher0,
-          specialLauncher0,
-          jupyterDir,
-          args0,
-          BuildCtx.workspaceRoot,
-          version,
-          localRepoRoot
-        )
-      else
-        JupyterServer.jupyterServer(
-          uv,
-          javaHome,
-          mill.javalib.JvmWorkerModule.backgroundWrapperClasspath().map(_.path),
-          jupyterBackgroundDir(),
-          launcher0,
-          specialLauncher0,
-          jupyterDir,
-          args0,
-          BuildCtx.workspaceRoot,
-          version,
-          localRepoRoot
-        )
+      JupyterServer.jupyterServer(
+        UvLauncher.uv(Versions.uv),
+        JavaHomes.javaHome(Versions.jupyterJvm),
+        mill.javalib.JvmWorkerModule.backgroundWrapperClasspath().map(_.path),
+        jupyterBackgroundDir(),
+        launcher().path,
+        specialLauncher().path,
+        Task.dest / "jupyter",
+        args0,
+        BuildCtx.workspaceRoot,
+        scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
+        `local-repo`.localRepo().path
+      )
+    }
+  }
+
+  /** Prints the command to run JupyterLab with a kernel built from sources, as a shell command
+    * line: a `cd` to the workspace, the environment variables to set, then the command itself. Use
+    * `./mill show` to get it as a JSON string, that can be passed to `eval`.
+    */
+  def jupyterCmd0(args: Seq[String], fast: Boolean) = {
+    val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
+    // persistent, so that the kernel specs under Task.dest stay around when the command is run
+    Task.Command(persistent = true) {
+      val cmd = JupyterServer.jupyterLabCommand(
+        UvLauncher.uv(Versions.uv),
+        JavaHomes.javaHome(Versions.jupyterJvm),
+        launcher().path,
+        specialLauncher().path,
+        Task.dest / "jupyter",
+        args0,
+        BuildCtx.workspaceRoot,
+        scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
+        `local-repo`.localRepo().path
+      )
+      cmd.shellCommand
+    }
+  }
+
+  /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`) */
+  def jupyterConsole0(args: Seq[String], fast: Boolean) = {
+    val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
+    Task.Command {
+      JupyterServer.jupyterConsole(
+        UvLauncher.uv(Versions.uv),
+        JavaHomes.javaHome(Versions.jupyterJvm),
+        launcher().path,
+        specialLauncher().path,
+        Task.dest / "jupyter",
+        args0,
+        BuildCtx.workspaceRoot,
+        scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
+        `local-repo`.localRepo().path
+      )
     }
   }
 
@@ -900,16 +929,22 @@ object dev extends Module {
   }
 
   def jupyter(args: String*) =
-    jupyter0(args, fast = false)
+    jupyterServer0(args, fast = false)
 
   def jupyterFast(args: String*) =
-    jupyter0(args, fast = true)
+    jupyterServer0(args, fast = true)
+
+  def jupyterCmd(args: String*) =
+    jupyterCmd0(args, fast = false)
+
+  def jupyterCmdFast(args: String*) =
+    jupyterCmd0(args, fast = true)
 
   def jupyterConsole(args: String*) =
-    jupyter0(args, fast = false, console = true)
+    jupyterConsole0(args, fast = false)
 
   def jupyterConsoleFast(args: String*) =
-    jupyter0(args, fast = true, console = true)
+    jupyterConsole0(args, fast = true)
 
   def scala212() = Task.Command {
     println(ScalaVersions.scala212)

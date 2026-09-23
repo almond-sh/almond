@@ -32,8 +32,8 @@ object UvLauncher {
   }
 
   private def download(version: String): os.Path = {
-    val ext = if (Properties.isWin) "zip" else "tar.gz"
-    val url = s"https://github.com/astral-sh/uv/releases/download/$version/uv-$target.$ext"
+    val ext          = if (Properties.isWin) "zip" else "tar.gz"
+    val url          = s"https://github.com/astral-sh/uv/releases/download/$version/uv-$target.$ext"
     val archiveCache = ArchiveCache[Task]()
     val dir = archiveCache.get(Artifact(url)).unsafeRun()(archiveCache.cache.ec) match {
       case Left(err)  => throw new Exception(s"Error downloading $url", err)
