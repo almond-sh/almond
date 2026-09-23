@@ -2,8 +2,6 @@ package almondbuild
 
 import mill.api.PathRef
 
-import java.nio.file.*
-
 object JupyterServer {
 
   def kernelId        = "scala-debug"
@@ -24,8 +22,8 @@ object JupyterServer {
     ) ++ jupyterArgs
 
   def writeKernelJson(
-    launcher: Path,
-    jupyterDir: Path,
+    launcher: os.Path,
+    jupyterDir: os.Path,
     workspace: os.Path,
     localRepoRoot: os.Path,
     publishVersion: String,
@@ -33,10 +31,9 @@ object JupyterServer {
     name: String,
     extraArgs: String*
   ): Unit = {
-    val dir = jupyterDir.resolve(s"kernels/$kernelId")
-    Files.createDirectories(dir)
+    val dir = jupyterDir / "kernels" / kernelId
     val baseArgs = Seq(
-      PathRef.toAbsString(os.Path(launcher.toAbsolutePath)),
+      PathRef.toAbsString(launcher),
       "--log",
       "debug",
       "--connection-file",
@@ -56,7 +53,7 @@ object JupyterServer {
         (baseArgs ++ extraArgs).map(ujson.Str(_))*
       )
     ).render()
-    Files.write(dir.resolve("kernel.json"), kernelJson.getBytes("UTF-8"))
+    os.write.over(dir / "kernel.json", kernelJson, createFolders = true)
     System.err.println(s"JUPYTER_PATH=$jupyterDir")
   }
 
@@ -100,17 +97,40 @@ object JupyterServer {
     ) ++ baseUrlOpt
   }
 
-  def jupyterServer(
-    uv: os.Path,
-    launcher: Path,
-    specialLauncher: Path,
-    jupyterDir: Path,
-    args: Seq[String],
+  /** Runs the passed Jupyter command from `workspace`, with the raw terminal I/O inherited (rather
+    * than mill's redirected streams, which `os.Inherit` would use), killing it if the JVM
+    * exits first (upon Ctrl-C for example).
+    */
+  private def runJupyter(command: Seq[String], workspace: os.Path, jupyterDir: os.Path): Unit = {
+    val proc = os.proc(command).spawn(
+      cwd = workspace,
+      env = Map("JUPYTER_PATH" -> jupyterDir.toString),
+      stdin = os.InheritRaw,
+      stdout = os.InheritRaw,
+      stderr = os.InheritRaw
+    )
+    val hook: Thread = new Thread("jupyter-stop") {
+      override def run() =
+        if (proc.isAlive())
+          proc.destroy()
+    }
+    Runtime.getRuntime.addShutdownHook(hook)
+    proc.waitFor()
+    Runtime.getRuntime.removeShutdownHook(hook)
+    val retCode = proc.exitCode()
+    if (retCode != 0)
+      System.err.println(s"Jupyter command exited with code $retCode")
+  }
+
+  private def writeKernelJsons(
+    launcher: os.Path,
+    specialLauncher: os.Path,
+    jupyterDir: os.Path,
     workspace: os.Path,
     publishVersion: String,
-    localRepoRoot: os.Path
+    localRepoRoot: os.Path,
+    specialExtraArgs: String*
   ): Unit = {
-
     writeKernelJson(
       launcher,
       jupyterDir,
@@ -128,74 +148,60 @@ object JupyterServer {
       publishVersion,
       specialKernelId,
       "Scala (special, sources)",
-      "--quiet=false"
+      specialExtraArgs*
     )
-
-    os.makeDir.all(workspace / "notebooks")
-    val (baseAddressOpt, args0) = extractBaseAddress(args)
-    val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
-      baseAddressOpt.toSeq.flatMap(baseAddressOptions)
-    val b = new ProcessBuilder((command ++ args0)*).inheritIO()
-    val env     = b.environment()
-    env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
-    b.directory(workspace.toIO)
-    val p = b.start()
-    val hook: Thread = new Thread("jupyter-stop") {
-      override def run() =
-        if (p.isAlive)
-          p.destroy()
-    }
-    Runtime.getRuntime.addShutdownHook(hook)
-    val retCode = p.waitFor()
-    Runtime.getRuntime.removeShutdownHook(hook)
-    if (retCode != 0)
-      System.err.println(s"Jupyter command exited with code $retCode")
   }
 
-  def jupyterConsole(
+  def jupyterServer(
     uv: os.Path,
-    launcher: Path,
-    specialLauncher: Path,
-    jupyterDir: Path,
+    launcher: os.Path,
+    specialLauncher: os.Path,
+    jupyterDir: os.Path,
     args: Seq[String],
     workspace: os.Path,
     publishVersion: String,
     localRepoRoot: os.Path
   ): Unit = {
 
-    writeKernelJson(
+    writeKernelJsons(
       launcher,
-      jupyterDir,
-      workspace,
-      localRepoRoot,
-      publishVersion,
-      kernelId,
-      "Scala (sources)"
-    )
-    writeKernelJson(
       specialLauncher,
       jupyterDir,
       workspace,
-      localRepoRoot,
       publishVersion,
-      specialKernelId,
-      "Scala (special, sources)"
+      localRepoRoot,
+      "--quiet=false"
     )
 
-    val command = jupyterCommand(uv, workspace, "console", s"--kernel=$kernelId")
-    val b       = new ProcessBuilder((command ++ args)*).directory(workspace.toIO).inheritIO()
-    val env     = b.environment()
-    env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
-    val p = b.start()
-    val hook: Thread = new Thread("jupyter-stop") {
-      override def run() =
-        if (p.isAlive)
-          p.destroy()
-    }
-    Runtime.getRuntime.addShutdownHook(hook)
-    val retCode = p.waitFor()
-    Runtime.getRuntime.removeShutdownHook(hook)
-    if (retCode != 0)
-      System.err.println(s"Jupyter command exited with code $retCode")
+    os.makeDir.all(workspace / "notebooks")
+    val (baseAddressOpt, args0) = extractBaseAddress(args)
+    val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
+      baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
+      args0
+    runJupyter(command, workspace, jupyterDir)
+  }
+
+  def jupyterConsole(
+    uv: os.Path,
+    launcher: os.Path,
+    specialLauncher: os.Path,
+    jupyterDir: os.Path,
+    args: Seq[String],
+    workspace: os.Path,
+    publishVersion: String,
+    localRepoRoot: os.Path
+  ): Unit = {
+
+    writeKernelJsons(
+      launcher,
+      specialLauncher,
+      jupyterDir,
+      workspace,
+      publishVersion,
+      localRepoRoot
+    )
+
+    val command = jupyterCommand(uv, workspace, "console", s"--kernel=$kernelId") ++ args
+    runJupyter(command, workspace, jupyterDir)
   }
 }

@@ -850,8 +850,8 @@ object dev extends Module {
       else scala.launcher.launcher
     Task.Command {
       val jupyterDir       = Task.dest / "jupyter"
-      val launcher0        = launcher().path.toNIO
-      val specialLauncher0 = specialLauncher().path.toNIO
+      val launcher0        = launcher().path
+      val specialLauncher0 = specialLauncher().path
       val version          = scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion()
       val localRepoRoot    = `local-repo`.localRepo().path
       val uv               = UvLauncher.uv(Versions.uv)
@@ -860,7 +860,7 @@ object dev extends Module {
           uv,
           launcher0,
           specialLauncher0,
-          jupyterDir.toNIO,
+          jupyterDir,
           args0,
           BuildCtx.workspaceRoot,
           version,
@@ -871,7 +871,7 @@ object dev extends Module {
           uv,
           launcher0,
           specialLauncher0,
-          jupyterDir.toNIO,
+          jupyterDir,
           args0,
           BuildCtx.workspaceRoot,
           version,
