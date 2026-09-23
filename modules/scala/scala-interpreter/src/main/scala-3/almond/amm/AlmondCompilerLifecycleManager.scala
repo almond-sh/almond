@@ -28,7 +28,7 @@ class AlmondCompilerLifecycleManager(
       classPathWhitelist,
       initialClassLoader,
       outputDir,
-      initialSettings
+      initialSettings ++ AlmondCompilerLifecycleManager.extraInitialSettings
     ) {
 
   override def preprocess(fileName: String): iface.Preprocessor = synchronized {
@@ -48,6 +48,21 @@ class AlmondCompilerLifecycleManager(
 object AlmondCompilerLifecycleManager {
 
   private[almond] def isAtLeast_2_12_7 = true
+
+  /** Settings silencing warnings the Ammonite-generated wrapper code triggers */
+  private[almond] lazy val extraInitialSettings: Seq[String] = {
+    val isAtLeast_3_9 =
+      dotty.tools.dotc.config.Properties.versionNumberString.split("[.-]").take(2) match {
+        case Array(major, minor) =>
+          major.toIntOption.exists(_ > 3) ||
+          (major == "3" && minor.toIntOption.exists(_ >= 9))
+        case _ => false
+      }
+    // Scala 3.9 warns (E230) about identifiers containing `$`, which the code wrappers
+    // use (`$sess`, `$main`, ...), so every cell would print those warnings.
+    if (isAtLeast_3_9) Seq("-Wconf:id=E230:s")
+    else Nil
+  }
 
   def closeCompiler(compiler: iface.Compiler): Unit =
     compiler match {

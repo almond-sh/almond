@@ -86,7 +86,7 @@ object MessageHandler {
   )(implicit codec: JsonValueCodec[T]): MessageHandler =
     MessageHandler {
       case (`channel`, message) if message.messageType == messageType =>
-        tryDecode(message)(codec).map(handler)
+        tryDecode[T](message).map(handler)
     }
 
   def create0[T](
@@ -98,7 +98,7 @@ object MessageHandler {
     MessageHandler {
       case (`channel`, message) if message.messageType == messageType =>
         // wish we didn't have to call asRawMessage here, but rather had the original RawMessage
-        tryDecode(message)(codec).map(m => handler(message.asRawMessage, m))
+        tryDecode[T](message).map(m => handler(message.asRawMessage, m))
     }
 
   /** Constructs a [[MessageHandler]], able to handle a [[Message]] of a single type from one of
@@ -120,7 +120,7 @@ object MessageHandler {
   )(implicit codec: JsonValueCodec[T]): MessageHandler =
     MessageHandler {
       case (channel, message) if message.messageType == messageType && channels.contains(channel) =>
-        tryDecode(message)(codec).map(msg => handler(channel, msg))
+        tryDecode[T](message).map(msg => handler(channel, msg))
     }
 
   private def tryDecode[T: JsonValueCodec](message: Message[RawJson])
