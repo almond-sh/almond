@@ -5,6 +5,7 @@ object Versions {
   def caseApp       = "2.1.0"
   def coursier      = "2.1.25"
   def jsoniterScala = "2.13.5"
+  def jupyterJvm    = "21" // JVM the dev.jupyter* commands run the kernel with
   def scalafmt      = "3.9.6"
   def scalafmtJava8 = "3.7.15"
   def uv            = "0.12.18"

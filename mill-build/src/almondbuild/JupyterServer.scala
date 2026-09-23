@@ -99,12 +99,19 @@ object JupyterServer {
 
   /** Runs the passed Jupyter command from `workspace`, with the raw terminal I/O inherited (rather
     * than mill's redirected streams, which `os.Inherit` would use), killing it if the JVM
-    * exits first (upon Ctrl-C for example).
+    * exits first (upon Ctrl-C for example). The kernels Jupyter starts pick up the JVM at
+    * `javaHome`, via `JAVA_HOME` and `PATH`.
     */
-  private def runJupyter(command: Seq[String], workspace: os.Path, jupyterDir: os.Path): Unit = {
+  private def runJupyter(
+    command: Seq[String],
+    workspace: os.Path,
+    jupyterDir: os.Path,
+    javaHome: os.Path
+  ): Unit = {
+    System.err.println(s"JAVA_HOME=$javaHome")
     val proc = os.proc(command).spawn(
       cwd = workspace,
-      env = Map("JUPYTER_PATH" -> jupyterDir.toString),
+      env = JavaHomes.environment(javaHome) + ("JUPYTER_PATH" -> jupyterDir.toString),
       stdin = os.InheritRaw,
       stdout = os.InheritRaw,
       stderr = os.InheritRaw
@@ -154,6 +161,7 @@ object JupyterServer {
 
   def jupyterServer(
     uv: os.Path,
+    javaHome: os.Path,
     launcher: os.Path,
     specialLauncher: os.Path,
     jupyterDir: os.Path,
@@ -178,11 +186,12 @@ object JupyterServer {
     val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
       baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
       args0
-    runJupyter(command, workspace, jupyterDir)
+    runJupyter(command, workspace, jupyterDir, javaHome)
   }
 
   def jupyterConsole(
     uv: os.Path,
+    javaHome: os.Path,
     launcher: os.Path,
     specialLauncher: os.Path,
     jupyterDir: os.Path,
@@ -202,6 +211,6 @@ object JupyterServer {
     )
 
     val command = jupyterCommand(uv, workspace, "console", s"--kernel=$kernelId") ++ args
-    runJupyter(command, workspace, jupyterDir)
+    runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }

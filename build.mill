@@ -855,9 +855,11 @@ object dev extends Module {
       val version          = scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion()
       val localRepoRoot    = `local-repo`.localRepo().path
       val uv               = UvLauncher.uv(Versions.uv)
+      val javaHome         = JavaHomes.javaHome(Versions.jupyterJvm)
       if (console)
         JupyterServer.jupyterConsole(
           uv,
+          javaHome,
           launcher0,
           specialLauncher0,
           jupyterDir,
@@ -869,6 +871,7 @@ object dev extends Module {
       else
         JupyterServer.jupyterServer(
           uv,
+          javaHome,
           launcher0,
           specialLauncher0,
           jupyterDir,
