@@ -57,6 +57,16 @@ $ ./mill -i dev.jupyterFast 2.12.21 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.)
 
+If you reach JupyterLab through a reverse proxy that handles HTTPS (Tailscale
+serve for example), pass the address you use in your browser with `--base-address`:
+```text
+$ ./mill -i dev.jupyterFast --base-address=https://pc-home.tail381281.ts.net:36227 --no-browser
+```
+JupyterLab then displays its URLs with that address, accepts requests and websocket
+connections coming through it, and trusts the `X-Forwarded-*` headers set by the
+proxy. Other options (like `--no-browser` above, or `--port=…` to pick the local
+port the proxy forwards to) are passed to JupyterLab as is.
+
 ## Build a kernel launcher
 
 ```text

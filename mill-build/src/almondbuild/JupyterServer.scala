@@ -60,6 +60,46 @@ object JupyterServer {
     System.err.println(s"JUPYTER_PATH=$jupyterDir")
   }
 
+  /** Extracts a `--base-address=…` (or `--base-address …`) option from the passed arguments, if
+    * any, and returns it along with the remaining arguments.
+    */
+  private def extractBaseAddress(args: Seq[String]): (Option[String], Seq[String]) = {
+    val opt = "--base-address"
+    args.indexWhere(a => a == opt || a.startsWith(opt + "=")) match {
+      case -1 => (None, args)
+      case idx =>
+        val arg = args(idx)
+        if (arg == opt)
+          if (idx + 1 < args.length) (Some(args(idx + 1)), args.patch(idx, Nil, 2))
+          else sys.error(s"Missing value for $opt")
+        else
+          (Some(arg.stripPrefix(opt + "=")), args.patch(idx, Nil, 1))
+    }
+  }
+
+  /** JupyterLab options making it assume it's reached at the passed address, typically via a
+    * reverse proxy handling TLS (Tailscale serve, …): URLs are displayed with that address, its
+    * origin is accepted for CORS / websocket connections, non-local `Host` headers are accepted,
+    * and the `X-Forwarded-*` headers set by the proxy are trusted.
+    */
+  private def baseAddressOptions(baseAddress: String): Seq[String] = {
+    val uri = new java.net.URI(baseAddress)
+    if (uri.getScheme == null || uri.getHost == null)
+      sys.error(s"Invalid base address '$baseAddress', expected something like https://host:port")
+    val origin = {
+      val port = if (uri.getPort == -1) "" else s":${uri.getPort}"
+      s"${uri.getScheme}://${uri.getHost}$port"
+    }
+    val basePath   = Option(uri.getPath).map(_.stripSuffix("/")).filter(_.nonEmpty)
+    val baseUrlOpt = basePath.map(path => s"--ServerApp.base_url=$path/").toSeq
+    Seq(
+      s"--ServerApp.custom_display_url=$baseAddress",
+      s"--ServerApp.allow_origin=$origin",
+      "--ServerApp.allow_remote_access=True",
+      "--ServerApp.trust_xheaders=True"
+    ) ++ baseUrlOpt
+  }
+
   def jupyterServer(
     uv: os.Path,
     launcher: Path,
@@ -92,8 +132,10 @@ object JupyterServer {
     )
 
     os.makeDir.all(workspace / "notebooks")
-    val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks")
-    val b       = new ProcessBuilder((command ++ args)*).inheritIO()
+    val (baseAddressOpt, args0) = extractBaseAddress(args)
+    val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
+      baseAddressOpt.toSeq.flatMap(baseAddressOptions)
+    val b = new ProcessBuilder((command ++ args0)*).inheritIO()
     val env     = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
     b.directory(workspace.toIO)
