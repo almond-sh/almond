@@ -14,7 +14,7 @@ trait BootstrapLauncher extends SbtModule {
   private def toEntry(jar: os.Path, resourceIfNotFromCache: Boolean = true): ClassPathEntry = {
     def default =
       if (resourceIfNotFromCache) toResourceEntry(jar)
-      else ClassPathEntry.Url(jar.toNIO.toUri.toASCIIString)
+      else ClassPathEntry.Url(PathRef.toAbsNioPath(jar).toUri.toASCIIString)
     val cacheRoot = os.Path(coursier.cache.CacheDefaults.location)
     if (jar.startsWith(cacheRoot)) {
       val rel = jar.relativeTo(cacheRoot).asSubPath.toString
@@ -29,7 +29,7 @@ trait BootstrapLauncher extends SbtModule {
     else default
   }
   private def toResourceEntry(jar: os.Path): ClassPathEntry =
-    if (os.isDir(jar)) ClassPathEntry.Url(jar.toNIO.toUri.toASCIIString)
+    if (os.isDir(jar)) ClassPathEntry.Url(PathRef.toAbsNioPath(jar).toUri.toASCIIString)
     else {
       val lastModified = os.mtime(jar)
       val content      = os.read.bytes(jar)
@@ -60,7 +60,7 @@ trait BootstrapLauncher extends SbtModule {
       .withHybridAssembly(true)
 
     Util.withLoader(BootstrapGenerator.getClass.getClassLoader) {
-      BootstrapGenerator.generate(params, dest.toNIO)
+      BootstrapGenerator.generate(params, PathRef.toAbsNioPath(dest))
     }
   }
 
