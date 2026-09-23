@@ -813,7 +813,10 @@ object docs extends ScalaModule with AlmondRepositories {
           Seq("yarn", "run", "start"),
           dir = PathRef.toAbsFile(websiteDir),
           waitFor =
-            () => Util.waitForDir(PathRef.toAbsFile(BuildCtx.workspaceRoot / outputDir.split('/').toSeq))
+            () =>
+              Util.waitForDir(
+                PathRef.toAbsFile(BuildCtx.workspaceRoot / outputDir.split('/').toSeq)
+              )
         ) {
           runMdoc()
         }
