@@ -73,6 +73,11 @@ object KernelLauncher {
     sys.error("almond.test.cs-launcher Java property not set")
   )
 
+  lazy val launcherMainClass = sys.props.getOrElse(
+    "almond.test.launcher-main-class",
+    sys.error("almond.test.launcher-main-class Java property not set")
+  )
+
   /** Coursier arguments forcing the Scala artifacts to `scalaVersion`. */
   def scalaForcedVersionArgs(scalaVersion: String): Seq[String] = {
     val modules =
@@ -218,7 +223,9 @@ class KernelLauncher(
     )
     val launcherArgs =
       if (isTwoStepStartup)
-        Seq(s"sh.almond:launcher_3:$almondVersion")
+        // Passing the main class explicitly: coursier-launcher 2.1.25 pulls in jarjar, whose jars
+        // have their own Main-Class, so cs can't pick the launcher's one on its own any more
+        Seq(s"sh.almond:launcher_3:$almondVersion", "--main-class", launcherMainClass)
       else
         // The kernel modules are published for binary Scala versions - "--scala" gives us the
         // right ones, and the forced versions the Scala compiler of the version under test.
