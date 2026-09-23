@@ -593,7 +593,8 @@ trait Examples extends SbtModule {
         s"-Dalmond.examples.output-dir=${PathRef.toAbsString(Task.dest / "output")}",
         s"-Dalmond.examples.jupyter-path=${PathRef.toAbsString(Task.dest / "jupyter")}",
         s"-Dalmond.examples.launcher=${PathRef.toAbsString(examplesKernel.launcher().path)}",
-        s"-Dalmond.examples.repo-root=${PathRef.toAbsString(`local-repo`.localRepo().path)}"
+        s"-Dalmond.examples.repo-root=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
+        s"-Dalmond.examples.uv=${PathRef.toAbsString(UvLauncher.uv(Versions.uv))}"
       )
     }
   }
@@ -853,8 +854,10 @@ object dev extends Module {
       val specialLauncher0 = specialLauncher().path.toNIO
       val version          = scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion()
       val localRepoRoot    = `local-repo`.localRepo().path
+      val uv               = UvLauncher.uv(Versions.uv)
       if (console)
         JupyterServer.jupyterConsole(
+          uv,
           launcher0,
           specialLauncher0,
           jupyterDir.toNIO,
@@ -865,6 +868,7 @@ object dev extends Module {
         )
       else
         JupyterServer.jupyterServer(
+          uv,
           launcher0,
           specialLauncher0,
           jupyterDir.toNIO,

@@ -127,11 +127,11 @@ class Examples extends munit.FunSuite {
         else
           notebook
       val output = outputDir / notebook.last
-      // Run jupyter from the uv-managed environment described by examples/pyproject.toml,
-      // so that only uv needs to be installed (it fetches Python and the pinned Jupyter
-      // packages from examples/uv.lock on the fly).
+      // Run jupyter from the uv-managed environment described by examples/pyproject.toml:
+      // uv (downloaded by the build) fetches Python and the pinned Jupyter packages from
+      // examples/uv.lock on the fly, so nothing needs to be installed beforehand.
       os.proc(
-        "uv",
+        ExampleProperties.uv,
         "run",
         "--project",
         ExampleProperties.directory,

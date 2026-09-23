@@ -6,7 +6,10 @@ more detailed and user-friendly examples.
 The Jupyter setup used to run them (by `./mill scala.examples.test`, and by the
 `./mill dev.jupyter*` commands) is described by `pyproject.toml`, with exact versions
 pinned in `uv.lock`. It is managed with [uv](https://docs.astral.sh/uv/): the build
-runs `uv run --project examples --frozen jupyter …`, so that only uv needs to be installed.
+downloads uv itself (see `UvLauncher` in `mill-build`) and runs
+`uv run --project examples --frozen jupyter …`, so that nothing needs to be installed
+beforehand. Set the `ALMOND_UV` environment variable to the path of a `uv` binary to use
+that one instead of the downloaded one.
 
 To update the pinned versions, run
 ```text

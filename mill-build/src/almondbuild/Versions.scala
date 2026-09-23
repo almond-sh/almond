@@ -7,4 +7,5 @@ object Versions {
   def jsoniterScala = "2.13.5"
   def scalafmt      = "3.9.6"
   def scalafmtJava8 = "3.7.15"
+  def uv            = "0.12.18"
 }

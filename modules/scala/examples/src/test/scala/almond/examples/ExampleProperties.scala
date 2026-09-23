@@ -29,6 +29,13 @@ object ExampleProperties {
     )
     os.Path(pathStr)
   }
+  lazy val uv = {
+    val pathStr = sys.props.getOrElse(
+      "almond.examples.uv",
+      sys.error("Expected almond.examples.uv to be set")
+    )
+    os.Path(pathStr)
+  }
   lazy val jupyterPath = {
     val pathStr = sys.props.getOrElse(
       "almond.examples.jupyter-path",
