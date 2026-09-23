@@ -476,7 +476,7 @@ trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondM
     api()
   )
   def mvnDeps = Seq(
-    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.22.2"
+    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.22.3"
   )
   override def mimaPreviousVersions = Task {
     // module added only in 0.14.2
