@@ -89,6 +89,22 @@ jobs:
         SCALA: ${{ matrix.SCALA.scalaVersion }}
         BINARY_SCALA: ${{ matrix.SCALA.binaryScalaVersion }}
 
+  echo:
+    # The echo demo kernel is built for Scala 3 only, so the cross-version test job above
+    # doesn't pick its tests up.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/setup-action@v3.0
+      with:
+        jvm: 21
+        apps:
+    - run: ./mill -i echo.test
+      shell: bash
+
   integration-tests:
     runs-on: ${{ matrix.OS }}
     # Room for the retry below to run the suite a second time on a transient infrastructure flake.

@@ -14,11 +14,12 @@ import caseapp.core.Scala3Helpers._
 import caseapp.core.help.Help
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
-import coursier.parse.{DependencyParser, ModuleParser}
+import dependency.ScalaParameters
+import dependency.api.ops._
+import dependency.parser.{DependencyParser, ModuleParser}
 
 import scala.collection.compat._
 import scala.concurrent.duration.{Duration, DurationInt}
-import scala.jdk.CollectionConverters._
 
 // format: off
 @ProgName("almond")
@@ -164,6 +165,17 @@ final case class Options(
       sv.split('.').head
   }
 
+  private lazy val scalaParams =
+    ScalaParameters(scala.util.Properties.versionNumberString)
+
+  /** The configuration of an inline-configuration dependency (like `org:name:version:config`).
+    *
+    * `toCs` doesn't carry it over to the coursier-interface dependency, so we read it from the user
+    * params the parser puts it in, and apply it ourselves.
+    */
+  private def inlineConfiguration(dep: dependency.AnyDependency): Option[String] =
+    dep.userParamsMap.get("$inlineConfiguration").flatMap(_.flatten.headOption)
+
   private lazy val ammSparkVersion = defaultAlmondSparkVersion
     .map(_.trim)
     .filter(_.nonEmpty)
@@ -200,26 +212,19 @@ final case class Options(
       .map { s =>
         s.split("=>") match {
           case Array(trigger, auto) =>
-            val trigger0 = ModuleParser.javaOrScalaModule(trigger) match {
+            val trigger0 = ModuleParser.parse(trigger) match {
               case Left(err) =>
                 sys.error(s"Malformed module '$trigger' in --auto-dependency argument '$s': $err")
               case Right(m) =>
-                val mod0 = m.module(scala.util.Properties.versionNumberString)
-                Module.of(mod0.organization.value, mod0.name.value, mod0.attributes.asJava)
+                m.applyParams(scalaParams).toCs
             }
-            val auto0 = DependencyParser.javaOrScalaDependencyParams(auto) match {
+            val auto0 = DependencyParser.parse(auto) match {
               case Left(err) =>
                 sys.error(s"Malformed dependency '$auto' in --auto-dependency argument '$s': $err")
-              case Right((d, _)) =>
-                val dep = d.dependency(scala.util.Properties.versionNumberString)
-                Dependency.of(
-                  dep.module.organization.value,
-                  dep.module.name.value,
-                  dep.versionConstraint.asString
-                )
-                  .withConfiguration(dep.configuration.value)
-                  .withClassifier(dep.attributes.classifier.value)
-                  .withType(dep.attributes.`type`.value)
+              case Right(d) =>
+                val dep0 = d.applyParams(scalaParams)
+                val dep  = dep0.toCs
+                inlineConfiguration(dep0).fold(dep)(dep.withConfiguration)
             }
             trigger0 -> auto0
           case _ =>
@@ -256,12 +261,11 @@ final case class Options(
         else {
           val before = s.substring(0, idx)
           val ver    = s.substring(idx + 1)
-          val mod = ModuleParser.javaOrScalaModule(before) match {
+          val mod = ModuleParser.parse(before) match {
             case Left(err) =>
               sys.error(s"Malformed module '$before' in --auto-version argument '$s': $err")
             case Right(m) =>
-              val mod0 = m.module(scala.util.Properties.versionNumberString)
-              Module.of(mod0.organization.value, mod0.name.value, mod0.attributes.asJava)
+              m.applyParams(scalaParams).toCs
           }
 
           mod -> ver

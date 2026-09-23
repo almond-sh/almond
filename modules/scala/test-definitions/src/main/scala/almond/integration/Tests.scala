@@ -430,12 +430,7 @@ object Tests {
     }
 
   def toreeHtml()(implicit sessionId: SessionId, runner: Runner): Unit = {
-    val launcherOptions =
-      if (runner.differedStartUp)
-        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
-      else
-        Seq("--shared", "sh.almond::toree-hooks")
-    runner.withLauncherOptionsSession(launcherOptions: _*)("--toree-magics", "--toree-api") {
+    runner.withLauncherOptionsSession()("--toree-magics", "--toree-api") {
       implicit session =>
 
         execute(
@@ -601,12 +596,7 @@ object Tests {
     val predefPath = tmpDir / "predef.sc"
     os.write(predefPath, predef)
 
-    val launcherOptions =
-      if (runner.differedStartUp)
-        Seq("--shared-dependencies", "sh.almond::toree-hooks:_")
-      else
-        Seq("--shared", "sh.almond::toree-hooks")
-    runner.withLauncherOptionsSession(launcherOptions: _*)(
+    runner.withLauncherOptionsSession()(
       "--toree-magics",
       "--predef",
       predefPath.toString

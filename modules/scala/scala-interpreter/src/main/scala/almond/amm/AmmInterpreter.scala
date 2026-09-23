@@ -9,7 +9,7 @@ import ammonite.compiler.iface.CodeWrapper
 import ammonite.runtime.{Evaluator, Frame, Storage}
 import ammonite.util.{ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
-import coursier.util.ModuleMatcher
+import dependency.ModuleMatcher
 
 import scala.jdk.CollectionConverters._
 import scala.language.reflectiveCalls
@@ -93,10 +93,7 @@ object AmmInterpreter {
       .iterator
       .collect {
         case (m, l) if m.getOrganization.contains("*") || m.getName.contains("*") =>
-          ModuleMatcher(coursier.Module(
-            coursier.Organization(m.getOrganization),
-            coursier.ModuleName(m.getName)
-          )) -> l
+          ModuleMatcher(m.getOrganization, m.getName) -> l
       }
       .toVector
 
@@ -128,7 +125,7 @@ object AmmInterpreter {
             }
           if (clsOpt.isEmpty)
             log.error(
-              "Ignoring Toree API compatibility option, as sh.almond::toree-hooks isn't part of the user class path"
+              "Ignoring Toree API compatibility option, as sh.almond::scala-kernel-api isn't part of the user class path"
             )
           clsOpt.nonEmpty
         }
@@ -217,9 +214,9 @@ object AmmInterpreter {
           .asScala
           .toVector
           .flatMap { dep =>
-            val mod = coursier.Module(
-              coursier.Organization(dep.getModule.getOrganization),
-              coursier.ModuleName(dep.getModule.getName)
+            val mod = dependency.Module(
+              dep.getModule.getOrganization,
+              dep.getModule.getName
             )
             automaticDependencies.getOrElse(
               dep.getModule,
@@ -255,7 +252,7 @@ object AmmInterpreter {
       }
 
       // TODO: remove jitpack once jvm-repr is published to central
-      val allExtraRepos = extraRepos ++ Seq(coursier.Repositories.jitpack.root)
+      val allExtraRepos = extraRepos ++ Seq("https://jitpack.io")
       ammInterp0.repositories() = ammInterp0.repositories() ++
         allExtraRepos.map { r =>
           if (r.startsWith("ivy:"))

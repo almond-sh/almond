@@ -14,6 +14,7 @@ import mill.scalalib.*
   * support, so those need to be pointed back at the Scala version of the test.
   */
 trait AlmondFullCrossTests extends Cross.Module[String] with AlmondTestModule
+    with AlmondScalacOptions
     // AlmondForcedScalaVersion overrides the resolution parameters we would otherwise inherit
     // from the module under test, which force the Scala version that module is built with
     with AlmondForcedScalaVersion {

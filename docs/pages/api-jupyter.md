@@ -12,7 +12,7 @@ A number of higher level helpers rely on it, and provide [a more convenient API 
 
 ### Display
 
-A number of classes under [`almond.display`](https://github.com/almond-sh/almond/tree/master/modules/scala/jupyter-api/src/main/scala/almond/display)
+A number of classes under [`almond.display`](https://github.com/almond-sh/almond/tree/master/modules/api/src/main/scala/almond/display)
 provide an API similar to the
 [IPython display module](https://ipython.readthedocs.io/en/7.4.0/api/generated/IPython.display.html).
 
@@ -105,7 +105,7 @@ TODO Send to client
 
 ### Display data
 
-The `publish` field, of type [`almond.interpreter.api.OutputHandler`](https://github.com/almond-sh/almond/blob/master/modules/shared/interpreter-api/src/main/scala/almond/interpreter/api/OutputHandler.scala), has numerous methods to push display data to the front-end.
+The `publish` field, of type [`almond.interpreter.api.OutputHandler`](https://github.com/almond-sh/almond/blob/master/modules/api/src/main/scala/almond/interpreter/api/OutputHandler.scala), has numerous methods to push display data to the front-end.
 
 The most generic is `display`, accepting a `almond.api.DisplayData`.
 

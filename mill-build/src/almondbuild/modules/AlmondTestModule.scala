@@ -8,8 +8,7 @@ import mill.scalalib.*
 trait AlmondTestModule
     extends ScalaModule
     with TestModule
-    with AlmondRepositories
-    with AlmondScalacOptions {
+    with AlmondRepositories {
 
   def mvnDeps       = Seq(Deps.utest)
   def testFramework = "utest.runner.Framework"

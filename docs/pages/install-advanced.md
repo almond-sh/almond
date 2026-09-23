@@ -180,25 +180,14 @@ You can then use magics like `%AddDeps`, `%AddJar`, `%LsMagic`, etc., in noteboo
 
 ### Spark magics
 
-Support for the `%sql` magic, relying on Spark, needs to be enabled from a "predef" script. It also
-requires parts of the Toree magics support to be put in the user-facing part of the Almond class path
-(so that calls to it from the user side are picked up by Almond internals later on).
+Support for the `%sql` magic, relying on Spark, needs to be enabled from a "predef" script.
 
-To enable that from a former launcher, pass `--shared sh.almond::toree-hooks` when generating the launcher:
-```text
-$ cs launch --use-bootstrap almond:@VERSION@ --shared sh.almond::toree-hooks --scala @SCALA213_VERSION@ -- --install
-```
+The parts of the Toree magics support that user code calls into ship in the `scala-kernel-api`
+module, that is always in the user-facing part of the Almond class path. (They used to live in a
+separate `toree-hooks` module, that had to be added to it via `--shared sh.almond::toree-hooks` or
+`--shared-dependencies sh.almond::toree-hooks:_` - that isn't needed any more.)
 
-To enable it from a new launcher, pass `--shared-dependencies sh.almond::toree-hooks:_` to the launcher, like
-```text
-$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
-  --install \
-  --scala @SCALA213_VERSION@ \
-  --shared-dependencies sh.almond::toree-hooks:_ \
-  --toree-magics
-```
-
-Then, from a predef script, call
+From a predef script, call
 ```scala
 almond.spark.ToreeSql.setup()
 ```
@@ -212,7 +201,6 @@ almond.spark.ToreeSql.setup()
 $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
   --install \
   --scala @SCALA213_VERSION@ \
-  --shared-dependencies sh.almond::toree-hooks:_ \
   --toree-magics \
   --predef predef.sc
 ```

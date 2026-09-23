@@ -34,144 +34,115 @@ implicit def millModuleBasePath: ModuleCtx.Nested =
     this
   )
 
-trait LoggerScala2Macros extends Cross.Module[String] with AlmondModule {
+/** The Scala 2 macros of the logger of [[Kernel]], that have to be compiled before it.
+  *
+  * Not published on its own - [[Kernel]] ships its classes and sources alongside its own.
+  */
+trait LoggerScala2Macros extends Cross.Module[String] with AlmondUnpublishedModule
+    with AlmondJvmTarget {
   def crossScalaVersion = crossValue
   def mvnDeps = Task {
-    val sv = scalaVersion()
-    if (isScala3(sv)) Seq.empty[Dep] else Seq(Deps.scalaReflect(sv))
+    Seq(Deps.scalaReflect(scalaVersion()))
   }
 }
 
-trait Logger extends Cross.Module[String] with AlmondModule {
+/** The API user code is written against - `almond.interpreter.api` for the kernels, and
+  * `almond.api` / `almond.display` / `almond.input` for the users of the Scala kernel.
+  */
+trait Api extends Cross.Module[String] with AlmondModule with AlmondMima {
   def crossScalaVersion = crossValue
-  def moduleDeps =
-    if (isScala3(crossScalaVersion)) Seq.empty
-    else
-      Seq(
-        shared.`logger-scala2-macros`()
-      )
-  def mvnDeps = Task {
-    val sv = scalaVersion()
-    val scalaReflect =
-      if (sv.startsWith("2.")) Seq(Deps.scalaReflect(sv))
-      else Seq(mvn"org.scala-lang:scala3-library_3:$sv")
-    scalaReflect
-  }
-  object test extends CrossSbtModuleTests with AlmondTestModule {
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
-  }
-}
-
-trait Channels extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    shared.logger()
-  )
-  def mvnDeps = Seq(
-    Deps.fs2,
-    Deps.jeromq
-  )
-  object test extends CrossSbtModuleTests with AlmondTestModule {
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
-  }
-}
-
-trait Protocol extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    shared.channels()
-  )
-  def mvnDeps = Seq(
-    Deps.jsoniterScalaCore
-  )
-  def compileMvnDeps = {
-    val maybeScalaReflect =
-      if (isScala3(crossScalaVersion)) Seq.empty[Dep]
-      else Seq(Deps.scalaReflect(crossScalaVersion))
-    maybeScalaReflect ++ Seq(
-      Deps.jsoniterScalaMacros.withConfiguration("provided")
-    )
-  }
-  object test extends CrossSbtModuleTests with AlmondTestModule {
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
-  }
-}
-
-trait InterpreterApi extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-
-  def mimaBinaryIssueFilters = Seq(
-    // abstract class not meant to be implemented by users
-    ProblemFilter.exclude[ReversedMissingMethodProblem](
-      "almond.interpreter.api.OutputHandler.*"
-    )
-  )
-}
-
-trait Interpreter extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    shared.`interpreter-api`(),
-    shared.protocol()
-  )
-  def mvnDeps = Seq(
-    Deps.collectionCompat,
-    Deps.fansi,
-    Deps.scalatags,
-    Deps.slf4jNop
-  )
-  object test extends CrossSbtModuleTests with AlmondTestModule {
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
-  }
-}
-
-trait Kernel extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    shared.interpreter()
-  )
-  def compileMvnDeps = Seq(
-    Deps.jsoniterScalaMacros
-  )
-  def mvnDeps = Seq(
-    Deps.caseAppAnnotations,
-    Deps.collectionCompat,
-    Deps.coursierApi,
-    Deps.fs2
-  )
-  object test extends CrossSbtModuleTests with AlmondTestModule {
-    def moduleDeps = super.moduleDeps ++ Seq(
-      shared.interpreter().test,
-      shared.`test-kit`()
-    )
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
-  }
-}
-
-trait Test extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    shared.`interpreter-api`()
-  )
-}
-
-trait JupyterApi extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    shared.`interpreter-api`()
-  )
   def mvnDeps = Seq(
     Deps.jvmRepr
   )
 
   def mimaBinaryIssueFilters = Seq(
-    // abstract class not meant to be implemented by users
+    // abstract classes not meant to be implemented by users
+    ProblemFilter.exclude[ReversedMissingMethodProblem](
+      "almond.interpreter.api.OutputHandler.*"
+    ),
     ProblemFilter.exclude[ReversedMissingMethodProblem]("almond.api.JupyterApi.*")
+  )
+
+  // Our classes used to be published as two modules, interpreter-api and jupyter-api -
+  // keep checking them against those, our own name has no release to be compared with yet.
+  def mimaPreviousArtifacts = Task {
+    val versions = mimaPreviousVersions().distinct
+    mill.api.Result.Success(
+      for {
+        name    <- Seq("interpreter-api", "jupyter-api")
+        version <- versions
+      } yield mvn"${pomSettings().organization}:$name${artifactSuffix()}:$version"
+    )
+  }
+}
+
+trait Kernel extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+
+  /** Our Scala 2 macros, that only exist for the Scala 2 binary versions */
+  private def macrosModuleOpt: Option[LoggerScala2Macros] =
+    if (isScala3(crossScalaVersion)) None
+    else Some(shared.`logger-scala2-macros`())
+
+  def moduleDeps = Seq(
+    api()
+  )
+  def compileModuleDeps = super.compileModuleDeps ++ macrosModuleOpt.toSeq
+
+  // The macros are only needed at compile time, and are of no use on their own - rather than
+  // publishing them separately, we add their classes to our local compile class path, which
+  // puts them both in our JAR and on the compile class path of the modules depending on us.
+  def localCompileClasspath = Task {
+    super.localCompileClasspath() ++
+      Task.traverse(macrosModuleOpt.toSeq)(_.compile)().map(_.classes)
+  }
+  // Ship the sources of the macros alongside ours too, for the classes above not to miss theirs
+  def sourceJar = Task {
+    val macroSources = Task.traverse(macrosModuleOpt.toSeq)(_.allSources)().flatten
+    PathRef(
+      mill.util.Jvm.createJar(
+        Task.dest / "out.jar",
+        (allSources() ++ macroSources ++ resources() ++ compileResources())
+          .map(_.path)
+          .filter(os.exists),
+        manifest()
+      )
+    )
+  }
+
+  def compileMvnDeps = Seq(
+    Deps.jsoniterScalaMacros
+  )
+  def mvnDeps = Task {
+    val sv = scalaVersion()
+    val scalaReflect =
+      if (sv.startsWith("2.")) Seq(Deps.scalaReflect(sv))
+      else Seq(mvn"org.scala-lang:scala3-library_3:$sv")
+    scalaReflect ++ Seq(
+      Deps.caseAppAnnotations,
+      Deps.collectionCompat,
+      Deps.coursierApi,
+      Deps.fansi,
+      Deps.fs2,
+      Deps.jeromq,
+      Deps.jsoniterScalaCore,
+      Deps.scalatags,
+      Deps.slf4jNop
+    )
+  }
+  object test extends CrossSbtModuleTests with AlmondTestModule {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      shared.`test-kit`()
+    )
+  }
+}
+
+// Only used by the tests of the echo kernel, that we only build for Scala 3
+trait Test extends SbtModule with AlmondRepositories with AlmondScalacOptions {
+  private def sv   = ScalaVersions.scala3Compat
+  def scalaVersion = sv
+  def moduleDeps = Seq(
+    api(sv)
   )
 }
 
@@ -179,8 +150,7 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     with ExternalSources with PropertyFile with AlmondMima {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
-    shared.`interpreter-api`(),
-    scala.`jupyter-api`()
+    api()
   )
   def mvnDeps = Seq(
     Deps.ammoniteCompiler.exclude(("org.slf4j", "slf4j-api")),
@@ -227,11 +197,9 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
 trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
-    shared.interpreter(),
-    scala.`coursier-logger`(),
-    scala.`scala-kernel-api`(),
-    scala.`shared-directives`(),
-    scala.`toree-hooks`(ScalaVersions.binary(crossScalaVersion))
+    shared.kernel(),
+    scala.`kernel-helpers`(),
+    scala.`scala-kernel-api`()
   )
   def mvnDeps = Task {
     val metabrowse =
@@ -243,8 +211,10 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
       else
         Seq.empty
     metabrowse ++ Seq(
-      Deps.coursier.withDottyCompat(crossScalaVersion),
       Deps.coursierApi,
+      Deps.coursierPaths,
+      // for dependency.ModuleMatcher, to match automatic dependencies with globs
+      Deps.dependency,
       Deps.dependencyInterface,
       Deps.directiveHandler,
       Deps.jansi,
@@ -296,6 +266,10 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   def mvnDeps = Seq(
     Deps.caseApp,
     Deps.classPathUtil,
+    Deps.coursierApi,
+    Deps.coursierPaths,
+    Deps.dependency,
+    Deps.dependencyInterface,
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
   object test extends Cross[ScalaKernelTests](ScalaVersions.fullVersionsFor(crossValue))
@@ -306,8 +280,6 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     def moduleDeps = super.moduleDeps ++ Seq(
       scala.`scala-interpreter`(ScalaVersions.binary(crossValue)).test(crossValue)
     )
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
   }
 
   def resolvedMvnDeps = Task {
@@ -424,24 +396,20 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   }
 }
 
-trait CoursierLogger extends Cross.Module[String] with AlmondModule {
+/** Helpers that both the Scala kernel and its launcher build upon, but that the kernel framework
+  * itself doesn't need.
+  */
+trait KernelHelpers extends Cross.Module[String] with AlmondModule {
   def crossScalaVersion = crossValue
   def moduleDeps = super.moduleDeps ++ Seq(
-    shared.`interpreter-api`(),
-    shared.logger()
+    shared.kernel()
   )
   def mvnDeps = super.mvnDeps() ++ Seq(
     Deps.collectionCompat,
     Deps.coursierApi,
-    Deps.scalatags
-  )
-}
-
-trait SharedDirectives extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
-  def mvnDeps = super.mvnDeps() ++ Seq(
     Deps.directiveHandler,
-    Deps.jsoniterScalaCore
+    Deps.jsoniterScalaCore,
+    Deps.scalatags
   )
   def compileMvnDeps = Seq(
     Deps.jsoniterScalaMacros
@@ -452,8 +420,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
   def moduleDeps = Seq(
-    scala.`coursier-logger`(ScalaVersions.scala3Compat),
-    scala.`shared-directives`(ScalaVersions.scala3Compat),
+    scala.`kernel-helpers`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
   )
   def mvnDeps = Seq(
@@ -492,7 +459,8 @@ trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with AlmondMi
   )
 }
 
-trait AlmondRx extends Cross.Module[String] with AlmondModule with AlmondMima {
+/** Not published any more - only kept around to be built and tested here */
+trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   def crossScalaVersion = crossValue
   def compileModuleDeps = Seq(
     scala.`scala-kernel-api`()
@@ -505,7 +473,7 @@ trait AlmondRx extends Cross.Module[String] with AlmondModule with AlmondMima {
 trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondMima {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
-    scala.`jupyter-api`()
+    api()
   )
   def mvnDeps = Seq(
     mvn"com.fasterxml.jackson.module::jackson-module-scala:2.22.2"
@@ -518,56 +486,42 @@ trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondM
   }
 }
 
-trait Echo extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
+// The echo kernel is a demo kernel, only built and published for Scala 3
+object echo extends AlmondSimpleModule {
+  private def sv   = ScalaVersions.scala3Compat
+  def scalaVersion = sv
   def moduleDeps = Seq(
-    shared.kernel()
+    shared.kernel(sv)
   )
   def mvnDeps = Seq(
     Deps.caseApp
   )
   def propertyFilePath = "almond/echo.properties"
-  object test extends CrossSbtModuleTests with AlmondTestModule {
+  object test extends SbtTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
-      shared.test()
+      shared.test
     )
-    // Getting transient errors upon incremental compilation without this
-    def scalacOptions = super.scalacOptions
   }
 }
 
-trait ToreeHooks extends Cross.Module[String] with AlmondModule {
-  def crossScalaVersion = crossValue
-  def compileModuleDeps = super.compileModuleDeps ++ Seq(
-    scala.`scala-kernel-api`(ScalaVersions.binary(crossScalaVersion))
-  )
-}
+object api extends Cross[Api](ScalaVersions.binaries)
 
 object shared extends Module {
   object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.scala2Binaries)
-  object logger                 extends Cross[Logger](ScalaVersions.binaries)
-  object channels               extends Cross[Channels](ScalaVersions.binaries)
-  object protocol               extends Cross[Protocol](ScalaVersions.binaries)
-  object `interpreter-api`      extends Cross[InterpreterApi](ScalaVersions.binaries)
-  object interpreter            extends Cross[Interpreter](ScalaVersions.binaries)
   object kernel                 extends Cross[Kernel](ScalaVersions.binaries)
-  object test                   extends Cross[Test](ScalaVersions.binaries)
+  object test                   extends Test
   object `test-kit`             extends Cross[TestKit](ScalaVersions.all)
 }
 
 object scala extends Module {
-  object `jupyter-api`       extends Cross[JupyterApi](ScalaVersions.binaries)
   object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.binaries)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.binaries)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
-  object `coursier-logger`   extends Cross[CoursierLogger](ScalaVersions.binaries)
-  object `shared-directives` extends Cross[SharedDirectives](ScalaVersions.binaries)
+  object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
   object launcher            extends Launcher
   object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
   object `json-api-jackson`  extends Cross[JsonApiJackson](ScalaVersions.binaries)
-
-  object `toree-hooks` extends Cross[ToreeHooks](ScalaVersions.binaries)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
   object integration        extends Integration
@@ -581,21 +535,9 @@ object `local-repo` extends Module {
       Seq(
         scala.`almond-scalapy`(sv),
         shared.kernel(sv),
-        shared.interpreter(sv),
-        shared.`interpreter-api`(sv),
-        shared.protocol(sv),
-        shared.channels(sv),
-        shared.logger(sv),
-        scala.`jupyter-api`(sv),
-        scala.`toree-hooks`(sv),
+        api(sv),
         scala.`json-api-jackson`(sv),
-        scala.`coursier-logger`(sv),
-        scala.`shared-directives`(sv)
-      )
-    }
-    val binary2Modules = ScalaVersions.scala2Binaries.flatMap { sv =>
-      Seq(
-        shared.`logger-scala2-macros`(sv)
+        scala.`kernel-helpers`(sv)
       )
     }
     val kernelModules = ScalaVersions.binaries.flatMap { sv =>
@@ -609,7 +551,7 @@ object `local-repo` extends Module {
       scala.launcher
     )
 
-    binaryModules ++ binary2Modules ++ kernelModules ++ simpleModules
+    binaryModules ++ kernelModules ++ simpleModules
   }
   def localRepo: T[PathRef] = {
     val allRepos = Task.sequence(allModules.map(_.publishLocalTestRepo))
@@ -660,7 +602,7 @@ trait Examples extends SbtModule {
 trait TestKit extends Cross.Module[String] with AlmondCrossSbtModule {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
-    shared.interpreter()
+    shared.kernel()
   )
   def mvnDeps = super.mvnDeps() ++ Seq(
     Deps.expecty,
@@ -775,8 +717,6 @@ trait Integration extends SbtModule {
     }
   }
 }
-
-object echo extends Cross[Echo](ScalaVersions.binaries)
 
 object docs extends ScalaModule with AlmondRepositories {
   private def scalaVersion0 = ScalaVersions.scala213
