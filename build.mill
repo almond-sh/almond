@@ -848,7 +848,8 @@ object dev extends Module {
     val specialLauncher =
       if (fast) scala.launcher.fastLauncher
       else scala.launcher.launcher
-    Task.Command {
+    // persistent, so that the kernel specs under Task.dest stay around for the background server
+    Task.Command(persistent = true) {
       val jupyterDir       = Task.dest / "jupyter"
       val launcher0        = launcher().path
       val specialLauncher0 = specialLauncher().path
@@ -872,6 +873,8 @@ object dev extends Module {
         JupyterServer.jupyterServer(
           uv,
           javaHome,
+          mill.javalib.JvmWorkerModule.backgroundWrapperClasspath().map(_.path),
+          jupyterBackgroundDir(),
           launcher0,
           specialLauncher0,
           jupyterDir,
@@ -881,6 +884,19 @@ object dev extends Module {
           localRepoRoot
         )
     }
+  }
+
+  /** Where the JupyterLab server started in the background by the jupyter* commands is tracked */
+  def jupyterBackgroundDir = Task(persistent = true) {
+    Task.dest
+  }
+
+  /** Stops the JupyterLab server started in the background by the jupyter* commands, if any */
+  def jupyterStop() = Task.Command {
+    if (JupyterServer.stopBackground(jupyterBackgroundDir()))
+      System.err.println("Stopped the JupyterLab server")
+    else
+      System.err.println("No JupyterLab server running")
   }
 
   def jupyter(args: String*) =

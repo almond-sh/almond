@@ -40,7 +40,16 @@ $ ./mill -i dev.jupyterFast
 
 This should
 - build an almond launcher, then
-- start JupyterLab in the current directory.
+- start JupyterLab in the current directory, in the background.
+
+Like `runBackground` in Mill, this command returns once JupyterLab is started, and
+prints the URLs it can be reached at. JupyterLab keeps running in the background, so
+that you can keep using mill (to rebuild the kernel launcher for example). Running the
+command again restarts JupyterLab, and
+```text
+$ ./mill dev.jupyterStop
+```
+stops it. Its output goes to `stderr.log` in the directory printed by the command.
 
 Neither JupyterLab nor Python need to be installed: the command downloads
 [uv](https://docs.astral.sh/uv/), which then sets up a Python environment with the

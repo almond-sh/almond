@@ -2,6 +2,11 @@ package almondbuild
 
 import mill.api.PathRef
 
+import java.io.File
+
+import scala.jdk.OptionConverters.*
+import scala.util.Properties
+
 object JupyterServer {
 
   def kernelId        = "scala-debug"
@@ -97,10 +102,10 @@ object JupyterServer {
     ) ++ baseUrlOpt
   }
 
-  /** Runs the passed Jupyter command from `workspace`, with the raw terminal I/O inherited (rather
-    * than mill's redirected streams, which `os.Inherit` would use), killing it if the JVM
-    * exits first (upon Ctrl-C for example). The kernels Jupyter starts pick up the JVM at
-    * `javaHome`, via `JAVA_HOME` and `PATH`.
+  /** Runs the passed interactive Jupyter command from `workspace`, with the raw terminal I/O
+    * inherited (rather than mill's redirected streams, which `os.Inherit` would use), killing it
+    * if the JVM exits first (upon Ctrl-C for example). The kernels Jupyter starts pick up the JVM
+    * at `javaHome`, via `JAVA_HOME` and `PATH`.
     */
   private def runJupyter(
     command: Seq[String],
@@ -127,6 +132,106 @@ object JupyterServer {
     val retCode = proc.exitCode()
     if (retCode != 0)
       System.err.println(s"Jupyter command exited with code $retCode")
+  }
+
+  // JupyterLab runs in the background, the same way `runBackground` works in Mill: it is
+  // started via Mill's `MillBackgroundWrapper` (in "subprocess" mode), which keeps track of
+  // the running process in the files below. The wrapper kills JupyterLab and exits as soon as
+  // the "newest PID" file doesn't contain its own PID anymore, which happens when a new server
+  // takes over, when `jupyterStop` is called, or when the directory gets cleaned.
+  private def newestPidFile(backgroundDir: os.Path)  = backgroundDir / "newest-pid"
+  private def currentPidFile(backgroundDir: os.Path) = backgroundDir / "currently-running-pid"
+  def stderrLog(backgroundDir: os.Path): os.Path     = backgroundDir / "stderr.log"
+
+  private def runningProcess(backgroundDir: os.Path): Option[ProcessHandle] =
+    Option(currentPidFile(backgroundDir))
+      .filter(os.exists(_))
+      .flatMap(f => os.read(f).trim.toLongOption)
+      .flatMap(pid => ProcessHandle.of(pid).toScala)
+      .filter(_.isAlive)
+
+  /** Stops the JupyterLab server started in the background from `backgroundDir`, if any.
+    *
+    * @return whether a server was running
+    */
+  def stopBackground(backgroundDir: os.Path): Boolean =
+    runningProcess(backgroundDir) match {
+      case None => false
+      case Some(wrapper) =>
+        os.write.over(newestPidFile(backgroundDir), "stopped", createFolders = true)
+        val deadline = System.currentTimeMillis() + 10000L
+        while (wrapper.isAlive && System.currentTimeMillis() < deadline)
+          Thread.sleep(100L)
+        if (wrapper.isAlive) {
+          wrapper.descendants().forEach(_.destroyForcibly())
+          wrapper.destroyForcibly()
+        }
+        true
+    }
+
+  private def startBackground(
+    javaHome: os.Path,
+    wrapperClassPath: Seq[os.Path],
+    backgroundDir: os.Path,
+    command: Seq[String],
+    cwd: os.Path,
+    env: Map[String, String]
+  ): Unit = {
+    // Stop the current server first, so that the logs below only contain the new server's output
+    if (stopBackground(backgroundDir))
+      System.err.println("Stopped the previous JupyterLab server")
+    os.makeDir.all(backgroundDir)
+    val stdoutLog = backgroundDir / "stdout.log"
+    val stderrLog0 = stderrLog(backgroundDir)
+    val javaExe = javaHome / "bin" / (if (Properties.isWin) "java.exe" else "java")
+    val wrapperArgs = Seq(
+      newestPidFile(backgroundDir),
+      currentPidFile(backgroundDir),
+      backgroundDir / "lock",
+      backgroundDir / "log"
+    ).map(_.toString)
+    val proc = os.proc(
+      javaExe,
+      "-cp",
+      wrapperClassPath.map(_.toString).mkString(File.pathSeparator),
+      "mill.javalib.backgroundwrapper.MillBackgroundWrapper",
+      wrapperArgs,
+      "<subprocess>",
+      command
+    ).spawn(
+      cwd = cwd,
+      env = env,
+      stdin = "",
+      stdout = stdoutLog,
+      stderr = stderrLog0,
+      destroyOnExit = false
+    )
+
+    // Wait for JupyterLab to print the URLs it can be reached at, and print them
+    val deadline = System.currentTimeMillis() + 120000L
+    def urlLines(): Seq[String] = {
+      val lines = if (os.exists(stderrLog0)) os.read.lines(stderrLog0) else Nil
+      lines.dropWhile(!_.contains("is running at")).drop(1).takeWhile(_.contains("://"))
+    }
+    var urls = urlLines()
+    while (urls.isEmpty && proc.isAlive() && System.currentTimeMillis() < deadline) {
+      Thread.sleep(500L)
+      urls = urlLines()
+    }
+    if (!proc.isAlive()) {
+      val log = if (os.exists(stderrLog0)) os.read.lines(stderrLog0).takeRight(30) else Nil
+      System.err.println(log.mkString(System.lineSeparator()))
+      sys.error(s"JupyterLab exited early, see $stderrLog0")
+    }
+    System.err.println("JupyterLab is running in the background" + (if (urls.isEmpty) "" else " at:"))
+    for (line <- urls)
+      System.err.println("  " + line.trim)
+    val followCommand =
+      if (Properties.isWin) s"Get-Content -Wait $stderrLog0" // PowerShell
+      else s"tail -f $stdoutLog $stderrLog0"
+    System.err.println(s"Its output goes to $stdoutLog and $stderrLog0, follow it with")
+    System.err.println(s"  $followCommand")
+    System.err.println("Stop it with './mill dev.jupyterStop', or run this command again to restart it")
   }
 
   private def writeKernelJsons(
@@ -162,6 +267,8 @@ object JupyterServer {
   def jupyterServer(
     uv: os.Path,
     javaHome: os.Path,
+    wrapperClassPath: Seq[os.Path],
+    backgroundDir: os.Path,
     launcher: os.Path,
     specialLauncher: os.Path,
     jupyterDir: os.Path,
@@ -186,7 +293,15 @@ object JupyterServer {
     val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
       baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
       args0
-    runJupyter(command, workspace, jupyterDir, javaHome)
+    System.err.println(s"JAVA_HOME=$javaHome")
+    startBackground(
+      javaHome,
+      wrapperClassPath,
+      backgroundDir,
+      command,
+      workspace,
+      JavaHomes.environment(javaHome) + ("JUPYTER_PATH" -> jupyterDir.toString)
+    )
   }
 
   def jupyterConsole(
