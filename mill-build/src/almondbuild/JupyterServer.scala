@@ -1,5 +1,7 @@
 package almondbuild
 
+import mill.api.PathRef
+
 import java.nio.file.*
 
 object JupyterServer {
@@ -17,11 +19,10 @@ object JupyterServer {
     name: String,
     extraArgs: String*
   ): Unit = {
-    val launcherPath = launcher.toAbsolutePath.toString
-    val dir          = jupyterDir.resolve(s"kernels/$kernelId")
+    val dir = jupyterDir.resolve(s"kernels/$kernelId")
     Files.createDirectories(dir)
     val baseArgs = Seq(
-      launcherPath.toString,
+      PathRef.toAbsString(os.Path(launcher.toAbsolutePath)),
       "--log",
       "debug",
       "--connection-file",
@@ -32,7 +33,7 @@ object JupyterServer {
       "--silent-imports",
       "--use-notebook-coursier-logger",
       "--extra-repository",
-      localRepoRoot.toNIO.toUri.toASCIIString
+      PathRef.toAbsNioPath(localRepoRoot).toUri.toASCIIString
     )
     val kernelJson = ujson.Obj(
       "language"     -> ujson.Str("scala"),
