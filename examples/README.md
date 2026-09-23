@@ -3,11 +3,13 @@ The examples in this directory are there mostly for test purposes.
 See the [examples repository](https://github.com/almond-sh/examples) for
 more detailed and user-friendly examples.
 
-To generate `requirements.txt`, do something along those lines:
-```text
-$ docker run -it --rm python /bin/bash
-# pip install nbconvert==6.5.3 jupyter-console==6.4.4
-# pip freeze
-```
+The Jupyter setup used to run them (by `./mill scala.examples.test`, and by the
+`./mill dev.jupyter*` commands) is described by `pyproject.toml`, with exact versions
+pinned in `uv.lock`. It is managed with [uv](https://docs.astral.sh/uv/): the build
+runs `uv run --project examples --frozen jupyter …`, so that only uv needs to be installed.
 
-(Copy the output of `pip freeze` to `requirements.txt`.)
+To update the pinned versions, run
+```text
+$ uv lock --upgrade
+```
+from this directory (or `uv lock --upgrade-package nbconvert` to bump a single package).

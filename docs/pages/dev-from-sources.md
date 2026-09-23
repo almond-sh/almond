@@ -42,6 +42,11 @@ This should
 - build an almond launcher, then
 - start JupyterLab in the current directory.
 
+JupyterLab itself doesn't need to be installed: the command runs it through
+[uv](https://docs.astral.sh/uv/), which sets up a Python environment with the
+Jupyter versions pinned in `examples/uv.lock` on the fly. Only uv itself needs
+to be installed and in your `PATH`.
+
 From the JupyterLab instance, select the kernel "Scala (sources)".
 
 Optionally, pass a Scala version and / or JupyterLab options, like

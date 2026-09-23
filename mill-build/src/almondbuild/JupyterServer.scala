@@ -9,6 +9,31 @@ object JupyterServer {
   def kernelId        = "scala-debug"
   def specialKernelId = "scala-special-debug"
 
+  /** Runs `jupyter` from the uv-managed environment described by `examples/pyproject.toml`, so that
+    * users don't need Jupyter (or even Python) installed: uv creates the environment on the fly,
+    * with the versions pinned in `examples/uv.lock`.
+    */
+  def jupyterCommand(workspace: os.Path, jupyterArgs: String*): Seq[String] =
+    Seq(
+      "uv",
+      "run",
+      "--project",
+      (workspace / "examples").toString,
+      "--frozen",
+      "jupyter"
+    ) ++ jupyterArgs
+
+  private def startProcess(b: ProcessBuilder): Process =
+    try b.start()
+    catch {
+      case e: java.io.IOException if e.getMessage != null && e.getMessage.contains("\"uv\"") =>
+        throw new Exception(
+          "Cannot run 'uv', which is used to set up Jupyter. " +
+            "Install it from https://docs.astral.sh/uv/ and make sure it is in your PATH.",
+          e
+        )
+    }
+
   def writeKernelJson(
     launcher: Path,
     jupyterDir: Path,
@@ -77,12 +102,12 @@ object JupyterServer {
     )
 
     os.makeDir.all(workspace / "notebooks")
-    val jupyterCommand = Seq("jupyter", "lab", "--notebook-dir", "notebooks")
-    val b              = new ProcessBuilder((jupyterCommand ++ args)*).inheritIO()
-    val env            = b.environment()
+    val command = jupyterCommand(workspace, "lab", "--notebook-dir", "notebooks")
+    val b       = new ProcessBuilder((command ++ args)*).inheritIO()
+    val env     = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
     b.directory(workspace.toIO)
-    val p = b.start()
+    val p = startProcess(b)
     val hook: Thread = new Thread("jupyter-stop") {
       override def run() =
         if (p.isAlive)
@@ -124,11 +149,11 @@ object JupyterServer {
       "Scala (special, sources)"
     )
 
-    val jupyterCommand = Seq("jupyter", "console", s"--kernel=$kernelId")
-    val b   = new ProcessBuilder((jupyterCommand ++ args)*).directory(workspace.toIO).inheritIO()
-    val env = b.environment()
+    val command = jupyterCommand(workspace, "console", s"--kernel=$kernelId")
+    val b       = new ProcessBuilder((command ++ args)*).directory(workspace.toIO).inheritIO()
+    val env     = b.environment()
     env.put("JUPYTER_PATH", jupyterDir.toAbsolutePath.toString)
-    val p = b.start()
+    val p = startProcess(b)
     val hook: Thread = new Thread("jupyter-stop") {
       override def run() =
         if (p.isAlive)
