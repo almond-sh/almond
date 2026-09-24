@@ -878,27 +878,32 @@ object docs extends ScalaModule with AlmondRepositories {
 
 object dev extends Module {
 
-  def jupyterSetup(args: Seq[String], fast: Boolean) = {
-    val (sv, args0) = args match {
+  /** The Scala versions the kernels of the JupyterLab server commands run, by default. */
+  private def defaultJupyterScalaVersions = Seq(ScalaVersions.scala213, ScalaVersions.scala3Latest)
+
+  /** Splits a leading Scala version, if any, from the arguments of the jupyter commands. */
+  private def splitScalaVersion(args: Seq[String]): (Option[String], Seq[String]) =
+    args match {
       case Seq(sv, rem @ _*) if sv.startsWith("2.") || sv.startsWith("3.") =>
-        (sv, rem)
-      case _ => (ScalaVersions.scala213, args)
+        (Some(sv), rem)
+      case _ => (None, args)
     }
-    val kernelLauncher = scala.`scala-kernel`(ScalaVersions.binary(sv)).launchers(sv)
-    val launcher =
-      if (fast) kernelLauncher.fastLauncher
-      else kernelLauncher.launcher
-    val specialLauncher =
-      if (fast) scala.launcher.fastLauncher
-      else scala.launcher.launcher
-    (sv, args0, launcher, specialLauncher)
+
+  private def kernelLauncher(sv: String, fast: Boolean) = {
+    val launchers = scala.`scala-kernel`(ScalaVersions.binary(sv)).launchers(sv)
+    if (fast) launchers.fastLauncher
+    else launchers.launcher
   }
 
-  /** The JVM the Jupyter commands run a kernel with: the configured one, unless the Scala version
-    * needs an older one
+  /** The JVM the Jupyter commands run kernels with: the configured one, unless one of the Scala
+    * versions of the kernels needs an older one (then the oldest one needed, which all the kernels
+    * share, as they get it from the environment of Jupyter)
     */
-  def devJvm(sv: String): String =
-    ScalaVersions.jvmVersionFor(sv).getOrElse(Versions.devJvm)
+  def devJvm(scalaVersions: String*): String =
+    scalaVersions
+      .flatMap(ScalaVersions.jvmVersionFor)
+      .minByOption(_.toInt)
+      .getOrElse(Versions.devJvm)
 
   /** The package.json and package-lock.json files of the ACP agents for Jupyter AI */
   def acpAgentsFiles = Task.Sources(
@@ -928,47 +933,72 @@ object dev extends Module {
       .map(PathRef(_))
   }
 
-  /** Starts a JupyterLab server in the background, and returns the log files to tail to follow its
-    * output (`./mill show dev.jupyterFast …` prints them as JSON)
+  private def specialLauncher(fast: Boolean) =
+    if (fast) scala.launcher.fastLauncher
+    else scala.launcher.launcher
+
+  /** The Scala versions the JupyterLab commands run kernels for: those of
+    * [[defaultJupyterScalaVersions]], where a Scala version passed as first argument replaces the
+    * default one of its binary Scala version, or is added to the defaults. Returns these along with
+    * the remaining arguments, a task building their kernel launchers, and one building the special
+    * launcher.
+    */
+  private def jupyterLabSetup(args: Seq[String], fast: Boolean) = {
+    val (svOpt, args0) = splitScalaVersion(args)
+    val scalaVersions = svOpt match {
+      case Some(sv) =>
+        val binary = ScalaVersions.binarySuffix(sv)
+        val others = defaultJupyterScalaVersions.filter(ScalaVersions.binarySuffix(_) != binary)
+        (Seq(sv) ++ others).sortBy(Version(_))
+      case None => defaultJupyterScalaVersions
+    }
+    val launchers = Task.sequence(scalaVersions.map(kernelLauncher(_, fast)))
+    (scalaVersions, args0, launchers, specialLauncher(fast))
+  }
+
+  /** Starts a JupyterLab server in the background, with one kernel per Scala version (see
+    * [[jupyterLabSetup]]), and returns the log files to tail to follow its output (`./mill show
+    * dev.jupyterFast …` prints them as JSON)
     */
   def jupyterServer0(args: Seq[String], fast: Boolean) = {
-    val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
+    val (scalaVersions, args0, launchers, specialLauncher) = jupyterLabSetup(args, fast)
     // persistent, so that the kernel specs under Task.dest stay around for the background server
     Task.Command(persistent = true) {
       JupyterServer.jupyterServer(
         UvLauncher.uv(Versions.uv),
-        JavaHomes.javaHome(devJvm(sv)),
+        JavaHomes.javaHome(devJvm(scalaVersions*)),
         mill.javalib.JvmWorkerModule.backgroundWrapperClasspath().map(_.path),
         jupyterBackgroundDir(),
-        launcher().path,
+        scalaVersions.zip(launchers().map(_.path)),
         specialLauncher().path,
         Task.dest / "jupyter",
         args0,
         BuildCtx.workspaceRoot,
-        scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
+        scala.`scala-kernel`(ScalaVersions.binary(scalaVersions.head)).publishVersion(),
         `local-repo`.localRepo().path,
         acpAgents().map(_.path)
       )
     }
   }
 
-  /** Prints the command to run JupyterLab with a kernel built from sources, as a shell command
-    * line: a `cd` to the workspace, the environment variables to set, then the command itself. Use
-    * `./mill show` to get it as a JSON string, that can be passed to `eval`.
+  /** Prints the command to run JupyterLab with kernels built from sources (one per Scala version,
+    * see [[jupyterLabSetup]]), as a shell command line: a `cd` to the workspace, the environment
+    * variables to set, then the command itself. Use `./mill show` to get it as a JSON string, that
+    * can be passed to `eval`.
     */
   def jupyterCmd0(args: Seq[String], fast: Boolean) = {
-    val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
+    val (scalaVersions, args0, launchers, specialLauncher) = jupyterLabSetup(args, fast)
     // persistent, so that the kernel specs under Task.dest stay around when the command is run
     Task.Command(persistent = true) {
       val cmd = JupyterServer.jupyterLabCommand(
         UvLauncher.uv(Versions.uv),
-        JavaHomes.javaHome(devJvm(sv)),
-        launcher().path,
+        JavaHomes.javaHome(devJvm(scalaVersions*)),
+        scalaVersions.zip(launchers().map(_.path)),
         specialLauncher().path,
         Task.dest / "jupyter",
         args0,
         BuildCtx.workspaceRoot,
-        scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
+        scala.`scala-kernel`(ScalaVersions.binary(scalaVersions.head)).publishVersion(),
         `local-repo`.localRepo().path,
         acpAgents().map(_.path)
       )
@@ -976,20 +1006,25 @@ object dev extends Module {
     }
   }
 
-  /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`).
+  /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`), on a kernel
+    * running the Scala version passed as first argument, or Scala 2.13 by default.
     *
     * Exclusive, like `cli.run` in the coursier build: Mill runs it once every other task is done,
     * with its prompt / ticker disabled, so that only the console is writing to the terminal (the
     * console gets the raw terminal I/O via `os.InheritRaw`).
     */
   def jupyterConsole0(args: Seq[String], fast: Boolean) = {
-    val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
+    val (svOpt, args0)   = splitScalaVersion(args)
+    val sv               = svOpt.getOrElse(ScalaVersions.scala213)
+    val launcher         = kernelLauncher(sv, fast)
+    val specialLauncher0 = specialLauncher(fast)
     Task.Command(exclusive = true) {
       JupyterServer.jupyterConsole(
         UvLauncher.uv(Versions.uv),
         JavaHomes.javaHome(devJvm(sv)),
+        sv,
         launcher().path,
-        specialLauncher().path,
+        specialLauncher0().path,
         Task.dest / "jupyter",
         args0,
         BuildCtx.workspaceRoot,
