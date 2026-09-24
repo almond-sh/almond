@@ -1,0 +1,8 @@
+{
+  "services": {
+    "jupyter": {
+      "command": "set -o pipefail; eval \"$(./mill show dev.jupyterCmdFast --ip=0.0.0.0 --base-address={external_https_proxy_url} --port={bind_port} --no-browser --IdentityProvider.token= --ServerApp.password= | jq -r .)\"",
+      "proxy": true
+    }
+  }
+}

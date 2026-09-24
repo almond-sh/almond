@@ -40,7 +40,26 @@ $ ./mill -i dev.jupyterFast
 
 This should
 - build an almond launcher, then
-- start JupyterLab in the current directory.
+- start JupyterLab in the current directory, in the background.
+
+Like `runBackground` in Mill, this command returns once JupyterLab is started, and
+prints the URLs it can be reached at. JupyterLab keeps running in the background, so
+that you can keep using mill (to rebuild the kernel launcher for example). Running the
+command again restarts JupyterLab, and
+```text
+$ ./mill dev.jupyterStop
+```
+stops it. Its output goes to log files printed by the command. The command also
+returns their paths, so that `./mill show` prints them as JSON, which allows to
+start JupyterLab and follow its output in one go:
+```text
+$ ./mill show dev.jupyterFast | jq -r '.[]' | xargs tail -f
+```
+
+Neither JupyterLab nor Python need to be installed: the command downloads
+[uv](https://docs.astral.sh/uv/), which then sets up a Python environment with the
+Jupyter versions pinned in `examples/uv.lock` on the fly. To use a `uv` binary
+you already have instead, set the `ALMOND_UV` environment variable to its path.
 
 From the JupyterLab instance, select the kernel "Scala (sources)".
 
@@ -51,6 +70,38 @@ $ ./mill -i dev.jupyterFast --ip=192.168.0.1
 $ ./mill -i dev.jupyterFast 2.12.21 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.)
+
+If you reach JupyterLab through a reverse proxy that handles HTTPS (Tailscale
+serve for example), pass the address you use in your browser with `--base-address`:
+```text
+$ ./mill -i dev.jupyterFast --base-address=https://pc-home.tail381281.ts.net:36227 --no-browser
+```
+JupyterLab then displays its URLs with that address, accepts requests and websocket
+connections coming through it, and trusts the `X-Forwarded-*` headers set by the
+proxy. Other options (like `--no-browser` above, or `--port=…` to pick the local
+port the proxy forwards to) are passed to JupyterLab as is.
+
+## Get the command to run JupyterLab yourself
+
+```text
+$ ./mill show dev.jupyterCmdFast
+```
+
+This builds the launcher and writes the kernel specs like `dev.jupyterFast` does, but
+instead of starting JupyterLab, it prints the shell command line to do so, as a JSON
+string: a `cd` to the workspace, the environment variables to set, then the command
+itself, quoted as needed for POSIX shells:
+```text
+"cd /path/to/almond && JAVA_HOME=… PATH=… JUPYTER_PATH=… …/uv run --project /path/to/almond/examples --frozen jupyter lab …"
+```
+
+Pass it to `eval` to run JupyterLab, with jq for example:
+```text
+$ ( eval "$(./mill show dev.jupyterCmdFast | jq -r .)" )
+```
+(The subshell keeps the `cd` from changing the current directory of your shell.)
+Like `dev.jupyterFast`, it accepts a Scala version and JupyterLab options.
+`dev.jupyterCmd` does the same with a standalone launcher.
 
 ## Build a kernel launcher
 

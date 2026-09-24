@@ -1,0 +1,14 @@
+[project]
+name = "almond-examples"
+version = "0.0.0"
+description = "Jupyter environment used to run the almond example notebooks and the dev.jupyter* mill commands"
+requires-python = ">=3.10"
+dependencies = [
+  "jupyter-client>=8",
+  "jupyter-console>=6.6",
+  "jupyterlab>=4",
+  "nbconvert>=7.17",
+]
+
+[tool.uv]
+package = false
