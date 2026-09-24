@@ -55,7 +55,10 @@ final case class LauncherOptions(
   @ExtraName("tmpOutputDir")
     tmpOutputDirectory: Option[Boolean] = None,
   @Hidden
-    logCode: Option[Boolean] = None
+    logCode: Option[Boolean] = None,
+  @HelpMessage("Print the Almond version and exit")
+  @Name("v")
+    version: Boolean = false
 ) {
   // format: on
 
