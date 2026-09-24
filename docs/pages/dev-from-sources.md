@@ -63,6 +63,16 @@ you already have instead, set the `ALMOND_UV` environment variable to its path.
 
 From the JupyterLab instance, select the kernel "Scala (sources)".
 
+The same server also serves the Jupyter Notebook UI (the classic, single-document
+one, [Notebook 7](https://jupyter-notebook.readthedocs.io/)) under `/tree`, next to
+JupyterLab under `/lab`. Switch between them from the View menu ("Launch Jupyter
+Notebook File Browser" or "Open in Jupyter Notebook" in JupyterLab, "Open in
+JupyterLab" in the notebook UI), or change the URL by hand. To land on the classic
+UI by default, pass `--classic`:
+```text
+$ ./mill -i dev.jupyterFast --classic
+```
+
 Optionally, pass a Scala version and / or JupyterLab options, like
 ```text
 $ ./mill -i dev.jupyterFast 2.12.21
@@ -100,8 +110,8 @@ Pass it to `eval` to run JupyterLab, with jq for example:
 $ ( eval "$(./mill show dev.jupyterCmdFast | jq -r .)" )
 ```
 (The subshell keeps the `cd` from changing the current directory of your shell.)
-Like `dev.jupyterFast`, it accepts a Scala version and JupyterLab options.
-`dev.jupyterCmd` does the same with a standalone launcher.
+Like `dev.jupyterFast`, it accepts a Scala version, `--classic`, `--base-address`, and
+JupyterLab options. `dev.jupyterCmd` does the same with a standalone launcher.
 
 ## Build a kernel launcher
 
