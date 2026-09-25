@@ -910,6 +910,34 @@ object dev extends Module {
   def devJvm(sv: String): String =
     ScalaVersions.jvmVersionFor(sv).getOrElse(Versions.devJvm)
 
+  /** The package.json and package-lock.json files of the ACP agents for Jupyter AI */
+  def acpAgentsFiles = Task.Sources(
+    BuildCtx.workspaceRoot / "examples" / "acp-agents" / "package.json",
+    BuildCtx.workspaceRoot / "examples" / "acp-agents" / "package-lock.json"
+  )
+
+  /** The `npm` command on the `PATH`, if any: an input, so that the ACP agents get installed once
+    * npm is, without the need to clean anything
+    */
+  def acpAgentsNpm = Task.Input {
+    AcpAgents.findNpm().map(_.toString)
+  }
+
+  /** Installs the ACP agents Jupyter AI uses for its Claude and Codex personas, and returns the
+    * directory with their commands (`None` if npm isn't available)
+    */
+  def acpAgents = Task {
+    val Seq(packageJson, packageLock) = acpAgentsFiles()
+    AcpAgents
+      .install(
+        acpAgentsNpm().map(os.Path(_)),
+        packageJson.path,
+        packageLock.path,
+        Task.dest
+      )
+      .map(PathRef(_))
+  }
+
   /** Starts a JupyterLab server in the background, and returns the log files to tail to follow its
     * output (`./mill show dev.jupyterFast …` prints them as JSON)
     */
@@ -928,7 +956,8 @@ object dev extends Module {
         args0,
         BuildCtx.workspaceRoot,
         scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
-        `local-repo`.localRepo().path
+        `local-repo`.localRepo().path,
+        acpAgents().map(_.path)
       )
     }
   }
@@ -950,7 +979,8 @@ object dev extends Module {
         args0,
         BuildCtx.workspaceRoot,
         scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
-        `local-repo`.localRepo().path
+        `local-repo`.localRepo().path,
+        acpAgents().map(_.path)
       )
       cmd.shellCommand
     }

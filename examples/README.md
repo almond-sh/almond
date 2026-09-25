@@ -11,7 +11,17 @@ downloads uv itself (see `UvLauncher` in `mill-build`) and runs
 beforehand. Set the `ALMOND_UV` environment variable to the path of a `uv` binary to use
 that one instead of the downloaded one.
 
-To update the pinned versions, run
+The dev.jupyter* commands starting JupyterLab also install the `ai` dependency group,
+with [Jupyter AI](https://jupyter-ai.readthedocs.io/). The ACP agents its Claude and
+Codex personas talk to are npm packages, described by `acp-agents/package.json`, with
+exact versions pinned in `acp-agents/package-lock.json`. The build installs them with
+`npm ci` (see `AcpAgents` in `mill-build`), if npm is available. To update them, run
+```text
+$ npm install --package-lock-only --save-exact @agentclientprotocol/claude-agent-acp@latest @agentclientprotocol/codex-acp@latest
+```
+from `acp-agents`.
+
+To update the pinned Python versions, run
 ```text
 $ uv lock --upgrade
 ```

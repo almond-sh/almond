@@ -57,6 +57,20 @@ you already have instead, set the `ALMOND_UV` environment variable to its path.
 
 From the JupyterLab instance, select the kernel "Scala (sources)".
 
+JupyterLab comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
+you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
+(speech bubbles icon), click "New chat", then pick an agent from the menu at the
+bottom left of the message box (it shows "No one" initially). Chats are saved as
+`.chat` files, next to the notebooks.
+
+Jupyter AI talks to Claude and Codex through the [ACP](https://agentclientprotocol.com/)
+agents `claude-agent-acp` and `codex-acp`, that the command installs with npm, at the versions pinned in
+`examples/acp-agents/package-lock.json` (nothing gets installed globally). This
+requires Node.js 22 or later on the `PATH`: without npm, the command only prints a
+warning, and these two personas aren't available. The agents use your existing
+Claude Code and Codex credentials (or the `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`
+environment variables).
+
 The same server also serves the Jupyter Notebook UI (the classic, single-document
 one, [Notebook 7](https://jupyter-notebook.readthedocs.io/)) under `/tree`, next to
 JupyterLab under `/lab`. Switch between them from the View menu ("Launch Jupyter

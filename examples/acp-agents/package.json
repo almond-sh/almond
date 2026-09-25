@@ -1,0 +1,9 @@
+{
+  "name": "almond-acp-agents",
+  "private": true,
+  "description": "ACP agents (Claude, Codex) for the Jupyter AI install of the dev.jupyter* mill commands",
+  "dependencies": {
+    "@agentclientprotocol/claude-agent-acp": "0.81.2",
+    "@agentclientprotocol/codex-acp": "1.13.1"
+  }
+}
