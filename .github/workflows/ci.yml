@@ -41,7 +41,10 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
-    - run: ./mill -i scala.examples.test
+    # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
+    - run: .github/scripts/selective-prepare.sh
+      shell: bash
+    - run: ./mill -i selective.run scala.examples.test
 
   test:
     needs: scala-versions
@@ -65,21 +68,24 @@ jobs:
       with:
         jvm: 21
         apps:
+    # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
+    - run: .github/scripts/selective-prepare.sh
+      shell: bash
     # Modules are built once per binary Scala version, and their tests once per full Scala
     # version - the former selector runs the tests of the modules that have no full Scala
     # version cross, the latter the tests of those that do. The latter names the test task
     # explicitly, so that modules that merely happen to be named "test" are left out.
     - run: |
-        ./mill -i "__[$BINARY_SCALA].test"
-        ./mill -i "__.test[$SCALA].testForked"
+        ./mill -i selective.run "__[$BINARY_SCALA].test"
+        ./mill -i selective.run "__.test[$SCALA].testForked"
       shell: bash
       if: runner.os != 'Windows'
       env:
         SCALA: ${{ matrix.SCALA.scalaVersion }}
         BINARY_SCALA: ${{ matrix.SCALA.binaryScalaVersion }}
     - run: |
-        ./mill -i __[%BINARY_SCALA%].test
-        ./mill -i __.test[%SCALA%].testForked
+        ./mill -i selective.run __[%BINARY_SCALA%].test
+        ./mill -i selective.run __.test[%SCALA%].testForked
       if: runner.os == 'Windows'
       env:
         SCALA: ${{ matrix.SCALA.scalaVersion }}
@@ -98,7 +104,10 @@ jobs:
       with:
         jvm: 21
         apps:
-    - run: ./mill -i echo.test
+    # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
+    - run: .github/scripts/selective-prepare.sh
+      shell: bash
+    - run: ./mill -i selective.run echo.test
       shell: bash
 
   integration-tests:
@@ -119,6 +128,9 @@ jobs:
       with:
         jvm: 21
         apps: scala-cli
+    # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
+    - run: .github/scripts/selective-prepare.sh
+      shell: bash
     # Retry the whole suite once as a backstop: the integration tests occasionally hit transient
     # infrastructure issues (overloaded runner, ZeroMQ connection timeouts) that the in-test retries
     # don't fully absorb. This is a coarse safety net - the per-test retries and the ZeroMQ cleanup
@@ -160,7 +172,10 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
-    - run: ./mill __.mimaReportBinaryIssues
+    # Only check the modules affected by the changes of pull requests (checks everything elsewhere)
+    - run: .github/scripts/selective-prepare.sh
+      shell: bash
+    - run: ./mill selective.run __.mimaReportBinaryIssues
       shell: bash
 
   website:

@@ -205,6 +205,21 @@ $ ./mill -w '__[2.13.3].test'
 $ ./mill -w '__.test[2.13.18]'
 ```
 
+### Only run the tests affected by the changes of a branch
+
+Once your changes are committed, record the state of the build at the commit your branch
+started from with
+```text
+$ .github/scripts/selective-prepare.sh "$(git merge-base master HEAD)"
+```
+then run the tests affected by the changes since then with
+```text
+$ ./mill selective.run '__[2.13.14].test'
+$ ./mill selective.run '__.test[2.13.18].testForked'
+```
+Use `selective.resolve` rather than `selective.run` to only print the tasks that would be run.
+This is what CI does on pull requests.
+
 ### Compile specific modules
 ```text
 $ ./mill 'scala.scala-kernel[2.13.3].compile'
