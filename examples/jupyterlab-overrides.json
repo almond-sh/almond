@@ -1,0 +1,10 @@
+{
+  "@jupyterlab/apputils-extension:themes": {
+    "adaptive-theme": true
+  },
+  "@jupyterlab/codemirror-extension:plugin": {
+    "defaultConfig": {
+      "indentUnit": "2"
+    }
+  }
+}

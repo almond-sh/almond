@@ -60,6 +60,9 @@ object JupyterServer {
     groups: Seq[String],
     jupyterArgs: String*
   ): Seq[String] =
+    uvRunCommand(uv, workspace, groups) ++ Seq("jupyter") ++ jupyterArgs
+
+  private def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
     Seq(
       PathRef.toResolvedPathString(uv),
       "run",
@@ -67,9 +70,33 @@ object JupyterServer {
       PathRef.toResolvedPathString(workspace / "examples"),
       "--frozen"
     ) ++
-      groups.flatMap(group => Seq("--group", group)) ++
-      Seq("jupyter") ++
-      jupyterArgs
+      groups.flatMap(group => Seq("--group", group))
+
+  /** Makes the JupyterLab settings in `examples/jupyterlab-overrides.json` (theme following the
+    * system one, 2-space indentation, …) the defaults of the uv-managed environment, for both
+    * JupyterLab and the Jupyter Notebook UI. Settings changed by users still take precedence.
+    *
+    * These are written to the `overrides.d` directory of the JupyterLab application settings, which
+    * lives in the Python environment (`<sys.prefix>/share/jupyter/lab/settings` usually):
+    * JupyterLab only reads default overrides from there.
+    */
+  private def writeSettingsOverrides(
+    uv: os.Path,
+    workspace: os.Path,
+    groups: Seq[String]
+  ): Unit = {
+    val appDir = os.proc(
+      uvRunCommand(uv, workspace, groups),
+      "python",
+      "-c",
+      "from jupyterlab.commands import get_app_dir; print(get_app_dir())"
+    ).call(cwd = workspace, stderr = os.Inherit).out.trim()
+    os.copy.over(
+      workspace / "examples" / "jupyterlab-overrides.json",
+      os.Path(appDir) / "settings" / "overrides.d" / "almond.json",
+      createFolders = true
+    )
+  }
 
   /** Dependency group of `examples/pyproject.toml` with Jupyter AI, installed for JupyterLab */
   private def aiGroup = "ai"
@@ -392,6 +419,8 @@ object JupyterServer {
       localRepoRoot,
       "--quiet=false"
     )
+
+    writeSettingsOverrides(uv, workspace, Seq(aiGroup))
 
     os.makeDir.all(workspace / "notebooks")
     val (baseAddressOpt, args0) = extractBaseAddress(args)

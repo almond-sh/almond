@@ -57,6 +57,11 @@ you already have instead, set the `ALMOND_UV` environment variable to its path.
 
 From the JupyterLab instance, select the kernel "Scala (sources)".
 
+JupyterLab starts with a few settings changed from its defaults: its theme follows
+the system one (light or dark), and editors indent with 2 spaces. These are listed in
+`examples/jupyterlab-overrides.json`. Anything you change in the settings still takes
+precedence.
+
 JupyterLab comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
 you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
 (speech bubbles icon), click "New chat", then pick an agent from the menu at the
