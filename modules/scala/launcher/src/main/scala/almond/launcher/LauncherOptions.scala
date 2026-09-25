@@ -34,6 +34,10 @@ final case class LauncherOptions(
   javaOpt: List[String] = Nil,
   quiet: Option[Boolean] = None,
   silentImports: Option[Boolean] = None,
+  @HelpMessage("Whether to automatically update the output of var-s upon change (default: true)")
+    autoUpdateVars: Option[Boolean] = None,
+  @HelpMessage("Whether to automatically update the output of lazy val-s upon computation (default: true)")
+    autoUpdateLazyVals: Option[Boolean] = None,
   useNotebookCoursierLogger: Option[Boolean] = None,
   customDirectiveGroup: List[String] = Nil,
   @HelpMessage("Time given to the client to accept ZeroMQ messages before handing over the connections to the kernel. Parsed with scala.concurrent.duration.Duration, this accepts things like \"Inf\" or \"5 seconds\"")
@@ -86,6 +90,10 @@ final case class LauncherOptions(
       b ++= Seq(s"--compile-only=$value")
     for (value <- silentImports)
       b ++= Seq(s"--silent-imports=$value")
+    for (value <- autoUpdateVars)
+      b ++= Seq(s"--auto-update-vars=$value")
+    for (value <- autoUpdateLazyVals)
+      b ++= Seq(s"--auto-update-lazy-vals=$value")
     for (value <- useNotebookCoursierLogger)
       b ++= Seq(s"--use-notebook-coursier-logger=$value")
     for (group <- customDirectiveGroup.map(_.split(":", 2)).collect { case Array(k, _) => k })

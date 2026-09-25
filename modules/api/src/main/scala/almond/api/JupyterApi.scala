@@ -268,6 +268,15 @@ object JupyterApi {
     def update(k: String, v: String, last: Boolean): Unit = {
       // temporary dummy implementation for binary compatibility
     }
+
+    /** Same as `update`, but only computes the new value when the update is actually sent
+      *
+      * Updates can be coalesced (if several updates are made for the same key in a short amount of
+      * time, only the latest one is sent). In that case, `v` isn't called for updates that end up
+      * being discarded. `v` may be called from another thread than the caller of this method.
+      */
+    def updateLazily(k: String, v: () => String, last: Boolean): Unit =
+      update(k, v(), last)
   }
 
   /** A handler that's given exceptions thrown by user code, and can change it or discard it */

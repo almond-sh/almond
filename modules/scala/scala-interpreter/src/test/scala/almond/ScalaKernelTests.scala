@@ -491,6 +491,67 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
+    test("coalesce var updates") {
+      // see https://github.com/almond-sh/almond/issues/996
+      if (AlmondCompilerLifecycleManager.isAtLeast_2_12_7 && TestUtil.isScala2) {
+
+        val interpreter = new ScalaInterpreter(
+          params = interpreterParams.copy(
+            updateBackgroundVariablesEcOpt = Some(bgVarEc)
+          ),
+          logCtx = logCtx
+        )
+
+        val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+          .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+        implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+        val lastMsgId = UUID.randomUUID().toString
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+          (_, m) =>
+            IO.pure(
+              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+            )
+
+        val count = 20000
+        val input = Stream(
+          executeMessage(
+            """var funcCount = 0L
+              |def fastLoop() = { funcCount += 1 }""".stripMargin
+          ),
+          executeMessage(s"for (i <- Iterator.range(0, $count)) fastLoop()", lastMsgId)
+        )
+
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+        kernel.run(streams.source, streams.sink, Nil)
+          .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+        val messageTypes =
+          streams.generatedMessageTypes(Set(Channel.Publish, Channel.Requests)).toVector
+        val (firstCell, rest) = messageTypes.splitAt(messageTypes.indexOf("execute_reply") + 1)
+        assert(firstCell.count(_ == "display_data") == 1)
+        assert(rest.lastOption.contains("execute_reply"))
+        assert(rest.count(_ == "execute_reply") == 1)
+
+        // Before updates were coalesced, one update was sent per increment
+        val updateCount = rest.count(_ == "update_display_data")
+        assert(updateCount >= 1)
+        assert(updateCount < 100)
+
+        import ClientStreams.RawJsonOps
+        val updates = streams.displayData.collect {
+          case (d, true) =>
+            d.data.get("text/plain").map(_.stringOrEmpty).getOrElse("")
+        }
+        assert(updates.length == updateCount)
+        // The latest value should have been sent by the time the cell is done
+        val lastUpdate = updates.last
+        assert(lastUpdate.linesIterator.next() == s"funcCount: Long = ${count}L")
+      }
+    }
+
     def updateLazyValsTest(): Unit = {
 
       val interpreter = new ScalaInterpreter(
