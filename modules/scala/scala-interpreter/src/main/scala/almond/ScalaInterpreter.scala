@@ -212,19 +212,34 @@ final class ScalaInterpreter(
     Some(res)
   }
 
+  // Completions and inspections are computed from threads other than the one running cells
+  // (see AsyncInterpreterOps), so that they can be computed while a cell is running.
+  // They use compiler instances managed by the compiler lifecycle manager, whose
+  // methods that compile code synchronize on the manager itself. We do the same here,
+  // so that completions and inspections wait for any ongoing compilation to be done
+  // (and so that compilations wait for them to be done).
+  private def withCompilerLock[T](f: => T): T = {
+    val compilerManager = ammInterp.compilerManager
+    compilerManager.synchronized(f)
+  }
+
   override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
-    inspections.inspect(code, pos, detailLevel)
+    withCompilerLock {
+      inspections.inspect(code, pos, detailLevel)
+    }
 
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, completions0, _, completionsWithTypes) = ScalaInterpreterCompletions.complete(
-      ammInterp.compilerManager,
-      Some(ammInterp.dependencyComplete),
-      pos,
-      (ammInterp.predefImports ++ frames0().head.imports).toString(),
-      code,
-      logCtx
-    )
+    val (newPos, completions0, _, completionsWithTypes) = withCompilerLock {
+      ScalaInterpreterCompletions.complete(
+        ammInterp.compilerManager,
+        Some(ammInterp.dependencyComplete),
+        pos,
+        (ammInterp.predefImports ++ frames0().head.imports).toString(),
+        code,
+        logCtx
+      )
+    }
 
     val completions = completions0
       .filter(!_.contains("$"))
