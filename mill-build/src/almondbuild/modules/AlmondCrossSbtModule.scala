@@ -30,9 +30,10 @@ trait AlmondCrossSbtModule extends SbtModule with CrossModuleBase with AlmondSca
     def sources = Task {
       super.sources() ++ extraTestScalaSources()
     }
-    // Mill's ScalaTests takes the compiler version from us, but not its class path, which
-    // AlmondScalacJvm may patch
+    // Mill's ScalaTests takes the compiler version from us, but not the class paths of the
+    // compiler and of scaladoc, which AlmondScalacJvm may patch
     def scalaCompilerClasspath = outer.scalaCompilerClasspath()
+    def scalaDocClasspath      = outer.scalaDocClasspath()
   }
   trait Tests extends CrossSbtModuleTests
 }

@@ -37,4 +37,9 @@ trait AlmondScalacJvm extends ScalaModule {
   def scalaCompilerClasspath = Task {
     Task.traverse(scalacPatches)(_.jar)() ++ super.scalaCompilerClasspath()
   }
+
+  // Scaladoc runs scalac from its own class path, and expands macros too
+  def scalaDocClasspath = Task {
+    Task.traverse(scalacPatches)(_.jar)() ++ super.scalaDocClasspath()
+  }
 }

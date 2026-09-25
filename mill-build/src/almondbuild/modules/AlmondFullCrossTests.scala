@@ -28,11 +28,13 @@ trait AlmondFullCrossTests extends Cross.Module[String] with AlmondTestModule
   override def scalaCompilerBridge = scalaVersionSpecificModule.scalaCompilerBridge()
 
   // Mill's test modules take these from the module under test too - the JVM the compiler runs
-  // on, that the tests are forked with, the class path of the compiler, and the options of its
-  // process, that AlmondScalacJvm sets for our Scala version rather than the one under test
+  // on, that the tests are forked with, the class paths of the compiler and of scaladoc, and the
+  // options of the compiler process, that AlmondScalacJvm sets for our Scala version rather than
+  // the one under test
   def jvmVersion             = scalaVersionSpecificModule.jvmVersion()
   def javaHome               = scalaVersionSpecificModule.javaHome()
   def scalaCompilerClasspath = scalaVersionSpecificModule.scalaCompilerClasspath()
+  def scalaDocClasspath      = scalaVersionSpecificModule.scalaDocClasspath()
   def javacOptions           = scalaVersionSpecificModule.javacOptions()
 
   // super would give us the options of the module under test, which are meant for the Scala
