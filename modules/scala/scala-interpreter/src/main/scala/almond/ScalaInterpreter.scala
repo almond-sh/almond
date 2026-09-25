@@ -327,7 +327,7 @@ final class ScalaInterpreter(
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
-        codemirror_mode = Some("text/x-scala")
+        codemirror_mode = Some("scala")
       ),
       s"""Almond ${almond.api.Properties.version}
          |Ammonite ${ammonite.Constants.version}
