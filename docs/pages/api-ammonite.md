@@ -48,6 +48,33 @@ and allows to use the dependency in the current cell rather than the next one:
 import $ivy.`org.platanios::tensorflow-data:0.4.1`
 ```
 
+#### Pinning dependency versions
+
+Loading dependencies upfront in a first cell effectively "pins" their versions:
+dependencies loaded in later cells cannot replace them, even if they request newer
+versions transitively. Run this first cell before loading libraries that depend on
+those dependencies.
+
+For example, the workaround in [issue #332](https://github.com/almond-sh/almond/issues/332#issuecomment-471545852)
+loads Hadoop before Spark. In a first cell:
+
+```scala
+import $ivy.`org.apache.hadoop:hadoop-common:2.9.2`
+import $ivy.`org.apache.hadoop:hadoop-azure-datalake:3.1.1`
+```
+
+Then, in a separate cell:
+
+```scala
+import $ivy.`org.apache.spark::spark-sql:2.4.0`
+```
+
+This is both a feature and a limitation: it lets you keep chosen versions when
+loading more libraries, but also prevents upgrading an already loaded dependency
+in a later cell. To change those versions, restart the kernel and run the updated
+dependency cell first. The chosen versions still need to be compatible with the
+libraries that use them.
+
 ### Load compiler plugins
 
 `interp.load.plugin.ivy` accepts one or several
