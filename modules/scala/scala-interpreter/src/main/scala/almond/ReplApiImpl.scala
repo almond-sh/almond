@@ -249,12 +249,14 @@ final class ReplApiImpl(
         tcolors: TPrintColors,
         classTagT: ClassTag[T]
       ): Iterator[String] =
-        printSpecial(value, ident, custom, None, None, pprinter, None)(using
+        // Passing the implicits explicitly - without `using`, that the oldest Scala 2 compilers
+        // we're built with don't accept
+        printSpecial(value, ident, custom, None, None, pprinter, None)(
           tprint,
           tcolors,
           classTagT
         ).getOrElse {
-          super.print(value, ident, custom)(using tprint, tcolors, classTagT)
+          super.print(value, ident, custom)(tprint, tcolors, classTagT)
         }
     }
 }

@@ -4,23 +4,17 @@ title: Installing from sources
 
 ## Prerequisites
 
-Ensure a JDK (Java Development Kit) is installed on your machine. Java versions 8 or 11
-are recommended, with 8 as minimum version. If you don't already have a JDK installed,
-you can install one by following the instructions on the
-[AdoptOpenJDK website](https://adoptopenjdk.net), or by grabbing the
-[coursier](https://get-coursier.io/docs/cli-installation.html#native-launcher) command-line
-and using its [`cs java` command](https://get-coursier.io/docs/cli-java.html#setting-a-default-jvm-version).
-Your OS package manager (`brew`, `apt`, …) may also offer to install a JDK for you.
+You don't need to install a JVM to build almond. Its Mill launcher downloads Mill as a
+native executable, and Mill downloads the JVMs the build needs on its own: the one Mill
+runs on, and the JDK 17 the oldest Scala 2 versions are built with (see
+[below](#list-available-scala-versions)).
 
-Once a JDK is installed, you should be able to run the `java` command, like
-```text
-$ java -version
-java version "1.8.0_121"
-Java(TM) SE Runtime Environment (build 1.8.0_121-b13)
-Java HotSpot(TM) 64-Bit Server VM (build 25.121-b13, mixed mode)
-$ javac -version
-javac 1.8.0_121
-```
+The only exceptions are Linux distributions whose GLIBC is older than 2.39, and Windows on
+ARM: the native Mill executable can't run there, so the launcher falls back to a JVM-based
+Mill, that needs a `java` command (Java 17 or later) on the `PATH`. You can install one with
+your OS package manager (`apt`, `dnf`, …), or with the
+[coursier](https://get-coursier.io/docs/cli-installation.html#native-launcher) command-line
+and its [`cs java` command](https://get-coursier.io/docs/cli-java.html#setting-a-default-jvm-version).
 
 Check-out the sources with git:
 ```text
@@ -120,7 +114,7 @@ $ ./mill dev.launcherFast
 ```
 
 Once done building, this should print the path to the kernel launcher, like
-`out/scala/scala-kernel/2.13.14/launchers/2.13.18/unixLauncherFast/dest/launcher` (2.13.14
+`out/scala/scala-kernel/2.13.3/launchers/2.13.18/unixLauncherFast/dest/launcher` (2.13.3
 being the Scala version the modules published for Scala 2.13 are built with, 2.13.18 the one
 the kernel runs).
 
@@ -131,7 +125,7 @@ $ ./mill dev.launcherFast --scalaVersion 2.12.21
 
 You can then run that launcher to install it on your system:
 ```text
-$ out/scala/scala-kernel/2.13.14/launchers/2.13.18/unixLauncherFast/dest/launcher --install
+$ out/scala/scala-kernel/2.13.3/launchers/2.13.18/unixLauncherFast/dest/launcher --install
 ```
 Pass `--help` or see [this page](install-options.md) for the available options.
 
@@ -162,9 +156,15 @@ to the modules themselves, while their tests are cross-built over the full Scala
 ```text
 $ ./mill -i dev.binaryScalaVersions
 3.3.8
-2.13.14
-2.12.18
+2.13.3
+2.12.8
 ```
+
+The oldest Scala 2 versions we support (2.12.x before 2.12.18, 2.13.x before 2.13.11) can't
+run on the recent JDK the build runs on (they need JDK 17 at most): Mill downloads a JDK 17
+to compile and test the modules built with them, and `dev.jupyter*` run their kernels with it.
+Scala 2.12.8 compiles with a small patch of its own class path handling, that lets it expand
+macros on JDK 15+ (see `mill-build/scalac-patches`).
 
 ### Print the latest supported Scala 2.13 version
 ```text
@@ -180,34 +180,34 @@ $ ./mill dev.scala212
 
 ### Compile all modules for a Scala version
 ```text
-$ ./mill '__[2.13.14].compile'
+$ ./mill '__[2.13.3].compile'
 ```
 
 ### Compile all modules for a Scala version and watch source changes
 ```text
-$ ./mill -w '__[2.13.14].compile'
+$ ./mill -w '__[2.13.3].compile'
 ```
 
 ### Compile all tests for a Scala version
 ```text
-$ ./mill '__[2.13.14].test.compile'
+$ ./mill '__[2.13.3].test.compile'
 $ ./mill '__.test[2.13.18].compile'
 ```
 
 ### Compile all tests for a Scala version and watch source changes
 ```text
-$ ./mill -w '__[2.13.14].test.compile'
+$ ./mill -w '__[2.13.3].test.compile'
 ```
 
 ### Run all tests for a Scala version and watch source changes
 ```text
-$ ./mill -w '__[2.13.14].test'
+$ ./mill -w '__[2.13.3].test'
 $ ./mill -w '__.test[2.13.18]'
 ```
 
 ### Compile specific modules
 ```text
-$ ./mill 'scala.scala-kernel[2.13.14].compile'
+$ ./mill 'scala.scala-kernel[2.13.3].compile'
 ```
 
 ### Generate Metals configuration files

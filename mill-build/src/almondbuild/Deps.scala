@@ -57,9 +57,26 @@ object Deps {
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
-  def jvmRepr                  = mvn"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc                     = mvn"org.scalameta::mdoc:2.9.2"
-  def mtags                    = mvn"org.scalameta:::mtags:1.6.3"
+  def jvmRepr = mvn"com.github.jupyter:jvm-repr:0.4.0"
+  def mdoc    = mvn"org.scalameta::mdoc:2.9.2"
+  // mtags is cross-published for full Scala versions, but only for the latest ones of each
+  // binary version, while the modules we publish are built with the oldest full Scala version
+  // we support (2.12.8, 2.13.3, …). For those, we depend on the mtags of the oldest full Scala
+  // version it is published for: like scalac itself, it then runs alongside whichever full Scala
+  // version the kernel is launched with, and the compiler internals it uses have been stable
+  // enough across patch versions for that to work.
+  def mtagsVersion = "1.6.3"
+  def mtags(sv: String) = {
+    val oldestMtagsScalaVersion =
+      if (sv.startsWith("2.12.")) "2.12.17"
+      else if (sv.startsWith("2.13.")) "2.13.14"
+      else sv
+    val mtagsScalaVersion =
+      if (coursier.version.Version(sv) < coursier.version.Version(oldestMtagsScalaVersion))
+        oldestMtagsScalaVersion
+      else sv
+    mvn"org.scalameta:mtags_$mtagsScalaVersion:$mtagsVersion"
+  }
   def munit                    = mvn"org.scalameta::munit:1.3.6"
   def osLib                    = mvn"com.lihaoyi::os-lib:0.11.8"
   def pprint                   = mvn"com.lihaoyi::pprint:0.9.0"
