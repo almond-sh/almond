@@ -175,6 +175,7 @@ object ScalaKernel extends CaseApp[Options] {
         autoUpdateVars = options.autoUpdateVars,
         useNotebookCoursierLogger = options.useNotebookCoursierLogger,
         silentImports = options.silentImports,
+        lastValueOnly = options.lastValueOnly,
         allowVariableInspector = options.variableInspector,
         useThreadInterrupt = options.useThreadInterrupt,
         outputDir = options.outputDirectory

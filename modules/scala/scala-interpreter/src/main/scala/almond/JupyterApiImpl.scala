@@ -48,7 +48,7 @@ final class JupyterApiImpl(
     tprint: TPrint[T],
     tcolors: TPrintColors,
     classTagT: ClassTag[T]
-  ): Iterator[String] =
+  ): Iterator[String] = replApi.printValue {
     replApi.printSpecial(
       value,
       ident,
@@ -60,6 +60,7 @@ final class JupyterApiImpl(
     )(tprint, tcolors, classTagT).getOrElse {
       replApi.Internal.print(value, ident, custom)(tprint, tcolors, classTagT)
     }
+  }
 
   override def silent(s: Boolean): Unit = silent0.update(s)
   override def silent: Boolean          = silent0.apply()

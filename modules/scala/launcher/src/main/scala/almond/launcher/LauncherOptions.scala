@@ -38,6 +38,8 @@ final case class LauncherOptions(
     autoUpdateVars: Option[Boolean] = None,
   @HelpMessage("Whether to automatically update the output of lazy val-s upon computation (default: true)")
     autoUpdateLazyVals: Option[Boolean] = None,
+  @HelpMessage("Only display the last value of each cell")
+    lastValueOnly: Option[Boolean] = None,
   useNotebookCoursierLogger: Option[Boolean] = None,
   customDirectiveGroup: List[String] = Nil,
   @HelpMessage("Time given to the client to accept ZeroMQ messages before handing over the connections to the kernel. Parsed with scala.concurrent.duration.Duration, this accepts things like \"Inf\" or \"5 seconds\"")
@@ -88,6 +90,8 @@ final case class LauncherOptions(
       b ++= Seq("--predef", value)
     for (value <- compileOnly)
       b ++= Seq(s"--compile-only=$value")
+    for (value <- lastValueOnly)
+      b ++= Seq(s"--last-value-only=$value")
     for (value <- silentImports)
       b ++= Seq(s"--silent-imports=$value")
     for (value <- autoUpdateVars)
