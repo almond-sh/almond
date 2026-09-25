@@ -28,6 +28,9 @@ RUN set -eu; \
 # Jupyter, from the environment of examples/pyproject.toml, so that the tests run the notebooks
 # the same way the example tests do.
 COPY --from=uv /uv /usr/local/bin/uv
+# uv puts the Python it downloads under the home directory by default, but the tests mount a
+# directory of their own on /root, which would hide it, and break the virtual environment below
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
 COPY pyproject.toml uv.lock /opt/jupyter/
 RUN cd /opt/jupyter && uv sync --frozen
 ENV PATH="/opt/jupyter/.venv/bin:${PATH}"
