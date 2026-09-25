@@ -57,7 +57,7 @@ function Versions() {
           <table className="versions">
             <tbody>
               <tr>
-                <th>master</th>
+                <th>main</th>
                 <td>
                   <a
                     href={`${siteConfig.baseUrl}docs/next/intro`}>
