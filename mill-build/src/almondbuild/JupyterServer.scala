@@ -175,7 +175,7 @@ object JupyterServer {
     jupyterDir: os.Path,
     javaHome: os.Path
   ): Unit = {
-    System.err.println(s"JAVA_HOME=$javaHome")
+    System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
     val proc = os.proc(command).spawn(
       cwd = workspace,
       env = jupyterEnvironment(javaHome, jupyterDir),
@@ -402,7 +402,7 @@ object JupyterServer {
       publishVersion,
       localRepoRoot
     )
-    System.err.println(s"JAVA_HOME=$javaHome")
+    System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
     startBackground(
       javaHome,
       wrapperClassPath,
