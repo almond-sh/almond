@@ -27,7 +27,7 @@ import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Evaluated, Ex, Printer, Ref, Res}
-import coursierapi.{IvyRepository, MavenRepository}
+import coursierapi.{Repository, RepositoryParser}
 import dependency.ScalaParameters
 import dependency.api.ops._
 import fastparse.Parsed
@@ -161,39 +161,41 @@ final class Execute(
     options: KernelOptions
   ): Either[String, Unit] = {
 
-    for (input <- options.extraRepositories) {
-      val repo =
-        if (input.startsWith("ivy:"))
-          IvyRepository.of(input.drop("ivy:".length))
+    val maybeRepositories = options.extraRepositories
+      .foldLeft[Either[String, Seq[Repository]]](Right(Nil)) {
+        case (Left(err), _) => Left(err)
+        case (Right(acc), input) =>
+          Execute.parseRepository(input).map(acc :+ _)
+      }
+
+    maybeRepositories.flatMap { repositories =>
+      ammInterp.repositories.update(ammInterp.repositories() ++ repositories)
+
+      almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
+        options.scalacOptions.toSeq.map(_.value.value)
+      )
+
+      val params = ScalaParameters(ammInterp.scalaVersion)
+      val compatParams = ScalaParameters(
+        if (scala.util.Properties.versionNumberString.startsWith("2."))
+          scala.util.Properties.versionNumberString
         else
-          MavenRepository.of(input)
-      ammInterp.repositories.update(ammInterp.repositories() :+ repo)
-    }
-
-    almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
-      options.scalacOptions.toSeq.map(_.value.value)
-    )
-
-    val params = ScalaParameters(ammInterp.scalaVersion)
-    val compatParams = ScalaParameters(
-      if (scala.util.Properties.versionNumberString.startsWith("2."))
-        scala.util.Properties.versionNumberString
-      else
-        "2.13.16" // kind of meh to hardcode that
-    )
-    val deps = options.dependencies.map { dep =>
-      val params0 =
-        if (dep.userParams.exists(_._1 == "compat")) compatParams
-        else params
-      dep.applyParams(params0).toCs
-    }
-    val loadDepsRes =
-      if (deps.isEmpty) Right(Nil)
-      else ammInterp.loadIvy(deps: _*)
-    loadDepsRes.map { loaded =>
-      if (loaded.nonEmpty)
-        ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
-      ()
+          "2.13.16" // kind of meh to hardcode that
+      )
+      val deps = options.dependencies.map { dep =>
+        val params0 =
+          if (dep.userParams.exists(_._1 == "compat")) compatParams
+          else params
+        dep.applyParams(params0).toCs
+      }
+      val loadDepsRes =
+        if (deps.isEmpty) Right(Nil)
+        else ammInterp.loadIvy(deps: _*)
+      loadDepsRes.map { loaded =>
+        if (loaded.nonEmpty)
+          ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+        ()
+      }
     }
   }
 
@@ -693,6 +695,16 @@ final class Execute(
 object Execute {
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
+
+  /** Accepts the same repository inputs as Coursier and Scala CLI - URLs, but also predefined
+    * repositories like `m2Local`, `ivy2Local`, `jitpack`, or `sonatype:snapshots`.
+    */
+  private[almond] def parseRepository(input: String): Either[String, Repository] =
+    try Right(RepositoryParser.repository(input))
+    catch {
+      case e: IllegalArgumentException =>
+        Left(s"Error parsing repository '$input': ${e.getMessage}")
+    }
   private lazy val isJdk20OrHigher =
     sys.props
       .get("java.version")
