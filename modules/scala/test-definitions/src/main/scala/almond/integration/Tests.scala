@@ -856,6 +856,52 @@ object Tests {
       )
     }
 
+  def addDependencyWithClassifier(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+    val isScala2 = scalaVersion.startsWith("2.")
+
+    // The natives-* artifacts of lwjgl only contain native libraries. Finding the one of the
+    // requested classifier on the class path, but neither the one of the other classifier nor the
+    // classes of the main lwjgl JAR, means the classifier was taken into account.
+    val checks =
+      """def found(path: String) = getClass.getClassLoader.getResource(path) != null
+        |val linuxNativeLibFound = found("linux/x64/org/lwjgl/liblwjgl.so")
+        |val macOsNativeLibFound = found("macos/x64/org/lwjgl/liblwjgl.dylib")
+        |val mainJarFound = found("org/lwjgl/Version.class")
+        |""".stripMargin
+
+    // Each classifier is loaded in its own session, so that the other one isn't already there
+
+    runner.withSession() { implicit session =>
+      execute(
+        """//> using dep "org.lwjgl:lwjgl:3.3.3,classifier=natives-linux"
+          |""".stripMargin + checks,
+        """defined function found
+          |linuxNativeLibFound: Boolean = true
+          |macOsNativeLibFound: Boolean = false
+          |mainJarFound: Boolean = false""".stripMargin,
+        ignoreStreams = true // ignoring coursier messages (printed when downloading things)
+      )
+    }
+
+    // same thing via an import $ivy
+    runner.withSession() { implicit session =>
+      execute(
+        """import $ivy.`org.lwjgl:lwjgl:3.3.3,classifier=natives-macos`
+          |""".stripMargin + checks,
+        s"""import $$ivy.$$${maybePostImportNewLine(isScala2)}
+           |defined function found
+           |linuxNativeLibFound: Boolean = false
+           |macOsNativeLibFound: Boolean = true
+           |mainJarFound: Boolean = false""".stripMargin,
+        trimReplyLines = true,
+        ignoreStreams = true
+      )
+    }
+  }
+
   def addRepository(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
