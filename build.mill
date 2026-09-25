@@ -525,6 +525,7 @@ object scala extends Module {
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
   object integration        extends Integration
+  object `proxy-tests`      extends ProxyTests
 
   object examples extends Examples
 }
@@ -715,6 +716,55 @@ trait Integration extends SbtModule {
       super.forkEnv() ++ Seq(
         "ALMOND_INTEGRATION_TMP"             -> PathRef.toAbsString(tmpDirBase().path),
         "ALMOND_INTEGRATION_MAVEN_SNAPSHOTS" -> useMavenSnapshots().toString
+      )
+    }
+  }
+}
+
+/** Docker-based tests, installing and running the kernels from containers that can't reach Maven
+  * Central: only an authenticated proxy or a repository mirror lets them out. See the "Proxies and
+  * mirrors" page of the documentation.
+  *
+  * The kernels are installed like the documentation says to, with the cs launcher of the runner
+  * image, from the local test repository. Unlike the integration tests, these run on Linux only.
+  */
+trait ProxyTests extends SbtModule {
+  def scalaVersion = ScalaVersions.scala3Latest
+
+  /** The Dockerfiles and server configurations of the tests */
+  def dockerDir = Task.Source(moduleDir / "docker")
+
+  /** The example notebooks: their uv project provides the Jupyter the tests run notebooks with */
+  def examplesDir = Task.Source(BuildCtx.workspaceRoot / "examples")
+
+  object test extends SbtTests {
+    def testFramework = "munit.Framework"
+    def mvnDeps = Seq(
+      Deps.munit,
+      Deps.osLib,
+      Deps.upickle
+    )
+    // Docker mounts the temporary directories of the tests: keeping them under the workspace
+    // rather than under /tmp makes that work on macOS too, where /tmp isn't shared by default
+    def tmpDirBase = Task(persistent = true) {
+      PathRef(Task.dest / "working-dir")
+    }
+    // Scala version the kernels are installed for
+    private def kernelScalaVersion = ScalaVersions.scala213
+    def forkArgs = Task {
+      val version =
+        scala.`scala-kernel`(ScalaVersions.binary(kernelScalaVersion)).publishVersion()
+      super.forkArgs() ++ Seq(
+        s"-Dalmond.proxy-tests.local-repo=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
+        s"-Dalmond.proxy-tests.version=$version",
+        s"-Dalmond.proxy-tests.launcher-main-class=${scala.launcher.finalMainClass()}",
+        s"-Dalmond.proxy-tests.scala-version=$kernelScalaVersion",
+        s"-Dalmond.proxy-tests.cs-version=${Deps.csVersion}",
+        s"-Dalmond.proxy-tests.uv-version=${Versions.uv}",
+        s"-Dalmond.proxy-tests.examples-dir=${PathRef.toAbsString(examplesDir().path)}",
+        s"-Dalmond.proxy-tests.docker-dir=${PathRef.toAbsString(dockerDir().path)}",
+        s"-Dalmond.proxy-tests.tmp-dir=${PathRef.toAbsString(tmpDirBase().path)}",
+        s"-Dalmond.proxy-tests.maven-snapshots=${scala.integration.test.useMavenSnapshots()}"
       )
     }
   }

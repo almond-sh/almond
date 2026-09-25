@@ -257,3 +257,16 @@ Optionally, you can pass a glob to filter notebook names:
 ```text
 $ ./mill -i scala.examples.test 'almond.examples.Examples.scalapy*'
 ```
+
+## Run the proxy and mirror tests
+
+The [proxies and mirrors](install-proxies.md) instructions are tested with Docker: the kernels get
+installed and run from containers that can't reach Maven Central, except through an authenticated
+proxy or a repository mirror. With Docker running, run them with
+```text
+$ ./mill -i -j 1 scala.proxy-tests.test
+```
+
+These build a couple of images on first run (a JDK with `cs` and Jupyter, and the proxy), and pull
+the `nginx` and `alpine` ones. Each test starts from an empty coursier cache, and downloads
+everything the kernel needs through the proxy or mirror, so expect a few minutes per test.
