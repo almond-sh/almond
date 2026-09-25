@@ -86,7 +86,9 @@ final class ScalaInterpreter(
     params.initialCellCount,
     enableExitHack = params.compileOnly,
     ignoreLauncherDirectivesIn = params.ignoreLauncherDirectivesIn,
-    launcherDirectiveGroups = params.launcherDirectiveGroups
+    launcherDirectiveGroups = params.launcherDirectiveGroups,
+    pkgName = params.pkgName,
+    wrapperPath = params.codeWrapper.wrapperPath
   )
 
   private var currentExecuteRequestOpt0 = Option.empty[Message[ProtocolExecute.Request]]

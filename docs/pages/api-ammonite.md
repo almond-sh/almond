@@ -97,6 +97,28 @@ trait T[F[_]]
 type T2 = T[Either[String, ?]]
 ```
 
+### Load scripts
+
+Ammonite scripts can be loaded from notebooks, with the same syntax as in Ammonite:
+```scala
+import $file.path.to.script
+```
+This compiles and runs `path/to/script.sc`, and brings its wrapper object in scope, so that
+its definitions can be accessed like `script.foo()`. Paths are relative to the working directory of the kernel,
+which is usually the directory of the notebook, and `^` stands for the parent directory.
+
+Alternatively, scripts can be loaded with a directive, which accepts any path:
+```scala
+//> using script path/to/script.sc
+//> using scripts path/to/script.sc, /absolute/path/to/other.sc
+```
+The wrapper object of each script is brought in scope under the name of the script file
+(`script` for `path/to/script.sc`), like `import $file.…` does.
+
+Either way, a script is compiled and run only once in a session, unless its content changed since it was
+last loaded. In that case, importing it or loading it again re-compiles and re-runs it, and cells run after that
+see its new definitions.
+
 ### Add repositories
 
 One can add extra

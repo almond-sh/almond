@@ -141,7 +141,9 @@ object AmmInterpreter {
         alreadyLoadedDependencies =
           ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt"),
         wrapperNamePrefix = wrapperNamePrefix,
-        pkgName = pkgName.map(Name(_))
+        pkgName = pkgName.map(Name(_)),
+        // like the Ammonite ones, but reloading scripts that changed since they were last loaded
+        importHooks = ReloadingSourceHook.importHooks
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)

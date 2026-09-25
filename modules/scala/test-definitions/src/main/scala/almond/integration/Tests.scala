@@ -874,6 +874,68 @@ object Tests {
       )
     }
 
+  def importFile(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+
+      val isScala2 = scalaVersion.startsWith("2.")
+
+      // scripts are looked up relative to the working directory of the kernel, that we don't
+      // know from here, so we write them from the kernel itself
+      execute(
+        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"bar\"\n")""",
+        ""
+      )
+
+      // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
+      execute(
+        "import $file.Foo",
+        "import $file.$" + maybePostImportNewLine(isScala2),
+        trimReplyLines = true,
+        ignoreStreams = true
+      )
+
+      execute(
+        "Foo.foo()",
+        """res3: String = "bar""""
+      )
+
+      // scripts that changed are loaded again
+      execute(
+        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"baz\"\n")""",
+        ""
+      )
+
+      // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
+      execute(
+        "import $file.Foo",
+        "import $file.$" + maybePostImportNewLine(isScala2),
+        trimReplyLines = true,
+        ignoreStreams = true
+      )
+
+      execute(
+        "Foo.foo()",
+        """res6: String = "baz""""
+      )
+
+      // via a directive
+      execute(
+        """os.write.over(os.pwd / "sub" / "my-script.sc", "def value = 2\n", createFolders = true)""",
+        ""
+      )
+
+      execute(
+        """//> using script sub/my-script.sc
+          |val n = `my-script`.value
+          |""".stripMargin,
+        "n: Int = 2",
+        ignoreStreams = true
+      )
+    }
+
   def addScalacOption(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
