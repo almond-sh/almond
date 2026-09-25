@@ -992,8 +992,159 @@ object ScalaKernelTests extends TestSuite {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.unclosedStringLitteral()
     }
+
+    test("completion while a cell is compiling") {
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams,
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      val firstMsgId  = UUID.randomUUID().toString
+      val bigMsgId    = UUID.randomUUID().toString
+      val lastMsgId   = UUID.randomUUID().toString
+      val completeIds = (1 to 20).map(_ => UUID.randomUUID().toString)
+
+      // takes a few seconds to compile
+      val bigCell = (1 to 400)
+        .map { i =>
+          s"""val v$i = (1 to 10).toList.map(_ + $i).filter(_ % 2 == 0).map(_.toString).mkString(",")"""
+        }
+        .mkString(System.lineSeparator())
+
+      def completeMessage(id: String) =
+        Message(
+          Header(
+            msg_id = id,
+            username = "test",
+            session = sessionId.sessionId,
+            msg_type = Complete.requestType.messageType,
+            version = Some(Protocol.versionStr)
+          ),
+          Complete.Request("List(1).hea", 11)
+        ).on(Channel.Requests)
+
+      val input = Stream(
+        executeMessage("val n = 2", firstMsgId),
+        executeMessage(bigCell, bigMsgId)
+      ) ++
+        Stream.emits(completeIds).evalMap { id =>
+          IO.sleep(scala.concurrent.duration.DurationInt(100).millis).as(completeMessage(id))
+        } ++
+        Stream(executeMessage("val m = n + 1", lastMsgId))
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      kernel.run(streams.source, streams.sink, Nil)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      val replies = streams.executeReplies
+      assert(replies.get(1).contains("n: Int = 2"))
+      assert(replies.get(2).exists(_.contains("v400: String = ")))
+      assert(replies.get(3).contains("m: Int = 3"))
+      assert(streams.executeErrors.isEmpty)
+
+      val completeReplies = streams.completeReplies
+      assert(completeReplies.length == completeIds.length)
+      assert(completeReplies.forall(_.matches.contains("head")))
+    }
+
+    test("completion while a cell is running") {
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams,
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      val firstMsgId    = UUID.randomUUID().toString
+      val sleepMsgId    = UUID.randomUUID().toString
+      val completeMsgId = UUID.randomUUID().toString
+
+      // Only send the completion request once the second cell is running
+      val latch = new java.util.concurrent.CountDownLatch(1)
+      ScalaKernelTests.latch = latch
+
+      val input = Stream(
+        executeMessage("val n = 2", firstMsgId),
+        executeMessage(
+          "almond.ScalaKernelTests.latch.countDown(); Thread.sleep(5000L)",
+          sleepMsgId
+        )
+      ) ++
+        Stream.exec(IO.blocking(latch.await())) ++
+        Stream(
+          Message(
+            Header(
+              msg_id = completeMsgId,
+              username = "test",
+              session = sessionId.sessionId,
+              msg_type = Complete.requestType.messageType,
+              version = Some(Protocol.versionStr)
+            ),
+            Complete.Request("n.toSt", 6)
+          ).on(Channel.Requests)
+        )
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == sleepMsgId)
+          )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      kernel.run(streams.source, streams.sink, Nil)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      val fromKernel = streams.generatedMessages.toVector.collect {
+        case Left((c, m)) => (c, m)
+      }
+      def isReply(tpe: String, parentId: String)(cm: (Channel, Message[RawJson])) =
+        cm._1 == Channel.Requests && cm._2.header.msg_type == tpe &&
+        cm._2.parent_header.exists(_.msg_id == parentId)
+      val completeReplyIdx = fromKernel.indexWhere(isReply("complete_reply", completeMsgId))
+      val executeReplyIdx  = fromKernel.indexWhere(isReply("execute_reply", sleepMsgId))
+      assert(completeReplyIdx >= 0)
+      assert(executeReplyIdx >= 0)
+      assert(completeReplyIdx < executeReplyIdx)
+
+      val completions = streams.completeReplies.flatMap(_.matches)
+      assert(completions.contains("toString"))
+
+      // The kernel must still be reported as busy until the cell is done running
+      def statuses(messages: Seq[(Channel, Message[RawJson])]) =
+        messages.collect {
+          case (Channel.Publish, m) if m.header.msg_type == Status.messageType.messageType =>
+            com.github.plokhotnyuk.jsoniter_scala.core
+              .readFromArray(m.content.value)(Status.codec)
+              .execution_state
+        }
+      val statusesBeforeExecuteReply = statuses(fromKernel.take(executeReplyIdx))
+      assert(statusesBeforeExecuteReply.lastOption.contains("busy"))
+      val statusesDuringCompletion =
+        statuses(fromKernel.slice(completeReplyIdx, executeReplyIdx))
+      assert(!statusesDuringCompletion.contains("idle"))
+    }
   }
 
   val evaluatorHookThreadLocal = ThreadLocal.withInitial(() => "")
+
+  @volatile var latch: java.util.concurrent.CountDownLatch = null
 
 }

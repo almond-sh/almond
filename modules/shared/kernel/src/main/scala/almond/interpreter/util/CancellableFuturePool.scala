@@ -2,6 +2,7 @@ package almond.interpreter.util
 
 import java.lang.Thread.UncaughtExceptionHandler
 import java.util.concurrent.{Executors, ThreadFactory}
+import java.util.concurrent.atomic.AtomicBoolean
 
 import almond.logger.LoggerContext
 
@@ -69,6 +70,23 @@ final class CancellableFuturePool(
         t.stop()
 
     CancellableFuture(future(result0()), () => cancel())
+  }
+
+  /** Computes `result` on a thread of this pool.
+    *
+    * Unlike the other `cancellableFuture` method, `result` isn't evaluated by the caller: it's
+    * evaluated later on, in the pool, so that the caller can go on while it's being computed.
+    *
+    * Cancelling the returned future doesn't stop a computation that already started. But if it
+    * didn't start yet (if it's waiting for a lock held by a compilation, typically), `ifCancelled`
+    * is returned instead of computing `result`.
+    */
+  def lazyCancellableFuture[T](result: => T, ifCancelled: => T): CancellableFuture[T] = {
+    val cancelled = new AtomicBoolean(false)
+    CancellableFuture(
+      future(if (cancelled.get()) ifCancelled else result),
+      () => cancelled.set(true)
+    )
   }
 
   def shutdown(): Unit =
