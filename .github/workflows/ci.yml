@@ -132,6 +132,24 @@ jobs:
         shell: bash
         command: .github/scripts/run/run-its.sh ${{ matrix.GROUP }}
 
+  proxy-tests:
+    # Docker-based tests: the kernels are installed and run from containers that can't reach Maven
+    # Central, only an authenticated proxy or a repository mirror (see docs/pages/install-proxies.md).
+    # Docker only being around on the Linux runners, these run on Linux only.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/setup-action@v3.0
+      with:
+        jvm: 21
+    # -j 1 like the integration tests: the localRepo tasks don't like being run in parallel
+    - run: ./mill -i -j 1 scala.proxy-tests.test
+      shell: bash
+
   bincompat:
     runs-on: ubuntu-latest
     steps:

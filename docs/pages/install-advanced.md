@@ -241,6 +241,8 @@ $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- \
 `--env` sets environment variables in the kernel spec that gets written when installing Almond. Jupyter
 sets those prior to launching Almond when users open notebooks.
 
+To keep using Maven Central through a proxy or a mirror of it, see [proxies and mirrors](install-proxies.md).
+
 ## Available options
 
 To list the options that the former launcher accepts, run
