@@ -7,6 +7,7 @@ dependencies = [
   "jupyter-client>=8",
   "jupyter-console>=6.6",
   "jupyterlab>=4",
+  "notebook>=7",
   "nbconvert>=7.17",
 ]
 

@@ -106,6 +106,24 @@ object JupyterServer {
     JavaHomes.environment(javaHome) +
       ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
 
+  /** Extracts a `--classic` flag from the passed arguments, if any: whether the Jupyter Notebook UI
+    * (the classic one, at `/tree`) should be the default UI rather than JupyterLab (at `/lab`).
+    * Both are served by the same server either way. Returns it along with the remaining arguments.
+    */
+  private def extractClassic(args: Seq[String]): (Boolean, Seq[String]) = {
+    val flag = "--classic"
+    (args.contains(flag), args.filterNot(_ == flag))
+  }
+
+  /** JupyterLab option making the Jupyter Notebook UI the one the server root redirects to, and the
+    * one the URLs the server prints point at. This needs to be set on `LabApp` rather than
+    * `ServerApp`: the app the server is started with (`jupyter lab` here) pushes its own
+    * `default_url` in the server config, overriding a `--ServerApp.default_url=…` on the command
+    * line.
+    */
+  private def classicOptions: Seq[String] =
+    Seq("--LabApp.default_url=/tree")
+
   /** Extracts a `--base-address=…` (or `--base-address …`) option from the passed arguments, if
     * any, and returns it along with the remaining arguments.
     */
@@ -273,6 +291,10 @@ object JupyterServer {
     System.err.println(s"JupyterLab is running in the background$suffix")
     for (line <- urls)
       System.err.println("  " + line.trim)
+    System.err.println(
+      "JupyterLab is under /lab, and the Jupyter Notebook (classic) UI under /tree: " +
+        "switch between them from the View menu (pass --classic to land on /tree)"
+    )
     val followCommand =
       if (Properties.isWin) s"Get-Content -Wait $stderrLog0" // PowerShell
       else s"tail -f ${logFiles.mkString(" ")}"
@@ -314,7 +336,11 @@ object JupyterServer {
     )
   }
 
-  /** Writes the kernel specs, and returns the command to run JupyterLab with them */
+  /** Writes the kernel specs, and returns the command to run JupyterLab with them.
+    *
+    * The server also serves the Jupyter Notebook UI (the classic one), under `/tree`. `args` may
+    * contain `--base-address=…` and `--classic`, handled here, the rest is passed to JupyterLab.
+    */
   def jupyterLabCommand(
     uv: os.Path,
     javaHome: os.Path,
@@ -339,9 +365,11 @@ object JupyterServer {
 
     os.makeDir.all(workspace / "notebooks")
     val (baseAddressOpt, args0) = extractBaseAddress(args)
+    val (classic, args1)        = extractClassic(args0)
     val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
       baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
-      args0
+      (if (classic) classicOptions else Nil) ++
+      args1
     Command(
       workspace,
       jupyterEnvironment(javaHome, jupyterDir),
