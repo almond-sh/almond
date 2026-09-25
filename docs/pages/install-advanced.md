@@ -241,6 +241,30 @@ $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- \
 `--env` sets environment variables in the kernel spec that gets written when installing Almond. Jupyter
 sets those prior to launching Almond when users open notebooks.
 
+## Using authenticated Maven repositories
+
+Almond resolves dependencies with [Coursier](https://get-coursier.io), and picks up the credentials
+that Coursier reads by default. In particular, credentials written in
+`~/.config/coursier/credentials.properties` (`~/Library/Preferences/Coursier/credentials.properties`
+on macOS, `%LOCALAPPDATA%\Coursier\config\credentials.properties` on Windows) are used, like
+```text
+mycorp.host=artifacts.company.com
+mycorp.username=<user>
+mycorp.password=<password or token>
+```
+See the [Coursier documentation](https://get-coursier.io/docs/other-credentials) for the details,
+like the `COURSIER_CREDENTIALS` environment variable, or per-realm credentials.
+
+Those credentials apply to any repository on a matching host, however it was added - via
+`--extra-repository` when installing the kernel, via `COURSIER_REPOSITORIES`, or via
+```scala
+//> using repository https://artifacts.company.com/maven
+```
+in a notebook. Note that Jupyter has to start the kernel as a user that can read the credentials
+file.
+
+Credentials can also be passed explicitly, [from a notebook](api-ammonite.md#add-repositories).
+
 ## Available options
 
 To list the options that the former launcher accepts, run

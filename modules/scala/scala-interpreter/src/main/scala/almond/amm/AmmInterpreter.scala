@@ -254,11 +254,14 @@ object AmmInterpreter {
       // TODO: remove jitpack once jvm-repr is published to central
       val allExtraRepos = extraRepos ++ Seq("https://jitpack.io")
       ammInterp0.repositories() = ammInterp0.repositories() ++
-        allExtraRepos.map { r =>
-          if (r.startsWith("ivy:"))
-            coursierapi.IvyRepository.of(r.stripPrefix("ivy:"))
-          else
-            coursierapi.MavenRepository.of(r)
+        allExtraRepos.flatMap { r =>
+          almond.Execute.parseRepository(r) match {
+            case Left(err) =>
+              System.err.println(s"Warning: ignoring repository '$r' ($err)")
+              Nil
+            case Right(repo) =>
+              Seq(repo)
+          }
         }
 
       log.debug("Processing dependency-related params")

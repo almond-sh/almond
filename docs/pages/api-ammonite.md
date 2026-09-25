@@ -84,6 +84,15 @@ interp.repositories() ++= Seq(
 )
 ```
 
+Passing credentials that way is only needed for repositories that Coursier doesn't already have
+credentials for. Credentials from the
+[usual Coursier locations](install-advanced.md#using-authenticated-maven-repositories), like
+`~/.config/coursier/credentials.properties`, are picked up automatically, so a repository on such a
+host can simply be added with
+```scala
+//> using repository https://nexus.corp.com/content/repositories/releases
+```
+
 ### Add exit hooks
 
 ```scala
