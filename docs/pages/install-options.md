@@ -121,6 +121,19 @@ doesn't compile or throws an exception. Use like
 "
 ```
 
+#### `--auto-update-vars`
+
+Whether the output of top-level `var`s should be updated when they change later on (default: true).
+See [Auto-updated variables](api-jupyter.md#auto-updated-variables). Disable with
+```bash
+--auto-update-vars=false
+```
+
+#### `--auto-update-lazy-vals`
+
+Whether the output of top-level `lazy val`s should be updated when they're computed (default: true).
+See [Auto-updated variables](api-jupyter.md#auto-updated-variables).
+
 ## Dependency-related
 
 #### `--extra-repository`

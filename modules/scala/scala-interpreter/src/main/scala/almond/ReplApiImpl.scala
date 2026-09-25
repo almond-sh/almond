@@ -112,15 +112,24 @@ final class ReplApiImpl(
                   ).map(_.render).mkString
                 }
 
+                // Rendering the latest value of the variable (evaluating `value` again) rather than
+                // the one passed to the listener: updates are coalesced and computed later on,
+                // possibly from another thread, and only the latest value matters then.
+                // This listener is called upon each change of the variable, which can happen
+                // many times per second, so it has to be cheap.
                 onChange.foreach(_ { value0 =>
                   if (value0 != currentValue) {
-                    val s = pprinter().tokenize(
-                      value0,
-                      height = pprinter().defaultHeight - prefix.completedLineCount,
-                      initialOffset = prefix.lastLineLength
-                    )
-                    updatableResults.update(id, s.map(_.render).mkString, last = false)
                     currentValue = value0
+                    updatableResults.updateLazily(
+                      id,
+                      () =>
+                        pprinter().tokenize(
+                          value,
+                          height = pprinter().defaultHeight - prefix.completedLineCount,
+                          initialOffset = prefix.lastLineLength
+                        ).map(_.render).mkString,
+                      last = false
+                    )
                   }
                 })
 

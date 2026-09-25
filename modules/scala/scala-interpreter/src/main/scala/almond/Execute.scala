@@ -222,6 +222,11 @@ final class Execute(
           case None    => throw new Exception("Results updating not available")
           case Some(r) => r.update(k, v, last)
         }
+      override def updateLazily(k: String, v: () => String, last: Boolean) =
+        updatableResultsOpt0 match {
+          case None    => throw new Exception("Results updating not available")
+          case Some(r) => r.update(k, v(), last)
+        }
     }
 
   private def withInputManager[T](m: Option[InputManager], done: Boolean)(f: => T): T = {
@@ -411,6 +416,10 @@ final class Execute(
                     silent = silent(),
                     incrementLine = () => incrementLine(storeHistory)
                   )
+
+                  // Send the updates that the cell triggered and that are still pending,
+                  // so that they reach the front-end before the cell is marked as done
+                  updatableResultsOpt0.foreach(_.flush())
 
                   val updatedRes = r match {
                     case ex: Res.Exception =>
