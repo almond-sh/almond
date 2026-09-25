@@ -752,6 +752,7 @@ object docs extends ScalaModule with AlmondRepositories {
     val ver = scala.`scala-kernel-api`(ScalaVersions.binary(scalaVersion0)).publishVersion()
     val latestRelease = AlmondPublishModule.latestTaggedVersion()
     val ammVer        = Deps.ammoniteReplApi.dep.versionConstraint.asString
+    val ammSparkVer   = Deps.ammoniteSpark.dep.versionConstraint.asString
     val scalaVer      = scalaVersion0
 
     val isSnapshot = ver.endsWith("SNAPSHOT")
@@ -777,6 +778,8 @@ object docs extends ScalaModule with AlmondRepositories {
       extraSbt,
       "--site.AMMONITE_VERSION",
       ammVer,
+      "--site.AMMONITE_SPARK_VERSION",
+      ammSparkVer,
       "--site.SCALA_VERSION",
       scalaVer,
       "--site.SCALA_BINARY_VERSION",
