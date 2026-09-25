@@ -48,6 +48,20 @@ and allows to use the dependency in the current cell rather than the next one:
 import $ivy.`org.platanios::tensorflow-data:0.4.1`
 ```
 
+The same goes for the `//> using dep` directive:
+```scala
+//> using dep "org.platanios::tensorflow-data:0.4.1"
+```
+
+Both syntaxes accept a classifier, appended to the dependency as
+`,classifier=…`:
+```scala
+import $ivy.`org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64`
+```
+```scala
+//> using dep "org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64"
+```
+
 #### Pinning dependency versions
 
 Loading dependencies upfront in a first cell effectively "pins" their versions:
