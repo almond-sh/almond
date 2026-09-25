@@ -897,10 +897,15 @@ object dev extends Module {
     }
   }
 
-  /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`) */
+  /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`).
+    *
+    * Exclusive, like `cli.run` in the coursier build: Mill runs it once every other task is done,
+    * with its prompt / ticker disabled, so that only the console is writing to the terminal (the
+    * console gets the raw terminal I/O via `os.InheritRaw`).
+    */
   def jupyterConsole0(args: Seq[String], fast: Boolean) = {
     val (sv, args0, launcher, specialLauncher) = jupyterSetup(args, fast)
-    Task.Command {
+    Task.Command(exclusive = true) {
       JupyterServer.jupyterConsole(
         UvLauncher.uv(Versions.uv),
         JavaHomes.javaHome(Versions.jupyterJvm),
