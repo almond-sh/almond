@@ -206,7 +206,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
       if (crossScalaVersion.startsWith("2."))
         Seq(
           // The scalameta versions of mtags (Metals) and Ammonite may clash here :\
-          Deps.mtags
+          Deps.mtags(crossScalaVersion)
         )
       else
         Seq.empty
@@ -851,6 +851,12 @@ object dev extends Module {
     (sv, args0, launcher, specialLauncher)
   }
 
+  /** The JVM the Jupyter commands run a kernel with: the configured one, unless the Scala version
+    * needs an older one
+    */
+  def devJvm(sv: String): String =
+    ScalaVersions.jvmVersionFor(sv).getOrElse(Versions.devJvm)
+
   /** Starts a JupyterLab server in the background, and returns the log files to tail to follow its
     * output (`./mill show dev.jupyterFast …` prints them as JSON)
     */
@@ -860,7 +866,7 @@ object dev extends Module {
     Task.Command(persistent = true) {
       JupyterServer.jupyterServer(
         UvLauncher.uv(Versions.uv),
-        JavaHomes.javaHome(Versions.jupyterJvm),
+        JavaHomes.javaHome(devJvm(sv)),
         mill.javalib.JvmWorkerModule.backgroundWrapperClasspath().map(_.path),
         jupyterBackgroundDir(),
         launcher().path,
@@ -884,7 +890,7 @@ object dev extends Module {
     Task.Command(persistent = true) {
       val cmd = JupyterServer.jupyterLabCommand(
         UvLauncher.uv(Versions.uv),
-        JavaHomes.javaHome(Versions.jupyterJvm),
+        JavaHomes.javaHome(devJvm(sv)),
         launcher().path,
         specialLauncher().path,
         Task.dest / "jupyter",
@@ -903,7 +909,7 @@ object dev extends Module {
     Task.Command {
       JupyterServer.jupyterConsole(
         UvLauncher.uv(Versions.uv),
-        JavaHomes.javaHome(Versions.jupyterJvm),
+        JavaHomes.javaHome(devJvm(sv)),
         launcher().path,
         specialLauncher().path,
         Task.dest / "jupyter",

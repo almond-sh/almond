@@ -10,7 +10,7 @@ import mill.scalalib.*
 // used when computing paths, as the former is always a valid Scala version,
 // while the latter can be a 3.x version while we compile using Scala 2.x
 // (and later rely on dotty compatibility to mix Scala 2 / Scala 3 modules).
-trait AlmondCrossSbtModule extends SbtModule with CrossModuleBase {
+trait AlmondCrossSbtModule extends SbtModule with CrossModuleBase with AlmondScalacJvm {
   outer =>
 
   def extraScalaSources = Task.Sources(
@@ -30,6 +30,9 @@ trait AlmondCrossSbtModule extends SbtModule with CrossModuleBase {
     def sources = Task {
       super.sources() ++ extraTestScalaSources()
     }
+    // Mill's ScalaTests takes the compiler version from us, but not its class path, which
+    // AlmondScalacJvm may patch
+    def scalaCompilerClasspath = outer.scalaCompilerClasspath()
   }
   trait Tests extends CrossSbtModuleTests
 }
