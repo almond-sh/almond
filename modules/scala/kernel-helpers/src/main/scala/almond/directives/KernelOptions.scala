@@ -18,7 +18,8 @@ final case class KernelOptions(
   dependencies: Seq[dependency.AnyDependency] = Nil,
   scalacOptions: ShadowingSeq[Positioned[ScalacOpt]] = ShadowingSeq.empty,
   extraRepositories: Seq[String] = Nil,
-  ignoredDirectives: Seq[IgnoredDirective] = Nil
+  ignoredDirectives: Seq[IgnoredDirective] = Nil,
+  scripts: Seq[Positioned[String]] = Nil
 ) {
   def isEmpty: Boolean =
     this == KernelOptions()
@@ -27,7 +28,8 @@ final case class KernelOptions(
       dependencies = dependencies ++ other.dependencies,
       scalacOptions = scalacOptions ++ other.scalacOptions.toSeq,
       extraRepositories = extraRepositories ++ other.extraRepositories,
-      ignoredDirectives = ignoredDirectives ++ other.ignoredDirectives
+      ignoredDirectives = ignoredDirectives ++ other.ignoredDirectives,
+      scripts = scripts ++ other.scripts
     )
 }
 
@@ -36,13 +38,15 @@ object KernelOptions {
   final case class AsJson(
     dependencies: Seq[String] = Nil,
     scalacOptions: Seq[String] = Nil,
-    extraRepositories: Seq[String] = Nil
+    extraRepositories: Seq[String] = Nil,
+    scripts: Seq[String] = Nil
   ) {
     def +(other: AsJson): AsJson =
       AsJson(
         dependencies = dependencies ++ other.dependencies,
         scalacOptions = scalacOptions ++ other.scalacOptions,
-        extraRepositories = extraRepositories ++ other.extraRepositories
+        extraRepositories = extraRepositories ++ other.extraRepositories,
+        scripts = scripts ++ other.scripts
       )
     def toKernelOptions: Either[::[String], KernelOptions] = {
       val maybeDependencies = dependencies
@@ -58,7 +62,8 @@ object KernelOptions {
               dependencies = dependencies0,
               scalacOptions =
                 ShadowingSeq.from(scalacOptions.map(opt => Positioned.none(ScalacOpt(opt)))),
-              extraRepositories = extraRepositories
+              extraRepositories = extraRepositories,
+              scripts = scripts.map(Positioned.none(_))
             )
           )
         case Left(depErrors) =>
@@ -68,14 +73,15 @@ object KernelOptions {
   }
 
   object AsJson {
-    def empty: AsJson                          = AsJson(Nil, Nil, Nil)
+    def empty: AsJson                          = AsJson(Nil, Nil, Nil, Nil)
     implicit val codec: JsonValueCodec[AsJson] = JsonCodecMaker.makeWithRequiredCollectionFields
 
     def apply(options: KernelOptions): AsJson =
       AsJson(
         dependencies = options.dependencies.map(_.render),
         scalacOptions = options.scalacOptions.toSeq.map(_.value.value),
-        extraRepositories = options.extraRepositories
+        extraRepositories = options.extraRepositories,
+        scripts = options.scripts.map(_.value)
       )
   }
 

@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
+import almond.amm.AmmInterpreter
 import almond.api.JupyterApi
 import almond.directives.{HasKernelOptions, KernelOptions}
 import almond.directives.HasKernelOptions.ops._
@@ -21,12 +22,13 @@ import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
 import almond.logger.internal.PrintStreamLogger
 import almond.protocol.{Execute => ProtocolExecute}
-import ammonite.compiler.Parsers
+import ammonite.compiler.{CodeClassWrapper, Parsers}
 import ammonite.compiler.iface.Preprocessor
 import ammonite.repl.api.History
 import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
-import ammonite.util.{Colors, Evaluated, Ex, Printer, Ref, Res}
+import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
+import ammonite.util.Util.CodeSource
 import coursierapi.{IvyRepository, MavenRepository}
 import dependency.ScalaParameters
 import dependency.api.ops._
@@ -55,7 +57,9 @@ final class Execute(
   initialCellCount: Int,
   enableExitHack: Boolean,
   ignoreLauncherDirectivesIn: Set[String],
-  launcherDirectiveGroups: Seq[CustomGroup]
+  launcherDirectiveGroups: Seq[CustomGroup],
+  pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
+  wrapperPath: Seq[Name] = CodeClassWrapper.wrapperPath
 ) {
 
   private val handlers = HasKernelOptions.handlers ++
@@ -340,13 +344,59 @@ final class Execute(
 
   private var standaloneSourceCount = 0
 
+  /** Loads scripts passed via `//> using script` directives, like `import $file.…` does */
+  private def loadScripts(
+    ammInterp: ammonite.interp.Interpreter,
+    scripts: Seq[Positioned[String]]
+  ): Res[Unit] = {
+    // the source the scripts are loaded from - the same as the one Ammonite uses for cells,
+    // so that scripts are loaded exactly like via `import $file.…` from a cell
+    val source = CodeSource(
+      Name("cell"),
+      Nil,
+      pkgName.map(Name(_)),
+      Some(os.pwd / "(console)")
+    )
+    val maybeImports = Res.map(scripts) { script =>
+      val input = script.value
+      for {
+        path <- Res(
+          Try(os.Path(input, os.pwd)),
+          ex => s"Malformed script path '$input': ${ex.getMessage}"
+        )
+        file = if (path.last.endsWith(".sc")) path else path / os.up / (path.last + ".sc")
+        _ <- {
+          if (os.isFile(file)) Res.Success(())
+          else Res.Failure(s"Script not found: $file")
+        }
+        // The `$file` import hook of Ammonite expects a path relative to the working directory,
+        // where `^` stands for `..`
+        rel = file.relativeTo(os.pwd)
+        tree = ImportTree(
+          Seq("$file") ++
+            Seq.fill(rel.ups)(Util.upPathSegment) ++
+            rel.segments.init ++
+            Seq(rel.segments.last.stripSuffix(".sc")),
+          None,
+          0,
+          0
+        )
+        imports <- ammInterp.resolveSingleImportHook(source, tree, wrapperPath)
+      } yield imports
+    }
+    maybeImports.map { imports =>
+      ammInterp.handleImports(Imports(imports.flatten.flatMap(_.value)))
+    }
+  }
+
   private def ammResult(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler],
     storeHistory: Boolean,
-    jupyterApi: JupyterApi
+    jupyterApi: JupyterApi,
+    scripts: Seq[Positioned[String]]
   ): Res[DisplayData] =
     withOutputHandler(outputHandler) {
       val code0 = {
@@ -358,10 +408,28 @@ final class Execute(
       }
       // TODO Ignore comments before any package directive too
       val isStandaloneSource = code.startsWith("package ")
+      val scriptsRes =
+        if (scripts.isEmpty) Res.Success(())
+        else
+          interruptible(jupyterApi) {
+            withInputManager(inputManager, done = false) {
+              withClientStdin {
+                capturingOutput {
+                  loadScripts(ammInterp, scripts)
+                }
+              }
+            }
+          }
+      scriptsRes match {
+        case Res.Exception(ex, _) =>
+          lastExceptionOpt0 = Some(ex)
+        case _ =>
+      }
       if (isStandaloneSource) {
         val count = standaloneSourceCount
         standaloneSourceCount = standaloneSourceCount + 1
         for {
+          _ <- scriptsRes
           output <- interruptible(jupyterApi) {
             capturingOutput {
               Res(
@@ -385,6 +453,7 @@ final class Execute(
       }
       else
         for {
+          _ <- scriptsRes
           stmts <- ammonite.compiler.Parsers.split(code0, ignoreIncomplete = false) match {
             case None =>
               // In Scala 2? cannot happen with ignoreIncomplete = false.
@@ -608,7 +677,8 @@ final class Execute(
                       inputManager,
                       outputHandler,
                       storeHistory,
-                      jupyterApi
+                      jupyterApi,
+                      options.scripts
                     ) match {
                       case Res.Success(data) =>
                         ExecuteResult.Success(data)

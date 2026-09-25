@@ -141,6 +141,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  test0("import file") { implicit forceVersion =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.importFile(kernelLauncher.defaultScalaVersion)
+    }
+  }
+
   test0("add scalac option") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
