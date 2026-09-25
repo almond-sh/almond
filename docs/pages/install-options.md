@@ -84,6 +84,33 @@ Default: true if `--arg` and `--command` aren't specified, false else.
 
 ## Scala-related
 
+#### `--silent-imports`
+
+Suppress the automatic output for `import` statements. Disabled by default.
+Enable it when installing the kernel:
+
+```bash
+cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --silent-imports
+```
+
+Add `--force` when replacing an existing kernel installation.
+
+This option only silences imports; it does not suppress the values printed for
+`val` definitions or limit output to the last expression of a cell (as requested
+in [issue #256](https://github.com/almond-sh/almond/issues/256)). To show only the
+result of a computation, put its intermediate definitions in a block:
+
+```scala
+val result = {
+  val first = 1
+  val second = 2
+  first + second
+}
+```
+
+Only `result` is printed automatically. The intermediate definitions are local
+to the block and cannot be used in subsequent cells.
+
 #### `--predef-code`
 
 Run some code right before the session starts. Makes the kernel start fail if the predef
