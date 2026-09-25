@@ -81,8 +81,9 @@ object Tests {
         "",
         // the update originates from the previous cell, but arrives while the third one is running
         displaysTextUpdates = Seq(
-          if (isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
+          // pprint doesn't print the field names of single-field case classes in Scala 3
+          if (isScala2 && !isScala212) "f: Future[Int] = Success(value = 2)"
+          else "f: Future[Int] = Success(2)"
         )
       )
     }
@@ -112,8 +113,9 @@ object Tests {
         "",
         displaysText = Seq("f: Future[Int] = [running]"),
         displaysTextUpdates = Seq(
-          if (isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
+          // pprint doesn't print the field names of single-field case classes in Scala 3
+          if (isScala2 && !isScala212) "f: Future[Int] = Success(value = 2)"
+          else "f: Future[Int] = Success(2)"
         ),
         waitForUpdateDisplay = true
       )

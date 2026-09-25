@@ -60,7 +60,9 @@ object EvaluatorTests extends TestSuite {
               """y: Int = 1
                 |defined class C
                 |res4_2: Int = 3""".stripMargin,
-            "C()" -> (if (isScala212) "res5: C = C(0)" else "res5: C = C(i = 0)")
+            // pprint doesn't print the field names of single-field case classes in Scala 3
+            "C()" ->
+              (if (TestUtil.isScala2 && !isScala212) "res5: C = C(i = 0)" else "res5: C = C(0)")
           )
         )
       }
@@ -130,6 +132,33 @@ object EvaluatorTests extends TestSuite {
               |b: Char = 'a'""".stripMargin,
           "a = 2"   -> "",
           "b = 'c'" -> ""
+        )
+      )
+    }
+
+    test("pprint") {
+      // versionNumberString is the version of the Scala 2.13 library in Scala 3
+      val sv         = scala.util.Properties.versionNumberString
+      val isScala212 = sv.startsWith("2.12.")
+      val isScala213 = TestUtil.isScala2 && sv.startsWith("2.13.")
+      runner.run(
+        Seq(
+          // field names are only printed from Scala 2.13 on, and not for single-field case
+          // classes in Scala 3
+          "case class A(i: Int); val a = A(2)" ->
+            s"""defined class A
+               |a: A = ${if (isScala213) "A(i = 2)" else "A(2)"}""".stripMargin,
+          // field names that aren't identifiers are backquoted
+          "case class B(`a b`: Int, c: Int); val b = B(1, 2)" ->
+            s"""defined class B
+               |b: B = ${if (isScala212) "B(1, 2)" else "B(`a b` = 1, c = 2)"}""".stripMargin,
+          // common collection classes are printed with the name of their default factory
+          "val m: Map[Int, Int] = scala.collection.immutable.HashMap(1 -> 2)" ->
+            "m: Map[Int, Int] = Map(1 -> 2)",
+          "val s: Set[Int] = scala.collection.immutable.HashSet(1)" ->
+            "s: Set[Int] = Set(1)",
+          "val it: Iterable[Int] = scala.collection.mutable.ArraySeq(1)" ->
+            "it: Iterable[Int] = Seq(1)"
         )
       )
     }
