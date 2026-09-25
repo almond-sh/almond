@@ -94,10 +94,25 @@ interp.beforeExitHooks += { _ =>
 
 ### Configure compiler options
 
+`interp.preConfigureCompiler` accepts a function that updates the settings of the compiler,
+and requests a fresh compiler instance, used from the next cell onwards. In Scala 2, it
+receives a `scala.tools.nsc.Settings`:
 ```scala
-// enable warnings
-interp.configureCompiler(_.settings.nowarn.value = false)
+// Scala 2 - fail on warnings
+interp.preConfigureCompiler(_.fatalWarnings.value = true)
 ```
+
+In Scala 3, it receives a `dotty.tools.dotc.core.Contexts.FreshContext`:
+```scala
+// Scala 3 - fail on warnings
+interp.preConfigureCompiler { ctx =>
+  ctx.setSetting(ctx.settings.XfatalWarnings, true)
+}
+```
+
+See [Compiler options](usage-compiler-options.md) for more details, including how to pass
+options as strings, and how to set them with `//> using option` directives rather than
+via this API.
 
 ## `ReplAPI`
 

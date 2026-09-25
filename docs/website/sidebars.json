@@ -3,7 +3,7 @@
     "Intro": ["intro"],
     "Try it": ["try-mybinder", "try-docker", "try-deepnote"],
     "Installation": ["quick-start-install", "install-options", "install-multiple", "install-versions", "install-other", "install-advanced"],
-    "Usage": ["usage-plotting", "usage-spark"],
+    "Usage": ["usage-compiler-options", "usage-plotting", "usage-spark"],
     "User API": ["api", "api-ammonite", "api-jupyter", "api-access-instances"],
     "Development": ["dev-from-sources", "dev-custom-kernel", "dev-libraries", "dev-website"]
   }
