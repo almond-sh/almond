@@ -76,39 +76,19 @@ trait Api extends Cross.Module[String] with AlmondModule with AlmondMima {
   }
 }
 
-trait Kernel extends Cross.Module[String] with AlmondModule {
+trait Kernel extends Cross.Module[String] with AlmondModule with FoldedModules {
   def crossScalaVersion = crossValue
 
-  /** Our Scala 2 macros, that only exist for the Scala 2 binary versions */
-  private def macrosModuleOpt: Option[LoggerScala2Macros] =
-    if (isScala3(crossScalaVersion)) None
-    else Some(shared.`logger-scala2-macros`())
+  // Our Scala 2 macros, that only exist for the Scala 2 binary versions. They're only needed at
+  // compile time, and are of no use on their own - rather than publishing them separately, we
+  // ship them alongside our own classes.
+  def foldedModules =
+    if (isScala3(crossScalaVersion)) Nil
+    else Seq(shared.`logger-scala2-macros`())
 
   def moduleDeps = Seq(
     api()
   )
-  def compileModuleDeps = super.compileModuleDeps ++ macrosModuleOpt.toSeq
-
-  // The macros are only needed at compile time, and are of no use on their own - rather than
-  // publishing them separately, we add their classes to our local compile class path, which
-  // puts them both in our JAR and on the compile class path of the modules depending on us.
-  def localCompileClasspath = Task {
-    super.localCompileClasspath() ++
-      Task.traverse(macrosModuleOpt.toSeq)(_.compile)().map(_.classes)
-  }
-  // Ship the sources of the macros alongside ours too, for the classes above not to miss theirs
-  def sourceJar = Task {
-    val macroSources = Task.traverse(macrosModuleOpt.toSeq)(_.allSources)().flatten
-    PathRef(
-      mill.util.Jvm.createJar(
-        Task.dest / "out.jar",
-        (allSources() ++ macroSources ++ resources() ++ compileResources())
-          .map(_.path)
-          .filter(os.exists),
-        manifest()
-      )
-    )
-  }
 
   def compileMvnDeps = Seq(
     Deps.jsoniterScalaMacros
@@ -194,12 +174,14 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
   def resources = super.resources
 }
 
-trait ScalaInterpreter extends Cross.Module[String] with AlmondModule {
+trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with FoldedModules {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.kernel(),
-    scala.`kernel-helpers`(),
     scala.`scala-kernel-api`()
+  )
+  def foldedModules = Seq(
+    scala.`kernel-helpers`()
   )
   def mvnDeps = Task {
     val metabrowse =
@@ -398,8 +380,12 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
 
 /** Helpers that both the Scala kernel and its launcher build upon, but that the kernel framework
   * itself doesn't need.
+  *
+  * Not published on its own - [[ScalaInterpreter]] and [[Launcher]] ship its classes and sources
+  * alongside their own.
   */
-trait KernelHelpers extends Cross.Module[String] with AlmondModule {
+trait KernelHelpers extends Cross.Module[String] with AlmondUnpublishedModule
+    with AlmondJvmTarget {
   def crossScalaVersion = crossValue
   def moduleDeps = super.moduleDeps ++ Seq(
     shared.kernel()
@@ -416,12 +402,15 @@ trait KernelHelpers extends Cross.Module[String] with AlmondModule {
   )
 }
 
-trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile {
+trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFile
+    with FoldedModules {
   private def sv   = ScalaVersions.scala3Latest
   def scalaVersion = sv
   def moduleDeps = Seq(
-    scala.`kernel-helpers`(ScalaVersions.scala3Compat),
     shared.kernel(ScalaVersions.scala3Compat)
+  )
+  def foldedModules = Seq(
+    scala.`kernel-helpers`(ScalaVersions.scala3Compat)
   )
   def mvnDeps = Seq(
     Deps.caseApp,
@@ -537,8 +526,7 @@ object `local-repo` extends Module {
         scala.`almond-scalapy`(sv),
         shared.kernel(sv),
         api(sv),
-        scala.`json-api-jackson`(sv),
-        scala.`kernel-helpers`(sv)
+        scala.`json-api-jackson`(sv)
       )
     }
     val kernelModules = ScalaVersions.binaries.flatMap { sv =>
