@@ -51,17 +51,55 @@ object JupyterServer {
 
   /** Runs `jupyter` from the uv-managed environment described by `examples/pyproject.toml`, so that
     * users don't need Jupyter (or even Python) installed: uv creates the environment on the fly,
-    * with the versions pinned in `examples/uv.lock`.
+    * with the versions pinned in `examples/uv.lock`. `groups` are dependency groups of
+    * `examples/pyproject.toml` to install on top of the main dependencies.
     */
-  def jupyterCommand(uv: os.Path, workspace: os.Path, jupyterArgs: String*): Seq[String] =
+  def jupyterCommand(
+    uv: os.Path,
+    workspace: os.Path,
+    groups: Seq[String],
+    jupyterArgs: String*
+  ): Seq[String] =
+    uvRunCommand(uv, workspace, groups) ++ Seq("jupyter") ++ jupyterArgs
+
+  private def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
     Seq(
       PathRef.toResolvedPathString(uv),
       "run",
       "--project",
       PathRef.toResolvedPathString(workspace / "examples"),
-      "--frozen",
-      "jupyter"
-    ) ++ jupyterArgs
+      "--frozen"
+    ) ++
+      groups.flatMap(group => Seq("--group", group))
+
+  /** Makes the JupyterLab settings in `examples/jupyterlab-overrides.json` (theme following the
+    * system one, 2-space indentation, …) the defaults of the uv-managed environment, for both
+    * JupyterLab and the Jupyter Notebook UI. Settings changed by users still take precedence.
+    *
+    * These are written to the `overrides.d` directory of the JupyterLab application settings, which
+    * lives in the Python environment (`<sys.prefix>/share/jupyter/lab/settings` usually):
+    * JupyterLab only reads default overrides from there.
+    */
+  private def writeSettingsOverrides(
+    uv: os.Path,
+    workspace: os.Path,
+    groups: Seq[String]
+  ): Unit = {
+    val appDir = os.proc(
+      uvRunCommand(uv, workspace, groups),
+      "python",
+      "-c",
+      "from jupyterlab.commands import get_app_dir; print(get_app_dir())"
+    ).call(cwd = workspace, stderr = os.Inherit).out.trim()
+    os.copy.over(
+      workspace / "examples" / "jupyterlab-overrides.json",
+      os.Path(appDir) / "settings" / "overrides.d" / "almond.json",
+      createFolders = true
+    )
+  }
+
+  /** Dependency group of `examples/pyproject.toml` with Jupyter AI, installed for JupyterLab */
+  private def aiGroup = "ai"
 
   def writeKernelJson(
     launcher: os.Path,
@@ -99,12 +137,26 @@ object JupyterServer {
     System.err.println(s"JUPYTER_PATH=${PathRef.toResolvedPathString(jupyterDir)}")
   }
 
-  /** Environment for Jupyter: the JVM at `javaHome` (for the kernels it starts), and the kernel
-    * specs under `jupyterDir`
+  /** Environment for Jupyter: the JVM at `javaHome` (for the kernels it starts), the kernel specs
+    * under `jupyterDir`, and the commands in `extraPath` (the ACP agents Jupyter AI talks to, …)
     */
-  private def jupyterEnvironment(javaHome: os.Path, jupyterDir: os.Path): Map[String, String] =
-    JavaHomes.environment(javaHome) +
-      ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
+  private def jupyterEnvironment(
+    javaHome: os.Path,
+    jupyterDir: os.Path,
+    extraPath: Seq[os.Path] = Nil
+  ): Map[String, String] = {
+    val javaEnv = JavaHomes.environment(javaHome)
+    val javaEnv0 =
+      if (extraPath.isEmpty) javaEnv
+      else {
+        // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
+        val (pathKey, pathValue) = javaEnv.find(_._1.equalsIgnoreCase("PATH")).get
+        val newPathValue =
+          (extraPath.map(PathRef.toResolvedPathString(_)) :+ pathValue).mkString(File.pathSeparator)
+        javaEnv + (pathKey -> newPathValue)
+      }
+    javaEnv0 + ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
+  }
 
   /** Extracts a `--classic` flag from the passed arguments, if any: whether the Jupyter Notebook UI
     * (the classic one, at `/tree`) should be the default UI rather than JupyterLab (at `/lab`).
@@ -340,6 +392,10 @@ object JupyterServer {
     *
     * The server also serves the Jupyter Notebook UI (the classic one), under `/tree`. `args` may
     * contain `--base-address=…` and `--classic`, handled here, the rest is passed to JupyterLab.
+    *
+    * JupyterLab comes with Jupyter AI. Its Claude and Codex personas are enabled if `acpAgentsBin`,
+    * added to the `PATH` of JupyterLab, contains the `claude-agent-acp` and `codex-acp` commands
+    * (see [[AcpAgents]]).
     */
   def jupyterLabCommand(
     uv: os.Path,
@@ -350,7 +406,8 @@ object JupyterServer {
     args: Seq[String],
     workspace: os.Path,
     publishVersion: String,
-    localRepoRoot: os.Path
+    localRepoRoot: os.Path,
+    acpAgentsBin: Option[os.Path]
   ): Command = {
 
     writeKernelJsons(
@@ -363,16 +420,19 @@ object JupyterServer {
       "--quiet=false"
     )
 
+    writeSettingsOverrides(uv, workspace, Seq(aiGroup))
+
     os.makeDir.all(workspace / "notebooks")
     val (baseAddressOpt, args0) = extractBaseAddress(args)
     val (classic, args1)        = extractClassic(args0)
-    val command = jupyterCommand(uv, workspace, "lab", "--notebook-dir", "notebooks") ++
-      baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
-      (if (classic) classicOptions else Nil) ++
-      args1
+    val command =
+      jupyterCommand(uv, workspace, Seq(aiGroup), "lab", "--notebook-dir", "notebooks") ++
+        baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
+        (if (classic) classicOptions else Nil) ++
+        args1
     Command(
       workspace,
-      jupyterEnvironment(javaHome, jupyterDir),
+      jupyterEnvironment(javaHome, jupyterDir, acpAgentsBin.toSeq),
       command
     )
   }
@@ -389,7 +449,8 @@ object JupyterServer {
     args: Seq[String],
     workspace: os.Path,
     publishVersion: String,
-    localRepoRoot: os.Path
+    localRepoRoot: os.Path,
+    acpAgentsBin: Option[os.Path]
   ): Seq[os.Path] = {
     val cmd = jupyterLabCommand(
       uv,
@@ -400,7 +461,8 @@ object JupyterServer {
       args,
       workspace,
       publishVersion,
-      localRepoRoot
+      localRepoRoot,
+      acpAgentsBin
     )
     System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
     startBackground(
@@ -434,7 +496,7 @@ object JupyterServer {
       localRepoRoot
     )
 
-    val command = jupyterCommand(uv, workspace, "console", s"--kernel=$kernelId") ++ args
+    val command = jupyterCommand(uv, workspace, Nil, "console", s"--kernel=$kernelId") ++ args
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }

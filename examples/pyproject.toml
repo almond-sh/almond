@@ -11,5 +11,13 @@ dependencies = [
   "nbconvert>=7.17",
 ]
 
+# Only installed by the dev.jupyter* commands starting JupyterLab (via `uv run --group ai`),
+# not by the example tests. The Claude and Codex personas of Jupyter AI also need the
+# `claude-agent-acp` and `codex-acp` commands, installed by the build from `acp-agents/`.
+[dependency-groups]
+ai = [
+  "jupyter-ai>=3",
+]
+
 [tool.uv]
 package = false
