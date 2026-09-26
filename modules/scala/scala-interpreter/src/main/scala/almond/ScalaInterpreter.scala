@@ -101,7 +101,8 @@ final class ScalaInterpreter(
       storage,
       colors0,
       ammInterp,
-      sessApi
+      sessApi,
+      lastValueOnly = params.lastValueOnly
     )
 
   val jupyterApi =

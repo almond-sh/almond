@@ -95,21 +95,45 @@ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --insta
 
 Add `--force` when replacing an existing kernel installation.
 
-This option only silences imports; it does not suppress the values printed for
-`val` definitions or limit output to the last expression of a cell (as requested
-in [issue #256](https://github.com/almond-sh/almond/issues/256)). To show only the
-result of a computation, put its intermediate definitions in a block:
+To limit automatic output for values as well, use `--last-value-only`.
 
-```scala
-val result = {
-  val first = 1
-  val second = 2
-  first + second
-}
+#### `--last-value-only`
+
+Display only the last value defined or computed in each cell, reducing the output
+chatter described in [issue #256](https://github.com/almond-sh/almond/issues/256).
+Disabled by default; pass `--last-value-only=false` to restore the usual output.
+
+Enable it when installing the kernel:
+
+```bash
+cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --last-value-only
 ```
 
-Only `result` is printed automatically. The intermediate definitions are local
-to the block and cannot be used in subsequent cells.
+The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
+also accepts this option directly:
+
+```bash
+cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --install --last-value-only
+```
+
+Add `--force` when replacing an existing kernel installation, then start a new
+kernel session.
+
+For example, this cell displays only `second: Int = 2`:
+
+```scala
+val first = 1
+val second = first + 1
+```
+
+All statements still execute, and both variables remain available in subsequent
+cells. Import statements and class, method, and type definitions are not echoed.
+Trailing imports or definitions do not replace the last value. If the last value
+has type `Unit`, no automatic result is displayed.
+
+Explicit output, such as `println` and `display()` calls, is still shown. Rich
+values such as `almond.display.Html` are displayed automatically only when they
+are the last value in the cell.
 
 #### `--predef-code`
 
