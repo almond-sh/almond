@@ -12,6 +12,12 @@ object JupyterServer {
   def kernelId        = "scala-debug"
   def specialKernelId = "scala-special-debug"
 
+  /** The kernel id of the kernel running a given full Scala version, when several kernels are
+    * registered at once.
+    */
+  def kernelId(scalaVersion: String): String =
+    s"$kernelId-${ScalaVersions.binarySuffix(scalaVersion)}"
+
   /** A command to run JupyterLab: `command` is to be run from the `cwd` directory, with the `env`
     * variables added to the environment.
     */
@@ -358,8 +364,14 @@ object JupyterServer {
     logFiles
   }
 
+  /** Writes the kernel specs of one kernel per element of `launchers`, plus the special launcher
+    * kernel.
+    *
+    * @param launchers
+    *   the kernel launchers to register, along with the full Scala version each of them runs
+    */
   private def writeKernelJsons(
-    launcher: os.Path,
+    launchers: Seq[(String, os.Path)],
     specialLauncher: os.Path,
     jupyterDir: os.Path,
     workspace: os.Path,
@@ -367,15 +379,16 @@ object JupyterServer {
     localRepoRoot: os.Path,
     specialExtraArgs: String*
   ): Unit = {
-    writeKernelJson(
-      launcher,
-      jupyterDir,
-      workspace,
-      localRepoRoot,
-      publishVersion,
-      kernelId,
-      "Scala (sources)"
-    )
+    for ((scalaVersion, launcher) <- launchers)
+      writeKernelJson(
+        launcher,
+        jupyterDir,
+        workspace,
+        localRepoRoot,
+        publishVersion,
+        kernelId(scalaVersion),
+        s"Scala $scalaVersion (sources)"
+      )
     writeKernelJson(
       specialLauncher,
       jupyterDir,
@@ -388,7 +401,8 @@ object JupyterServer {
     )
   }
 
-  /** Writes the kernel specs, and returns the command to run JupyterLab with them.
+  /** Writes the kernel specs, with one kernel per element of `launchers` plus the special launcher
+    * kernel, and returns the command to run JupyterLab with them.
     *
     * The server also serves the Jupyter Notebook UI (the classic one), under `/tree`. `args` may
     * contain `--base-address=…` and `--classic`, handled here, the rest is passed to JupyterLab.
@@ -396,11 +410,14 @@ object JupyterServer {
     * JupyterLab comes with Jupyter AI. Its Claude and Codex personas are enabled if `acpAgentsBin`,
     * added to the `PATH` of JupyterLab, contains the `claude-agent-acp` and `codex-acp` commands
     * (see [[AcpAgents]]).
+    *
+    * @param launchers
+    *   the kernel launchers to register, along with the full Scala version each of them runs
     */
   def jupyterLabCommand(
     uv: os.Path,
     javaHome: os.Path,
-    launcher: os.Path,
+    launchers: Seq[(String, os.Path)],
     specialLauncher: os.Path,
     jupyterDir: os.Path,
     args: Seq[String],
@@ -411,7 +428,7 @@ object JupyterServer {
   ): Command = {
 
     writeKernelJsons(
-      launcher,
+      launchers,
       specialLauncher,
       jupyterDir,
       workspace,
@@ -437,13 +454,18 @@ object JupyterServer {
     )
   }
 
-  /** Starts a JupyterLab server in the background, and returns the files its output goes to */
+  /** Starts a JupyterLab server in the background, with one kernel per element of `launchers` plus
+    * the special launcher kernel, and returns the files its output goes to
+    *
+    * @param launchers
+    *   the kernel launchers to register, along with the full Scala version each of them runs
+    */
   def jupyterServer(
     uv: os.Path,
     javaHome: os.Path,
     wrapperClassPath: Seq[os.Path],
     backgroundDir: os.Path,
-    launcher: os.Path,
+    launchers: Seq[(String, os.Path)],
     specialLauncher: os.Path,
     jupyterDir: os.Path,
     args: Seq[String],
@@ -455,7 +477,7 @@ object JupyterServer {
     val cmd = jupyterLabCommand(
       uv,
       javaHome,
-      launcher,
+      launchers,
       specialLauncher,
       jupyterDir,
       args,
@@ -475,9 +497,11 @@ object JupyterServer {
     )
   }
 
+  /** Runs a Jupyter console on a kernel running Scala `scalaVersion`, started with `launcher` */
   def jupyterConsole(
     uv: os.Path,
     javaHome: os.Path,
+    scalaVersion: String,
     launcher: os.Path,
     specialLauncher: os.Path,
     jupyterDir: os.Path,
@@ -488,7 +512,7 @@ object JupyterServer {
   ): Unit = {
 
     writeKernelJsons(
-      launcher,
+      Seq(scalaVersion -> launcher),
       specialLauncher,
       jupyterDir,
       workspace,
@@ -496,7 +520,8 @@ object JupyterServer {
       localRepoRoot
     )
 
-    val command = jupyterCommand(uv, workspace, Nil, "console", s"--kernel=$kernelId") ++ args
+    val command =
+      jupyterCommand(uv, workspace, Nil, "console", s"--kernel=${kernelId(scalaVersion)}") ++ args
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }
