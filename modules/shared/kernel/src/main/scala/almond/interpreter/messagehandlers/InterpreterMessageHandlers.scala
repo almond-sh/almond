@@ -101,7 +101,9 @@ final case class InterpreterMessageHandlers(
       aborted     <- interpreter.cancelledSignal.get
       countBefore <- interpreter.executionCount
       inputMessage = Execute.Input(
-        execution_count = countBefore + 1,
+        // the execution count is only incremented when store_history is true, so that it matches
+        // the one sent in the execute_reply below
+        execution_count = if (storeHistory) countBefore + 1 else countBefore,
         code = message.content.code
       )
       _ <- {

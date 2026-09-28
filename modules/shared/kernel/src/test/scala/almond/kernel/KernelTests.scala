@@ -390,6 +390,61 @@ object KernelTests extends TestSuite {
       assert(executeResult.content.execution_count == 1)
     }
 
+    test("execution count without store_history") {
+
+      val sessionId  = UUID.randomUUID().toString
+      val exitHeader = Header.random("test", Execute.requestType, sessionId)
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitHeader.msg_id)
+          )
+
+      val input = Stream(
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:a")
+        ).on(Channel.Requests),
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:b", store_history = Some(false))
+        ).on(Channel.Requests),
+        Message(
+          exitHeader,
+          Execute.Request("echo:exit")
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val inputCounts = streams.generatedMessages.toList.collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.inputType.messageType =>
+          val m0 = m.decodeAs[Execute.Input].fold(throw _, identity)
+          m0.content.code -> m0.content.execution_count
+      }
+      val replyCounts = streams.generatedMessages.toList.collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+          m.decodeAs[Execute.Reply].fold(throw _, identity).content match {
+            case s: Execute.Reply.Success => s.execution_count
+            case other                    => throw new Exception(s"Unexpected reply: $other")
+          }
+      }
+
+      val expectedInputCounts = List("echo:a" -> 1, "echo:b" -> 1, "echo:exit" -> 2)
+      val expectedReplyCounts = List(1, 1, 2)
+
+      assert(inputCounts == expectedInputCounts)
+      assert(replyCounts == expectedReplyCounts)
+    }
+
     test("history request") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
