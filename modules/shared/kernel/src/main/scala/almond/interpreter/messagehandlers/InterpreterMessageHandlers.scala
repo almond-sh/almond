@@ -87,7 +87,10 @@ final case class InterpreterMessageHandlers(
       h.inputManager(message, (c, m) => queue.offer(Right((c, m))))
     }
 
-    // TODO Take message.content.silent into account
+    // silent requests must not publish execute_input / execute_result, and must not
+    // store history nor increment the execution count
+    val silent       = message.content.silent.getOrElse(false)
+    val storeHistory = !silent && message.content.store_history.getOrElse(true)
 
     // TODO Decode and take into account message.content.user_expressions?
 
@@ -98,7 +101,7 @@ final case class InterpreterMessageHandlers(
         code = message.content.code
       )
       _ <- {
-        if (noExecuteInputFor.contains(message.header.msg_id))
+        if (silent || noExecuteInputFor.contains(message.header.msg_id))
           IO.unit
         else
           message
@@ -107,14 +110,14 @@ final case class InterpreterMessageHandlers(
       }
       res <- interpreter.execute(
         message.content.code,
-        message.content.store_history.getOrElse(true),
+        storeHistory,
         if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
         Some(handler),
         Some(message)
       )
       countAfter <- interpreter.executionCount
       _ <- res match {
-        case v: ExecuteResult.Success if v.data.isEmpty =>
+        case v: ExecuteResult.Success if silent || v.data.isEmpty =>
           IO.unit
         case v: ExecuteResult.Success =>
           val result = Execute.Result(

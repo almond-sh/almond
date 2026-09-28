@@ -274,6 +274,55 @@ object KernelTests extends TestSuite {
       }
     }
 
+    test("silent execute request") {
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == "execute_reply" && new String(
+            m.content.value,
+            StandardCharsets.UTF_8
+          ).contains("exit"))
+
+      val sessionId = UUID.randomUUID().toString
+      val input = Stream(
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:foo", silent = Some(true), store_history = Some(true))
+        ).on(Channel.Requests),
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:exit")
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val msgTypes = streams.generatedMessageTypes()
+
+      // no execute_input nor execute_result for the silent request
+      val expectedMsgTypes = Seq(
+        "execute_reply",
+        "execute_input",
+        "execute_result",
+        "execute_reply"
+      )
+
+      assert(msgTypes == expectedMsgTypes)
+
+      // the silent request didn't increment the execution count
+      val executeInput  = streams.singleReply(Channel.Publish, Execute.inputType)
+      val executeResult = streams.singleReply(Channel.Publish, Execute.resultType)
+      assert(executeInput.content.code == "echo:exit")
+      assert(executeInput.content.execution_count == 1)
+      assert(executeResult.content.execution_count == 1)
+    }
+
     test("history request") {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
