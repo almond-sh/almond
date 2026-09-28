@@ -66,6 +66,8 @@ jobs:
   upload-launcher:
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v7
       with:
@@ -78,7 +80,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
-        UPLOAD_GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        UPLOAD_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   update-docker-images:
     needs: release
@@ -101,6 +103,8 @@ jobs:
   update-website:
     needs: [upload-launcher, update-docker-images]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v7
       with:
@@ -125,7 +129,7 @@ jobs:
         scripts/website0/push-website.sh
       shell: bash
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         WEBSITE_DIR: docs/website
         REPO: almond-sh/almond
         VERSIONED_DOCS_REPO: almond-sh/versioned-docs

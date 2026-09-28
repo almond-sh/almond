@@ -9,7 +9,7 @@ if [ -d target/gh-pages ]; then
 fi
 
 echo "Cloning"
-git clone "https://${GH_TOKEN}@github.com/$REPO.git" -q -b gh-pages target/gh-pages
+git clone "https://x-access-token:${GH_TOKEN}@github.com/$REPO.git" -q -b gh-pages target/gh-pages
 cd target/gh-pages
 
 git config user.name "Github Actions"

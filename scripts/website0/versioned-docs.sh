@@ -24,7 +24,7 @@ if [ "$UPDATE" = 1 ]; then
     exit 1
   fi
 
-  REMOTE="https://${GH_TOKEN}@github.com/$VERSIONED_DOCS_REPO.git"
+  REMOTE="https://x-access-token:${GH_TOKEN}@github.com/$VERSIONED_DOCS_REPO.git"
 else
   REMOTE="https://github.com/$VERSIONED_DOCS_REPO.git"
 fi
