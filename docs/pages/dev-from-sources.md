@@ -192,13 +192,13 @@ macros on JDK 15+ (see `mill-build/scalac-patches`).
 
 ### Print the latest supported Scala 2.13 version
 ```text
-$ ./mill dev.scala213
+$ ./mill --ticker false dev.scala213
 2.13.18
 ```
 
 ### Print the latest supported Scala 2.12 version
 ```text
-$ ./mill dev.scala212
+$ ./mill --ticker false dev.scala212
 2.12.21
 ```
 
