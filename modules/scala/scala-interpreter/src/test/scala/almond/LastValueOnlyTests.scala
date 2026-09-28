@@ -84,19 +84,18 @@ object LastValueOnlyTests extends TestSuite {
       assert(html == Seq("<b>explicit</b>", "<b>last</b>"))
     }
     test("variable inspector keeps intermediate definitions") {
-      if (isScala2) {
-        val i = interpreter()
-        assert(i.execute("kernel.VariableInspector.init()").success)
-        assert(i.execute("val first = 1; val second = 2").success)
-        val output = new MockOutputHandler
-        assert(i.execute(
-          "kernel.VariableInspector.dictList()",
-          outputHandler = Some(output)
-        ).success)
-        val data =
-          output.displayed().flatMap(_.detailedData.get("text/plain").flatMap(_.asString)).mkString
-        assert(data.contains("\"varName\":\"first\""), data.contains("\"varName\":\"second\""))
-      }
+      val i = interpreter()
+      assert(i.execute("kernel.VariableInspector.init()").success)
+      assert(i.execute("val first = 1; val second = 2").success)
+      val output = new MockOutputHandler
+      assert(i.execute(
+        "kernel.VariableInspector.dictList()",
+        outputHandler = Some(output)
+      ).success)
+      val data =
+        output.displayed().flatMap(_.detailedData.get("text/plain").flatMap(_.asString)).mkString
+      assert(data.contains("\"varName\":\"first\""))
+      assert(data.contains("\"varName\":\"second\""))
     }
   }
 }

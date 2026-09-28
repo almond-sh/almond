@@ -104,8 +104,8 @@ object JupyterServer {
     )
   }
 
-  /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab
-    * extensions (the variable inspector, …), and Jupyter AI
+  /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
+    * (the variable inspector, …), and Jupyter AI
     */
   private def labGroups = Seq("lab", "ai")
 

@@ -69,8 +69,7 @@ JupyterLab comes with the
 extension, and the kernels are started with `--variable-inspector`, which enables almond's
 support for it. Open it with "Open Variable Inspector", from the context menu of a notebook
 or from the command palette: it lists the variables defined in the notebook, along with
-their types and values. This only works with Scala 2 kernels for now: with Scala 3, the
-list stays empty.
+their types and values.
 
 JupyterLab also comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
 you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
