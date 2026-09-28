@@ -3,7 +3,7 @@ package almond
 import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.{DisplayData, ExecuteResult}
-import almond.interpreter.{Completion, Interpreter}
+import almond.interpreter.{Completion, Interpreter, IsCompleteResult}
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.RawJson
 import almond.testkit.TestLogging.logCtx
@@ -487,6 +487,46 @@ object ScalaInterpreterTests extends TestSuite {
 
         assert(data.exists(_._1 == "text/html"))
         assert(data.exists(_._1 == "text/plain"))
+      }
+    }
+
+    test("is complete") {
+      def check(code: String, expected: IsCompleteResult): Unit = {
+        val res = interpreter.isComplete(code)
+        assert(res == Some(expected))
+      }
+
+      test("complete") {
+        check("val n = 2", IsCompleteResult.Complete)
+      }
+      test("invalid") {
+        check("val n = )", IsCompleteResult.Invalid)
+      }
+      test("incomplete") {
+        test("new block") {
+          check("def f(n: Int) = {", IsCompleteResult.Incomplete("  "))
+        }
+        test("nested block") {
+          val code =
+            """def f(n: Int) = {
+              |  if (n > 0) {""".stripMargin
+          check(code, IsCompleteResult.Incomplete("    "))
+        }
+        test("keep indentation") {
+          val code =
+            """def f(n: Int) = {
+              |  val m = n + 1""".stripMargin
+          check(code, IsCompleteResult.Incomplete("  "))
+        }
+        test("after closed block") {
+          val code =
+            """def f(n: Int) = {
+              |  if (n > 0) {
+              |    n
+              |  }
+              |""".stripMargin
+          check(code, IsCompleteResult.Incomplete("  "))
+        }
       }
     }
 
