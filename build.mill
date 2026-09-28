@@ -63,14 +63,17 @@ trait Api extends Cross.Module[String] with AlmondModule with AlmondMima {
     ProblemFilter.exclude[ReversedMissingMethodProblem]("almond.api.JupyterApi.*")
   )
 
-  // Our classes used to be published as two modules, interpreter-api and jupyter-api -
-  // keep checking them against those, our own name has no release to be compared with yet.
+  // Our classes used to be published as two modules, interpreter-api and jupyter-api,
+  // until 0.15.0 - keep checking them against those for the releases before it.
   def mimaPreviousArtifacts = Task {
+    val cutOff   = Version("0.15.0")
     val versions = mimaPreviousVersions().distinct
     mill.api.Result.Success(
       for {
-        name    <- Seq("interpreter-api", "jupyter-api")
         version <- versions
+        name <-
+          if (Version(version) < cutOff) Seq("interpreter-api", "jupyter-api")
+          else Seq(artifactName())
       } yield mvn"${pomSettings().organization}:$name${artifactSuffix()}:$version"
     )
   }
@@ -158,10 +161,14 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     value
   }
 
-  // We used to be published for each full Scala version - the artifacts we publish now
-  // (scala-kernel-api_2.13 rather than scala-kernel-api_2.13.18, …) have no release to be
-  // compared with yet.
-  def mimaPreviousVersions = Task(Seq.empty[String])
+  // We used to be published for each full Scala version until 0.15.0 - the artifacts we
+  // publish since then (scala-kernel-api_2.13 rather than scala-kernel-api_2.13.18, …) can
+  // only be compared with the releases from 0.15.0 on.
+  def mimaPreviousVersions = Task {
+    val cutOff = Version("0.15.0")
+    super.mimaPreviousVersions()
+      .filter(v => Version(v) >= cutOff)
+  }
 
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Task {
