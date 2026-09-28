@@ -11,8 +11,10 @@ downloads uv itself (see `UvLauncher` in `mill-build`) and runs
 beforehand. Set the `ALMOND_UV` environment variable to the path of a `uv` binary to use
 that one instead of the downloaded one.
 
-The dev.jupyter* commands starting JupyterLab also install the `ai` dependency group,
-with [Jupyter AI](https://jupyter-ai.readthedocs.io/). The ACP agents its Claude and
+The dev.jupyter* commands starting JupyterLab also install the `lab` dependency group,
+with JupyterLab extensions (the
+[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)),
+and the `ai` one, with [Jupyter AI](https://jupyter-ai.readthedocs.io/). The ACP agents its Claude and
 Codex personas talk to are npm packages, described by `acp-agents/package.json`, with
 exact versions pinned in `acp-agents/package-lock.json`. The build installs them with
 `npm ci` (see `AcpAgents` in `mill-build`), if npm is available. To update them, run
