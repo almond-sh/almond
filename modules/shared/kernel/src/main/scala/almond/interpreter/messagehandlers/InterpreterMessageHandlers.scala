@@ -185,12 +185,13 @@ final case class InterpreterMessageHandlers(
   def completeHandler: MessageHandler =
     shellHandler(Complete.requestType) { (message, queue) =>
 
+      val code = message.content.code
       for {
-        res <- interpreter.complete(message.content.code, message.content.cursor_pos)
+        res <- interpreter.complete(code, codePointToCharIndex(code, message.content.cursor_pos))
         reply = Complete.Reply(
           res.completions.toList,
-          res.from,
-          res.until,
+          charIndexToCodePoint(code, res.from),
+          charIndexToCodePoint(code, res.until),
           res.metadata
         )
         _ <- message
@@ -226,10 +227,11 @@ final case class InterpreterMessageHandlers(
   def inspectHandler: MessageHandler =
     shellHandler(Inspect.requestType) { (message, queue) =>
 
+      val code = message.content.code
       for {
         resOpt <- interpreter.inspect(
-          message.content.code,
-          message.content.cursor_pos,
+          code,
+          codePointToCharIndex(code, message.content.cursor_pos),
           message.content.detail_level
         )
         reply = Inspect.Reply(
@@ -303,6 +305,24 @@ final case class InterpreterMessageHandlers(
 }
 
 object InterpreterMessageHandlers {
+
+  // Jupyter protocol >= 5.2 cursor positions are offsets in unicode code points, while
+  // interpreters work with Java String indices (UTF-16 code units). These differ as soon
+  // as code contains characters outside of the BMP (emojis, some mathematical letters, …).
+  // Positions out of the bounds of the string are shifted as is.
+
+  private[almond] def codePointToCharIndex(s: String, codePointIdx: Int): Int =
+    if (codePointIdx <= 0) codePointIdx
+    else {
+      val count = s.codePointCount(0, s.length)
+      if (codePointIdx >= count) s.length + (codePointIdx - count)
+      else s.offsetByCodePoints(0, codePointIdx)
+    }
+
+  private[almond] def charIndexToCodePoint(s: String, charIdx: Int): Int =
+    if (charIdx <= 0) charIdx
+    else if (charIdx >= s.length) s.codePointCount(0, s.length) + (charIdx - s.length)
+    else s.codePointCount(0, charIdx)
 
   private final class QueueOutputHandler(
     message: Message[_],
