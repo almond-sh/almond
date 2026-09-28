@@ -10,7 +10,8 @@ final case class Message(
   header: Array[Byte],
   parentHeader: Array[Byte],
   metadata: Array[Byte],
-  content: Array[Byte]
+  content: Array[Byte],
+  buffers: Seq[Array[Byte]] = Nil
 ) {
   override def toString: String = {
     val b = new StringBuilder("Message(")
@@ -27,6 +28,9 @@ final case class Message(
     byteArray(metadata)
     byteArray(content)
 
+    if (buffers.nonEmpty)
+      b.append(buffers.map(_.length).mkString(", buffers(", ", ", ")"))
+
     b.append(')')
     b.toString
   }
@@ -38,7 +42,11 @@ final case class Message(
         ju.Arrays.equals(header, other.header) &&
         ju.Arrays.equals(parentHeader, other.parentHeader) &&
         ju.Arrays.equals(metadata, other.metadata) &&
-        ju.Arrays.equals(content, other.content)
+        ju.Arrays.equals(content, other.content) &&
+        buffers.length == other.buffers.length &&
+        buffers.iterator.zip(other.buffers.iterator).forall {
+          case (a, b) => ju.Arrays.equals(a, b)
+        }
       case _ => false
     }
 
@@ -49,6 +57,8 @@ final case class Message(
     code = 37 * code + ju.Arrays.hashCode(parentHeader)
     code = 37 * code + ju.Arrays.hashCode(metadata)
     code = 37 * code + ju.Arrays.hashCode(content)
+    for (buf <- buffers)
+      code = 37 * code + ju.Arrays.hashCode(buf)
     37 * code
   }
 }
