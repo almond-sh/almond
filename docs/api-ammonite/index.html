@@ -4,14 +4,14 @@
   <meta charSet="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Ammonite API · almond</title>
-  <meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="The Ammonite API consists in instances of several classes, that are created">
-  <meta name="docsearch:version" content="0.14.1">
+  <meta name="docsearch:version" content="0.15.0">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Ammonite API · almond">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/">
   <meta property="og:description" content="The Ammonite API consists in instances of several classes, that are created">
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="../../undefined">
@@ -20,14 +20,16 @@
   <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
   <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
   <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <script src="/almond/js/scrollSpy.js"></script>
   <link rel="stylesheet" href="../../css/main.css">
+  <script src="/almond/js/codetabs.js"></script>
  </head>
  <body class="sideNavVisible separateOnPageNav">
   <div class="fixedHeaderContainer">
    <div class="headerWrapper wrapper">
     <header>
      <a href="../.."><img class="logo" src="../../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../../versions"><h3>0.14.1</h3></a>
+     <a href="../../versions"><h3>0.15.0</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -43,13 +45,17 @@
   </div>
   <div class="navPusher">
    <div class="docMainWrapper wrapper">
-    <div class="container docsNavContainer" id="docsNav">
+    <div class="docsNavContainer" id="docsNav">
      <nav class="toc">
       <div class="toggleNav">
        <section class="navWrapper wrapper">
         <div class="navBreadcrumb wrapper">
          <div class="navToggle" id="navToggler">
-          <i></i>
+          <div class="hamburger-menu">
+           <div class="line1"></div>
+           <div class="line2"></div>
+           <div class="line3"></div>
+          </div>
          </div>
          <h2><i>›</i><span>User API</span></h2>
          <div class="tocToggler" id="tocToggler">
@@ -59,13 +65,13 @@
         <div class="navGroups">
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Intro</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="../intro">Overview</a></li>
           </ul>
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Try it</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="../try-mybinder">mybinder</a></li>
            <li class="navListItem"><a class="navItem" href="../try-docker">docker</a></li>
            <li class="navListItem"><a class="navItem" href="../try-deepnote">deepnote</a></li>
@@ -73,25 +79,27 @@
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Installation</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="../quick-start-install">Installation</a></li>
            <li class="navListItem"><a class="navItem" href="../install-options">Options</a></li>
            <li class="navListItem"><a class="navItem" href="../install-multiple">Multiple kernels</a></li>
            <li class="navListItem"><a class="navItem" href="../install-versions">Versions</a></li>
            <li class="navListItem"><a class="navItem" href="../install-other">Other</a></li>
+           <li class="navListItem"><a class="navItem" href="../install-proxies">Proxies and mirrors</a></li>
            <li class="navListItem"><a class="navItem" href="../install-advanced">Advanced</a></li>
           </ul>
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Usage</h3>
-          <ul>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="../usage-compiler-options">Compiler options</a></li>
            <li class="navListItem"><a class="navItem" href="../usage-plotting">Plotting</a></li>
            <li class="navListItem"><a class="navItem" href="../usage-spark">Spark</a></li>
           </ul>
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">User API</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="../api">Intro</a></li>
            <li class="navListItem navListItemActive"><a class="navItem" href="">Ammonite API</a></li>
            <li class="navListItem"><a class="navItem" href="../api-jupyter">Almond Jupyter API</a></li>
@@ -100,7 +108,7 @@
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Development</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="../dev-from-sources">Installing from sources</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-custom-kernel">Writing custom kernels</a></li>
            <li class="navListItem"><a class="navItem" href="../dev-libraries">Writing libraries interacting with Jupyter</a></li>
@@ -111,14 +119,43 @@
        </section>
       </div>
       <script>
+            var coll = document.getElementsByClassName('collapsible');
+            var checkActiveCategory = true;
+            for (var i = 0; i < coll.length; i++) {
+              var links = coll[i].nextElementSibling.getElementsByTagName('*');
+              if (checkActiveCategory){
+                for (var j = 0; j < links.length; j++) {
+                  if (links[j].classList.contains('navListItemActive')){
+                    coll[i].nextElementSibling.classList.toggle('hide');
+                    coll[i].childNodes[1].classList.toggle('rotate');
+                    checkActiveCategory = false;
+                    break;
+                  }
+                }
+              }
+
+              coll[i].addEventListener('click', function() {
+                var arrow = this.childNodes[1];
+                arrow.classList.toggle('rotate');
+                var content = this.nextElementSibling;
+                content.classList.toggle('hide');
+              });
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
               createToggler('#navToggler', '#docsNav', 'docsSliderActive');
               createToggler('#tocToggler', 'body', 'tocActive');
 
-              const headings = document.querySelector('.toc-headings');
+              var headings = document.querySelector('.toc-headings');
               headings && headings.addEventListener('click', function(event) {
-                if (event.target.tagName === 'A') {
-                  document.body.classList.remove('tocActive');
+                var el = event.target;
+                while(el !== headings){
+                  if (el.tagName === 'A') {
+                    document.body.classList.remove('tocActive');
+                    break;
+                  } else{
+                    el = el.parentNode;
+                  }
                 }
               }, false);
 
@@ -140,12 +177,12 @@
         </script>
      </nav>
     </div>
-    <div class="container mainContainer docMainContainer">
+    <div class="container mainContainer docsContainer">
      <div class="wrapper">
       <div class="post">
        <header class="postHeader">
-        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/docs/pages/api-ammonite.md" target="_blank" rel="noreferrer noopener">Edit</a>
-        <h1 class="postHeaderTitle">Ammonite API</h1>
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/main/docs/pages/api-ammonite.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <h1 id="__docusaurus" class="postHeaderTitle">Ammonite API</h1>
        </header>
        <article>
         <div>
@@ -171,7 +208,16 @@
   (<span class="hljs-string">"org.platanios"</span> %% <span class="hljs-string">"tensorflow"</span> % <span class="hljs-string">"0.4.1"</span>).withClassifier(<span class="hljs-string">"linux-cpu-x86_64"</span>)
 )
 </code></pre> <p>The dependencies can then be used in the cell right <em>after</em> the one calling <code>interp.load.ivy</code>.</p> <p>Note that in the case of simple dependencies, when directly entering code in a notebook, the following syntax is preferred and allows to use the dependency in the current cell rather than the next one:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.platanios::tensorflow-data:<span class="hljs-number">0.4</span><span class="hljs-number">.1</span>`
-</code></pre> <h3><a class="anchor" aria-hidden="true" id="load-compiler-plugins"></a><a href="index.html#load-compiler-plugins" aria-hidden="true" class="hash-link">
+</code></pre> <p>The same goes for the <code>//&gt; using dep</code> directive:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">//&gt; using dep "org.platanios::tensorflow-data:0.4.1"</span>
+</code></pre> <p>Both syntaxes accept a classifier, appended to the dependency as <code>,classifier=…</code>:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.platanios::tensorflow:<span class="hljs-number">0.4</span><span class="hljs-number">.1</span>,classifier=linux-cpu-x86_64`
+</code></pre> <pre><code class="hljs css language-scala"><span class="hljs-comment">//&gt; using dep "org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64"</span>
+</code></pre> <h4><a class="anchor" aria-hidden="true" id="pinning-dependency-versions"></a><a href="index.html#pinning-dependency-versions" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Pinning dependency versions</h4> <p>Loading dependencies upfront in a first cell effectively "pins" their versions: dependencies loaded in later cells cannot replace them, even if they request newer versions transitively. Run this first cell before loading libraries that depend on those dependencies.</p> <p>For example, the workaround in <a href="https://github.com/almond-sh/almond/issues/332#issuecomment-471545852">issue #332</a> loads Hadoop before Spark. In a first cell:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.apache.hadoop:hadoop-common:<span class="hljs-number">2.9</span><span class="hljs-number">.2</span>`
+<span class="hljs-keyword">import</span> $ivy.`org.apache.hadoop:hadoop-azure-datalake:<span class="hljs-number">3.1</span><span class="hljs-number">.1</span>`
+</code></pre> <p>Then, in a separate cell:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.apache.spark::spark-sql:<span class="hljs-number">2.4</span><span class="hljs-number">.0</span>`
+</code></pre> <p>This is both a feature and a limitation: it lets you keep chosen versions when loading more libraries, but also prevents upgrading an already loaded dependency in a later cell. To change those versions, restart the kernel and run the updated dependency cell first. The chosen versions still need to be compatible with the libraries that use them.</p> <h3><a class="anchor" aria-hidden="true" id="load-compiler-plugins"></a><a href="index.html#load-compiler-plugins" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a>Load compiler plugins</h3> <p><code>interp.load.plugin.ivy</code> accepts one or several <a href="https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19"><code>coursier.Dependency</code></a>.</p> <pre><code class="hljs css language-scala">interp.load.plugin.ivy(<span class="hljs-string">"org.spire-math"</span> %% <span class="hljs-string">"kind-projector"</span> % <span class="hljs-string">"0.9.9"</span>)
@@ -180,7 +226,13 @@
 <span class="hljs-comment">// example of use</span>
 <span class="hljs-class"><span class="hljs-keyword">trait</span> <span class="hljs-title">T</span>[<span class="hljs-type">F</span>[_]]</span>
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">T2</span> </span>= <span class="hljs-type">T</span>[<span class="hljs-type">Either</span>[<span class="hljs-type">String</span>, ?]]
-</code></pre> <h3><a class="anchor" aria-hidden="true" id="add-repositories"></a><a href="index.html#add-repositories" aria-hidden="true" class="hash-link">
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="load-scripts"></a><a href="index.html#load-scripts" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Load scripts</h3> <p>Ammonite scripts can be loaded from notebooks, with the same syntax as in Ammonite:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $file.path.to.script
+</code></pre> <p>This compiles and runs <code>path/to/script.sc</code>, and brings its wrapper object in scope, so that its definitions can be accessed like <code>script.foo()</code>. Paths are relative to the working directory of the kernel, which is usually the directory of the notebook, and <code>^</code> stands for the parent directory.</p> <p>Alternatively, scripts can be loaded with a directive, which accepts any path:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">//&gt; using script path/to/script.sc</span>
+<span class="hljs-comment">//&gt; using scripts path/to/script.sc, /absolute/path/to/other.sc</span>
+</code></pre> <p>The wrapper object of each script is brought in scope under the name of the script file (<code>script</code> for <code>path/to/script.sc</code>), like <code>import $file.…</code> does.</p> <p>Either way, a script is compiled and run only once in a session, unless its content changed since it was last loaded. In that case, importing it or loading it again re-compiles and re-runs it, and cells run after that see its new definitions.</p> <h3><a class="anchor" aria-hidden="true" id="add-repositories"></a><a href="index.html#add-repositories" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a>Add repositories</h3> <p>One can add extra <a href="https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L69"><code>coursier.Repository</code></a> via</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> coursierapi._
@@ -198,9 +250,13 @@ interp.repositories() ++= <span class="hljs-type">Seq</span>(
 </code></pre> <h3><a class="anchor" aria-hidden="true" id="configure-compiler-options"></a><a href="index.html#configure-compiler-options" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Configure compiler options</h3> <pre><code class="hljs css language-scala"><span class="hljs-comment">// enable warnings</span>
-interp.configureCompiler(_.settings.nowarn.value = <span class="hljs-literal">false</span>)
-</code></pre> <h2><a class="anchor" aria-hidden="true" id="replapi"></a><a href="index.html#replapi" aria-hidden="true" class="hash-link">
+            </svg></a>Configure compiler options</h3> <p><code>interp.preConfigureCompiler</code> accepts a function that updates the settings of the compiler, and requests a fresh compiler instance, used from the next cell onwards. In Scala 2, it receives a <code>scala.tools.nsc.Settings</code>:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">// Scala 2 - fail on warnings</span>
+interp.preConfigureCompiler(_.fatalWarnings.value = <span class="hljs-literal">true</span>)
+</code></pre> <p>In Scala 3, it receives a <code>dotty.tools.dotc.core.Contexts.FreshContext</code>:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">// Scala 3 - fail on warnings</span>
+interp.preConfigureCompiler { ctx =&gt;
+  ctx.setSetting(ctx.settings.<span class="hljs-type">XfatalWarnings</span>, <span class="hljs-literal">true</span>)
+}
+</code></pre> <p>See <a href="../usage-compiler-options">Compiler options</a> for more details, including how to pass options as strings, and how to set them with <code>//&gt; using option</code> directives rather than via this API.</p> <h2><a class="anchor" aria-hidden="true" id="replapi"></a><a href="index.html#replapi" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a><code>ReplAPI</code></h2> <p><a href="https://github.com/lihaoyi/Ammonite/blob/master/amm/repl/src/main/scala/ammonite/repl/ReplAPI.scala"><code>ReplAPI</code></a> allows to</p> 
@@ -262,17 +318,18 @@ repl.fullHistory <span class="hljs-comment">// shared history</span>
        </article>
       </div>
       <div class="docs-prevnext">
-       <a class="docs-prev button" href="../api"><span class="arrow-prev">← </span><span>Previous</span></a>
-       <a class="docs-next button" href="../api-jupyter"><span>Next</span><span class="arrow-next"> →</span></a>
+       <a class="docs-prev button" href="../api"><span class="arrow-prev">← </span><span>Intro</span></a>
+       <a class="docs-next button" href="../api-jupyter"><span>Almond Jupyter API</span><span class="arrow-next"> →</span></a>
       </div>
      </div>
     </div>
-    <nav class="onPageNav docOnPageNav">
+    <nav class="onPageNav">
      <ul class="toc-headings">
       <li><a href="index.html#interpapi"><code>InterpAPI</code></a>
        <ul class="toc-headings">
         <li><a href="index.html#load-dependencies">Load dependencies</a></li>
         <li><a href="index.html#load-compiler-plugins">Load compiler plugins</a></li>
+        <li><a href="index.html#load-scripts">Load scripts</a></li>
         <li><a href="index.html#add-repositories">Add repositories</a></li>
         <li><a href="index.html#add-exit-hooks">Add exit hooks</a></li>
         <li><a href="index.html#configure-compiler-options">Configure compiler options</a></li>
@@ -309,11 +366,23 @@ repl.fullHistory <span class="hljs-comment">// shared history</span>
      </div>
     </section>
     <section class="copyright">
-     Copyright © 2025 almond contributors
+     Copyright © 2026 almond contributors
     </section>
    </footer>
   </div>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.js"></script>
+  <script>
+                document.addEventListener('keyup', function(e) {
+                  if (e.target !== document.body) {
+                    return;
+                  }
+                  // keyCode for '/' (slash)
+                  if (e.keyCode === 191) {
+                    const search = document.getElementById('search_input_react');
+                    search && search.focus();
+                  }
+                });
+              </script>
   <script>
               var search = docsearch({
                 

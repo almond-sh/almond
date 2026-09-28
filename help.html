@@ -4,12 +4,12 @@
   <meta charSet="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>almond · A Scala kernel for Jupyter</title>
-  <meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="A Scala kernel for Jupyter">
   <meta property="og:title" content="almond · A Scala kernel for Jupyter">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/">
   <meta property="og:description" content="A Scala kernel for Jupyter">
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="undefined">
@@ -18,14 +18,16 @@
   <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
   <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
   <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <script src="/almond/js/scrollSpy.js"></script>
   <link rel="stylesheet" href="css/main.css">
+  <script src="/almond/js/codetabs.js"></script>
  </head>
  <body>
   <div class="fixedHeaderContainer">
    <div class="headerWrapper wrapper">
     <header>
      <a href=""><img class="logo" src="logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="versions"><h3>0.14.1</h3></a>
+     <a href="versions"><h3>0.15.0</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -105,11 +107,23 @@
      </div>
     </section>
     <section class="copyright">
-     Copyright © 2025 almond contributors
+     Copyright © 2026 almond contributors
     </section>
    </footer>
   </div>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.js"></script>
+  <script>
+                document.addEventListener('keyup', function(e) {
+                  if (e.target !== document.body) {
+                    return;
+                  }
+                  // keyCode for '/' (slash)
+                  if (e.keyCode === 191) {
+                    const search = document.getElementById('search_input_react');
+                    search && search.focus();
+                  }
+                });
+              </script>
   <script>
               var search = docsearch({
                 

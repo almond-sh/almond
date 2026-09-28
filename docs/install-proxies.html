@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charSet="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Proxies and mirrors · almond</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Docusaurus">
+  <meta name="description" content="Almond downloads what it needs from Maven Central, with [coursier](https://get-coursier.io).">
+  <meta name="docsearch:version" content="0.15.0">
+  <meta name="docsearch:language" content="en">
+  <meta property="og:title" content="Proxies and mirrors · almond">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/">
+  <meta property="og:description" content="Almond downloads what it needs from Maven Central, with [coursier](https://get-coursier.io).">
+  <meta name="twitter:card" content="summary">
+  <link rel="shortcut icon" href="../undefined">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+  <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
+  <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
+  <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <script src="/almond/js/scrollSpy.js"></script>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="/almond/js/codetabs.js"></script>
+ </head>
+ <body class="sideNavVisible separateOnPageNav">
+  <div class="fixedHeaderContainer">
+   <div class="headerWrapper wrapper">
+    <header>
+     <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
+     <a href="../versions"><h3>0.15.0</h3></a>
+     <div class="navigationWrapper navigationSlider">
+      <nav class="slidingNav">
+       <ul class="nav-site nav-site-internal">
+        <li class="siteNavGroupActive"><a href="intro" target="_self">Docs</a></li>
+        <li class=""><a href="../blog" target="_self">Blog</a></li>
+        <li class=""><a href="https://github.com/almond-sh/almond" target="_self">GitHub</a></li>
+        <li class="navSearchWrapper reactNavSearchWrapper"><input type="text" id="search_input_react" placeholder="Search" title="Search"></li>
+       </ul>
+      </nav>
+     </div>
+    </header>
+   </div>
+  </div>
+  <div class="navPusher">
+   <div class="docMainWrapper wrapper">
+    <div class="docsNavContainer" id="docsNav">
+     <nav class="toc">
+      <div class="toggleNav">
+       <section class="navWrapper wrapper">
+        <div class="navBreadcrumb wrapper">
+         <div class="navToggle" id="navToggler">
+          <div class="hamburger-menu">
+           <div class="line1"></div>
+           <div class="line2"></div>
+           <div class="line3"></div>
+          </div>
+         </div>
+         <h2><i>›</i><span>Installation</span></h2>
+         <div class="tocToggler" id="tocToggler">
+          <i class="icon-toc"></i>
+         </div>
+        </div>
+        <div class="navGroups">
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Intro</h3>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="intro">Overview</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Try it</h3>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="try-mybinder">mybinder</a></li>
+           <li class="navListItem"><a class="navItem" href="try-docker">docker</a></li>
+           <li class="navListItem"><a class="navItem" href="try-deepnote">deepnote</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Installation</h3>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="quick-start-install">Installation</a></li>
+           <li class="navListItem"><a class="navItem" href="install-options">Options</a></li>
+           <li class="navListItem"><a class="navItem" href="install-multiple">Multiple kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="install-versions">Versions</a></li>
+           <li class="navListItem"><a class="navItem" href="install-other">Other</a></li>
+           <li class="navListItem navListItemActive"><a class="navItem" href="install-proxies">Proxies and mirrors</a></li>
+           <li class="navListItem"><a class="navItem" href="install-advanced">Advanced</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Usage</h3>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="usage-compiler-options">Compiler options</a></li>
+           <li class="navListItem"><a class="navItem" href="usage-plotting">Plotting</a></li>
+           <li class="navListItem"><a class="navItem" href="usage-spark">Spark</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">User API</h3>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="api">Intro</a></li>
+           <li class="navListItem"><a class="navItem" href="api-ammonite">Ammonite API</a></li>
+           <li class="navListItem"><a class="navItem" href="api-jupyter">Almond Jupyter API</a></li>
+           <li class="navListItem"><a class="navItem" href="api-access-instances">Access API instances</a></li>
+          </ul>
+         </div>
+         <div class="navGroup">
+          <h3 class="navGroupCategoryTitle">Development</h3>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="dev-from-sources">Installing from sources</a></li>
+           <li class="navListItem"><a class="navItem" href="dev-custom-kernel">Writing custom kernels</a></li>
+           <li class="navListItem"><a class="navItem" href="dev-libraries">Writing libraries interacting with Jupyter</a></li>
+           <li class="navListItem"><a class="navItem" href="dev-website">Generate the website</a></li>
+          </ul>
+         </div>
+        </div>
+       </section>
+      </div>
+      <script>
+            var coll = document.getElementsByClassName('collapsible');
+            var checkActiveCategory = true;
+            for (var i = 0; i < coll.length; i++) {
+              var links = coll[i].nextElementSibling.getElementsByTagName('*');
+              if (checkActiveCategory){
+                for (var j = 0; j < links.length; j++) {
+                  if (links[j].classList.contains('navListItemActive')){
+                    coll[i].nextElementSibling.classList.toggle('hide');
+                    coll[i].childNodes[1].classList.toggle('rotate');
+                    checkActiveCategory = false;
+                    break;
+                  }
+                }
+              }
+
+              coll[i].addEventListener('click', function() {
+                var arrow = this.childNodes[1];
+                arrow.classList.toggle('rotate');
+                var content = this.nextElementSibling;
+                content.classList.toggle('hide');
+              });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              var headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                var el = event.target;
+                while(el !== headings){
+                  if (el.tagName === 'A') {
+                    document.body.classList.remove('tocActive');
+                    break;
+                  } else{
+                    el = el.parentNode;
+                  }
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script>
+     </nav>
+    </div>
+    <div class="container mainContainer docsContainer">
+     <div class="wrapper">
+      <div class="post">
+       <header class="postHeader">
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/main/docs/pages/install-proxies.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <h1 id="__docusaurus" class="postHeaderTitle">Proxies and mirrors</h1>
+       </header>
+       <article>
+        <div>
+         <span><p>Almond downloads what it needs from Maven Central, with <a href="https://get-coursier.io">coursier</a>. When Maven Central can't be reached directly from your machine, coursier has to go through the proxy or the repository mirror of your network, and it has to do so at every point Almond fetches something:</p> 
+          <ul> 
+           <li><strong>when installing Almond</strong>: the <code>cs</code> commands of the installation pages generate a launcher, by resolving the kernel and downloading its JARs;</li> 
+           <li><strong>when Jupyter starts the kernel</strong>: the launcher checks the JARs it needs against the coursier cache, and downloads missing ones. The <a href="install-advanced#creating-an-almond-launcher-and-installing-it---newer-launcher">newer launcher</a> also resolves the actual kernel for the Scala version of the notebook at that point;</li> 
+           <li><strong>in notebooks</strong>: <code>import $ivy</code> and <code>//&gt; using dep</code> directives resolve and download the libraries they pull.</li> 
+          </ul> <p>The configuration described below is read at all of these points, by the <code>cs</code> command, by the launchers it generates, and by the coursier that runs inside the kernel. It lives in files under your home directory, so that nothing needs to be passed to Jupyter when it starts the kernel.</p> <h2><a class="anchor" aria-hidden="true" id="proxies"></a><a href="install-proxies.html#proxies" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Proxies</h2> <p>Put the proxy in the Maven settings file, <code>~/.m2/settings.xml</code>, like</p> <pre><code class="hljs css language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">settings</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">proxies</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">proxy</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">id</span>&gt;</span>company-proxy<span class="hljs-tag">&lt;/<span class="hljs-name">id</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">active</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">active</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">protocol</span>&gt;</span>http<span class="hljs-tag">&lt;/<span class="hljs-name">protocol</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">host</span>&gt;</span>proxy.company.com<span class="hljs-tag">&lt;/<span class="hljs-name">host</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">port</span>&gt;</span>3128<span class="hljs-tag">&lt;/<span class="hljs-name">port</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">username</span>&gt;</span>user<span class="hljs-tag">&lt;/<span class="hljs-name">username</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">password</span>&gt;</span>password<span class="hljs-tag">&lt;/<span class="hljs-name">password</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">nonProxyHosts</span>&gt;</span>localhost|*.company.com<span class="hljs-tag">&lt;/<span class="hljs-name">nonProxyHosts</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">proxy</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">proxies</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">settings</span>&gt;</span>
+</code></pre> <p>Leave <code>username</code> and <code>password</code> out if the proxy doesn't require authentication. <code>protocol</code> is the protocol used to talk to the proxy itself (usually <code>http</code>), not the protocol of the requests going through it: the proxy is used for both HTTP and HTTPS requests.</p> <p>The <code>cs</code> command, the launchers it generates, and the kernel all read that file: they set the <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/net/proxies.html">proxy properties of the JVM</a> from it, and register an authenticator sending the credentials to the proxy. They look for it under the directory that the <code>CS_MAVEN_HOME</code> environment variable points to first, then under <code>MAVEN_HOME</code>, then under <code>~/.m2</code>.</p> <p>You can then install Almond like the other installation pages say to, without further options:</p> <pre><code class="hljs css language-text">$ cs launch --use-bootstrap sh.almond::launcher:0.15.0 -- --scala 2.13.18 --install
+</code></pre> <p>Alternatively, the proxy can be set in the <a href="https://get-coursier.io/docs/other-proxy">Scala CLI configuration file</a> with <code>cs config httpProxy.address</code>, <code>cs config httpProxy.user --password</code> and <code>cs config httpProxy.password --password</code>. The launchers read that file by running the <code>cs</code> command, which then needs to be in the <code>PATH</code> when Jupyter starts the kernel. The Maven settings file has no such requirement.</p> <p>Lastly, the JVM proxy properties can be passed as usual, with <code>-Dhttps.proxyHost=…</code> options: for the kernel, they can be set in the <code>JAVA_TOOL_OPTIONS</code> environment variable, that all JVMs pick up. See below for <a href="install-proxies.html#environment-variables">environment variables</a>.</p> <h2><a class="anchor" aria-hidden="true" id="repository-mirrors"></a><a href="install-proxies.html#repository-mirrors" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Repository mirrors</h2> <p>Organizations that make Maven Central available on their network through a repository manager (Nexus, Artifactory, …) can point coursier at it with a <code>mirror.properties</code> file, in the coursier configuration directory:</p> 
+          <ul> 
+           <li><code>~/.config/coursier/mirror.properties</code> on Linux (or under <code>$XDG_CONFIG_HOME</code> if set),</li> 
+           <li><code>~/Library/Preferences/Coursier/mirror.properties</code> on macOS,</li> 
+           <li><code>%LOCALAPPDATA%\Coursier\config\mirror.properties</code> on Windows.</li> 
+          </ul> <p>The file lists the repositories to replace, and what to replace them with, like</p> <pre><code class="hljs css language-properties"><span class="hljs-meta">central.from</span>=<span class="hljs-string">https://repo1.maven.org/maven2</span>
+<span class="hljs-meta">central.to</span>=<span class="hljs-string">https://nexus.company.com/repository/maven-central</span>
+<span class="hljs-meta">central.type</span>=<span class="hljs-string">maven</span>
+</code></pre> <p>Each mirror has a name (<code>central</code> above, any name works), a <code>.from</code> entry with the repository (or several, separated by <code>;</code>) it stands for, a <code>.to</code> entry with where to get it from instead, and a <code>.type</code>, <code>maven</code> or <code>tree</code>. A <code>maven</code> mirror replaces a Maven repository whose root is exactly one of the <code>.from</code> addresses. A <code>tree</code> mirror replaces a URL prefix, keeping the rest of the path, which also works for Ivy repositories. Say the repository manager hosts several repositories under the same prefix:</p> <pre><code class="hljs css language-properties"><span class="hljs-meta">company.from</span>=<span class="hljs-string">https://repo1.maven.org/maven2;https://jitpack.io</span>
+<span class="hljs-meta">company.to</span>=<span class="hljs-string">https://nexus.company.com/repository/maven-central</span>
+<span class="hljs-meta">company.type</span>=<span class="hljs-string">maven</span>
+
+<span class="hljs-meta">snapshots.from</span>=<span class="hljs-string">https://central.sonatype.com/repository/maven-snapshots</span>
+<span class="hljs-meta">snapshots.to</span>=<span class="hljs-string">https://nexus.company.com/repository/maven-snapshots</span>
+<span class="hljs-meta">snapshots.type</span>=<span class="hljs-string">maven</span>
+</code></pre> <p>Like the proxy settings above, the mirrors are used everywhere: by the <code>cs</code> command when installing Almond, by the launchers when the kernel starts, and by the kernel when notebooks pull libraries. The <code>COURSIER_MIRRORS</code> environment variable can point to that file if it lives elsewhere, and <code>COURSIER_EXTRA_MIRRORS</code> to a second one.</p> <p>Mirrors can also be set in the <a href="https://get-coursier.io/docs/reference-mirrors">Scala CLI configuration file</a> with <code>cs config repositories.mirrors</code>. Like for proxies, the launchers then need the <code>cs</code> command in the <code>PATH</code> when Jupyter starts the kernel.</p> <p>If the mirror requires credentials, see the <a href="https://get-coursier.io/docs/other-credentials">credentials</a> page of the coursier documentation: the <code>COURSIER_CREDENTIALS</code> environment variable and the <code>~/.config/coursier/credentials.properties</code> file are read at the same points as the mirrors.</p> <h2><a class="anchor" aria-hidden="true" id="custom-repositories"></a><a href="install-proxies.html#custom-repositories" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Custom repositories</h2> <p>Rather than mirroring Maven Central, one can also replace the repositories coursier resolves from altogether, with the <code>COURSIER_REPOSITORIES</code> environment variable, like</p> <pre><code class="hljs css language-text">$ export COURSIER_REPOSITORIES="ivy2Local|https://nexus.company.com/repository/maven-public"
+</code></pre> <p>See <a href="install-advanced#using-custom-maven-repositories">using custom Maven repositories</a>.</p> <h2><a class="anchor" aria-hidden="true" id="environment-variables"></a><a href="install-proxies.html#environment-variables" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Environment variables</h2> <p>The proxy and mirror configurations above are files, so that they are found regardless of how Jupyter starts the kernel. Environment variables like <code>COURSIER_MIRRORS</code>, <code>COURSIER_REPOSITORIES</code>, <code>CS_MAVEN_HOME</code> or <code>JAVA_TOOL_OPTIONS</code> need more care: the kernel gets the environment of the Jupyter server that starts it, which is fine when you start Jupyter from a shell that has them set, but not necessarily when Jupyter is started as a service, from a desktop launcher, or in a container.</p> <p>To be on the safe side, pin them in the kernel spec when installing Almond, with <code>--env</code>:</p> <pre><code class="hljs css language-text">$ cs launch --use-bootstrap sh.almond::launcher:0.15.0 -- \
+    --scala 2.13.18 \
+    --install \
+    --env "COURSIER_MIRRORS=/etc/coursier/mirror.properties"
+</code></pre> <p><code>--env</code> can be repeated. The variables end up in the <code>env</code> section of the <code>kernel.json</code> file of the kernel, that Jupyter sets when it starts the kernel.</p> <h2><a class="anchor" aria-hidden="true" id="checking-that-it-works"></a><a href="install-proxies.html#checking-that-it-works" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Checking that it works</h2> <p><code>import $ivy</code> in a notebook is the quickest way to check that the configuration is picked up by the kernel:</p> <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> $ivy.`org.typelevel::cats-core:<span class="hljs-number">2.12</span><span class="hljs-number">.0</span>`
+</code></pre> <p>If Almond fails to start, or the import fails, run the <code>cs</code> command with the same configuration to check it on its own, like</p> <pre><code class="hljs css language-text">$ cs fetch org.typelevel::cats-core:2.12.0
+</code></pre> <p>When <code>cs</code> works but Almond doesn't, the configuration probably doesn't reach the kernel: check the environment Jupyter starts the kernel with, or pin the variables the configuration relies on in the kernel spec, as described above.</p> <h2><a class="anchor" aria-hidden="true" id="how-this-is-tested"></a><a href="install-proxies.html#how-this-is-tested" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>How this is tested</h2> <p>The Almond repository has Docker-based tests of these instructions, that you can run with</p> <pre><code class="hljs css language-text">$ ./mill -i -j 1 scala.proxy-tests.test
+</code></pre> <p>They install the kernel and run a notebook with it, from containers on a Docker network that can't reach the outside: the only way to Maven Central is an authenticated HTTP proxy, configured through <code>~/.m2/settings.xml</code>, or a mirror (an nginx reverse proxy of Maven Central), configured through <code>~/.config/coursier/mirror.properties</code>. They exercise both the newer launcher and the former one, and check that a wrongly configured proxy doesn't let the kernel through.</p> </span>
+        </div>
+       </article>
+      </div>
+      <div class="docs-prevnext">
+       <a class="docs-prev button" href="install-other"><span class="arrow-prev">← </span><span>Other</span></a>
+       <a class="docs-next button" href="install-advanced"><span>Advanced</span><span class="arrow-next"> →</span></a>
+      </div>
+     </div>
+    </div>
+    <nav class="onPageNav">
+     <ul class="toc-headings">
+      <li><a href="install-proxies.html#proxies">Proxies</a></li>
+      <li><a href="install-proxies.html#repository-mirrors">Repository mirrors</a></li>
+      <li><a href="install-proxies.html#custom-repositories">Custom repositories</a></li>
+      <li><a href="install-proxies.html#environment-variables">Environment variables</a></li>
+      <li><a href="install-proxies.html#checking-that-it-works">Checking that it works</a></li>
+      <li><a href="install-proxies.html#how-this-is-tested">How this is tested</a></li>
+     </ul>
+    </nav>
+   </div>
+   <footer class="nav-footer" id="footer">
+    <section class="sitemap">
+     <a href=".." class="nav-home"></a>
+     <div>
+      <h5>Docs</h5>
+      <a href="intro.html">Quick start</a>
+     </div>
+     <div>
+      <h5>Community</h5>
+      <a href="https://gitter.im/alexarchambault/jupyter-scala">Gitter room</a>
+     </div>
+     <div>
+      <h5>More</h5>
+      <a href="https://github.com/almond-sh/almond">GitHub</a>
+      <a class="github-button" data-icon="octicon-star" data-count-href="/almond-sh/almond/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a>
+     </div>
+    </section>
+    <section class="copyright">
+     Copyright © 2026 almond contributors
+    </section>
+   </footer>
+  </div>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.js"></script>
+  <script>
+                document.addEventListener('keyup', function(e) {
+                  if (e.target !== document.body) {
+                    return;
+                  }
+                  // keyCode for '/' (slash)
+                  if (e.keyCode === 191) {
+                    const search = document.getElementById('search_input_react');
+                    search && search.focus();
+                  }
+                });
+              </script>
+  <script>
+              var search = docsearch({
+                
+                apiKey: '2cf058a89a451066357a2eece168e7af',
+                indexName: 'almond',
+                inputSelector: '#search_input_react'
+              });
+            </script>
+ </body>
+</html>

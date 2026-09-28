@@ -4,14 +4,14 @@
   <meta charSet="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Almond Jupyter API · almond</title>
-  <meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Docusaurus">
   <meta name="description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterApi`](#jupyterapi). Such an">
-  <meta name="docsearch:version" content="0.14.1">
+  <meta name="docsearch:version" content="0.15.0">
   <meta name="docsearch:language" content="en">
   <meta property="og:title" content="Almond Jupyter API · almond">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://almond-sh.github.io/almond/index.html">
+  <meta property="og:url" content="https://almond-sh.github.io/almond/">
   <meta property="og:description" content="The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterApi`](#jupyterapi). Such an">
   <meta name="twitter:card" content="summary">
   <link rel="shortcut icon" href="../undefined">
@@ -20,14 +20,16 @@
   <link rel="alternate" type="application/atom+xml" href="https://almond-sh.github.io/almond/blog/atom.xml" title="almond Blog ATOM Feed">
   <link rel="alternate" type="application/rss+xml" href="https://almond-sh.github.io/almond/blog/feed.xml" title="almond Blog RSS Feed">
   <script type="text/javascript" src="https://buttons.github.io/buttons.js"></script>
+  <script src="/almond/js/scrollSpy.js"></script>
   <link rel="stylesheet" href="../css/main.css">
+  <script src="/almond/js/codetabs.js"></script>
  </head>
  <body class="sideNavVisible separateOnPageNav">
   <div class="fixedHeaderContainer">
    <div class="headerWrapper wrapper">
     <header>
      <a href=".."><img class="logo" src="../logos/impure-logos-almond-0.svg" alt="almond"><h2 class="headerTitleWithLogo">almond</h2></a>
-     <a href="../versions"><h3>0.14.1</h3></a>
+     <a href="../versions"><h3>0.15.0</h3></a>
      <div class="navigationWrapper navigationSlider">
       <nav class="slidingNav">
        <ul class="nav-site nav-site-internal">
@@ -43,13 +45,17 @@
   </div>
   <div class="navPusher">
    <div class="docMainWrapper wrapper">
-    <div class="container docsNavContainer" id="docsNav">
+    <div class="docsNavContainer" id="docsNav">
      <nav class="toc">
       <div class="toggleNav">
        <section class="navWrapper wrapper">
         <div class="navBreadcrumb wrapper">
          <div class="navToggle" id="navToggler">
-          <i></i>
+          <div class="hamburger-menu">
+           <div class="line1"></div>
+           <div class="line2"></div>
+           <div class="line3"></div>
+          </div>
          </div>
          <h2><i>›</i><span>User API</span></h2>
          <div class="tocToggler" id="tocToggler">
@@ -59,13 +65,13 @@
         <div class="navGroups">
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Intro</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="intro">Overview</a></li>
           </ul>
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Try it</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="try-mybinder">mybinder</a></li>
            <li class="navListItem"><a class="navItem" href="try-docker">docker</a></li>
            <li class="navListItem"><a class="navItem" href="try-deepnote">deepnote</a></li>
@@ -73,25 +79,27 @@
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Installation</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="quick-start-install">Installation</a></li>
            <li class="navListItem"><a class="navItem" href="install-options">Options</a></li>
            <li class="navListItem"><a class="navItem" href="install-multiple">Multiple kernels</a></li>
            <li class="navListItem"><a class="navItem" href="install-versions">Versions</a></li>
            <li class="navListItem"><a class="navItem" href="install-other">Other</a></li>
+           <li class="navListItem"><a class="navItem" href="install-proxies">Proxies and mirrors</a></li>
            <li class="navListItem"><a class="navItem" href="install-advanced">Advanced</a></li>
           </ul>
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Usage</h3>
-          <ul>
+          <ul class="">
+           <li class="navListItem"><a class="navItem" href="usage-compiler-options">Compiler options</a></li>
            <li class="navListItem"><a class="navItem" href="usage-plotting">Plotting</a></li>
            <li class="navListItem"><a class="navItem" href="usage-spark">Spark</a></li>
           </ul>
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">User API</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="api">Intro</a></li>
            <li class="navListItem"><a class="navItem" href="api-ammonite">Ammonite API</a></li>
            <li class="navListItem navListItemActive"><a class="navItem" href="api-jupyter">Almond Jupyter API</a></li>
@@ -100,7 +108,7 @@
          </div>
          <div class="navGroup">
           <h3 class="navGroupCategoryTitle">Development</h3>
-          <ul>
+          <ul class="">
            <li class="navListItem"><a class="navItem" href="dev-from-sources">Installing from sources</a></li>
            <li class="navListItem"><a class="navItem" href="dev-custom-kernel">Writing custom kernels</a></li>
            <li class="navListItem"><a class="navItem" href="dev-libraries">Writing libraries interacting with Jupyter</a></li>
@@ -111,14 +119,43 @@
        </section>
       </div>
       <script>
+            var coll = document.getElementsByClassName('collapsible');
+            var checkActiveCategory = true;
+            for (var i = 0; i < coll.length; i++) {
+              var links = coll[i].nextElementSibling.getElementsByTagName('*');
+              if (checkActiveCategory){
+                for (var j = 0; j < links.length; j++) {
+                  if (links[j].classList.contains('navListItemActive')){
+                    coll[i].nextElementSibling.classList.toggle('hide');
+                    coll[i].childNodes[1].classList.toggle('rotate');
+                    checkActiveCategory = false;
+                    break;
+                  }
+                }
+              }
+
+              coll[i].addEventListener('click', function() {
+                var arrow = this.childNodes[1];
+                arrow.classList.toggle('rotate');
+                var content = this.nextElementSibling;
+                content.classList.toggle('hide');
+              });
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
               createToggler('#navToggler', '#docsNav', 'docsSliderActive');
               createToggler('#tocToggler', 'body', 'tocActive');
 
-              const headings = document.querySelector('.toc-headings');
+              var headings = document.querySelector('.toc-headings');
               headings && headings.addEventListener('click', function(event) {
-                if (event.target.tagName === 'A') {
-                  document.body.classList.remove('tocActive');
+                var el = event.target;
+                while(el !== headings){
+                  if (el.tagName === 'A') {
+                    document.body.classList.remove('tocActive');
+                    break;
+                  } else{
+                    el = el.parentNode;
+                  }
                 }
               }, false);
 
@@ -140,12 +177,12 @@
         </script>
      </nav>
     </div>
-    <div class="container mainContainer docMainContainer">
+    <div class="container mainContainer docsContainer">
      <div class="wrapper">
       <div class="post">
        <header class="postHeader">
-        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/master/docs/pages/api-jupyter.md" target="_blank" rel="noreferrer noopener">Edit</a>
-        <h1 class="postHeaderTitle">Almond Jupyter API</h1>
+        <a class="edit-page-link button" href="https://github.com/almond-sh/almond/edit/main/docs/pages/api-jupyter.md" target="_blank" rel="noreferrer noopener">Edit</a>
+        <h1 id="__docusaurus" class="postHeaderTitle">Almond Jupyter API</h1>
        </header>
        <article>
         <div>
@@ -155,7 +192,7 @@
             </svg></a>High level API</h2> <h3><a class="anchor" aria-hidden="true" id="display"></a><a href="api-jupyter.html#display" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Display</h3> <p>A number of classes under <a href="https://github.com/almond-sh/almond/tree/master/modules/scala/jupyter-api/src/main/scala/almond/display"><code>almond.display</code></a> provide an API similar to the <a href="https://ipython.readthedocs.io/en/7.4.0/api/generated/IPython.display.html">IPython display module</a>.</p> <p>Examples:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">// These can be used to display things straightaway</span>
+            </svg></a>Display</h3> <p>A number of classes under <a href="https://github.com/almond-sh/almond/tree/master/modules/api/src/main/scala/almond/display"><code>almond.display</code></a> provide an API similar to the <a href="https://ipython.readthedocs.io/en/7.4.0/api/generated/IPython.display.html">IPython display module</a>.</p> <p>Examples:</p> <pre><code class="hljs css language-scala"><span class="hljs-comment">// These can be used to display things straightaway</span>
 <span class="hljs-type">Html</span>(<span class="hljs-string">"&lt;b&gt;Bold&lt;/b&gt;"</span>)
 </code></pre> <pre><code class="hljs css language-scala">// A handle can also be retained, to later update or clear things
 val handle = Markdown("""
@@ -182,7 +219,20 @@ handle.clear()
 </code></pre> <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> result = <span class="hljs-type">Input</span>().withPrompt(<span class="hljs-string">"&gt;&gt;&gt; "</span>).request()
 </code></pre> <pre><code class="hljs css language-scala"><span class="hljs-comment">// Request input via password field</span>
 <span class="hljs-keyword">val</span> result = <span class="hljs-type">Input</span>().withPassword().request()
-</code></pre> <h2><a class="anchor" aria-hidden="true" id="jupyterapi"></a><a href="api-jupyter.html#jupyterapi" aria-hidden="true" class="hash-link">
+</code></pre> <h3><a class="anchor" aria-hidden="true" id="auto-updated-variables"></a><a href="api-jupyter.html#auto-updated-variables" aria-hidden="true" class="hash-link">
+            <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
+             <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+            </svg></a>Auto-updated variables</h3> <p>When using Scala 2, the output of some cells gets updated later on, while or after other cells run:</p> 
+          <ul> 
+           <li>the output of a top-level <code>var</code> is updated when the <code>var</code> is modified,</li> 
+           <li>the output of a top-level <code>lazy val</code> is updated when it gets computed,</li> 
+           <li>the output of a <code>Future</code> is updated when it completes.</li> 
+          </ul> <pre><code class="hljs css language-scala"><span class="hljs-keyword">var</span> n = <span class="hljs-number">0</span> <span class="hljs-comment">// output: "n: Int = 0"</span>
+</code></pre> <pre><code class="hljs css language-scala">n += <span class="hljs-number">1</span> <span class="hljs-comment">// the output of the cell above becomes "n: Int = 1"</span>
+</code></pre> <p>Updates are coalesced: when a variable changes many times in a short amount of time (like when it's modified in a loop), only its latest value is sent to the front-end, at most every 100 milliseconds or so, and when the cell modifying it completes.</p> <p>Keeping track of changes has a small cost upon each modification of a top-level <code>var</code>. For performance-sensitive code (tight loops modifying a counter from another cell, for example), prefer keeping the state in a class or an object, whose fields aren't tracked:</p> <pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Counter</span> </span>{
+  <span class="hljs-keyword">var</span> count = <span class="hljs-number">0</span>L
+}
+</code></pre> <p>The automatic updates of <code>var</code>s and <code>lazy val</code>s can be disabled with the <a href="install-options#--auto-update-vars"><code>--auto-update-vars=false</code></a> and <a href="install-options#--auto-update-lazy-vals"><code>--auto-update-lazy-vals=false</code></a> kernel options.</p> <h2><a class="anchor" aria-hidden="true" id="jupyterapi"></a><a href="api-jupyter.html#jupyterapi" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
             </svg></a><code>JupyterAPI</code></h2> <p><code>almond.api.JupyterApi</code> allows to</p> 
@@ -209,7 +259,7 @@ kernel.comm.receiver(<span class="hljs-string">"A"</span>) { data =&gt;
 </code></pre> <p><img src="../../demo/comm-receive.gif" alt=""></p> <p>TODO Send to client</p> <h3><a class="anchor" aria-hidden="true" id="display-data"></a><a href="api-jupyter.html#display-data" aria-hidden="true" class="hash-link">
             <svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewbox="0 0 16 16" width="16">
              <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-            </svg></a>Display data</h3> <p>The <code>publish</code> field, of type <a href="https://github.com/almond-sh/almond/blob/master/modules/shared/interpreter-api/src/main/scala/almond/interpreter/api/OutputHandler.scala"><code>almond.interpreter.api.OutputHandler</code></a>, has numerous methods to push display data to the front-end.</p> <p>The most generic is <code>display</code>, accepting a <code>almond.api.DisplayData</code>.</p> <pre><code class="hljs css language-scala">kernel.publish.display(
+            </svg></a>Display data</h3> <p>The <code>publish</code> field, of type <a href="https://github.com/almond-sh/almond/blob/master/modules/api/src/main/scala/almond/interpreter/api/OutputHandler.scala"><code>almond.interpreter.api.OutputHandler</code></a>, has numerous methods to push display data to the front-end.</p> <p>The most generic is <code>display</code>, accepting a <code>almond.api.DisplayData</code>.</p> <pre><code class="hljs css language-scala">kernel.publish.display(
   almond.interpreter.api.<span class="hljs-type">DisplayData</span>(
     <span class="hljs-type">Map</span>(
       <span class="hljs-comment">// if we set up an extension for application/myapp+json, first element should be picked</span>
@@ -309,17 +359,18 @@ SELECT id, name FROM my_table
        </article>
       </div>
       <div class="docs-prevnext">
-       <a class="docs-prev button" href="api-ammonite"><span class="arrow-prev">← </span><span>Previous</span></a>
-       <a class="docs-next button" href="api-access-instances"><span>Next</span><span class="arrow-next"> →</span></a>
+       <a class="docs-prev button" href="api-ammonite"><span class="arrow-prev">← </span><span>Ammonite API</span></a>
+       <a class="docs-next button" href="api-access-instances"><span>Access API instances</span><span class="arrow-next"> →</span></a>
       </div>
      </div>
     </div>
-    <nav class="onPageNav docOnPageNav">
+    <nav class="onPageNav">
      <ul class="toc-headings">
       <li><a href="api-jupyter.html#high-level-api">High level API</a>
        <ul class="toc-headings">
         <li><a href="api-jupyter.html#display">Display</a></li>
         <li><a href="api-jupyter.html#input">Input</a></li>
+        <li><a href="api-jupyter.html#auto-updated-variables">Auto-updated variables</a></li>
        </ul></li>
       <li><a href="api-jupyter.html#jupyterapi"><code>JupyterAPI</code></a>
        <ul class="toc-headings">
@@ -351,11 +402,23 @@ SELECT id, name FROM my_table
      </div>
     </section>
     <section class="copyright">
-     Copyright © 2025 almond contributors
+     Copyright © 2026 almond contributors
     </section>
    </footer>
   </div>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.js"></script>
+  <script>
+                document.addEventListener('keyup', function(e) {
+                  if (e.target !== document.body) {
+                    return;
+                  }
+                  // keyCode for '/' (slash)
+                  if (e.keyCode === 191) {
+                    const search = document.getElementById('search_input_react');
+                    search && search.focus();
+                  }
+                });
+              </script>
   <script>
               var search = docsearch({
                 
