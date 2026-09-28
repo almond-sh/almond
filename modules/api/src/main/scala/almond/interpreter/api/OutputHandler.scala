@@ -31,7 +31,8 @@ abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.Up
   /** Adds a payload to be sent in the execute reply message
     *
     * This method can be called multiple times. All the passed payloads will be added in the execute
-    * reply message.
+    * reply message. Payloads are only sent if the cell runs successfully: as per the Jupyter
+    * messaging specification, error execute reply messages don't have payloads.
     *
     * @param payload
     *   payload to add to the reply message, should be a stringifi-ed JSON object
