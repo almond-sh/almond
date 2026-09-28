@@ -2,6 +2,7 @@ package almond.kernel
 
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
@@ -202,6 +203,64 @@ object KernelTests extends TestSuite {
       val close = streams.singleReply(Channel.Publish, Comm.closeType)
       assert(close.content.comm_id == commId)
       assert(close.parent_header.exists(_.msg_type == Comm.openType.messageType))
+    }
+
+    test("stop on error") {
+
+      def replyStatuses(stopOnError: Option[Boolean]): Seq[String] = {
+
+        val replyCount = new AtomicInteger
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+          (_, m) =>
+            IO {
+              m.header.msg_type == "execute_reply" && replyCount.incrementAndGet() == 3
+            }
+
+        val sessionId = UUID.randomUUID().toString
+        val input = Stream("error-after:200", "echo:foo", "echo:bar").map { code =>
+          Message(
+            Header.random("test", Execute.requestType, sessionId),
+            Execute.Request(code, stop_on_error = stopOnError)
+          ).on(Channel.Requests)
+        }
+
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+        val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+          .flatMap(_.run(streams.source, streams.sink, Nil))
+
+        val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+        assert(res.nonEmpty)
+
+        streams.generatedMessages.toList.collect {
+          case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+            m.decodeAs[Execute.Reply] match {
+              case Left(err) => throw new Exception(s"Error decoding execute_reply: $err")
+              case Right(m0) =>
+                m0.content match {
+                  case _: Execute.Reply.Success => "ok"
+                  case _: Execute.Reply.Error   => "error"
+                  case _: Execute.Reply.Abort   => "abort"
+                }
+            }
+        }
+      }
+
+      test("default") {
+        // stop_on_error defaults to true when absent, per the Jupyter messaging spec
+        val statuses = replyStatuses(None)
+        assert(statuses == Seq("error", "abort", "abort"))
+      }
+
+      test("enabled") {
+        val statuses = replyStatuses(Some(true))
+        assert(statuses == Seq("error", "abort", "abort"))
+      }
+
+      test("disabled") {
+        val statuses = replyStatuses(Some(false))
+        assert(statuses == Seq("error", "ok", "ok"))
+      }
     }
 
     test("history request") {
