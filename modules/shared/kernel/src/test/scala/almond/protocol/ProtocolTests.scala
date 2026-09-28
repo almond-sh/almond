@@ -49,6 +49,39 @@ object ProtocolTests extends TestSuite {
         assert(json.contains(""""matches":[]"""))
       }
     }
+
+    test("replies have a status") {
+      val okStatus = """"status":"ok""""
+      test("shutdown_reply") {
+        val json = writeToString(Shutdown.Reply(restart = false))(Shutdown.replyCodec)
+        assert(json == """{"restart":false,"status":"ok"}""")
+      }
+      test("interrupt_reply") {
+        val json = writeToString(Interrupt.Reply())(Interrupt.replyCodec)
+        assert(json == """{"status":"ok"}""")
+      }
+      test("history_reply") {
+        val simple = writeToString[History.Reply](History.Reply.Simple(Nil))(History.replyCodec)
+        assert(simple == """{"history":[],"status":"ok"}""")
+        val withOutput = writeToString[History.Reply](
+          History.Reply.WithOutput(List((1, 2, ("in", "out"))))
+        )(History.replyCodec)
+        assert(withOutput.contains(okStatus))
+      }
+      test("comm_info_reply") {
+        val json = writeToString(CommInfo.Reply(Map.empty[String, CommInfo.Info]))(
+          CommInfo.replyCodec
+        )
+        assert(json == """{"comms":{},"status":"ok"}""")
+      }
+      test("connect_reply") {
+        val json = writeToString(Connect.Reply(1, 2, 3, 4, 5))(Connect.replyCodec)
+        assert(
+          json ==
+            """{"shell_port":1,"iopub_port":2,"stdin_port":3,"hb_port":4,"control_port":5,"status":"ok"}"""
+        )
+      }
+    }
   }
 
 }

@@ -297,7 +297,7 @@ final case class InterpreterMessageHandlers(
       for {
         _ <- interpreter.interrupt
         _ <- message
-          .reply(Interrupt.replyType, Interrupt.Reply)
+          .reply(Interrupt.replyType, Interrupt.Reply())
           .enqueueOn(Channel.Control, queue)
       } yield ()
     }
