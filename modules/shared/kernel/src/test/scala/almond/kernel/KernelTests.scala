@@ -48,6 +48,17 @@ object KernelTests extends TestSuite {
       println(s"Don't know how to shutdown $interpreterEc")
   }
 
+  /** Statuses published by the kernel while processing the request with id `parentMsgId` */
+  def statuses(streams: ClientStreams, parentMsgId: String): Seq[String] =
+    streams.generatedMessages.toVector.collect {
+      case Left((Channel.Publish, m))
+          if m.header.msg_type == Status.messageType.messageType &&
+          m.parent_header.exists(_.msg_id == parentMsgId) =>
+        com.github.plokhotnyuk.jsoniter_scala.core
+          .readFromArray(m.content.value)(Status.codec)
+          .execution_state
+    }
+
   val tests = Tests {
 
     test("stdin") {
@@ -298,10 +309,11 @@ object KernelTests extends TestSuite {
         (channel, m) =>
           IO.pure(channel == Channel.Control && m.header.msg_type == "kernel_info_reply")
 
-      val input = Message(
+      val request = Message(
         Header.random("test", KernelInfo.requestType),
         ()
-      ).streamOn(Channel.Control)
+      )
+      val input = request.streamOn(Channel.Control)
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
@@ -313,21 +325,23 @@ object KernelTests extends TestSuite {
 
       val reply = streams.singleReply(Channel.Control, KernelInfo.replyType)
       assert(reply.content.implementation == "test")
+
+      val statuses0 = statuses(streams, request.header.msg_id)
+      assert(statuses0 == Seq("busy", "idle"))
     }
 
-    test("shutdown request") {
+    def shutdownRequestTest(channel: Channel): Unit = {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, _) =>
           IO.pure(false)
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
-        Message(
-          Header.random("test", Shutdown.requestType, sessionId),
-          Shutdown.Request(restart = false)
-        ).on(Channel.Requests)
+      val request = Message(
+        Header.random("test", Shutdown.requestType, sessionId),
+        Shutdown.Request(restart = false)
       )
+      val input = request.streamOn(channel)
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
@@ -340,11 +354,25 @@ object KernelTests extends TestSuite {
 
       assert(interpreter.shutdownCalled())
 
-      val msgTypes = streams.generatedMessageTypes()
+      val msgTypes = streams.generatedMessageTypes(Set(Channel.Publish, channel))
 
       val expectedMsgTypes = Seq(Shutdown.replyType.messageType)
 
       assert(msgTypes == expectedMsgTypes)
+
+      val reply = streams.singleReply(channel, Shutdown.replyType)
+      assert(!reply.content.restart)
+
+      val statuses0 = statuses(streams, request.header.msg_id)
+      assert(statuses0 == Seq("busy", "idle"))
+    }
+
+    test("shutdown request") {
+      shutdownRequestTest(Channel.Requests)
+    }
+
+    test("shutdown request on control channel") {
+      shutdownRequestTest(Channel.Control)
     }
 
     test("completion metadata") {

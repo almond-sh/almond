@@ -13,7 +13,6 @@ import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
 import cats.syntax.apply._
-import fs2.Stream
 import fs2.concurrent.SignallingRef
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -254,16 +253,14 @@ final case class InterpreterMessageHandlers(
     }
 
   def kernelInfoHandler: MessageHandler =
-    // Protocol 5.5 allows this request on both channels. Control requests don't publish
-    // busy / idle statuses, so that they can be answered independently of cell execution.
+    // Protocol 5.5 allows this request on both channels. Like other requests, it publishes
+    // busy / idle statuses on both of them, unless a cell is running.
     blockingWithStatus(
       Set(Channel.Requests, Channel.Control),
       MessageType[Unit](KernelInfo.requestType.messageType),
       queueEc,
       logCtx,
-      publishStatus = channel =>
-        if (channel == Channel.Requests) isExecuting.map(!_)
-        else IO.pure(false)
+      publishStatus = _ => isExecuting.map(!_)
     ) { (channel, message, queue) =>
 
       for {
@@ -276,19 +273,21 @@ final case class InterpreterMessageHandlers(
 
   def shutdownHandler: MessageHandler =
     // v5.3 spec states "The request can be sent on either the control or shell channels.".
-    MessageHandler(Set(Channel.Control, Channel.Requests), Shutdown.requestType) {
-      (channel, message) =>
+    blockingWithStatus(
+      Set(Channel.Control, Channel.Requests),
+      Shutdown.requestType,
+      queueEc,
+      logCtx,
+      publishStatus = _ => isExecuting.map(!_)
+    ) { (channel, message, queue) =>
 
-        val reply = message
+      for {
+        _ <- exitSignal.set(true)
+        _ <- interpreter.shutdown
+        _ <- message
           .reply(Shutdown.replyType, Shutdown.Reply(message.content.restart))
-          .streamOn(channel)
-
-        val prepareShutdown = exitSignal
-          .set(true)
-          .flatMap(_ => interpreter.shutdown)
-
-        Stream.eval(prepareShutdown)
-          .flatMap(_ => reply)
+          .enqueueOn(channel, queue)
+      } yield ()
     }
 
   def interruptHandler: MessageHandler =
