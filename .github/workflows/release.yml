@@ -10,6 +10,13 @@ jobs:
   release:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Never run two SonatypeCentralPublishModule uploads at the same time
+    concurrency:
+      group: sonatype-central-publish-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: actions/checkout@v7
       with:
@@ -42,6 +49,19 @@ jobs:
         MILL_PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
         MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
         MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+    # Same artifacts, snapshots included, to the GitHub Packages Maven repository of this repo.
+    # Best effort: Sonatype Central is the source of truth, so a failure here shouldn't hold
+    # back the jobs depending on this one.
+    - name: Publish to GitHub Packages
+      continue-on-error: true
+      run: |
+        ./mill -i mill.javalib.MavenPublishModule/publishAll \
+          --releaseUri "https://maven.pkg.github.com/$GITHUB_REPOSITORY" \
+          --snapshotUri "https://maven.pkg.github.com/$GITHUB_REPOSITORY"
+      shell: bash
+      env:
+        MILL_MAVEN_USERNAME: ${{ github.actor }}
+        MILL_MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
   upload-launcher:
     needs: release
