@@ -47,7 +47,7 @@ const siteConfig = {
 
   enableUpdateTime: true, // doesn't seem to work
 
-  editUrl: 'https://github.com/almond-sh/almond/edit/master/docs/pages/',
+  editUrl: 'https://github.com/almond-sh/almond/edit/main/docs/pages/',
 };
 
 module.exports = siteConfig;

@@ -63,7 +63,12 @@ object AlmondCompilerLifecycleManager {
   def closeCompiler(compiler: iface.Compiler): Unit =
     compiler match {
       case c: ammonite.compiler.Compiler =>
-        c.compiler.close()
+        // Global only has a close method - and is only a Closeable - from 2.12.9. We're built
+        // with 2.12.8 for Scala 2.12, and run with the later 2.12.x versions too.
+        c.compiler match {
+          case closeable: java.io.Closeable => closeable.close()
+          case _                            =>
+        }
       case _ =>
         sys.error(s"Unrecognized compiler instance type: $compiler (${compiler.getClass})")
     }

@@ -71,6 +71,8 @@ final case class Options(
     autoUpdateVars: Boolean = true,
   @HelpMessage("Whether to silence imports (not printing them back in output)")
     silentImports: Boolean = false,
+  @HelpMessage("Only display the last value of each cell")
+    lastValueOnly: Boolean = false,
   @HelpMessage("Whether to use a notebook-specific coursier logger")
     useNotebookCoursierLogger: Boolean = false,
   @HelpMessage("Whether to enable variable inspector")

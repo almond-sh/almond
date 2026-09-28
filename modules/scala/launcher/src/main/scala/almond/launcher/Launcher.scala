@@ -235,6 +235,11 @@ object Launcher extends CaseApp[LauncherOptions] {
 
   def run(options: LauncherOptions, remainingArgs: RemainingArgs): Unit = {
 
+    if (options.version) {
+      println(Properties.version)
+      sys.exit(0)
+    }
+
     // FIXME We'd need coursier-interface to allow us to do these:
 
     // if (Properties.isWin && isGraalvmNativeImage)

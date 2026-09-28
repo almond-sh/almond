@@ -14,7 +14,7 @@ object JavaHomes {
   def javaHome(id: String): os.Path = {
     val jvmCache = JvmCache().withDefaultIndex
     val ec       = jvmCache.archiveCache.cache.ec
-    val home     = JavaHome().withCache(jvmCache).get(id).unsafeRun()(ec)
+    val home     = JavaHome().withCache(jvmCache).get(id).unsafeRun()(using ec)
     os.Path(home.getAbsoluteFile)
   }
 

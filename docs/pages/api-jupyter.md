@@ -58,6 +58,36 @@ val result = Input().withPrompt(">>> ").request()
 val result = Input().withPassword().request()
 ```
 
+### Auto-updated variables
+
+When using Scala 2, the output of some cells gets updated later on, while or after other cells run:
+- the output of a top-level `var` is updated when the `var` is modified,
+- the output of a top-level `lazy val` is updated when it gets computed,
+- the output of a `Future` is updated when it completes.
+
+```scala
+var n = 0 // output: "n: Int = 0"
+```
+```scala
+n += 1 // the output of the cell above becomes "n: Int = 1"
+```
+
+Updates are coalesced: when a variable changes many times in a short amount of time (like when
+it's modified in a loop), only its latest value is sent to the front-end, at most every
+100 milliseconds or so, and when the cell modifying it completes.
+
+Keeping track of changes has a small cost upon each modification of a top-level `var`.
+For performance-sensitive code (tight loops modifying a counter from another cell, for example),
+prefer keeping the state in a class or an object, whose fields aren't tracked:
+```scala
+object Counter {
+  var count = 0L
+}
+```
+
+The automatic updates of `var`s and `lazy val`s can be disabled with the
+[`--auto-update-vars=false`](install-options.md#--auto-update-vars) and
+[`--auto-update-lazy-vals=false`](install-options.md#--auto-update-lazy-vals) kernel options.
 
 ## `JupyterAPI`
 

@@ -48,6 +48,47 @@ and allows to use the dependency in the current cell rather than the next one:
 import $ivy.`org.platanios::tensorflow-data:0.4.1`
 ```
 
+The same goes for the `//> using dep` directive:
+```scala
+//> using dep "org.platanios::tensorflow-data:0.4.1"
+```
+
+Both syntaxes accept a classifier, appended to the dependency as
+`,classifier=…`:
+```scala
+import $ivy.`org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64`
+```
+```scala
+//> using dep "org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64"
+```
+
+#### Pinning dependency versions
+
+Loading dependencies upfront in a first cell effectively "pins" their versions:
+dependencies loaded in later cells cannot replace them, even if they request newer
+versions transitively. Run this first cell before loading libraries that depend on
+those dependencies.
+
+For example, the workaround in [issue #332](https://github.com/almond-sh/almond/issues/332#issuecomment-471545852)
+loads Hadoop before Spark. In a first cell:
+
+```scala
+import $ivy.`org.apache.hadoop:hadoop-common:2.9.2`
+import $ivy.`org.apache.hadoop:hadoop-azure-datalake:3.1.1`
+```
+
+Then, in a separate cell:
+
+```scala
+import $ivy.`org.apache.spark::spark-sql:2.4.0`
+```
+
+This is both a feature and a limitation: it lets you keep chosen versions when
+loading more libraries, but also prevents upgrading an already loaded dependency
+in a later cell. To change those versions, restart the kernel and run the updated
+dependency cell first. The chosen versions still need to be compatible with the
+libraries that use them.
+
 ### Load compiler plugins
 
 `interp.load.plugin.ivy` accepts one or several
@@ -69,6 +110,28 @@ import $plugin.$ivy.`org.spire-math::kind-projector:0.9.9`
 trait T[F[_]]
 type T2 = T[Either[String, ?]]
 ```
+
+### Load scripts
+
+Ammonite scripts can be loaded from notebooks, with the same syntax as in Ammonite:
+```scala
+import $file.path.to.script
+```
+This compiles and runs `path/to/script.sc`, and brings its wrapper object in scope, so that
+its definitions can be accessed like `script.foo()`. Paths are relative to the working directory of the kernel,
+which is usually the directory of the notebook, and `^` stands for the parent directory.
+
+Alternatively, scripts can be loaded with a directive, which accepts any path:
+```scala
+//> using script path/to/script.sc
+//> using scripts path/to/script.sc, /absolute/path/to/other.sc
+```
+The wrapper object of each script is brought in scope under the name of the script file
+(`script` for `path/to/script.sc`), like `import $file.…` does.
+
+Either way, a script is compiled and run only once in a session, unless its content changed since it was
+last loaded. In that case, importing it or loading it again re-compiles and re-runs it, and cells run after that
+see its new definitions.
 
 ### Add repositories
 
@@ -94,10 +157,25 @@ interp.beforeExitHooks += { _ =>
 
 ### Configure compiler options
 
+`interp.preConfigureCompiler` accepts a function that updates the settings of the compiler,
+and requests a fresh compiler instance, used from the next cell onwards. In Scala 2, it
+receives a `scala.tools.nsc.Settings`:
 ```scala
-// enable warnings
-interp.configureCompiler(_.settings.nowarn.value = false)
+// Scala 2 - fail on warnings
+interp.preConfigureCompiler(_.fatalWarnings.value = true)
 ```
+
+In Scala 3, it receives a `dotty.tools.dotc.core.Contexts.FreshContext`:
+```scala
+// Scala 3 - fail on warnings
+interp.preConfigureCompiler { ctx =>
+  ctx.setSetting(ctx.settings.XfatalWarnings, true)
+}
+```
+
+See [Compiler options](usage-compiler-options.md) for more details, including how to pass
+options as strings, and how to set them with `//> using option` directives rather than
+via this API.
 
 ## `ReplAPI`
 

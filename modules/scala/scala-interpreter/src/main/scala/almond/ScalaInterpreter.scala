@@ -86,7 +86,9 @@ final class ScalaInterpreter(
     params.initialCellCount,
     enableExitHack = params.compileOnly,
     ignoreLauncherDirectivesIn = params.ignoreLauncherDirectivesIn,
-    launcherDirectiveGroups = params.launcherDirectiveGroups
+    launcherDirectiveGroups = params.launcherDirectiveGroups,
+    pkgName = params.pkgName,
+    wrapperPath = params.codeWrapper.wrapperPath
   )
 
   private var currentExecuteRequestOpt0 = Option.empty[Message[ProtocolExecute.Request]]
@@ -99,7 +101,8 @@ final class ScalaInterpreter(
       storage,
       colors0,
       ammInterp,
-      sessApi
+      sessApi,
+      lastValueOnly = params.lastValueOnly
     )
 
   val jupyterApi =
@@ -212,19 +215,34 @@ final class ScalaInterpreter(
     Some(res)
   }
 
+  // Completions and inspections are computed from threads other than the one running cells
+  // (see AsyncInterpreterOps), so that they can be computed while a cell is running.
+  // They use compiler instances managed by the compiler lifecycle manager, whose
+  // methods that compile code synchronize on the manager itself. We do the same here,
+  // so that completions and inspections wait for any ongoing compilation to be done
+  // (and so that compilations wait for them to be done).
+  private def withCompilerLock[T](f: => T): T = {
+    val compilerManager = ammInterp.compilerManager
+    compilerManager.synchronized(f)
+  }
+
   override def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
-    inspections.inspect(code, pos, detailLevel)
+    withCompilerLock {
+      inspections.inspect(code, pos, detailLevel)
+    }
 
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, completions0, _, completionsWithTypes) = ScalaInterpreterCompletions.complete(
-      ammInterp.compilerManager,
-      Some(ammInterp.dependencyComplete),
-      pos,
-      (ammInterp.predefImports ++ frames0().head.imports).toString(),
-      code,
-      logCtx
-    )
+    val (newPos, completions0, _, completionsWithTypes) = withCompilerLock {
+      ScalaInterpreterCompletions.complete(
+        ammInterp.compilerManager,
+        Some(ammInterp.dependencyComplete),
+        pos,
+        (ammInterp.predefImports ++ frames0().head.imports).toString(),
+        code,
+        logCtx
+      )
+    }
 
     val completions = completions0
       .filter(!_.contains("$"))
@@ -312,7 +330,7 @@ final class ScalaInterpreter(
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
-        codemirror_mode = Some("text/x-scala")
+        codemirror_mode = Some("scala")
       ),
       s"""Almond ${almond.api.Properties.version}
          |Ammonite ${ammonite.Constants.version}

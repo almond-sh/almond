@@ -7,21 +7,24 @@ trait AsyncInterpreterOps extends Interpreter {
 
   def logCtx: LoggerContext
 
-  // As most "cancelled" calculations (completions, inspections, …) are run in other threads by the presentation
-  // compiler, they aren't actually cancelled, they'll keep running in the background. This just interrupts
-  // the thread that waits for the background calculation.
-  // Having a thread that blocks for results, in turn, is almost required by scala.tools.nsc.interactive.Response…
+  // These run in threads of cancellableFuturePool, so that they can run while the interpreter
+  // is busy (running a cell, typically). Implementations of isComplete / complete / inspect
+  // must then be thread-safe with respect to execute.
+  //
+  // As most "cancelled" calculations (completions, inspections, …) can't really be stopped once
+  // they started, cancelling one only has an effect if it didn't start yet. In that case, an empty
+  // result is returned.
   private val cancellableFuturePool = new CancellableFuturePool(logCtx)
 
   override def asyncIsComplete(code: String): Some[CancellableFuture[Option[IsCompleteResult]]] =
-    Some(cancellableFuturePool.cancellableFuture(isComplete(code)))
+    Some(cancellableFuturePool.lazyCancellableFuture(isComplete(code), None))
   override def asyncComplete(code: String, pos: Int): Some[CancellableFuture[Completion]] =
-    Some(cancellableFuturePool.cancellableFuture(complete(code, pos)))
+    Some(cancellableFuturePool.lazyCancellableFuture(complete(code, pos), Completion.empty(pos)))
   override def asyncInspect(
     code: String,
     pos: Int,
     detailLevel: Int
   ): Some[CancellableFuture[Option[Inspection]]] =
-    Some(cancellableFuturePool.cancellableFuture(inspect(code, pos)))
+    Some(cancellableFuturePool.lazyCancellableFuture(inspect(code, pos, detailLevel), None))
 
 }

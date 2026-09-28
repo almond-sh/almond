@@ -38,6 +38,7 @@ final case class ScalaInterpreterParams(
   autoUpdateVars: Boolean = true,
   useNotebookCoursierLogger: Boolean = false,
   silentImports: Boolean = false,
+  lastValueOnly: Boolean = false,
   allowVariableInspector: Option[Boolean] = None,
   useThreadInterrupt: Boolean = false,
   outputDir: Either[os.Path, Boolean] = Right(true),

@@ -81,8 +81,9 @@ object Tests {
         "",
         // the update originates from the previous cell, but arrives while the third one is running
         displaysTextUpdates = Seq(
-          if (isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
+          // pprint doesn't print the field names of single-field case classes in Scala 3
+          if (isScala2 && !isScala212) "f: Future[Int] = Success(value = 2)"
+          else "f: Future[Int] = Success(2)"
         )
       )
     }
@@ -112,8 +113,9 @@ object Tests {
         "",
         displaysText = Seq("f: Future[Int] = [running]"),
         displaysTextUpdates = Seq(
-          if (isScala212) "f: Future[Int] = Success(2)"
-          else "f: Future[Int] = Success(value = 2)"
+          // pprint doesn't print the field names of single-field case classes in Scala 3
+          if (isScala2 && !isScala212) "f: Future[Int] = Success(value = 2)"
+          else "f: Future[Int] = Success(2)"
         ),
         waitForUpdateDisplay = true
       )
@@ -856,6 +858,52 @@ object Tests {
       )
     }
 
+  def addDependencyWithClassifier(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit = {
+    val isScala2 = scalaVersion.startsWith("2.")
+
+    // The natives-* artifacts of lwjgl only contain native libraries. Finding the one of the
+    // requested classifier on the class path, but neither the one of the other classifier nor the
+    // classes of the main lwjgl JAR, means the classifier was taken into account.
+    val checks =
+      """def found(path: String) = getClass.getClassLoader.getResource(path) != null
+        |val linuxNativeLibFound = found("linux/x64/org/lwjgl/liblwjgl.so")
+        |val macOsNativeLibFound = found("macos/x64/org/lwjgl/liblwjgl.dylib")
+        |val mainJarFound = found("org/lwjgl/Version.class")
+        |""".stripMargin
+
+    // Each classifier is loaded in its own session, so that the other one isn't already there
+
+    runner.withSession() { implicit session =>
+      execute(
+        """//> using dep "org.lwjgl:lwjgl:3.3.3,classifier=natives-linux"
+          |""".stripMargin + checks,
+        """defined function found
+          |linuxNativeLibFound: Boolean = true
+          |macOsNativeLibFound: Boolean = false
+          |mainJarFound: Boolean = false""".stripMargin,
+        ignoreStreams = true // ignoring coursier messages (printed when downloading things)
+      )
+    }
+
+    // same thing via an import $ivy
+    runner.withSession() { implicit session =>
+      execute(
+        """import $ivy.`org.lwjgl:lwjgl:3.3.3,classifier=natives-macos`
+          |""".stripMargin + checks,
+        s"""import $$ivy.$$${maybePostImportNewLine(isScala2)}
+           |defined function found
+           |linuxNativeLibFound: Boolean = false
+           |macOsNativeLibFound: Boolean = true
+           |mainJarFound: Boolean = false""".stripMargin,
+        trimReplyLines = true,
+        ignoreStreams = true
+      )
+    }
+  }
+
   def addRepository(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
@@ -871,6 +919,68 @@ object Tests {
           |import jupyter._
           |""".stripMargin,
         "import jupyter._" + maybePostImportNewLine(isScala2)
+      )
+    }
+
+  def importFile(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+
+      val isScala2 = scalaVersion.startsWith("2.")
+
+      // scripts are looked up relative to the working directory of the kernel, that we don't
+      // know from here, so we write them from the kernel itself
+      execute(
+        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"bar\"\n")""",
+        ""
+      )
+
+      // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
+      execute(
+        "import $file.Foo",
+        "import $file.$" + maybePostImportNewLine(isScala2),
+        trimReplyLines = true,
+        ignoreStreams = true
+      )
+
+      execute(
+        "Foo.foo()",
+        """res3: String = "bar""""
+      )
+
+      // scripts that changed are loaded again
+      execute(
+        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"baz\"\n")""",
+        ""
+      )
+
+      // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
+      execute(
+        "import $file.Foo",
+        "import $file.$" + maybePostImportNewLine(isScala2),
+        trimReplyLines = true,
+        ignoreStreams = true
+      )
+
+      execute(
+        "Foo.foo()",
+        """res6: String = "baz""""
+      )
+
+      // via a directive
+      execute(
+        """os.write.over(os.pwd / "sub" / "my-script.sc", "def value = 2\n", createFolders = true)""",
+        ""
+      )
+
+      execute(
+        """//> using script sub/my-script.sc
+          |val n = `my-script`.value
+          |""".stripMargin,
+        "n: Int = 2",
+        ignoreStreams = true
       )
     }
 

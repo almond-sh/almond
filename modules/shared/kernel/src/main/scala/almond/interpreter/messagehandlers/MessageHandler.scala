@@ -171,6 +171,24 @@ object MessageHandler {
       }
     }
 
+  /** Like [[blocking]], but whether the kernel status is published or not is decided right before
+    * the message starts being processed, by running `publishStatus`.
+    */
+  def blockingWithStatus[T: JsonValueCodec](
+    channels: Set[Channel],
+    messageType: MessageType[T],
+    queueEc: ExecutionContext,
+    logCtx: LoggerContext,
+    publishStatus: Channel => IO[Boolean]
+  )(
+    handler: (Channel, Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
+  ): MessageHandler =
+    MessageHandler(channels, messageType) { (channel, message) =>
+      blockingTaskStreamWithStatus(message, queueEc, logCtx, publishStatus(channel)) { queue =>
+        handler(channel, message, queue)
+      }
+    }
+
   def blocking0[T: JsonValueCodec](
     channel: Channel,
     messageType: MessageType[T],
@@ -196,6 +214,16 @@ object MessageHandler {
     publishStatus: Boolean
   )(
     run: Queue[IO, (Channel, RawMessage)] => IO[Unit]
+  ): Stream[IO, (Channel, RawMessage)] =
+    blockingTaskStreamWithStatus(currentMessage, queueEc, logCtx, IO.pure(publishStatus))(run)
+
+  private def blockingTaskStreamWithStatus(
+    currentMessage: Message[_],
+    queueEc: ExecutionContext,
+    logCtx: LoggerContext,
+    publishStatus0: IO[Boolean]
+  )(
+    run: Queue[IO, (Channel, RawMessage)] => IO[Unit]
   ): Stream[IO, (Channel, RawMessage)] = {
 
     val log = logCtx(getClass)
@@ -212,7 +240,8 @@ object MessageHandler {
     val poisonPill: (Channel, RawMessage) = null // a bit meh
 
     val task = for {
-      queue <- Queue.unbounded[IO, (Channel, RawMessage)]
+      publishStatus <- publishStatus0
+      queue         <- Queue.unbounded[IO, (Channel, RawMessage)]
       main = run(queue)
       _ <- {
         val t = for {

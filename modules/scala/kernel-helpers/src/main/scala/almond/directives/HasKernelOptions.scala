@@ -35,7 +35,8 @@ object HasKernelOptions {
   val handlers = DirectiveHandlers(Seq[DirectiveHandler[HasKernelOptions]](
     AddDependency.handler,
     Repository.handler,
-    ScalacOptions.handler
+    ScalacOptions.handler,
+    Script.handler
   ))
 
 }

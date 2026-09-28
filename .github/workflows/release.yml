@@ -40,8 +40,8 @@ jobs:
       env:
         MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY_BASE64 }}
         MILL_PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
-        MILL_SONATYPE_USERNAME: ${{ secrets.PUBLISH_USER }}
-        MILL_SONATYPE_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
+        MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
 
   upload-launcher:
     needs: release

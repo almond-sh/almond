@@ -84,6 +84,57 @@ Default: true if `--arg` and `--command` aren't specified, false else.
 
 ## Scala-related
 
+#### `--silent-imports`
+
+Suppress the automatic output for `import` statements. Disabled by default.
+Enable it when installing the kernel:
+
+```bash
+cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --silent-imports
+```
+
+Add `--force` when replacing an existing kernel installation.
+
+To limit automatic output for values as well, use `--last-value-only`.
+
+#### `--last-value-only`
+
+Display only the last value defined or computed in each cell, reducing the output
+chatter described in [issue #256](https://github.com/almond-sh/almond/issues/256).
+Disabled by default; pass `--last-value-only=false` to restore the usual output.
+
+Enable it when installing the kernel:
+
+```bash
+cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --last-value-only
+```
+
+The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
+also accepts this option directly:
+
+```bash
+cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --install --last-value-only
+```
+
+Add `--force` when replacing an existing kernel installation, then start a new
+kernel session.
+
+For example, this cell displays only `second: Int = 2`:
+
+```scala
+val first = 1
+val second = first + 1
+```
+
+All statements still execute, and both variables remain available in subsequent
+cells. Import statements and class, method, and type definitions are not echoed.
+Trailing imports or definitions do not replace the last value. If the last value
+has type `Unit`, no automatic result is displayed.
+
+Explicit output, such as `println` and `display()` calls, is still shown. Rich
+values such as `almond.display.Html` are displayed automatically only when they
+are the last value in the cell.
+
 #### `--predef-code`
 
 Run some code right before the session starts. Makes the kernel start fail if the predef
@@ -93,6 +144,19 @@ doesn't compile or throws an exception. Use like
   import scala.collection.JavaConverters._
 "
 ```
+
+#### `--auto-update-vars`
+
+Whether the output of top-level `var`s should be updated when they change later on (default: true).
+See [Auto-updated variables](api-jupyter.md#auto-updated-variables). Disable with
+```bash
+--auto-update-vars=false
+```
+
+#### `--auto-update-lazy-vals`
+
+Whether the output of top-level `lazy val`s should be updated when they're computed (default: true).
+See [Auto-updated variables](api-jupyter.md#auto-updated-variables).
 
 ## Dependency-related
 

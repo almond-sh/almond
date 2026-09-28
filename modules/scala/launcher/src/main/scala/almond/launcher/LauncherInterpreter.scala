@@ -31,7 +31,7 @@ class LauncherInterpreter(
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
-        codemirror_mode = Some("text/x-scala")
+        codemirror_mode = Some("scala")
       ),
       banner =
         s"""Almond ${Properties.version}

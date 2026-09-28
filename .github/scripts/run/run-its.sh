@@ -22,6 +22,16 @@ else
   windows=false
 fi
 
+# When selective execution was prepared (see .github/scripts/selective-prepare.sh), skip everything
+# if the changes being tested don't affect the integration tests.
+if [ -f "${MILL_OUTPUT_DIR:-out}/mill-selective-execution.json" ]; then
+  affected="$($mill -i selective.resolve scala.integration.test.testForked)"
+  if [ -z "$affected" ]; then
+    echo "Integration tests not affected by the changes being tested, skipping them"
+    exit 0
+  fi
+fi
+
 # Every integration test class must be assigned to a group in the case statement below.
 # known_classes is the source of truth: we ask Mill which test classes it discovers and fail if any
 # of them is missing here, so a newly added (or renamed) test class can't silently be left out of a
