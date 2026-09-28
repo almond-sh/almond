@@ -56,9 +56,6 @@ final class ZeromqConnection(
   private def routerDealer =
     if (bind) SocketType.ROUTER
     else SocketType.DEALER
-  private def inverseRouterDealer =
-    if (bind) SocketType.DEALER
-    else SocketType.ROUTER
   private def pubSub =
     if (bind) SocketType.PUB
     else SocketType.SUB
@@ -113,7 +110,7 @@ final class ZeromqConnection(
 
   private val stdin0 = ZeromqSocket(
     threads.channelEces(Channel.Input),
-    inverseRouterDealer,
+    routerDealer,
     bind,
     params.uri(Channel.Input),
     identityOpt.map(_.getBytes(UTF_8)),
