@@ -19,9 +19,10 @@ final case class CommMessageHandlers(
     MessageHandler.blocking(Channel.Requests, Comm.openType, queueEc, logCtx) { (message, queue) =>
       commManager.target(message.content.target_name) match {
         case None =>
+          // comm messages from the kernel go on IOPub, frontends don't expect them on shell
           message
-            .reply(Comm.closeType, Comm.Close(message.content.comm_id, RawJson.emptyObj))
-            .enqueueOn(Channel.Requests, queue)
+            .publish(Comm.closeType, Comm.Close(message.content.comm_id, RawJson.emptyObj))
+            .enqueueOn(Channel.Publish, queue)
 
         case Some(target) =>
           commManager.addId(target, message.content.comm_id)

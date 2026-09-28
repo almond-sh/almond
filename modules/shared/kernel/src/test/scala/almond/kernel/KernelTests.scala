@@ -8,7 +8,18 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.{Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
-import almond.protocol.{Complete, Execute, Header, History, Input, KernelInfo, RawJson, Shutdown}
+import almond.protocol.{
+  Comm,
+  Complete,
+  Execute,
+  Header,
+  History,
+  Input,
+  KernelInfo,
+  RawJson,
+  Shutdown,
+  Status
+}
 import almond.protocol.Codecs.unitCodec
 import almond.testkit.ClientStreams
 import almond.util.ThreadUtil.{
@@ -156,6 +167,41 @@ object KernelTests extends TestSuite {
 
       assert(commMsgTypes == expectedCommMsgTypes)
       assert(stdMsgTypes == expectedStdMsgTypes)
+    }
+
+    test("comm_open for unknown target gets comm_close on IOPub") {
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (channel, m) =>
+          IO.pure(
+            channel == Channel.Publish &&
+            m.header.msg_type == Status.messageType.messageType &&
+            m.parent_header.exists(_.msg_type == Comm.openType.messageType) &&
+            m.decodeAs[Status].toOption.exists(_.content == Status.idle)
+          )
+
+      val sessionId = UUID.randomUUID().toString
+      val commId    = UUID.randomUUID().toString
+      val input = Stream(
+        Message(
+          Header.random("test", Comm.openType, sessionId),
+          Comm.Open(commId, "unknown-target", RawJson.emptyObj)
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      assert(streams.generatedMessageTypes(channels = Set(Channel.Requests)).isEmpty)
+
+      val close = streams.singleReply(Channel.Publish, Comm.closeType)
+      assert(close.content.comm_id == commId)
+      assert(close.parent_header.exists(_.msg_type == Comm.openType.messageType))
     }
 
     test("history request") {
