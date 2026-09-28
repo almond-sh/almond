@@ -89,7 +89,8 @@ final case class InterpreterMessageHandlers(
 
     // TODO Take message.content.silent into account
 
-    // TODO Decode and take into account message.content.user_expressions?
+    // TODO Evaluate message.content.user_expressions, and send their results in the reply
+    // (these are empty for now, the result of the cell is only sent via execute_result)
 
     for {
       countBefore <- interpreter.executionCount
@@ -147,7 +148,7 @@ final case class InterpreterMessageHandlers(
       }
       respOpt = res match {
         case v: ExecuteResult.Success =>
-          Right(Execute.Reply.Success(countAfter, v.data.jsonData, payload = payloadsAsJson()))
+          Right(Execute.Reply.Success(countAfter, Map.empty, payload = payloadsAsJson()))
         case ex: ExecuteResult.Error =>
           val traceBack =
             Seq(ex.name, ex.message)

@@ -1,7 +1,7 @@
 package almond.protocol
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
-import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 
 import scala.collection.immutable.ListMap
 
@@ -160,8 +160,9 @@ object Execute {
     implicit val probeCodec: JsonValueCodec[Probe] =
       JsonCodecMaker.make
 
+    // user_expressions is required in execute_reply, even when empty
     implicit val successCodec: JsonValueCodec[Reply.Success] =
-      JsonCodecMaker.make[Reply.Success]
+      JsonCodecMaker.make[Reply.Success](CodecMakerConfig.withTransientEmpty(false))
     implicit val errorCodec: JsonValueCodec[Reply.Error] =
       JsonCodecMaker.make[Reply.Error]
     implicit val abortCodec: JsonValueCodec[Reply.Abort] =

@@ -1,6 +1,5 @@
 package almond.kernel
 
-import java.nio.charset.StandardCharsets
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -120,14 +119,16 @@ object KernelTests extends TestSuite {
 
     test("client comm") {
 
+      val sessionId  = UUID.randomUUID().toString
+      val exitHeader = Header.random("test", Execute.requestType, sessionId)
+
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && new String(
-            m.content.value,
-            StandardCharsets.UTF_8
-          ).contains("exit"))
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitHeader.msg_id)
+          )
 
-      val sessionId = UUID.randomUUID().toString
       val input = Stream(
         Message(
           Header.random("test", Execute.requestType, sessionId),
@@ -142,7 +143,7 @@ object KernelTests extends TestSuite {
           Execute.Request("comm-close:foo")
         ).on(Channel.Requests),
         Message(
-          Header.random("test", Execute.requestType, sessionId),
+          exitHeader,
           Execute.Request("echo:exit")
         ).on(Channel.Requests)
       )
