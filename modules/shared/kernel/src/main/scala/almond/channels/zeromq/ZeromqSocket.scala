@@ -16,6 +16,13 @@ trait ZeromqSocket {
     */
   def open: IO[Option[Int]]
   def read: IO[Option[Message]]
+
+  /** Reads a subscription event, for XPUB sockets
+    *
+    * @return
+    *   the event, if a valid one could be read
+    */
+  def readSubscriptionEvent: IO[Option[ZeromqSocket.SubscriptionEvent]]
   def send(message: Message): IO[Unit]
   def close(lingerDuration: Duration): IO[Unit]
 
@@ -23,6 +30,15 @@ trait ZeromqSocket {
 }
 
 object ZeromqSocket {
+
+  /** Subscription or unsubscription of a SUB socket, as received by an XPUB socket
+    *
+    * @param subscribe
+    *   whether this is a subscription (true) or an unsubscription (false)
+    * @param topic
+    *   the topic being (un-)subscribed to - empty for all topics
+    */
+  final case class SubscriptionEvent(subscribe: Boolean, topic: Seq[Byte])
 
   /** @param ec:
     *   [[ExecutionContext]] to run I/O operations on - *should be single threaded*
