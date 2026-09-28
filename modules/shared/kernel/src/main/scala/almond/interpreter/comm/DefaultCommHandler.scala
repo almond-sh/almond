@@ -3,7 +3,7 @@ package almond.interpreter.comm
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.api.{CommHandler, CommTarget, DisplayData}
 import almond.interpreter.util.DisplayDataOps._
-import almond.interpreter.Message
+import almond.interpreter.{KernelSession, Message}
 import almond.protocol._
 import cats.effect.IO
 import cats.effect.std.Queue
@@ -13,6 +13,7 @@ import scala.concurrent.ExecutionContext
 
 final class DefaultCommHandler(
   queue: Queue[IO, (Channel, RawMessage)],
+  session: KernelSession,
   commEc: ExecutionContext,
   ioRuntime: IORuntime
 ) extends CommHandler {
@@ -20,19 +21,6 @@ final class DefaultCommHandler(
   import com.github.plokhotnyuk.jsoniter_scala.core._
 
   val commTargetManager = CommTargetManager.create()
-
-  private val message: Message[_] =
-    Message(
-      header =
-        Header(
-          msg_id = "",
-          username = "username",
-          session = "",
-          msg_type = "",
-          version = Some(Protocol.versionStr)
-        ), // FIXME Hardcoded user / session id
-      content = ()
-    )
 
   def registerCommTarget(name: String, target: CommTarget): Unit =
     registerCommTarget(name, IOCommTarget.fromCommTarget(target, commEc))
@@ -52,8 +40,8 @@ final class DefaultCommHandler(
     content: T,
     metadata: Array[Byte]
   ): Unit =
-    message
-      .publish(messageType, content, RawJson(metadata))
+    Message
+      .publish(session, messageType, content, RawJson(metadata))
       .enqueueOn(Channel.Publish, queue)
       .unsafeRunSync()(ioRuntime)
 

@@ -62,6 +62,8 @@ final case class LauncherOptions(
     tmpOutputDirectory: Option[Boolean] = None,
   @Hidden
     logCode: Option[Boolean] = None,
+  @HelpMessage("User name to use in the headers of the messages sent by the kernel (default: name of the user running the kernel)")
+    username: Option[String] = None,
   @HelpMessage("Print the Almond version and exit")
   @Name("v")
     version: Boolean = false
@@ -112,6 +114,8 @@ final case class LauncherOptions(
       b += s"--tmp-output-directory=$tmpOutputDir"
     for (logCode0 <- logCode)
       b += s"--log-code=$logCode0"
+    for (value <- username)
+      b ++= Seq("--username", value)
     b.result()
   }
 

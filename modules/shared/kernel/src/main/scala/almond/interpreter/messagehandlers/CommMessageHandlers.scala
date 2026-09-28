@@ -1,6 +1,7 @@
 package almond.interpreter.messagehandlers
 
 import almond.channels.Channel
+import almond.interpreter.KernelSession
 import almond.interpreter.comm.CommTargetManager
 import almond.logger.LoggerContext
 import almond.protocol.{Comm, CommInfo}
@@ -11,47 +12,55 @@ import almond.protocol.RawJson
 
 final case class CommMessageHandlers(
   commManager: CommTargetManager,
+  session: KernelSession,
   queueEc: ExecutionContext,
   logCtx: LoggerContext
 ) {
 
   def commOpenHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Comm.openType, queueEc, logCtx) { (message, queue) =>
-      commManager.target(message.content.target_name) match {
-        case None =>
-          // comm messages from the kernel go on IOPub, frontends don't expect them on shell
-          message
-            .publish(Comm.closeType, Comm.Close(message.content.comm_id, RawJson.emptyObj))
-            .enqueueOn(Channel.Publish, queue)
+    MessageHandler.blocking(Channel.Requests, Comm.openType, session, queueEc, logCtx) {
+      (message, queue) =>
+        commManager.target(message.content.target_name) match {
+          case None =>
+            // comm messages from the kernel go on IOPub, frontends don't expect them on shell
+            message
+              .publish(
+                session,
+                Comm.closeType,
+                Comm.Close(message.content.comm_id, RawJson.emptyObj)
+              )
+              .enqueueOn(Channel.Publish, queue)
 
-        case Some(target) =>
-          commManager.addId(target, message.content.comm_id)
-          target.open(message.content.comm_id, message.content.data.value)
-      }
+          case Some(target) =>
+            commManager.addId(target, message.content.comm_id)
+            target.open(message.content.comm_id, message.content.data.value)
+        }
     }
 
   def commMessageHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Comm.messageType, queueEc, logCtx) { (message, _) =>
-      commManager.fromId(message.content.comm_id) match {
-        case None => // FIXME Log error
-          IO.unit
-        case Some(target) =>
-          target.message(message.content.comm_id, message.content.data.value)
-      }
+    MessageHandler.blocking(Channel.Requests, Comm.messageType, session, queueEc, logCtx) {
+      (message, _) =>
+        commManager.fromId(message.content.comm_id) match {
+          case None => // FIXME Log error
+            IO.unit
+          case Some(target) =>
+            target.message(message.content.comm_id, message.content.data.value)
+        }
     }
 
   def commCloseHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Comm.closeType, queueEc, logCtx) { (message, _) =>
-      commManager.removeId(message.content.comm_id) match {
-        case None => // FIXME Log error
-          IO.unit
-        case Some(target) =>
-          target.close(message.content.comm_id, message.content.data.value)
-      }
+    MessageHandler.blocking(Channel.Requests, Comm.closeType, session, queueEc, logCtx) {
+      (message, _) =>
+        commManager.removeId(message.content.comm_id) match {
+          case None => // FIXME Log error
+            IO.unit
+          case Some(target) =>
+            target.close(message.content.comm_id, message.content.data.value)
+        }
     }
 
   def commInfoHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, CommInfo.requestType, queueEc, logCtx) {
+    MessageHandler.blocking(Channel.Requests, CommInfo.requestType, session, queueEc, logCtx) {
       (message, queue) =>
 
         val commsIO =
@@ -67,7 +76,7 @@ final case class CommMessageHandlers(
           comms <- commsIO
           _ <- queue.offer(
             message
-              .reply(CommInfo.replyType, CommInfo.Reply(comms))
+              .reply(session, CommInfo.replyType, CommInfo.Reply(comms))
               .on(Channel.Requests)
           )
         } yield ()

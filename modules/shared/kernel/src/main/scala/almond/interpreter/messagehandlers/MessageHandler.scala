@@ -2,7 +2,7 @@ package almond.interpreter.messagehandlers
 
 import fs2.Stream
 import almond.channels.{Channel, Message => RawMessage}
-import almond.interpreter.Message
+import almond.interpreter.{KernelSession, Message}
 import almond.logger.{Logger, LoggerContext}
 import almond.protocol.{MessageType, RawJson, Status}
 import cats.effect.IO
@@ -140,10 +140,13 @@ object MessageHandler {
     *   [[Channel]] this [[MessageHandler]] handles [[Message]]s from
     * @param messageType:
     *   type of the [[Message]]s this [[MessageHandler]] handles
+    * @param session:
+    *   session of the kernel, used in the headers of the status messages
     */
   def blocking[T: JsonValueCodec](
     channel: Channel,
     messageType: MessageType[T],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext,
     publishStatus: Boolean = true
@@ -151,7 +154,7 @@ object MessageHandler {
     handler: (Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
   ): MessageHandler =
     MessageHandler(channel, messageType) { message =>
-      blockingTaskStream(message, queueEc, logCtx, publishStatus = publishStatus) { queue =>
+      blockingTaskStream(message, session, queueEc, logCtx, publishStatus = publishStatus) { queue =>
         handler(message, queue)
       }
     }
@@ -159,6 +162,7 @@ object MessageHandler {
   def blocking[T: JsonValueCodec](
     channels: Set[Channel],
     messageType: MessageType[T],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext,
     publishStatus: Channel => Boolean
@@ -166,7 +170,13 @@ object MessageHandler {
     handler: (Channel, Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
   ): MessageHandler =
     MessageHandler(channels, messageType) { (channel, message) =>
-      blockingTaskStream(message, queueEc, logCtx, publishStatus = publishStatus(channel)) { queue =>
+      blockingTaskStream(
+        message,
+        session,
+        queueEc,
+        logCtx,
+        publishStatus = publishStatus(channel)
+      ) { queue =>
         handler(channel, message, queue)
       }
     }
@@ -177,6 +187,7 @@ object MessageHandler {
   def blockingWithStatus[T: JsonValueCodec](
     channels: Set[Channel],
     messageType: MessageType[T],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext,
     publishStatus: Channel => IO[Boolean]
@@ -184,7 +195,13 @@ object MessageHandler {
     handler: (Channel, Message[T], Queue[IO, (Channel, RawMessage)]) => IO[Unit]
   ): MessageHandler =
     MessageHandler(channels, messageType) { (channel, message) =>
-      blockingTaskStreamWithStatus(message, queueEc, logCtx, publishStatus(channel)) { queue =>
+      blockingTaskStreamWithStatus(
+        message,
+        session,
+        queueEc,
+        logCtx,
+        publishStatus(channel)
+      ) { queue =>
         handler(channel, message, queue)
       }
     }
@@ -192,6 +209,7 @@ object MessageHandler {
   def blocking0[T: JsonValueCodec](
     channel: Channel,
     messageType: MessageType[T],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext
   )(
@@ -202,23 +220,31 @@ object MessageHandler {
     ) => IO[Unit]
   ): MessageHandler =
     MessageHandler.create0(channel, messageType) { (rawMessage, message) =>
-      blockingTaskStream0(message, queueEc, logCtx) { queue =>
+      blockingTaskStream0(message, session, queueEc, logCtx) { queue =>
         handler(rawMessage, message, queue)
       }
     }
 
   private def blockingTaskStream(
     currentMessage: Message[_],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext,
     publishStatus: Boolean
   )(
     run: Queue[IO, (Channel, RawMessage)] => IO[Unit]
   ): Stream[IO, (Channel, RawMessage)] =
-    blockingTaskStreamWithStatus(currentMessage, queueEc, logCtx, IO.pure(publishStatus))(run)
+    blockingTaskStreamWithStatus(
+      currentMessage,
+      session,
+      queueEc,
+      logCtx,
+      IO.pure(publishStatus)
+    )(run)
 
   private def blockingTaskStreamWithStatus(
     currentMessage: Message[_],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext,
     publishStatus0: IO[Boolean]
@@ -234,7 +260,7 @@ object MessageHandler {
 
     def status(queue: Queue[IO, (Channel, RawMessage)], state: Status): IO[Unit] =
       currentMessage
-        .publish(Status.messageType, state)
+        .publish(session, Status.messageType, state)
         .enqueueOn(Channel.Publish, queue)
 
     val poisonPill: (Channel, RawMessage) = null // a bit meh
@@ -275,6 +301,7 @@ object MessageHandler {
 
   private def blockingTaskStream0(
     currentMessage: Message[_],
+    session: KernelSession,
     queueEc: ExecutionContext,
     logCtx: LoggerContext
   )(
@@ -291,7 +318,7 @@ object MessageHandler {
       queue: Queue[IO, Either[Throwable, (Channel, RawMessage)]],
       state: Status
     ): IO[Unit] = {
-      val m = currentMessage.publish(Status.messageType, state)
+      val m = currentMessage.publish(session, Status.messageType, state)
       queue.offer(Right((Channel.Publish, m.asRawMessage)))
     }
 

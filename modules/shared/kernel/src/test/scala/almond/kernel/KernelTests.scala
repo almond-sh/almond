@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.interpreter.{Message, TestInterpreter}
+import almond.interpreter.{KernelSession, Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
 import almond.protocol.{
@@ -154,11 +154,42 @@ object KernelTests extends TestSuite {
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+      val kernelSession = KernelSession.create()
+
+      val t = Kernel
+        .create(
+          new TestInterpreter,
+          interpreterEc,
+          threads,
+          cancellablesEc,
+          logCtx,
+          MessageHandler.empty,
+          Set.empty,
+          kernelSession
+        )
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
+
+      // All kernel messages (startup statuses, replies, outputs, background comm messages)
+      // should carry the kernel session, not the client one
+      val kernelMessages = streams.generatedMessages.toList.collect {
+        case Left((_, m)) => m
+      }
+      val kernelSessions = kernelMessages.map(_.header.session).distinct
+      assert(kernelSessions == List(kernelSession.id))
+      val kernelUsernames = kernelMessages.map(_.header.username).distinct
+      assert(kernelUsernames == List(kernelSession.username))
+
+      val replies = kernelMessages.filter(_.header.msg_type == Execute.replyType.messageType)
+      assert(replies.nonEmpty)
+      assert(replies.forall(_.parent_header.exists(_.session == sessionId)))
+
+      // comm messages are sent in the background, they have no parent
+      val commMessages = kernelMessages.filter(_.header.msg_type.startsWith("comm_"))
+      assert(commMessages.nonEmpty)
+      assert(commMessages.forall(_.parent_header.isEmpty))
 
       val msgTypes = streams.generatedMessageTypes()
 

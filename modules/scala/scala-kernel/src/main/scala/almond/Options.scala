@@ -123,6 +123,13 @@ final case class Options(
   @Hidden
     noExecuteInputFor: List[String] = Nil,
 
+  @HelpMessage("Session id to use in the headers of the messages sent by the kernel (random if not specified)")
+  @Hidden
+    kernelSessionId: Option[String] = None,
+
+  @HelpMessage("User name to use in the headers of the messages sent by the kernel (default: name of the user running the kernel)")
+    username: Option[String] = None,
+
   @HelpMessage("Path of JSON file with using directives kernel options")
   @Hidden
     kernelOptions: Option[String] = None,

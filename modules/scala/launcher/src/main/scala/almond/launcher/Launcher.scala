@@ -4,8 +4,9 @@ import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
 import almond.directives.KernelOptions
-import almond.interpreter.ExecuteError
+import almond.interpreter.{ExecuteError, KernelSession}
 import almond.interpreter.api.{DisplayData, OutputHandler}
+import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
@@ -36,6 +37,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     currentCellCount: Int,
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
+    session: KernelSession,
     params0: LauncherParameters,
     kernelOptions: KernelOptions,
     outputHandler: OutputHandler,
@@ -190,6 +192,10 @@ object Launcher extends CaseApp[LauncherOptions] {
       currentCellCount,
       msgFileArgs,
       noExecuteInputArgs,
+      // so that the messages of the sub-kernel have the same session id as ours - both
+      // processes are the same kernel from the point of view of the frontend
+      "--kernel-session-id",
+      session.id,
       optionsArgs,
       options.kernelOptions,
       params0.kernelOptions
@@ -350,8 +356,20 @@ object Launcher extends CaseApp[LauncherOptions] {
       options
     )
 
+    val session = KernelSession.create(None, options.username.map(_.trim).filter(_.nonEmpty))
+
     val (run, conn) =
-      Kernel.create(interpreter, interpreterEc, kernelThreads, cancellablesEc, logCtx)
+      Kernel
+        .create(
+          interpreter,
+          interpreterEc,
+          kernelThreads,
+          cancellablesEc,
+          logCtx,
+          MessageHandler.empty,
+          Set.empty,
+          session
+        )
         .flatMap(_.runOnConnectionFileAllowClose(
           Paths.get(kernelConnectionFile),
           "scala",
@@ -391,7 +409,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
 
     val outputHandlerOpt = firstMessageOpt.map { firstMessage =>
-      new LauncherOutputHandler(firstMessage, conn, kernelThreads.ioRuntime)
+      new LauncherOutputHandler(firstMessage, session, conn, kernelThreads.ioRuntime)
     }
 
     val maybeActualKernelCommand =
@@ -404,6 +422,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           interpreter.lineCount,
           options,
           firstMessageIdOpt.toSeq,
+          session,
           launcherParams,
           kernelParams,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
@@ -431,6 +450,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           val firstMessage = firstMessageOpt.getOrElse(sys.error("Cannot happen"))
           val err          = ExecuteError.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
           val errMsg = firstMessage.publish(
+            session,
             Execute.errorType,
             Execute.Error("", "", List(err.message))
           )
