@@ -211,7 +211,10 @@ final class ZeromqSocketImpl(
         channel.send(message.header, ZMQ.SNDMORE)
         channel.send(message.parentHeader, ZMQ.SNDMORE)
         channel.send(message.metadata, ZMQ.SNDMORE)
-        channel.send(message.content)
+        channel.send(message.content, if (message.buffers.isEmpty) 0 else ZMQ.SNDMORE)
+        val lastBufferIdx = message.buffers.length - 1
+        for ((buf, idx) <- message.buffers.iterator.zipWithIndex)
+          channel.send(buf, if (idx == lastBufferIdx) 0 else ZMQ.SNDMORE)
 
         ()
       }.evalOn(ec)
@@ -237,7 +240,15 @@ final class ZeromqSocketImpl(
       val metaData     = channel.recv()
       val content      = channel.recv()
 
-      val message = Message(idents, header, parentHeader, metaData, content)
+      // Extra frames after content are binary buffers (not covered by the signature).
+      // They must be read here, or they'd be picked as the idents of the next message.
+      val buffers =
+        Iterator.continually(channel)
+          .takeWhile(_.hasReceiveMore)
+          .map(_.recv())
+          .toVector
+
+      val message = Message(idents, header, parentHeader, metaData, content, buffers)
 
       val expectedSignature = hmac(header, parentHeader, metaData, content)
 
@@ -255,7 +266,9 @@ final class ZeromqSocketImpl(
               .toOption
               .getOrElse(message.content.toString) +
             nl +
-            "  idents: " + identsAsStrings(message.idents)
+            "  idents: " + identsAsStrings(message.idents) +
+            (if (message.buffers.isEmpty) ""
+             else nl + "  buffers: " + message.buffers.map(_.length).mkString(", ") + " bytes")
         }
         Some(message)
       }
