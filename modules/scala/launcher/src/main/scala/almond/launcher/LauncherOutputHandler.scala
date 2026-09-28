@@ -22,6 +22,7 @@ object LauncherOutputHandler {
   private final case class Display(data: almond.interpreter.api.DisplayData) extends Value
   private final case class UpdateDisplay(updateData: almond.interpreter.api.DisplayData)
       extends Value
+  private final case class ClearOutput(waitForNewOutput: Boolean) extends Value
 
 }
 
@@ -81,6 +82,12 @@ class LauncherOutputHandler(
                 content,
                 ident = Some(Execute.updateDisplayDataType.messageType)
               ).asRawMessage
+            case ClearOutput(waitForNewOutput) =>
+              firstMessage.publish(
+                Execute.clearOutputType,
+                Execute.ClearOutput(waitForNewOutput),
+                ident = Some(Execute.clearOutputType.messageType)
+              ).asRawMessage
           }
           try
             conn
@@ -102,6 +109,8 @@ class LauncherOutputHandler(
     queue.add(Display(displayData))
   def updateDisplay(displayData: almond.interpreter.api.DisplayData): Unit =
     queue.add(UpdateDisplay(displayData))
+  def clearOutput(waitForNewOutput: Boolean): Unit =
+    queue.add(ClearOutput(waitForNewOutput))
   def canOutput(): Boolean = true
 
   def messageIdOpt: Option[String] = None

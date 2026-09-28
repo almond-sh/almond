@@ -1,7 +1,7 @@
 package almond.protocol
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
-import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker, named}
 
 import scala.collection.immutable.ListMap
 
@@ -144,6 +144,11 @@ object Execute {
     traceback: List[String]
   )
 
+  final case class ClearOutput(
+    // "wait" clashes with Object#wait
+    @named("wait") waitForNewOutput: Boolean
+  )
+
   def requestType = MessageType[Request]("execute_request")
   def inputType   = MessageType[Input]("execute_input")
   def resultType  = MessageType[Result]("execute_result")
@@ -153,6 +158,7 @@ object Execute {
   def displayDataType       = MessageType[DisplayData]("display_data")
   def streamType            = MessageType[Stream]("stream")
   def updateDisplayDataType = MessageType[DisplayData]("update_display_data")
+  def clearOutputType       = MessageType[ClearOutput]("clear_output")
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make
@@ -212,6 +218,9 @@ object Execute {
     JsonCodecMaker.makeWithRequiredCollectionFields[DisplayData]
 
   implicit val errorCodec: JsonValueCodec[Error] =
+    JsonCodecMaker.make
+
+  implicit val clearOutputCodec: JsonValueCodec[ClearOutput] =
     JsonCodecMaker.make
 
   implicit val askExitPayloadCodec: JsonValueCodec[Reply.Success.AskExitPayload] =

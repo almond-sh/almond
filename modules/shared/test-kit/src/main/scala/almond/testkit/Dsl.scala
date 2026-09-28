@@ -83,6 +83,7 @@ object Dsl {
     displays: Seq[(String, String)] = null,
     displaysTextUpdates: Seq[String] = null,
     displaysHtmlUpdates: Seq[String] = null,
+    clearOutputs: Seq[Boolean] = null,
     replyPayloads: Seq[String] = null,
     ignoreStreams: Boolean = false,
     stdout: String = null,
@@ -149,7 +150,8 @@ object Dsl {
       ).max
       val prefix = Seq("execute_input") ++
         Seq.fill(displayDataCount)("display_data") ++
-        Seq.fill(updateDisplayDataCount)("update_display_data")
+        Seq.fill(updateDisplayDataCount)("update_display_data") ++
+        Option(clearOutputs).toSeq.flatten.map(_ => "clear_output")
       if (expectError0)
         prefix :+ "error"
       else if (reply == null || reply.isEmpty)
@@ -235,6 +237,9 @@ object Dsl {
         expect(replies == Option(reply).toVector)
       }
     }
+
+    if (clearOutputs != null)
+      expect(streams.clearOutputs == clearOutputs)
 
     if (replyPayloads != null) {
       val gotReplyPayloads = streams.executeReplyPayloads

@@ -370,6 +370,12 @@ object InterpreterMessageHandlers {
         .unsafeRunSync()(ioRuntime)
     }
 
+    def clearOutput(waitForNewOutput: Boolean): Unit =
+      message
+        .publish(Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
+        .enqueueOn0(Channel.Publish, queue)
+        .unsafeRunSync()(ioRuntime)
+
     def updateDisplay(displayData: DisplayData): Unit =
       // Using the commHandler rather than pushing a message through our own queue, so that
       // messages sent after the originating cell is done running, are still sent to the client.

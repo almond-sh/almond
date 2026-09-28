@@ -52,6 +52,18 @@ object Tests {
       )
     }
 
+  def clearOutput()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """kernel.publish.html("<b>foo</b>")
+          |kernel.publish.clearOutput()
+          |kernel.publish.clearOutput(waitForNewOutput = true)""".stripMargin,
+        "",
+        displaysHtml = Seq("<b>foo</b>"),
+        clearOutputs = Seq(false, true)
+      )
+    }
+
   def autoUpdateFutureUponCompletion(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
