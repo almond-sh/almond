@@ -29,7 +29,7 @@ import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
 import ammonite.util.Util.CodeSource
-import coursierapi.{IvyRepository, MavenRepository}
+import coursierapi.{Repository, RepositoryParser}
 import dependency.ScalaParameters
 import dependency.api.ops._
 import fastparse.Parsed
@@ -165,14 +165,22 @@ final class Execute(
     options: KernelOptions
   ): Either[String, Unit] = {
 
-    for (input <- options.extraRepositories) {
-      val repo =
-        if (input.startsWith("ivy:"))
-          IvyRepository.of(input.drop("ivy:".length))
-        else
-          MavenRepository.of(input)
-      ammInterp.repositories.update(ammInterp.repositories() :+ repo)
+    val maybeRepositories = options.extraRepositories
+      .foldLeft[Either[String, Seq[Repository]]](Right(Nil)) {
+        case (Left(err), _)      => Left(err)
+        case (Right(acc), input) => Execute.parseRepository(input).map(acc :+ _)
+      }
+
+    maybeRepositories.flatMap { repositories =>
+      ammInterp.repositories.update(ammInterp.repositories() ++ repositories)
+      useOptions0(ammInterp, options)
     }
+  }
+
+  private def useOptions0(
+    ammInterp: ammonite.interp.Interpreter,
+    options: KernelOptions
+  ): Either[String, Unit] = {
 
     almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
       options.scalacOptions.toSeq.map(_.value.value)
@@ -772,6 +780,20 @@ final class Execute(
 object Execute {
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
+
+  /** Parses repositories the same way as Coursier and Scala CLI: URLs, `ivy:`-prefixed Ivy
+    * patterns, but also predefined repositories like `m2Local`, `ivy2Local`, `jitpack`, or
+    * `sonatype:snapshots`
+    */
+  private[almond] def parseRepository(input: String): Either[String, Repository] =
+    try Right(RepositoryParser.repository(input))
+    catch {
+      // RepositoryParsingError is the declared error, but malformed URLs actually
+      // end up as IllegalArgumentException-s
+      case e @ (_: coursierapi.error.RepositoryParsingError | _: IllegalArgumentException) =>
+        Left(s"Error parsing repository '$input': ${e.getMessage}")
+    }
+
   private lazy val isJdk20OrHigher =
     sys.props
       .get("java.version")
