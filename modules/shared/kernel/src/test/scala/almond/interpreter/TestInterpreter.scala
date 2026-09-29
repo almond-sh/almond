@@ -68,7 +68,8 @@ final class TestInterpreter extends Interpreter {
       ExecuteResult.Error("error")
     }
     else if (code.startsWith("echo:")) {
-      count += 1
+      if (storeHistory)
+        count += 1
       ExecuteResult.Success(DisplayData.text(code.stripPrefix("echo:")))
     }
     else
