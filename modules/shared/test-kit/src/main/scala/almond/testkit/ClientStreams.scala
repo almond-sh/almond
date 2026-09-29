@@ -147,10 +147,22 @@ final case class ClientStreams(
       .collect {
         case s: Execute.Reply.Success if s.payload.nonEmpty =>
           s.execution_count -> s.payload
-        case err: Execute.Reply.Error if err.payload.nonEmpty =>
-          err.execution_count -> err.payload
       }
-      .toMap
+      .toMap ++
+      // Execute.Reply.Error has no payload field, so read those from the raw JSON,
+      // to catch error replies that include a payload (they shouldn't)
+      generatedMessages
+        .iterator
+        .collect {
+          case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+            Try(readFromArray(m.content.value)(ClientStreams.replyPayloadProbeCodec)).toOption
+        }
+        .flatten
+        .collect {
+          case p if p.status == "error" && p.payload.nonEmpty =>
+            p.execution_count -> p.payload
+        }
+        .toMap
 
   def displayData: Seq[(DisplayData, Boolean)] =
     generatedMessages
@@ -282,6 +294,16 @@ final case class ClientStreams(
 object ClientStreams {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
+  import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
+  private final case class ReplyPayloadProbe(
+    status: String,
+    execution_count: Int = -1,
+    payload: List[RawJson] = Nil
+  )
+
+  private val replyPayloadProbeCodec: JsonValueCodec[ReplyPayloadProbe] =
+    JsonCodecMaker.make
 
   implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
     def stringOrEmpty: String =

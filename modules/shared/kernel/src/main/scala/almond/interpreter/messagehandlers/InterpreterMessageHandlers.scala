@@ -159,8 +159,7 @@ final case class InterpreterMessageHandlers(
             ex.name,
             ex.message,
             traceBack /* or just stackTrace? */,
-            countAfter,
-            payload = payloadsAsJson()
+            countAfter
           )
           Right(r)
         case ExecuteResult.Abort =>

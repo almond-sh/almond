@@ -915,15 +915,15 @@ object ScalaKernelTests extends TestSuite {
         replyPayloads = Seq("""{"source": "foo"}""", """{"source": "thing"}""")
       )
 
-      // payload in cell that throws an exception
+      // payload in cell that throws an exception, not sent in the error reply
       kernel.execute(
         s"""publish.addPayload($tq{"source": "other"}$tq); throw new Exception("foo")""",
-        replyPayloads = Seq("""{"source": "other"}"""),
+        replyPayloads = Nil,
         expectError = true
       )
     }
 
-    test("payload from exception handler") {
+    test("no payload from exception handler") {
 
       val tq = "\"\"\""
       val predef =
@@ -947,12 +947,11 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
+      // error replies don't have payloads
       kernel.execute(
         """throw new CustomException("thing")""",
         expectError = true,
-        replyPayloads = Seq(
-          """{"source": "foo", "value": "thing"}"""
-        )
+        replyPayloads = Nil
       )
     }
 

@@ -603,6 +603,9 @@ trait TestKit extends Cross.Module[String] with AlmondCrossSbtModule {
   def moduleDeps = Seq(
     shared.kernel()
   )
+  def compileMvnDeps = Seq(
+    Deps.jsoniterScalaMacros
+  )
   def mvnDeps = super.mvnDeps() ++ Seq(
     Deps.expecty,
     Deps.osLib,
