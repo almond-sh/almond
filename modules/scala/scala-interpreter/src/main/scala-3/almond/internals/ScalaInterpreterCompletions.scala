@@ -188,7 +188,7 @@ object ScalaInterpreterCompletions {
     )
   }
 
-  private def tryTypeCheck(
+  private[internals] def tryTypeCheck(
     compiler: DottyCompiler,
     initialCtx: Context,
     src: Array[Byte],
