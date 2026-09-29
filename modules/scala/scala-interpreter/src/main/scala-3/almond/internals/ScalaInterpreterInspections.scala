@@ -31,6 +31,12 @@ final class ScalaInterpreterInspections(
 
   private val log = logCtx(getClass)
 
+  private var sourceDocsInitialized = false
+  private lazy val sourceDocs = {
+    sourceDocsInitialized = true
+    new SourceDocs(frames.head.classloader, log)
+  }
+
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
     try inspect0(code, pos)
     catch {
@@ -109,8 +115,8 @@ final class ScalaInterpreterInspections(
   }
 
   // The signature of methods, like `map[B](f: Int => B): List[B]`, with their default
-  // arguments, which method types don't have: those are read from the code of the current
-  // cell, and shown as `...` otherwise
+  // arguments, which method types don't have: those are read from the sources (the ones of
+  // the current cell, or source JARs), and shown as `...` when these can't be found
   private def signature(
     sym: Symbol,
     tpe: Type,
@@ -134,12 +140,18 @@ final class ScalaInterpreterInspections(
               .headOption
               .fold(Map.empty[String, String])(ScalaSources.defaultArgs(_, cellCode))
           }
-        else Map.empty[String, String]
+        else safe(Map.empty[String, String])(sourceDocs.defaultArgs(sym))
+      // class files don't have the parameter names of Java methods (x$0, x$1, …)
+      val javaParamNames =
+        if (sym.is(Flags.JavaDefined))
+          safe(Option.empty[List[String]])(sourceDocs.javaParamNames(sym))
+        else None
       val name = if (sym.isConstructor) sym.owner.name.show else sym.name.show
       Some(
         InspectionOutput.signature(
           name,
           tpe,
+          javaParamNames,
           p => if (hasDefault(p)) Some(defaults.getOrElse(p, "...")) else None
         )
       )
@@ -154,7 +166,7 @@ final class ScalaInterpreterInspections(
     typeStr: String
   )(using Context): Inspection = {
     val docstringOpt =
-      try ScalaInterpreterInspections.docstring(path, symbols)
+      try ScalaInterpreterInspections.docstring(path, symbols, sourceDocs)
       catch {
         // LinkageError: see inspect
         case e @ (NonFatal(_) | _: LinkageError) =>
@@ -185,7 +197,9 @@ final class ScalaInterpreterInspections(
     )
   }
 
-  def shutdown(): Unit = ()
+  def shutdown(): Unit =
+    if (sourceDocsInitialized)
+      sourceDocs.close()
 }
 
 object ScalaInterpreterInspections {
@@ -307,13 +321,15 @@ object ScalaInterpreterInspections {
 
   // Doc comments of the symbols compiled from source are recorded by the Namer. Those of
   // symbols coming from Scala 3 libraries are read from TASTy, thanks to -Xread-docs (see
-  // AlmondCompilerLifecycleManager.extraInitialSettings). Both are rendered by DocText.
-  // Libraries compiled by Scala 2 (like the standard library before Scala 3.8) and Java
-  // libraries have no docs there. Neither do definitions from previous cells: the Ammonite
-  // statement splitter drops the comment preceding them.
+  // AlmondCompilerLifecycleManager.extraInitialSettings). Libraries compiled by Scala 2
+  // (like the standard library before Scala 3.8) and Java libraries have no docs there:
+  // those are read from source JARs (see SourceDocs). All of them are rendered by DocText.
+  // Definitions from previous cells have no docs at all: the Ammonite statement splitter
+  // drops the comment preceding them.
   private def docstring(
     path: List[tpd.Tree],
-    symbols: List[Symbol]
+    symbols: List[Symbol],
+    sourceDocs: SourceDocs
   )(using Context): Option[String] = {
     def candidates(sym: Symbol): Iterator[Symbol] =
       if (sym.exists) {
@@ -323,7 +339,7 @@ object ScalaInterpreterInspections {
       }
       else
         Iterator.empty
-    for {
+    val fromTasty = for {
       docCtx <- ctx.docCtx
       doc <- symbols
         .iterator
@@ -335,6 +351,12 @@ object ScalaInterpreterInspections {
         }
         .find(_.nonEmpty)
     } yield doc
+    fromTasty.orElse {
+      symbols
+        .iterator
+        .flatMap(sym => sourceDocs.docstring(candidates(sym).toList, site(path, sym)))
+        .nextOption()
+    }
   }
 
   // The class whose scaladoc variables ($coll, …) are substituted in the doc of sym:

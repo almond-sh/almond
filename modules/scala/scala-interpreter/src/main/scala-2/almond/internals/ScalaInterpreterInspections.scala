@@ -216,6 +216,8 @@ final class ScalaInterpreterInspections(
         }
     }
   }
+
+  def shutdown(): Unit = ()
 }
 
 object ScalaInterpreterInspections {

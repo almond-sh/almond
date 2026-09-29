@@ -10,8 +10,8 @@ import dotty.tools.dotc.util.SourceFile
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
-/** Scala source code, parsed without type checking, for what typed trees lack, like the default
-  * arguments of methods
+/** Scala source code, parsed without type checking: the code of cells, or sources from source JARs,
+  * for what typed trees and symbols lack (doc comments, default arguments)
   */
 private[internals] object ScalaSources {
 

@@ -41,39 +41,46 @@ private[internals] object InspectionOutput {
 
   /** The signature of a method, like `map[B](f: Int => B): List[B]`
     *
+    * @param javaParamNames
+    *   the parameter names of Java methods, that class files don't have (these show up as x$0, x$1,
+    *   … in method types otherwise)
     * @param default
     *   the default argument of a parameter, if it has one
     */
   def signature(
     name: String,
     tpe: Type,
+    javaParamNames: Option[List[String]],
     default: String => Option[String]
   )(using Context): String = {
     val tparams = new StringBuilder
     val clauses = new mutable.ListBuffer[(String, List[String])]
     var result  = ""
-    def loop(t: Type): Unit =
+    def loop(t: Type, first: Boolean): Unit =
       t match {
         case pt: PolyType =>
           tparams ++= typeParamClause(pt)
-          loop(pt.resType)
+          loop(pt.resType, first)
         case mt: MethodType =>
           val open =
             if (mt.isContextualMethod) "(using "
             else if (mt.isImplicitMethod) "(implicit "
             else "("
-          val names = mt.paramNames.map(_.toString)
+          val names0 = mt.paramNames.map(_.toString)
+          val names = javaParamNames
+            .filter(n => first && n.length == names0.length && names0.exists(_.startsWith("x$")))
+            .getOrElse(names0)
           val params = names.zip(mt.paramInfos).map { (n, info) =>
             s"$n: ${info.show}" + default(n).fold("")(" = " + _)
           }
           clauses += ((open, params))
-          loop(mt.resType)
+          loop(mt.resType, first = false)
         case et: ExprType =>
           result = et.resType.show
         case other =>
           result = other.show
       }
-    loop(tpe)
+    loop(tpe, first = true)
     val resultPart = if (result.isEmpty) "" else ": " + result
     val oneLine =
       name + tparams + clauses.map((open, ps) => open + ps.mkString(", ") + ")").mkString +

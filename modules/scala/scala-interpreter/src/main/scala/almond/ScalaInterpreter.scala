@@ -347,6 +347,9 @@ final class ScalaInterpreter(
         log.warn("Caught exception while trying to run exit hooks", e)
     }
 
+    if (inspectionsInitialized)
+      inspections.shutdown()
+
     AlmondCompilerLifecycleManager.closeCompiler(ammInterp.compilerManager.compiler)
 
     for (frame <- frames0()) {

@@ -23,6 +23,13 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       .map(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.toVector)
       .getOrElse(sys.error(s"No text inspection result for '$code' at $pos"))
 
+  // The docs of Java libraries and of Scala 2 libraries are read from source JARs
+  // (from the src.zip of the JDK for the JDK classes), see SourceDocs
+  private def hasJdkSources =
+    java.nio.file.Files.isRegularFile(
+      java.nio.file.Paths.get(sys.props("java.home"), "lib", "src.zip")
+    )
+
   val tests = Tests {
     test("scaladoc") {
       if (TestUtil.isScala2) "disabled"
@@ -77,6 +84,21 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       }
     }
 
+    test("java docs") {
+      if (TestUtil.isScala2 || !hasJdkSources) "disabled"
+      else {
+        val interpreter = newInterpreter()
+        val code        = "\"abc\".substring("
+        val res         = lines(interpreter, code, code.length)
+        // parameter names come from the sources too
+        assert(res(0).matches("Signature: +substring\\(beginIndex: Int\\): String"))
+        assert(res(1) == "Docstring:")
+        assert(res(2).startsWith("Returns a string that is a substring of this string."))
+        assert(res.contains("  beginIndex: the beginning index, inclusive."))
+        assert(res.last.matches("Defined in: +java.lang.String"))
+      }
+    }
+
     test("overloads") {
       if (TestUtil.isScala2) "disabled"
       else {
@@ -89,6 +111,43 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         val signatures = res.drop(1).takeWhile(_ != "Docstring:").filter(_.startsWith("apply("))
         assert(signatures.length > 3)
         assert(signatures.exists(_.startsWith("apply(i: Int")))
+      }
+    }
+
+    test("java overloads") {
+      if (TestUtil.isScala2 || !hasJdkSources) "disabled"
+      else {
+        val interpreter = newInterpreter()
+        val code        = "Math.max("
+        val res         = lines(interpreter, code, code.length)
+        assert(res(0) == "Signature:")
+        val signatures = res.drop(1).takeWhile(_ != "Docstring:").toSet
+        assert(signatures == Set(
+          "max(a: Int, b: Int): Int",
+          "max(a: Long, b: Long): Long",
+          "max(a: Float, b: Float): Float",
+          "max(a: Double, b: Double): Double"
+        ))
+        assert(res.last.matches("Defined in: +java.lang.Math"))
+      }
+    }
+
+    test("scala 2 library docs") {
+      // before Scala 3.8, the standard library is compiled by Scala 2 and its docs are read
+      // from its source JAR, since 3.8, they're read from its TASTy files
+      if (TestUtil.isScala2) "disabled"
+      else {
+        val interpreter = newInterpreter()
+        val code        = "List(1, 2).map("
+        val res         = lines(interpreter, code, code.length)
+        assert(res.exists(_.startsWith("Builds a new list")))
+        assert(res.contains("  f: the function to apply to each element."))
+
+        val inheritedCode = "List(1, 2).isEmpty"
+        val inheritedRes  = lines(interpreter, inheritedCode, inheritedCode.indexOf("isEmpty") + 1)
+        assert(inheritedRes.exists(_.startsWith("Tests whether the list is empty.")))
+        // same indentation for the lines of the main doc, including the inherited ones
+        assert(!inheritedRes.exists(_.startsWith(" Note")))
       }
     }
 
@@ -127,6 +186,11 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         assert(res == Vector(
           "Signature: greet(name: String, greeting: String = \"Hello\", times: Int = 1): String"
         ))
+
+        // from a source JAR
+        val libCode = "List(1, 2).startsWith("
+        val libRes  = lines(interpreter, libCode, libCode.length)
+        assert(res.nonEmpty && libRes.head.contains("offset: Int = 0"))
       }
     }
 
