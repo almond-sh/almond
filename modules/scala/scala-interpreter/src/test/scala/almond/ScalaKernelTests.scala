@@ -1203,6 +1203,90 @@ object ScalaKernelTests extends TestSuite {
         statuses(fromKernel.slice(completeReplyIdx, executeReplyIdx))
       assert(!statusesDuringCompletion.contains("idle"))
     }
+
+    test("kernel info on control channel while a cell is running") {
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams,
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      val sleepMsgId      = UUID.randomUUID().toString
+      val kernelInfoMsgId = UUID.randomUUID().toString
+
+      // Only send the kernel info request once the cell is running
+      val latch = new java.util.concurrent.CountDownLatch(1)
+      ScalaKernelTests.latch = latch
+
+      val input = Stream(
+        executeMessage(
+          "almond.ScalaKernelTests.latch.countDown(); Thread.sleep(3000L)",
+          sleepMsgId
+        )
+      ) ++
+        Stream.exec(IO.blocking(latch.await())) ++
+        Stream(
+          Message(
+            Header(
+              msg_id = kernelInfoMsgId,
+              username = "test",
+              session = sessionId.sessionId,
+              msg_type = KernelInfo.requestType.messageType,
+              version = Some(Protocol.versionStr)
+            ),
+            ()
+          ).on(Channel.Control)(Codecs.unitCodec)
+        )
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == sleepMsgId)
+          )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      kernel.run(streams.source, streams.sink, Nil)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      val fromKernel = streams.generatedMessages.toVector.collect {
+        case Left((c, m)) => (c, m)
+      }
+      val kernelInfoReplyIdx = fromKernel.indexWhere {
+        case (c, m) =>
+          c == Channel.Control && m.header.msg_type == "kernel_info_reply" &&
+          m.parent_header.exists(_.msg_id == kernelInfoMsgId)
+      }
+      val executeReplyIdx = fromKernel.indexWhere {
+        case (c, m) =>
+          c == Channel.Requests && m.header.msg_type == "execute_reply" &&
+          m.parent_header.exists(_.msg_id == sleepMsgId)
+      }
+      assert(kernelInfoReplyIdx >= 0)
+      assert(executeReplyIdx >= 0)
+      assert(kernelInfoReplyIdx < executeReplyIdx)
+
+      // The kernel must still be reported as busy until the cell is done running
+      def statuses(messages: Seq[(Channel, Message[RawJson])]) =
+        messages.collect {
+          case (Channel.Publish, m) if m.header.msg_type == Status.messageType.messageType =>
+            m -> com.github.plokhotnyuk.jsoniter_scala.core
+              .readFromArray(m.content.value)(Status.codec)
+              .execution_state
+        }
+      val statusesBeforeExecuteReply = statuses(fromKernel.take(executeReplyIdx))
+      assert(statusesBeforeExecuteReply.lastOption.map(_._2).contains("busy"))
+      val kernelInfoStatuses = statusesBeforeExecuteReply.filter {
+        case (m, _) =>
+          m.parent_header.exists(_.msg_id == kernelInfoMsgId)
+      }
+      assert(kernelInfoStatuses.isEmpty)
+    }
   }
 
   val evaluatorHookThreadLocal = ThreadLocal.withInitial(() => "")
