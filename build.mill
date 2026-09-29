@@ -465,22 +465,6 @@ trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   )
 }
 
-trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    api()
-  )
-  def mvnDeps = Seq(
-    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.22.3"
-  )
-  override def mimaPreviousVersions = Task {
-    // module added only in 0.14.2
-    val cutOff = Version("0.14.1")
-    super.mimaPreviousVersions()
-      .filter(v => Version(v) > cutOff)
-  }
-}
-
 // The echo kernel is a demo kernel, only built and published for Scala 3
 object echo extends AlmondSimpleModule {
   private def sv   = ScalaVersions.scala3Compat
@@ -515,7 +499,6 @@ object scala extends Module {
   object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
   object launcher            extends Launcher
   object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
-  object `json-api-jackson`  extends Cross[JsonApiJackson](ScalaVersions.binaries)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
   object integration        extends Integration
@@ -529,8 +512,7 @@ object `local-repo` extends Module {
     val binaryModules = ScalaVersions.binaries.flatMap { sv =>
       Seq(
         shared.kernel(sv),
-        api(sv),
-        scala.`json-api-jackson`(sv)
+        api(sv)
       )
     }
     val kernelModules = ScalaVersions.binaries.flatMap { sv =>
@@ -1180,14 +1162,15 @@ object dummy extends Module {
       Deps.ammoniteSpark
     )
   }
-  // dummy module to get Scala Steward updates for almond-scalapy
-  object `almond-scalapy` extends ScalaModule {
+  // dummy module to get Scala Steward updates for the modules living in their own repositories
+  object `helper-projects` extends ScalaModule {
     def scalaVersion = ScalaVersions.scala213
-    // for jvm-repr, a dependency of almond-scalapy
+    // for jvm-repr, a dependency of almond-scalapy and json-api-jackson
     def repositories = Task {
       super.repositories() ++ Seq("jitpack")
     }
     def mvnDeps = super.mvnDeps() ++ Seq(
+      Deps.almondJackson,
       Deps.almondScalapy
     )
   }

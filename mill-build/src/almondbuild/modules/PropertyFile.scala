@@ -18,6 +18,7 @@ trait PropertyFile extends AlmondPublishModule {
     // FIXME Only set if ammonite-spark is available for the current scala version?
     val ammSparkVer      = Deps.ammoniteSpark.dep.versionConstraint.asString
     val almondScalapyVer = Deps.almondScalapy.dep.versionConstraint.asString
+    val almondJacksonVer = Deps.almondJackson.dep.versionConstraint.asString
 
     val f = dir / propertyFilePath.split('/').toSeq
 
@@ -25,6 +26,7 @@ trait PropertyFile extends AlmondPublishModule {
        |version=$ver
        |ammonite-spark-version=$ammSparkVer
        |almond-scalapy-version=$almondScalapyVer
+       |json-api-jackson-version=$almondJacksonVer
        |""".stripMargin +
       propertyExtra()
         .map {

@@ -32,6 +32,9 @@ object Deps {
   // Lives in its own repository (https://github.com/almond-sh/almond-scalapy) since 0.15.0. The
   // kernel adds it automatically, with this version by default, when ScalaPy is loaded.
   def almondScalapy = mvn"sh.almond::almond-scalapy:0.15.0"
+  // Lives in its own repository (https://github.com/almond-sh/almond-jackson) since 0.15.0. The
+  // kernel picks this version for it by default, when users load it with the `_` version.
+  def almondJackson = mvn"sh.almond::json-api-jackson:0.15.0"
 
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =

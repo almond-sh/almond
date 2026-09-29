@@ -28,6 +28,8 @@ object Properties {
     Option(props.getProperty("ammonite-spark-version")).getOrElse("[unknown]")
   lazy val almondScalapyVersion =
     Option(props.getProperty("almond-scalapy-version")).getOrElse("[unknown]")
+  lazy val jsonApiJacksonVersion =
+    Option(props.getProperty("json-api-jackson-version")).getOrElse("[unknown]")
   lazy val defaultScalafmtVersionOpt = Option(props.getProperty("default-scalafmt-version"))
   lazy val defaultScalafmtVersionJava8Opt =
     Option(props.getProperty("default-scalafmt-version-java-8"))
