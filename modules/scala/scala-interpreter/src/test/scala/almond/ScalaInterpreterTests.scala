@@ -204,6 +204,18 @@ object ScalaInterpreterTests extends TestSuite {
     }
 
     test("completion") {
+      test("names from previous cells and root imports") {
+        val interpreter = newInterpreter()
+        assert(interpreter.execute("val googleHtml = 1").success)
+        assert(interpreter.execute("def helperFn(x: Int) = x").success)
+        assert(interpreter.complete("goog", 4).completions.contains("googleHtml"))
+        assert(interpreter.complete("helper", 6).completions.contains("helperFn"))
+        assert(interpreter.complete("Lis", 3).completions.contains("List"))
+        val sameCell = "val localVal = 2\nlocalV"
+        assert(interpreter.complete(sameCell, sameCell.length).completions.contains("localVal"))
+        val member = "googleHtml.toStr"
+        assert(interpreter.complete(member, member.length).completions.contains("toString"))
+      }
 
       // Completions are tested in more detail in Ammonite too.
       // Compared to it, we filter out stuff that contains '$', and pay
