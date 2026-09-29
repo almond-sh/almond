@@ -96,26 +96,35 @@ final case class InterpreterMessageHandlers(
     // (these are empty for now, the result of the cell is only sent via execute_result)
 
     for {
+      // Set if a former cell failed with stop_on_error. This can't be reset while we're processing
+      // this message, as the reset is run on the execute queue, after the cells queued so far.
+      aborted     <- interpreter.cancelledSignal.get
       countBefore <- interpreter.executionCount
       inputMessage = Execute.Input(
         execution_count = countBefore + 1,
         code = message.content.code
       )
       _ <- {
-        if (silent || noExecuteInputFor.contains(message.header.msg_id))
+        // no execute_input for silent requests, nor for cells that we don't run
+        if (silent || aborted || noExecuteInputFor.contains(message.header.msg_id))
           IO.unit
         else
           message
             .publish(Execute.inputType, inputMessage)
             .enqueueOn0(Channel.Publish, queue)
       }
-      res <- interpreter.execute(
-        message.content.code,
-        storeHistory,
-        if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
-        Some(handler),
-        Some(message)
-      )
+      res <- {
+        if (aborted)
+          IO.pure(ExecuteResult.Abort)
+        else
+          interpreter.execute(
+            message.content.code,
+            storeHistory,
+            if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
+            Some(handler),
+            Some(message)
+          )
+      }
       countAfter <- interpreter.executionCount
       _ <- res match {
         case v: ExecuteResult.Success if silent || v.data.isEmpty =>
@@ -166,7 +175,7 @@ final case class InterpreterMessageHandlers(
           )
           Right(r)
         case ExecuteResult.Abort =>
-          Right(Execute.Reply.Abort())
+          Right(Execute.Reply.Abort(countAfter))
         case ExecuteResult.Exit =>
           val payload = Execute.Reply.Success.AskExitPayload("ask_exit", false)
           Right(Execute.Reply.Success(countAfter, Map(), List(RawJson(writeToArray(payload)))))

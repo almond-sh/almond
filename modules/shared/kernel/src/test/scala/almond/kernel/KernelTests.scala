@@ -1,5 +1,6 @@
 package almond.kernel
 
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -275,6 +276,66 @@ object KernelTests extends TestSuite {
       test("disabled") {
         val statuses = replyStatuses(Some(false))
         assert(statuses == Seq("error", "ok", "ok"))
+      }
+
+      test("aborted replies") {
+        val sessionId = UUID.randomUUID().toString
+        def request(code: String) =
+          Message(
+            Header.random("test", Execute.requestType, sessionId),
+            Execute.Request(code, stop_on_error = Some(true))
+          )
+
+        val requests = Seq(
+          request("echo:a"),
+          // sleeping, so that the requests that follow are queued when this one fails
+          request("error-after:500"),
+          request("echo:b"),
+          request("echo:c")
+        )
+
+        // we stop the pseudo-client at the execute_reply of the last request
+
+        val lastMsgId = requests.last.header.msg_id
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+          (_, m) =>
+            IO.pure(
+              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+            )
+
+        val input = Stream(requests.map(_.on(Channel.Requests)): _*)
+
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+        val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+          .flatMap(_.run(streams.source, streams.sink, Nil))
+
+        val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+        assert(res.nonEmpty)
+
+        val msgTypes = streams.generatedMessageTypes()
+
+        // no execute_input for the aborted cells
+        val expectedMsgTypes = Seq(
+          "execute_input",
+          "execute_result",
+          "execute_reply",
+          "execute_input",
+          "error",
+          "execute_reply",
+          "execute_reply",
+          "execute_reply"
+        )
+
+        assert(msgTypes == expectedMsgTypes)
+
+        val replies = streams.generatedMessages.toList.collect {
+          case Left((Channel.Requests, m)) if m.header.msg_type == "execute_reply" =>
+            new String(m.content.value, StandardCharsets.UTF_8)
+        }
+
+        val expectedAbortReply = """{"execution_count":1,"status":"aborted"}"""
+        assert(replies.drop(2) == Seq(expectedAbortReply, expectedAbortReply))
       }
     }
 
