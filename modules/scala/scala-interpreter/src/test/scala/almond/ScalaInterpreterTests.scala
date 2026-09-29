@@ -281,7 +281,7 @@ object ScalaInterpreterTests extends TestSuite {
 
     }
 
-    test("inspection") {
+    test("inspection results") {
       def html(interpreter: Interpreter, code: String, pos: Int): String =
         interpreter.inspect(code, pos, detailLevel = 1)
           .flatMap(_.data.get("text/html"))
