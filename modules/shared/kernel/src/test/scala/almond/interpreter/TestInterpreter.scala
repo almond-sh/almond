@@ -62,6 +62,11 @@ final class TestInterpreter extends Interpreter {
           count += 1
           ExecuteResult.Success()
       }
+    else if (code.startsWith("error-after:")) {
+      // waiting a bit, so that the requests sent after this one get queued before it fails
+      Thread.sleep(code.stripPrefix("error-after:").toLong)
+      ExecuteResult.Error("error")
+    }
     else if (code.startsWith("echo:")) {
       count += 1
       ExecuteResult.Success(DisplayData.text(code.stripPrefix("echo:")))

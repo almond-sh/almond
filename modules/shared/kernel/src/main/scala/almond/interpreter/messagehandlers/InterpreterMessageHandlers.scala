@@ -129,7 +129,7 @@ final case class InterpreterMessageHandlers(
             .enqueueOn0(Channel.Publish, queue)
         case e: ExecuteResult.Error =>
           val extra =
-            if (message.content.stop_on_error.getOrElse(false))
+            if (message.content.stop_on_error.getOrElse(true))
               interpreter.cancelledSignal.set(true) *>
                 runAfterQueued(interpreter.cancelledSignal.set(false))
             else
