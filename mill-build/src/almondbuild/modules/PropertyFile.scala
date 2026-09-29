@@ -16,13 +16,15 @@ trait PropertyFile extends AlmondPublishModule {
     val ver = publishVersion()
 
     // FIXME Only set if ammonite-spark is available for the current scala version?
-    val ammSparkVer = Deps.ammoniteSpark.dep.versionConstraint.asString
+    val ammSparkVer      = Deps.ammoniteSpark.dep.versionConstraint.asString
+    val almondScalapyVer = Deps.almondScalapy.dep.versionConstraint.asString
 
     val f = dir / propertyFilePath.split('/').toSeq
 
     s"""commit-hash=${Seq("git", "rev-parse", "HEAD").!!.trim}
        |version=$ver
        |ammonite-spark-version=$ammSparkVer
+       |almond-scalapy-version=$almondScalapyVer
        |""".stripMargin +
       propertyExtra()
         .map {

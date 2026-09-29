@@ -447,16 +447,6 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   def resources = super.resources
 }
 
-trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def mvnDeps = Seq(
-    Deps.jvmRepr
-  )
-  def compileMvnDeps = Seq(
-    Deps.scalapy
-  )
-}
-
 /** Not published any more - only kept around to be built and tested here */
 trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   def crossScalaVersion = crossValue
@@ -517,7 +507,6 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
   object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
   object launcher            extends Launcher
-  object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
   object `json-api-jackson`  extends Cross[JsonApiJackson](ScalaVersions.binaries)
 
@@ -532,7 +521,6 @@ object `local-repo` extends Module {
   def allModules: Seq[PublishModule] = {
     val binaryModules = ScalaVersions.binaries.flatMap { sv =>
       Seq(
-        scala.`almond-scalapy`(sv),
         shared.kernel(sv),
         api(sv),
         scala.`json-api-jackson`(sv)
@@ -1183,6 +1171,17 @@ object dummy extends Module {
     def scalaVersion = ScalaVersions.scala212
     def mvnDeps = super.mvnDeps() ++ Seq(
       Deps.ammoniteSpark
+    )
+  }
+  // dummy module to get Scala Steward updates for almond-scalapy
+  object `almond-scalapy` extends ScalaModule {
+    def scalaVersion = ScalaVersions.scala213
+    // for jvm-repr, a dependency of almond-scalapy
+    def repositories = Task {
+      super.repositories() ++ Seq("jitpack")
+    }
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      Deps.almondScalapy
     )
   }
 }

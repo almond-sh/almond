@@ -294,7 +294,7 @@ $ ./mill -i scala.examples.test
 
 Optionally, you can pass a glob to filter notebook names:
 ```text
-$ ./mill -i scala.examples.test 'almond.examples.Examples.scalapy*'
+$ ./mill -i scala.examples.test 'almond.examples.Examples.plotly*'
 ```
 
 ## Run the proxy and mirror tests

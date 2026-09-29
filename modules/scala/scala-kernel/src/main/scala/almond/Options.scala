@@ -185,7 +185,7 @@ final case class Options(
   private lazy val almondScalapyVersion = defaultAlmondScalapyVersion
     .map(_.trim)
     .filter(_.nonEmpty)
-    .getOrElse(Properties.version)
+    .getOrElse(Properties.almondScalapyVersion)
 
   def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
 
