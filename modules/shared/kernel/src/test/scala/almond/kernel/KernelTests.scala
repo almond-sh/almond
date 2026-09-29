@@ -15,7 +15,9 @@ import almond.protocol.{
   Header,
   History,
   Input,
+  Inspect,
   KernelInfo,
+  MessageType,
   RawJson,
   Shutdown,
   Status
@@ -27,6 +29,7 @@ import almond.util.ThreadUtil.{
   singleThreadedExecutionContextExecutorService
 }
 import cats.effect.IO
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import fs2.Stream
 import utest._
 
@@ -477,6 +480,76 @@ object KernelTests extends TestSuite {
       val expectedMetadata = RawJson(rawMetadata.bytes)
 
       assert(metadata == expectedMetadata)
+    }
+
+    // Jupyter protocol >= 5.2: cursor positions are code point offsets, not UTF-16 indices
+
+    def singleRequestReply[Req, Rep](
+      reqType: MessageType[Req],
+      req: Req,
+      repType: MessageType[Rep]
+    )(implicit
+      reqCodec: JsonValueCodec[Req],
+      repCodec: JsonValueCodec[Rep]
+    ): Message[Rep] = {
+
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _)                                              =>
+        case (Channel.Requests, m) if m.header.msg_type == repType.messageType =>
+      }
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == repType.messageType)
+
+      val input = Stream(
+        Message(Header.random("test", reqType), req).on(Channel.Requests)
+      )
+
+      val streams =
+        ClientStreams.create(input, stopWhen, ignoreExpectedReplies, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      streams.singleReply(Channel.Requests, repType)
+    }
+
+    test("completion cursor positions as code points") {
+
+      // code points: "word:" is 0-4, 😀 5, ' ' 6, a 7, b 8, 😀 9, c 10
+      val code = "word:\ud83d\ude00 ab\ud83d\ude00c"
+
+      val reply = singleRequestReply(
+        Complete.requestType,
+        Complete.Request(code, 10),
+        Complete.replyType
+      )
+
+      assert(reply.content.matches == List("ab\ud83d\ude00!"))
+      assert(reply.content.cursor_start == 7)
+      assert(reply.content.cursor_end == 10)
+    }
+
+    test("inspection cursor position as code points") {
+
+      val prefix = "before-cursor:"
+      val code   = prefix + "\ud83d\ude00\ud83d\ude00x"
+
+      val reply = singleRequestReply(
+        Inspect.requestType,
+        Inspect.Request(code, prefix.length + 2, 0),
+        Inspect.replyType
+      )
+
+      val text = reply.content.data.get("text/plain")
+        .map(json => new String(json.value, StandardCharsets.UTF_8))
+      val expectedText = "\"" + prefix + "\ud83d\ude00\ud83d\ude00\""
+
+      assert(text == Some(expectedText))
     }
 
   }

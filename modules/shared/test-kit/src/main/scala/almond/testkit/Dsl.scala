@@ -440,7 +440,8 @@ object Dsl {
         val cursor = "#"
         val idx    = code.indexOf(cursor)
         assert(idx >= 0, "Expected a # character in code to complete, at the cursor position")
-        (code.take(idx) + code.drop(idx + cursor.length), idx)
+        // the Jupyter protocol expects cursor positions as code point offsets, not String indices
+        (code.take(idx) + code.drop(idx + cursor.length), code.codePointCount(0, idx))
       }
 
     val input = Stream(

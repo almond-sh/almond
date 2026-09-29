@@ -106,6 +106,12 @@ final class TestInterpreter extends Interpreter {
         val c = Completion(pos, pos, Seq("sent"), None, RawJson(code.drop("meta:".length).bytes))
         CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
       }
+      else if (code.startsWith("word:")) {
+        // completes the word before the cursor, by suffixing it with '!'
+        val from = code.lastIndexOf(' ', pos - 1) + 1
+        val c    = Completion(from, pos, Seq(code.substring(from, pos) + "!"))
+        CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
+      }
       else
         CancellableFuture(
           Future.successful(Completion(pos, pos, Seq("?"))),
@@ -135,6 +141,15 @@ final class TestInterpreter extends Interpreter {
             )
         )
       }
+      else if (code.startsWith("before-cursor:"))
+        CancellableFuture(
+          Future.successful(
+            Some(
+              Inspection(Map("text/plain" -> RawJson(s""""${code.take(pos)}"""".bytes)))
+            )
+          ),
+          () => sys.error("should not happen")
+        )
       else
         CancellableFuture(
           Future.successful(
