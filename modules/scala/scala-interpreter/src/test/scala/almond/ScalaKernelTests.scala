@@ -109,9 +109,14 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
+      val exitMsgId = UUID.randomUUID().toString
+
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.content.toString().contains("exit"))
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitMsgId)
+          )
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -120,7 +125,7 @@ object ScalaKernelTests extends TestSuite {
       val input = Stream(
         executeMessage("val n = scala.io.StdIn.readInt()"),
         executeMessage("val m = new java.util.Scanner(System.in).nextInt()"),
-        executeMessage("""val s = "exit"""")
+        executeMessage("""val s = "exit"""", msgId = exitMsgId)
       )
 
       val streams =
