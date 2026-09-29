@@ -1,7 +1,7 @@
 package almond.protocol
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
-import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 
 object History {
 
@@ -21,9 +21,25 @@ object History {
 
   object Reply {
 
-    final case class Simple(history: List[(Int, Int, String)]) extends Reply
+    final case class Simple(
+      history: List[(Int, Int, String)],
+      status: String // no default value here for the value not to be swallowed by the JSON encoder
+    ) extends Reply
 
-    final case class WithOutput(history: List[(Int, Int, (String, String))]) extends Reply
+    object Simple {
+      def apply(history: List[(Int, Int, String)]): Simple =
+        Simple(history, "ok")
+    }
+
+    final case class WithOutput(
+      history: List[(Int, Int, (String, String))],
+      status: String // no default value here for the value not to be swallowed by the JSON encoder
+    ) extends Reply
+
+    object WithOutput {
+      def apply(history: List[(Int, Int, (String, String))]): WithOutput =
+        WithOutput(history, "ok")
+    }
 
   }
 
@@ -61,10 +77,11 @@ object History {
 
   implicit val replyCodec: JsonValueCodec[Reply] = {
 
+    // history is a required field, even when empty
     implicit val simpleReplyCodec: JsonValueCodec[Reply.Simple] =
-      JsonCodecMaker.make[Reply.Simple]
+      JsonCodecMaker.make[Reply.Simple](CodecMakerConfig.withTransientEmpty(false))
     implicit val withOutputReplyCodec: JsonValueCodec[Reply.WithOutput] =
-      JsonCodecMaker.make[Reply.WithOutput]
+      JsonCodecMaker.make[Reply.WithOutput](CodecMakerConfig.withTransientEmpty(false))
 
     new JsonValueCodec[Reply] {
       def decodeValue(in: JsonReader, default: Reply): Reply = ???

@@ -1,7 +1,7 @@
 package almond.protocol
 
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 
 object CommInfo {
 
@@ -10,8 +10,14 @@ object CommInfo {
   )
 
   final case class Reply(
-    comms: Map[String, Info]
+    comms: Map[String, Info],
+    status: String // no default value here for the value not to be swallowed by the JSON encoder
   )
+
+  object Reply {
+    def apply(comms: Map[String, Info]): Reply =
+      Reply(comms, "ok")
+  }
 
   final case class Info(
     target_name: String
@@ -22,7 +28,8 @@ object CommInfo {
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make
+  // comms is a required field, even when empty
   implicit val replyCodec: JsonValueCodec[Reply] =
-    JsonCodecMaker.make
+    JsonCodecMaker.make(CodecMakerConfig.withTransientEmpty(false))
 
 }
