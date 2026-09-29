@@ -532,7 +532,9 @@ object ScalaKernelTests extends TestSuite {
           streams.generatedMessageTypes(Set(Channel.Publish, Channel.Requests)).toVector
         val (firstCell, rest) = messageTypes.splitAt(messageTypes.indexOf("execute_reply") + 1)
         assert(firstCell.count(_ == "display_data") == 1)
-        assert(rest.lastOption.contains("execute_reply"))
+        // Not checking that execute_reply comes last: updates are enqueued before it, but via
+        // the background messages queue, which Kernel merges with replies in a non-deterministic
+        // order. They're still all received before the kernel stream completes.
         assert(rest.count(_ == "execute_reply") == 1)
 
         // Before updates were coalesced, one update was sent per increment

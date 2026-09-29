@@ -1,6 +1,5 @@
 package almond.interpreter.input
 
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 import almond.channels.{Channel, Message => RawMessage}
@@ -46,14 +45,16 @@ final class InputHandler(
           Future.failed(new InputManager.NoMoreInputException)
         else {
 
-          val id = UUID.randomUUID().toString
-          val p  = Promise[String]() // timeout that if not completed in imparted time?
+          val p = Promise[String]() // timeout that if not completed in imparted time?
 
-          val msg = parentMessage.publish(
-            Input.requestType,
-            Input.Request(prompt, password),
-            ident = Some("stdin")
-          ).asRawMessage
+          // Sent with the idents of the parent (execute_request) message, so that the stdin
+          // ROUTER socket routes it to the client that sent the execute_request
+          val request = parentMessage
+            .publish(Input.requestType, Input.Request(prompt, password))
+            .copy(idents = parentMessage.idents)
+          // clients send the input_request header back as parent_header of their input_reply
+          val id  = request.header.msg_id
+          val msg = request.asRawMessage
 
           list.put(id, ())
           ongoing.put(id, p)
