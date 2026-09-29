@@ -21,6 +21,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -38,6 +45,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -64,6 +78,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -100,6 +121,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -124,6 +152,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -155,6 +190,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -169,6 +211,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -185,6 +234,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -213,6 +269,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+    - uses: coursier/cache-action@v8
+    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
+    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/mill/download
+        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
