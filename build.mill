@@ -170,6 +170,13 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
       .filter(v => Version(v) >= cutOff)
   }
 
+  def userDependenciesByScalaVersion = Task {
+    Task.traverse(ScalaVersions.fullVersionsFor(crossValue)) { sv =>
+      val api = scala.`scala-kernel`(crossValue).launchers(sv).api
+      Task.Anon((sv, api.userDependencies()))
+    }()
+  }
+
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Task {
     Seq(
@@ -346,7 +353,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
 
     /** The kernel API, whose dependencies go to the shared class loader, resolved like us. */
     object api extends AlmondCrossSbtModule with AlmondRepositories with ExternalSources
-        with AlmondForcedScalaVersion {
+        with AlmondForcedScalaVersion with UserDependencyList {
       def crossValue        = Launchers.this.crossValue
       def crossScalaVersion = crossValue
       def moduleDeps        = Seq(scala.`scala-kernel-api`(ScalaVersions.binary(crossValue)))

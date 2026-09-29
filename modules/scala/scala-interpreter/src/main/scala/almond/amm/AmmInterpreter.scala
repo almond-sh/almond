@@ -138,8 +138,9 @@ object AmmInterpreter {
         wd = os.pwd,
         colors = replApi.colors,
         verboseOutput = true, // ???
-        alreadyLoadedDependencies =
-          ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt"),
+        alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies(
+          UserDependencies.resourceName(AlmondCompilerLifecycleManager.compilerVersion)
+        ),
         wrapperNamePrefix = wrapperNamePrefix,
         pkgName = pkgName.map(Name(_)),
         // like the Ammonite ones, but reloading scripts that changed since they were last loaded

@@ -47,6 +47,10 @@ class AlmondCompilerLifecycleManager(
 
 object AlmondCompilerLifecycleManager {
 
+  /** The version of the compiler we run (scala-library has a 2.13 version before Scala 3.8) */
+  private[almond] def compilerVersion: String =
+    dotty.tools.dotc.config.Properties.versionNumberString
+
   private[almond] def isAtLeast_2_12_7 = true
 
   /** Settings silencing warnings the Ammonite-generated wrapper code triggers */
