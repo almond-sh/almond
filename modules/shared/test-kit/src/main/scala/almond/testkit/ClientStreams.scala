@@ -99,7 +99,25 @@ final case class ClientStreams(
     collapsing(s).toVector
   }
 
-  def executeReplies: Map[Int, String] =
+  def executeResults: Map[Int, String] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.resultType.messageType =>
+          m.decodeAs[Execute.Result] match {
+            case Left(_)  => Nil
+            case Right(m) => Seq(m.content)
+          }
+      }
+      .flatten
+      .map { r =>
+        r.execution_count -> r.data.get("text/plain").fold("")(_.stringOrEmpty)
+      }
+      .toMap
+
+  /** Text result of each successful execute request, empty if a request had no result */
+  def executeReplies: Map[Int, String] = {
+    val results = executeResults
     generatedMessages
       .iterator
       .collect {
@@ -112,9 +130,10 @@ final case class ClientStreams(
       .flatten
       .collect {
         case s: Execute.Reply.Success =>
-          s.execution_count -> s.user_expressions.get("text/plain").fold("")(_.stringOrEmpty)
+          s.execution_count -> results.getOrElse(s.execution_count, "")
       }
       .toMap
+  }
 
   def executeErrors: Map[Int, (String, String, List[String])] =
     generatedMessages
@@ -197,15 +216,10 @@ final case class ClientStreams(
     generatedMessages
       .iterator
       .collect {
-        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
-          m.decodeAs[Execute.Reply] match {
-            case Left(_) => Nil
-            case Right(m) =>
-              m.content match {
-                case s: Execute.Reply.Success =>
-                  s.user_expressions.get("text/plain").toSeq.map(_.stringOrEmpty)
-                case _ => Nil
-              }
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.resultType.messageType =>
+          m.decodeAs[Execute.Result] match {
+            case Left(_)  => Nil
+            case Right(m) => m.content.data.get("text/plain").toSeq.map(_.stringOrEmpty)
           }
         case Left((Channel.Publish, m))
             if m.header.msg_type == "stream" =>

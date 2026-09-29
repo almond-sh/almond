@@ -14,6 +14,7 @@ concurrency:
 jobs:
   scala-versions:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       json: ${{ steps.versions.outputs.json }}
     steps:
@@ -36,6 +37,7 @@ jobs:
 
   examples:
     runs-on: ${{ matrix.OS }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -63,6 +65,8 @@ jobs:
   test:
     needs: scala-versions
     runs-on: ${{ matrix.OS }}
+    # Usually takes a few minutes, fail fast rather than waiting for GitHub's 6h default on a hang
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +120,7 @@ jobs:
     # The echo demo kernel is built for Scala 3 only, so the cross-version test job above
     # doesn't pick its tests up.
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v7
       with:
@@ -206,6 +211,7 @@ jobs:
 
   bincompat:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v7
       with:
@@ -229,6 +235,7 @@ jobs:
 
   website:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
     - uses: actions/checkout@v7
       with:
@@ -264,6 +271,7 @@ jobs:
 
   publishLocal:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
     - uses: actions/checkout@v7
       with:

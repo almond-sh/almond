@@ -82,6 +82,16 @@ object ProtocolTests extends TestSuite {
         )
       }
     }
+
+    test("execute_reply") {
+      test("preserve empty user_expressions field in json reply") {
+        val reply: Execute.Reply = Execute.Reply.Success(1, Map.empty, Nil)
+        val json                 = writeToString(reply)(Execute.replyCodec)
+        assert(json.contains(""""user_expressions":{}"""))
+        val decoded = readFromString(json)(Execute.replyCodec)
+        assert(decoded == reply)
+      }
+    }
   }
 
 }
