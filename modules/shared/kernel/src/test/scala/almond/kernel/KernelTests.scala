@@ -1,5 +1,6 @@
 package almond.kernel
 
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
