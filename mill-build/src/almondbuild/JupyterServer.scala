@@ -104,8 +104,10 @@ object JupyterServer {
     )
   }
 
-  /** Dependency group of `examples/pyproject.toml` with Jupyter AI, installed for JupyterLab */
-  private def aiGroup = "ai"
+  /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
+    * (the variable inspector, …), and Jupyter AI
+    */
+  private def labGroups = Seq("lab", "ai")
 
   def writeKernelJson(
     launcher: os.Path,
@@ -124,6 +126,7 @@ object JupyterServer {
       "debug",
       "--connection-file",
       "{connection_file}",
+      // for the variable inspector JupyterLab extension (installed with the lab dependency group)
       "--variable-inspector",
       "--toree-magics",
       "--use-notebook-coursier-logger",
@@ -437,13 +440,13 @@ object JupyterServer {
       "--quiet=false"
     )
 
-    writeSettingsOverrides(uv, workspace, Seq(aiGroup))
+    writeSettingsOverrides(uv, workspace, labGroups)
 
     os.makeDir.all(workspace / "notebooks")
     val (baseAddressOpt, args0) = extractBaseAddress(args)
     val (classic, args1)        = extractClassic(args0)
     val command =
-      jupyterCommand(uv, workspace, Seq(aiGroup), "lab", "--notebook-dir", "notebooks") ++
+      jupyterCommand(uv, workspace, labGroups, "lab", "--notebook-dir", "notebooks") ++
         baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
         (if (classic) classicOptions else Nil) ++
         args1

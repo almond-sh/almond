@@ -64,7 +64,14 @@ the system one (light or dark), and editors indent with 2 spaces. These are list
 `examples/jupyterlab-overrides.json`. Anything you change in the settings still takes
 precedence.
 
-JupyterLab comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
+JupyterLab comes with the
+[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)
+extension, and the kernels are started with `--variable-inspector`, which enables almond's
+support for it. Open it with "Open Variable Inspector", from the context menu of a notebook
+or from the command palette: it lists the variables defined in the notebook, along with
+their types and values.
+
+JupyterLab also comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
 you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
 (speech bubbles icon), click "New chat", then pick an agent from the menu at the
 bottom left of the message box (it shows "No one" initially). Chats are saved as

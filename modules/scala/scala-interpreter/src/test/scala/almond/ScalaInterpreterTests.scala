@@ -556,6 +556,15 @@ object ScalaInterpreterTests extends TestSuite {
       }
     }
 
+    /** Name of the value printed last in a successful result, like "res12" */
+    def resultName(res: ExecuteResult): String =
+      res.asSuccess
+        .flatMap(_.data.detailedData.get("text/plain"))
+        .flatMap(_.asString)
+        .flatMap(_.linesIterator.toList.lastOption)
+        .getOrElse("")
+        .takeWhile(_ != ':')
+
     def variableInspectorTest(): Unit = {
 
       implicit class ExecuteResultOps(private val res: ExecuteResult) {
@@ -645,10 +654,57 @@ object ScalaInterpreterTests extends TestSuite {
 
       interpreter.execute("type Str = String")
         .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after3) = outputHandler.displayed()
+      assert(after3.text == after2.text)
+
+      interpreter.execute("lazy val lz = 5")
+        .assertSuccess()
+      interpreter.execute("def d = 6")
+        .assertSuccess()
+      interpreter.execute("def f(i: Int) = i")
+        .assertSuccess()
+      interpreter.execute("private val priv = 7")
+        .assertSuccess()
+      // name of the result, like "res12"
+      val listResName = resultName(interpreter.execute("List(1, 2)").assertSuccess())
+      interpreter.execute("println(\"foo\")")
+        .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after4) = outputHandler.displayed()
+      val expectedAfter4 = after2.text.stripSuffix("]") +
+        """,{"varName":"lz","varSize":"","varShape":"","varContent":"[lazy]","varType":"Int","isMatrix":false}""" +
+        """,{"varName":"d","varSize":"","varShape":"","varContent":"[def]","varType":"Int","isMatrix":false}""" +
+        (if (TestUtil.isScala2)
+           """,{"varName":"priv","varSize":"","varShape":"","varContent":"7","varType":"Int","isMatrix":false}"""
+         else "") +
+        s""",{"varName":"$listResName","varSize":"","varShape":"","varContent":"List(1, 2)","varType":"List[Int]","isMatrix":false}]"""
+      assert(after4.text == expectedAfter4)
     }
     test("variable inspector") {
-      if (TestUtil.isScala2) variableInspectorTest()
-      else "disabled"
+      variableInspectorTest()
+    }
+    test("variable inspector with several statements per cell") {
+      val interpreter = newInterpreter()
+      val initCode    = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
+      assert(interpreter.execute(initCode).success)
+      val res = interpreter.execute("val (a, b) = (1, \"foo\")\nval c = a + 1\nc * 2")
+      assert(res.success)
+      // like "res2_2"
+      val resName = resultName(res)
+      assert(resName.endsWith("_2"))
+      val outputHandler = new MockOutputHandler
+      val dictListCode  = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.dictList()"
+      assert(interpreter.execute(dictListCode, outputHandler = Some(outputHandler)).success)
+      val text = outputHandler.displayed()
+        .flatMap(_.detailedData.get("text/plain").flatMap(_.asString))
+        .mkString
+      for (name <- Seq("a", "b", "c", resName))
+        assert(text.contains(s""""varName":"$name""""))
     }
   }
 
