@@ -96,9 +96,13 @@ final class ZeromqSocketImpl(
   }
   if (socketType == SocketType.ROUTER)
     channel.setRouterHandover(true)
-  if (socketType == SocketType.PUB)
+  if (socketType == SocketType.PUB || socketType == SocketType.XPUB)
     // If publisher's socket queue gets filled, all new messages are dropped; remove queue size constraint
     channel.setHWM(0)
+  if (socketType == SocketType.XPUB)
+    // Pass all subscriptions to us, not just the first one for a given topic, so that we can send
+    // an iopub_welcome message each time a client subscribes
+    channel.setXpubVerbose(true)
 
   @volatile private var opened = false
   @volatile private var closed = false
@@ -275,6 +279,37 @@ final class ZeromqSocketImpl(
       else {
         log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
         None
+      }
+    }.evalOn(ec)
+  )
+
+  val readSubscriptionEvent: IO[Option[ZeromqSocket.SubscriptionEvent]] = delayedCondition(
+    !closed && opened,
+    "Channel is not opened in readSubscriptionEvent"
+  )(
+    IO {
+      // subscription events are single frames: 1 (subscribe) or 0 (unsubscribe), then the topic
+      val frames =
+        Iterator(channel.recv()) ++
+          Iterator.continually(channel)
+            .takeWhile(_.hasReceiveMore)
+            .map(_.recv())
+      frames.toVector match {
+        case Vector(frame) if frame != null && frame.nonEmpty && (frame(0) == 0 || frame(0) == 1) =>
+          val event = ZeromqSocket.SubscriptionEvent(
+            subscribe = frame(0) == 1,
+            topic = frame.toSeq.drop(1)
+          )
+          log.debug {
+            val topic = Try(new String(event.topic.toArray, UTF_8)).getOrElse(event.topic.toString)
+            "Received " +
+              (if (event.subscribe) "subscription" else "unsubscription") +
+              s" for '$topic' on $uri"
+          }
+          Some(event)
+        case other =>
+          log.warn(s"Ignoring unrecognized subscription event (${other.length} frame(s)) on $uri")
+          None
       }
     }.evalOn(ec)
   )

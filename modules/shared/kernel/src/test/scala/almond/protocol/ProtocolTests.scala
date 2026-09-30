@@ -92,6 +92,37 @@ object ProtocolTests extends TestSuite {
         assert(decoded == reply)
       }
     }
+
+    test("kernel_info_reply") {
+      val info = KernelInfo(
+        implementation = "test",
+        implementation_version = "0.1",
+        language_info = KernelInfo.LanguageInfo(
+          name = "test",
+          version = "0.1",
+          mimetype = "text/x-test",
+          file_extension = ".test",
+          nbconvert_exporter = "script"
+        ),
+        banner = "Test kernel"
+      )
+      val json = writeToString(info)
+      test("protocol version") {
+        assert(json.contains(""""protocol_version":"5.5""""))
+      }
+      test("empty supported_features") {
+        assert(json.contains(""""supported_features":[]"""))
+      }
+      test("no help_links if empty") {
+        assert(!json.contains("help_links"))
+        assert(!json.contains("pygments_lexer"))
+      }
+      test("read reply without supported_features") {
+        val json0   = json.replace(""","supported_features":[]""", "")
+        val decoded = readFromString(json0)(KernelInfo.codec)
+        assert(decoded == info)
+      }
+    }
   }
 
 }

@@ -7,13 +7,18 @@ import java.nio.channels.{
   ClosedSelectorException,
   Selector
 }
+import java.nio.ByteBuffer
+import java.nio.charset.{CharacterCodingException, CodingErrorAction}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.UUID
 
 import almond.channels._
 import almond.logger.LoggerContext
+import almond.protocol.{Header, IopubWelcome, Protocol}
 import cats.Parallel
 import cats.effect.IO
 import cats.syntax.apply._
+import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
 import org.zeromq.{SocketType, ZMQ, ZMQException}
 import org.zeromq.ZMQ.{PollItem, Poller}
 import zmq.ZError
@@ -56,8 +61,10 @@ final class ZeromqConnection(
   private def routerDealer =
     if (bind) SocketType.ROUTER
     else SocketType.DEALER
+  // XPUB rather than PUB since protocol 5.5, so that we get notified of subscriptions
+  // and can send iopub_welcome messages
   private def pubSub =
-    if (bind) SocketType.PUB
+    if (bind) SocketType.XPUB
     else SocketType.SUB
   private def repReq =
     if (bind) SocketType.REP
@@ -177,6 +184,54 @@ final class ZeromqConnection(
       case Channel.Input    => stdin0
     }
 
+  // session of the iopub_welcome messages we send
+  private lazy val welcomeSession = UUID.randomUUID().toString
+
+  private def welcomeMessage(subscription: Seq[Byte]): Option[Message] = {
+    val decoder = UTF_8
+      .newDecoder()
+      .onMalformedInput(CodingErrorAction.REPORT)
+      .onUnmappableCharacter(CodingErrorAction.REPORT)
+    val subscriptionStrOpt =
+      try Some(decoder.decode(ByteBuffer.wrap(subscription.toArray)).toString)
+      catch {
+        case _: CharacterCodingException =>
+          None
+      }
+    subscriptionStrOpt.map { subscriptionStr =>
+      val msgType = IopubWelcome.messageType.messageType
+      val header = Header(
+        msg_id = UUID.randomUUID().toString,
+        username = "kernel",
+        session = welcomeSession,
+        msg_type = msgType,
+        version = Some(Protocol.versionStr)
+      )
+      Message(
+        // the topic must match the subscription for the subscriber to get the message
+        idents = Seq(if (subscription.isEmpty) msgType.getBytes(UTF_8).toSeq else subscription),
+        header = writeToArray(header),
+        // no parent header for iopub_welcome
+        parentHeader = "{}".getBytes(UTF_8),
+        metadata = "{}".getBytes(UTF_8),
+        content = writeToArray(IopubWelcome(subscriptionStr))
+      )
+    }
+  }
+
+  private val handleSubscriptionEvent: IO[Unit] =
+    publish0.readSubscriptionEvent.flatMap {
+      case Some(event) if event.subscribe =>
+        welcomeMessage(event.topic) match {
+          case Some(msg) =>
+            IO(log.debug(s"Sending iopub_welcome on $actualParams")) *> publish0.send(msg)
+          case None =>
+            IO(log.warn("Ignoring subscription with non-UTF-8 topic"))
+        }
+      case _ =>
+        IO.unit
+    }
+
   @volatile private var selectorOpt = Option.empty[Selector]
   private var actualParams          = params
 
@@ -280,6 +335,9 @@ final class ZeromqConnection(
       else
         pollItems
           .collectFirst {
+            case (Channel.Publish, pi) if bind && pi.isReadable =>
+              // the only things we can read on our XPUB socket are subscription events
+              handleSubscriptionEvent.as(Option.empty[Either[Unit, (Channel, Message)]])
             case (channel, pi) if pi.isReadable =>
               channelSocket0(channel)
                 .read

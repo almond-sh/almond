@@ -5,7 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
-import almond.protocol.{Complete, Execute, Inspect, MessageType, RawJson}
+import almond.protocol.{Complete, Execute, Inspect, IopubWelcome, MessageType, RawJson}
 import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
@@ -74,7 +74,7 @@ final case class ClientStreams(
 
   def generatedMessageTypes(
     channels: Set[Channel] = Set(Channel.Publish, Channel.Requests),
-    filterOut: Set[String] = Set("status"),
+    filterOut: Set[String] = Set("status", IopubWelcome.messageType.messageType),
     collapse: Set[String] = Set("stream")
   ): Seq[String] = {
 

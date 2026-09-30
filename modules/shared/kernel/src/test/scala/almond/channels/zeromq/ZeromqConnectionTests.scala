@@ -4,11 +4,13 @@ import java.nio.charset.StandardCharsets
 
 import almond.channels.{Channel, ConnectionParameters, Message}
 import almond.logger.LoggerContext
+import almond.protocol.{Header, IopubWelcome}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import utest._
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.{Deadline, DurationInt, FiniteDuration}
 
 object ZeromqConnectionTests extends TestSuite {
 
@@ -144,6 +146,65 @@ object ZeromqConnectionTests extends TestSuite {
           _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
           _ <- clientA.close(partial = false, lingerDuration = 2.seconds)
           _ <- clientB.close(partial = false, lingerDuration = 2.seconds)
+        } yield ()
+
+      t.unsafeRunSync()(ioRuntime)
+    }
+
+    test("iopub welcome") {
+
+      val logCtx        = LoggerContext.nop
+      val params        = ConnectionParameters.randomLocal()
+      val kernelThreads = ZeromqThreads.create("test-kernel")
+      val serverThreads = ZeromqThreads.create("test-server")
+      val ioRuntime     = IORuntime.global
+
+      def welcome(
+        kernel: ZeromqConnection,
+        server: ZeromqConnection,
+        deadline: Deadline
+      ): IO[Message] =
+        // kernel only handles subscriptions when reading from its channels
+        kernel.tryRead(Channel.channels, 100.millis) *>
+          server.tryRead(Seq(Channel.Publish), 100.millis).flatMap {
+            case Some(Right((_, msg))) => IO.pure(msg)
+            case Some(Left(()))        => IO.raiseError(new Exception("connection closed"))
+            case None if deadline.isOverdue() =>
+              IO.raiseError(new Exception("no iopub_welcome message"))
+            case None => welcome(kernel, server, deadline)
+          }
+
+      val t =
+        for {
+          kernel <- ZeromqConnection(
+            params,
+            bind = true,
+            None,
+            kernelThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false
+          )
+          server <- ZeromqConnection(
+            params,
+            bind = false,
+            None,
+            serverThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false
+          )
+          _   <- kernel.open
+          _   <- server.open
+          msg <- welcome(kernel, server, 10.seconds.fromNow)
+          header  = readFromArray(msg.header)(Header.codec)
+          content = readFromArray(msg.content)(IopubWelcome.codec)
+          _       = assert(header.msg_type == IopubWelcome.messageType.messageType)
+          _       = assert(header.version.contains("5.5"))
+          _       = assert(content.subscription == "")
+          _       = assert(new String(msg.parentHeader, StandardCharsets.UTF_8) == "{}")
+          _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+          _ <- server.close(partial = false, lingerDuration = 2.seconds)
         } yield ()
 
       t.unsafeRunSync()(ioRuntime)

@@ -79,6 +79,9 @@ final case class Kernel(
 
       // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
       // (don't know about lab, nteract seems fine, unless it just marks kernels as starting by itself)
+      // These are likely published before any client subscribed to IOPub. Since protocol 5.5, clients
+      // can wait for an iopub_welcome message (sent by ZeromqConnection) to know that their subscription
+      // is effective, rather than relying on these.
       val initStream = {
 
         def sendStatus(status: Status) =
