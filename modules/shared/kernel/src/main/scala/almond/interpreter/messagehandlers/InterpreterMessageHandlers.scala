@@ -5,7 +5,7 @@ import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHa
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0, blockingWithStatus}
 import almond.interpreter.util.DisplayDataOps._
-import almond.interpreter.{IOInterpreter, Message}
+import almond.interpreter.{IOInterpreter, IsCompleteResult, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
 import almond.protocol.Codecs.unitCodec
@@ -233,7 +233,10 @@ final case class InterpreterMessageHandlers(
         _ <- message
           .reply(
             IsComplete.replyType,
-            res.fold(IsComplete.Reply("unknown"))(c => IsComplete.Reply(c.status))
+            res.fold(IsComplete.Reply("unknown")) {
+              case i: IsCompleteResult.Incomplete => IsComplete.Reply(i.status, Some(i.indent))
+              case c                              => IsComplete.Reply(c.status)
+            }
           )
           .enqueueOn(Channel.Requests, queue)
       } yield ()

@@ -207,7 +207,7 @@ final class ScalaInterpreter(
   override def isComplete(code: String): Option[IsCompleteResult] = {
 
     val res = ammonite.compiler.Parsers.split(code, ignoreIncomplete = true, "(notebook)") match {
-      case None           => IsCompleteResult.Incomplete
+      case None           => IsCompleteResult.Incomplete(Indentation.nextLine(code))
       case Some(Right(_)) => IsCompleteResult.Complete
       case Some(Left(_))  => IsCompleteResult.Invalid
     }

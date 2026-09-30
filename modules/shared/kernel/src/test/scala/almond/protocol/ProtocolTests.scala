@@ -37,6 +37,17 @@ object ProtocolTests extends TestSuite {
       }
     }
 
+    test("is_complete_reply") {
+      test("indent for incomplete code") {
+        val json = writeToString(IsComplete.Reply("incomplete", Some("  ")))
+        assert(json == """{"status":"incomplete","indent":"  "}""")
+      }
+      test("no indent otherwise") {
+        val json = writeToString(IsComplete.Reply("complete"))
+        assert(json == """{"status":"complete"}""")
+      }
+    }
+
     test("complete_reply") {
       test("preserve matches field in json reply even if no match found") {
         val reply = Complete.Reply(
