@@ -29,7 +29,8 @@ final class TestInterpreter extends Interpreter {
             m.readInput(code.stripPrefix("input:")),
             Duration.Inf
           )
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success(DisplayData.text("> " + s))
       }
     else if (code.startsWith("comm-open:"))
@@ -39,7 +40,8 @@ final class TestInterpreter extends Interpreter {
         case Some(h) =>
           val target = code.stripPrefix("comm-open:")
           h.commOpen(target, target, "{}".bytes, "{}".bytes)
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
     else if (code.startsWith("comm-message:"))
@@ -49,7 +51,8 @@ final class TestInterpreter extends Interpreter {
         case Some(h) =>
           val target = code.stripPrefix("comm-message:")
           h.commMessage(target, """{"a": "b"}""".bytes, "{}".bytes)
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
     else if (code.startsWith("comm-close:"))
@@ -59,7 +62,8 @@ final class TestInterpreter extends Interpreter {
         case Some(h) =>
           val target = code.stripPrefix("comm-close:")
           h.commClose(target, "{}".bytes, "{}".bytes)
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
     else if (code.startsWith("error-after:")) {

@@ -587,12 +587,12 @@ trait Examples extends SbtModule {
     }
     def forkArgs = Task {
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${PathRef.toAbsString(examplesDir().path)}",
-        s"-Dalmond.examples.output-dir=${PathRef.toAbsString(Task.dest / "output")}",
-        s"-Dalmond.examples.jupyter-path=${PathRef.toAbsString(Task.dest / "jupyter")}",
-        s"-Dalmond.examples.launcher=${PathRef.toAbsString(examplesKernel.launcher().path)}",
-        s"-Dalmond.examples.repo-root=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
-        s"-Dalmond.examples.uv=${PathRef.toAbsString(UvLauncher.uv(Versions.uv))}"
+        s"-Dalmond.examples.dir=${RealPath.string(examplesDir().path)}",
+        s"-Dalmond.examples.output-dir=${RealPath.string(Task.dest / "output")}",
+        s"-Dalmond.examples.jupyter-path=${RealPath.string(Task.dest / "jupyter")}",
+        s"-Dalmond.examples.launcher=${RealPath.string(examplesKernel.launcher().path)}",
+        s"-Dalmond.examples.repo-root=${RealPath.string(`local-repo`.localRepo().path)}",
+        s"-Dalmond.examples.uv=${RealPath.string(UvLauncher.uv(Versions.uv))}"
       )
     }
   }
@@ -685,7 +685,7 @@ trait Integration extends SbtModule {
         scala.`scala-kernel`(ScalaVersions.binary(ScalaVersions.scala3Latest)).publishVersion()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
+        s"-Dalmond.test.local-repo=${RealPath.string(`local-repo`.localRepo().path)}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${CsLauncher.cs(Deps.csVersion)}",
         s"-Dalmond.test.launcher-main-class=${scala.launcher.finalMainClass()}",
@@ -714,7 +714,7 @@ trait Integration extends SbtModule {
     }
     def forkEnv = Task {
       super.forkEnv() ++ Seq(
-        "ALMOND_INTEGRATION_TMP"             -> PathRef.toAbsString(tmpDirBase().path),
+        "ALMOND_INTEGRATION_TMP"             -> RealPath.string(tmpDirBase().path),
         "ALMOND_INTEGRATION_MAVEN_SNAPSHOTS" -> useMavenSnapshots().toString
       )
     }
@@ -755,15 +755,15 @@ trait ProxyTests extends SbtModule {
       val version =
         scala.`scala-kernel`(ScalaVersions.binary(kernelScalaVersion)).publishVersion()
       super.forkArgs() ++ Seq(
-        s"-Dalmond.proxy-tests.local-repo=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
+        s"-Dalmond.proxy-tests.local-repo=${RealPath.string(`local-repo`.localRepo().path)}",
         s"-Dalmond.proxy-tests.version=$version",
         s"-Dalmond.proxy-tests.launcher-main-class=${scala.launcher.finalMainClass()}",
         s"-Dalmond.proxy-tests.scala-version=$kernelScalaVersion",
         s"-Dalmond.proxy-tests.cs-version=${Deps.csVersion}",
         s"-Dalmond.proxy-tests.uv-version=${Versions.uv}",
-        s"-Dalmond.proxy-tests.examples-dir=${PathRef.toAbsString(examplesDir().path)}",
-        s"-Dalmond.proxy-tests.docker-dir=${PathRef.toAbsString(dockerDir().path)}",
-        s"-Dalmond.proxy-tests.tmp-dir=${PathRef.toAbsString(tmpDirBase().path)}",
+        s"-Dalmond.proxy-tests.examples-dir=${RealPath.string(examplesDir().path)}",
+        s"-Dalmond.proxy-tests.docker-dir=${RealPath.string(dockerDir().path)}",
+        s"-Dalmond.proxy-tests.tmp-dir=${RealPath.string(tmpDirBase().path)}",
         s"-Dalmond.proxy-tests.maven-snapshots=${scala.integration.test.useMavenSnapshots()}"
       )
     }
