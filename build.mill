@@ -170,6 +170,13 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
       .filter(v => Version(v) >= cutOff)
   }
 
+  def userDependenciesByScalaVersion = Task {
+    Task.traverse(ScalaVersions.fullVersionsFor(crossValue)) { sv =>
+      val api = scala.`scala-kernel`(crossValue).launchers(sv).api
+      Task.Anon((sv, api.userDependencies()))
+    }()
+  }
+
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Task {
     Seq(
@@ -346,7 +353,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
 
     /** The kernel API, whose dependencies go to the shared class loader, resolved like us. */
     object api extends AlmondCrossSbtModule with AlmondRepositories with ExternalSources
-        with AlmondForcedScalaVersion {
+        with AlmondForcedScalaVersion with UserDependencyList {
       def crossValue        = Launchers.this.crossValue
       def crossScalaVersion = crossValue
       def moduleDeps        = Seq(scala.`scala-kernel-api`(ScalaVersions.binary(crossValue)))
@@ -447,16 +454,6 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   def resources = super.resources
 }
 
-trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def mvnDeps = Seq(
-    Deps.jvmRepr
-  )
-  def compileMvnDeps = Seq(
-    Deps.scalapy
-  )
-}
-
 /** Not published any more - only kept around to be built and tested here */
 trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   def crossScalaVersion = crossValue
@@ -466,22 +463,6 @@ trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   def mvnDeps = Seq(
     Deps.scalaRx
   )
-}
-
-trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    api()
-  )
-  def mvnDeps = Seq(
-    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.22.3"
-  )
-  override def mimaPreviousVersions = Task {
-    // module added only in 0.14.2
-    val cutOff = Version("0.14.1")
-    super.mimaPreviousVersions()
-      .filter(v => Version(v) > cutOff)
-  }
 }
 
 // The echo kernel is a demo kernel, only built and published for Scala 3
@@ -517,9 +498,7 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
   object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
   object launcher            extends Launcher
-  object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
-  object `json-api-jackson`  extends Cross[JsonApiJackson](ScalaVersions.binaries)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
   object integration        extends Integration
@@ -532,10 +511,8 @@ object `local-repo` extends Module {
   def allModules: Seq[PublishModule] = {
     val binaryModules = ScalaVersions.binaries.flatMap { sv =>
       Seq(
-        scala.`almond-scalapy`(sv),
         shared.kernel(sv),
-        api(sv),
-        scala.`json-api-jackson`(sv)
+        api(sv)
       )
     }
     val kernelModules = ScalaVersions.binaries.flatMap { sv =>
@@ -1183,6 +1160,18 @@ object dummy extends Module {
     def scalaVersion = ScalaVersions.scala212
     def mvnDeps = super.mvnDeps() ++ Seq(
       Deps.ammoniteSpark
+    )
+  }
+  // dummy module to get Scala Steward updates for the modules living in their own repositories
+  object `helper-projects` extends ScalaModule {
+    def scalaVersion = ScalaVersions.scala213
+    // for jvm-repr, a dependency of almond-scalapy and json-api-jackson
+    def repositories = Task {
+      super.repositories() ++ Seq("jitpack")
+    }
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      Deps.almondJackson,
+      Deps.almondScalapy
     )
   }
 }

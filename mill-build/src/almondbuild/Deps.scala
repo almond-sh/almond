@@ -29,6 +29,13 @@ object Deps {
       }
   }
 
+  // Lives in its own repository (https://github.com/almond-sh/almond-scalapy) since 0.15.0. The
+  // kernel adds it automatically, with this version by default, when ScalaPy is loaded.
+  def almondScalapy = mvn"sh.almond::almond-scalapy:0.15.0"
+  // Lives in its own repository (https://github.com/almond-sh/almond-jackson) since 0.15.0. The
+  // kernel picks this version for it by default, when users load it with the `_` version.
+  def almondJackson = mvn"sh.almond::json-api-jackson:0.15.0"
+
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
@@ -82,7 +89,6 @@ object Deps {
   def pprint                   = mvn"com.lihaoyi::pprint:0.9.6"
   def scalafmtDynamic          = mvn"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaparse               = mvn"com.lihaoyi::scalaparse:3.1.1"
-  def scalapy                  = mvn"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = mvn"org.scala-lang:scala-reflect:$sv"
   // Ammonite modules are cross-published for binary Scala versions only, and pull the Scala
   // compiler of the oldest Scala version of their binary version. Depending on the compiler

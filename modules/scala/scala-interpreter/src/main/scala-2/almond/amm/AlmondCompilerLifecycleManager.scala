@@ -54,6 +54,10 @@ class AlmondCompilerLifecycleManager(
 
 object AlmondCompilerLifecycleManager {
 
+  /** The version of the compiler we run */
+  private[almond] def compilerVersion: String =
+    scala.util.Properties.versionNumberString
+
   private[almond] val isAtLeast_2_12_7 = {
     val v = scala.util.Properties.versionNumberString
     !v.startsWith("2.11.") && (!v.startsWith("2.12.") ||
