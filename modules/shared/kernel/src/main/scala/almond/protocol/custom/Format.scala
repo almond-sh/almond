@@ -15,10 +15,18 @@ object Format {
     conf: RawJson = RawJson.emptyObj
   )
 
+  /** Formatting result for a single cell
+    *
+    * @param code
+    *   formatted code, empty if the cell couldn't be formatted
+    * @param error
+    *   why the cell couldn't be formatted, if it couldn't
+    */
   final case class Response(
     key: String,
     initial_code: String,
-    code: Option[String] = None
+    code: Option[String] = None,
+    error: Option[String] = None
   )
 
   final case class Reply()

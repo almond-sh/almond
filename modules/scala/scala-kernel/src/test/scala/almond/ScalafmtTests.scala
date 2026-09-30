@@ -13,6 +13,8 @@ import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import utest._
 
+import java.nio.charset.StandardCharsets
+
 import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext
 import almond.protocol.Status
@@ -111,6 +113,23 @@ object ScalafmtTests extends TestSuite {
     "scala3"
   )
 
+  private def formatOne(code: String, conf: String = "{}"): Format.Response = {
+    val request = Format.Request(
+      ListMap("cmd1" -> code),
+      RawJson(conf.getBytes(StandardCharsets.UTF_8))
+    )
+    val processMessages = endsWithFormatReply(messages(scalafmt, request))
+    assert(processMessages.length == 1)
+    val resp = onlyFormatResponses(processMessages).getOrElse(
+      "cmd1",
+      sys.error("No data for key 'cmd1' in response")
+    )
+    assert(resp.initial_code == code)
+    resp
+  }
+
+  val longLine = "val list = List(1, 2, 3, 4, 5, 6)"
+
   val tests = Tests {
 
     test("empty") {
@@ -184,6 +203,40 @@ object ScalafmtTests extends TestSuite {
         sys.error(s"Formatting failed (no formatted code in response for input '$snippet2')")
       }
       assert(formattedCode2 == formattedSnippet2)
+    }
+
+    test("configuration") {
+      val default = formatOne(longLine)
+      assert(default.code == Some(longLine))
+      assert(default.error.isEmpty)
+
+      val narrow = formatOne(longLine, """{"maxColumn": 20}""")
+      assert(narrow.error.isEmpty)
+      val narrowCode = narrow.code.getOrElse(sys.error("Formatting failed"))
+      assert(narrowCode != longLine)
+      assert(narrowCode.linesIterator.forall(_.length <= 20))
+    }
+
+    test("configuration with dotted keys") {
+      val code    = "def f(a: Int) = { a + 1 }"
+      val default = formatOne(code)
+      val nested  = formatOne(code, """{"rewrite": {"rules": ["RedundantBraces"]}}""")
+      val dotted  = formatOne(code, """{"rewrite.rules": ["RedundantBraces"]}""")
+      assert(default.code == Some(code))
+      assert(nested.code == Some("def f(a: Int) = a + 1"))
+      assert(dotted.code == nested.code)
+    }
+
+    test("invalid code") {
+      val resp = formatOne("val broken = (")
+      assert(resp.code.isEmpty)
+      assert(resp.error.exists(_.nonEmpty))
+    }
+
+    test("invalid configuration") {
+      val resp = formatOne(longLine, """{"maxColumn": "nope"}""")
+      assert(resp.code.isEmpty)
+      assert(resp.error.exists(_.contains("maxColumn")))
     }
 
   }
