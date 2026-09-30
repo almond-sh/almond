@@ -193,13 +193,12 @@ object ScalaKernelTests extends TestSuite {
 
       val messageTypes = streams.generatedMessageTypes()
 
+      // no execute_input for the aborted cells
       val expectedMessageTypes = Seq(
         "execute_input",
         "error",
         "execute_reply",
-        "execute_input",
         "execute_reply",
-        "execute_input",
         "execute_reply"
       )
 

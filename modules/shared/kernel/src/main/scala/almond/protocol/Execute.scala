@@ -89,15 +89,19 @@ object Execute {
         )
     }
 
+    // status='aborted' is deprecated since protocol 5.1 (kernels should send status='error'
+    // instead), but it's still what frontends expect for cells cancelled by stop_on_error.
+    // execute_reply messages have an execution_count field regardless of their status.
     final case class Abort private[protocol] (
+      execution_count: Int,
       status: String // no default value here for the value not to be swallowed by the JSON encoder
     ) extends Reply {
-      assert(status == "abort")
+      assert(status == "aborted")
     }
 
     object Abort {
-      def apply(): Abort =
-        Abort("abort")
+      def apply(execution_count: Int): Abort =
+        Abort(execution_count, "aborted")
     }
 
   }
@@ -178,7 +182,7 @@ object Execute {
             successCodec.decodeValue(in, successCodec.nullValue)
           case "error" =>
             errorCodec.decodeValue(in, errorCodec.nullValue)
-          case "abort" =>
+          case "aborted" =>
             abortCodec.decodeValue(in, abortCodec.nullValue)
           case _ =>
             ???
