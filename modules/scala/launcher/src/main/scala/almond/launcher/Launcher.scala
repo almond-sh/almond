@@ -10,7 +10,7 @@ import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, LoggerContext}
-import almond.protocol.{Execute, RawJson}
+import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnection}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -326,23 +326,44 @@ object Launcher extends CaseApp[LauncherOptions] {
     val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
 
+    val registrationOpt = Registration.fromPathIfRegistration(Paths.get(connectionFile))
+      .unsafeRunSync()(kernelThreads.ioRuntime)
+
+    // If we're passed a registration file (kernel startup handshake), we bind random ports and send
+    // them to the registration service ourselves, and pass a regular connection file with those
+    // ports to the actual kernel
+    val kernelConnectionFile = registrationOpt match {
+      case Some(registration) =>
+        val content = writeToArray(JsonConnection.fromParams(registration.connectionParameters))
+        os.temp(
+          content,
+          prefix = "almond-kernel-connection-",
+          suffix = ".json",
+          perms = if (scala.util.Properties.isWin) null else "rw-------"
+        ).toString
+      case None =>
+        connectionFile
+    }
+
     val interpreter = new LauncherInterpreter(
-      connectionFile,
+      kernelConnectionFile,
       options
     )
 
     val (run, conn) =
       Kernel.create(interpreter, interpreterEc, kernelThreads, cancellablesEc, logCtx)
         .flatMap(_.runOnConnectionFileAllowClose(
-          connectionFile,
+          Paths.get(kernelConnectionFile),
           "scala",
           zeromqThreads,
           Nil,
           autoClose = false,
           lingerDuration = Duration.Inf, // unused here
           bindToRandomPorts =
-            if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
-            else None
+            if (registrationOpt.nonEmpty || options.bindToRandomPorts.getOrElse(true))
+              Some(Paths.get(kernelConnectionFile))
+            else None,
+          registrationOpt = registrationOpt
         ))
         .unsafeRunSync()(kernelThreads.ioRuntime)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(kernelThreads.ioRuntime)
@@ -378,7 +399,7 @@ object Launcher extends CaseApp[LauncherOptions] {
         val (launcherParams, kernelParams) =
           interpreter.params.processCustomDirectives(interpreter.kernelOptions)
         val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
-          connectionFile,
+          kernelConnectionFile,
           leftoverMessagesFileOpt,
           interpreter.lineCount,
           options,

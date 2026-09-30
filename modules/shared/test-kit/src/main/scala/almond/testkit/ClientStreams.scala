@@ -198,6 +198,20 @@ final case class ClientStreams(
       .flatten
       .toList
 
+  def clearOutputs: Seq[Boolean] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == Execute.clearOutputType.messageType =>
+          m.decodeAs[Execute.ClearOutput] match {
+            case Left(_)   => Nil
+            case Right(m0) => Seq(m0.content.waitForNewOutput)
+          }
+      }
+      .flatten
+      .toList
+
   def displayDataText: Seq[String] =
     generatedMessages
       .iterator

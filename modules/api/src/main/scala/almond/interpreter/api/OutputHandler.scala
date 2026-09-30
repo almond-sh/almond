@@ -28,6 +28,18 @@ abstract class OutputHandler extends OutputHandler.Helpers with OutputHandler.Up
     */
   def display(displayData: DisplayData): Unit
 
+  /** Clears the output of the current cell in the Jupyter UI
+    *
+    * @param waitForNewOutput
+    *   if true, the output is only cleared once new output is available, which avoids flickering
+    *   when repeatedly clearing and re-displaying things (simple animations, progress messages, …)
+    */
+  def clearOutput(waitForNewOutput: Boolean): Unit
+
+  /** Clears the output of the current cell in the Jupyter UI straightaway */
+  final def clearOutput(): Unit =
+    clearOutput(waitForNewOutput = false)
+
   /** Adds a payload to be sent in the execute reply message
     *
     * This method can be called multiple times. All the passed payloads will be added in the execute
@@ -85,6 +97,8 @@ object OutputHandler {
       unsupported()
     def display(displayData: DisplayData): Unit =
       unsupported()
+    def clearOutput(waitForNewOutput: Boolean): Unit =
+      unsupported()
 
     def updateDisplay(displayData: DisplayData): Unit =
       commHandlerOpt match {
@@ -107,6 +121,8 @@ object OutputHandler {
       underlying.stderr(s)
     def display(displayData: DisplayData): Unit =
       underlying.display(displayData)
+    def clearOutput(waitForNewOutput: Boolean): Unit =
+      underlying.clearOutput(waitForNewOutput)
     def updateDisplay(displayData: DisplayData): Unit =
       underlying.updateDisplay(displayData)
     def canOutput(): Boolean =
@@ -123,6 +139,7 @@ object OutputHandler {
     def stdout(s: String): Unit                       = ()
     def stderr(s: String): Unit                       = ()
     def display(displayData: DisplayData): Unit       = ()
+    def clearOutput(waitForNewOutput: Boolean): Unit  = ()
     def updateDisplay(displayData: DisplayData): Unit = ()
     def canOutput(): Boolean                          = false
 

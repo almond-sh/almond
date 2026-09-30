@@ -41,6 +41,7 @@ if [ "$(uname -s)" = "Linux" ]; then
   known_classes="
 almond.integration.KernelTestsSimple212
 almond.integration.KernelTestsSimple213
+almond.integration.KernelTestsRegistration
 almond.integration.KernelTestsSimple3
 almond.integration.KernelTestsTwoStepStartup
 almond.integration.KernelTestsTwoStepStartup212
@@ -76,7 +77,7 @@ case "$group" in
     ;;
   3)
     tests="almond.integration.KernelTestsTwoStepStartup3.*"
-    $windows || tests="almond.integration.KernelTestsSimple3.* $tests"
+    $windows || tests="almond.integration.KernelTestsSimple3.* almond.integration.KernelTestsRegistration.* $tests"
     ;;
   all)
     if $windows; then

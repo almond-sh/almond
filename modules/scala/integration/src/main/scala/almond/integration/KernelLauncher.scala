@@ -2,7 +2,7 @@ package almond.integration
 
 import almond.channels.zeromq.ZeromqThreads
 import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
-import almond.protocol.{Connection => ConnectionSpec, KernelSpec}
+import almond.protocol.{Connection => ConnectionSpec, KernelSpec, Registration}
 import almond.testkit.Dsl._
 import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
@@ -10,15 +10,18 @@ import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
 import fs2.concurrent.SignallingRef
 import io.github.alexarchambault.testutil.{TestOutput, TestUtil}
-import org.zeromq.ZMQ
+import org.zeromq.{SocketType, ZMQ}
 
 import java.io.{File, IOException}
+import java.nio.charset.StandardCharsets
 import java.nio.channels.ClosedSelectorException
 import java.nio.file.FileSystemException
 import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, ExecutionContext}
@@ -165,6 +168,69 @@ object KernelLauncher {
     }
   }
 
+  /** Pseudo registration service, receiving the connection info of kernels started with a
+    * registration file (kernel startup handshake)
+    */
+  private final class RegistrationService(key: almond.util.Secret[String]) {
+    private val delimiter = "<IDS|MSG>".getBytes(StandardCharsets.UTF_8)
+    private val context   = ZMQ.context(1)
+    private val socket    = context.socket(SocketType.ROUTER)
+    socket.setLinger(1000)
+    private val port = socket.bindToRandomPort("tcp://127.0.0.1")
+
+    val registration: Registration =
+      Registration(
+        kernel_id = UUID.randomUUID().toString,
+        transport = "tcp",
+        registration_ip = "127.0.0.1",
+        registration_port = port,
+        key = key,
+        signature_scheme = Some("hmac-sha256")
+      )
+
+    private def hmac(content: Array[Byte]): Array[Byte] = {
+      val mac = Mac.getInstance("HmacSHA256")
+      mac.init(new SecretKeySpec(key.value.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+      mac.doFinal(content).map(b => f"$b%02x").mkString.getBytes(StandardCharsets.UTF_8)
+    }
+
+    def waitForConnectionInfo(timeout: FiniteDuration): Registration.ConnectionInfo = {
+      socket.setReceiveTimeOut(timeout.toMillis.toInt)
+      val routingId = socket.recv()
+      if (routingId == null)
+        throw new TimeoutException(s"No connection info received from kernel after $timeout")
+      val frames = {
+        val b = Vector.newBuilder[Array[Byte]]
+        while (socket.hasReceiveMore)
+          b += socket.recv()
+        b.result()
+      }
+      frames match {
+        case Seq(delim, signature, content)
+            if java.util.Arrays.equals(delim, delimiter) &&
+            java.util.Arrays.equals(signature, hmac(content)) =>
+          val ack = "ACK".getBytes(StandardCharsets.UTF_8)
+          socket.sendMore(routingId)
+          socket.sendMore(delimiter)
+          socket.sendMore(hmac(ack))
+          socket.send(ack)
+          val info = readFromArray(content)(Registration.ConnectionInfo.codec)
+          assert(
+            info.kernel_id == registration.kernel_id,
+            s"Unexpected kernel id ${info.kernel_id}"
+          )
+          info
+        case _ =>
+          sys.error(s"Malformed or badly signed registration message (${frames.length} frame(s))")
+      }
+    }
+
+    def close(): Unit = {
+      socket.close()
+      context.close()
+    }
+  }
+
   @tailrec
   private def retryPeriodicallyUntil[T](retryUntil: Long, period: Long)(f: => Option[T]): T = {
     val now = System.currentTimeMillis()
@@ -195,6 +261,11 @@ class KernelLauncher(
   def isTwoStepStartup = launcherType.isTwoStepStartup
 
   def kernelBindToRandomPorts: Boolean = true
+
+  /** Whether to pass a registration file rather than a connection file to the kernel (kernel
+    * startup handshake), and get the kernel ports via a pseudo registration service
+    */
+  def kernelUseRegistrationFile: Boolean = false
 
   private def generateLauncher(output: TestOutput, extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
@@ -595,11 +666,20 @@ class KernelLauncher(
         val connFile = dir / "connection.json"
 
         val params =
-          if (kernelBindToRandomPorts) ConnectionParameters.randomZeroPorts()
+          if (kernelBindToRandomPorts || kernelUseRegistrationFile)
+            ConnectionParameters.randomZeroPorts()
           else ConnectionParameters.randomLocal()
-        val connDetails = ConnectionSpec.fromParams(params)
 
-        os.write(connFile, writeToArray(connDetails))
+        val registrationServiceOpt =
+          if (kernelUseRegistrationFile) {
+            val registrationService = new RegistrationService(params.key)
+            os.write(connFile, writeToArray(registrationService.registration)(Registration.codec))
+            Some(registrationService)
+          }
+          else {
+            os.write(connFile, writeToArray(ConnectionSpec.fromParams(params)))
+            None
+          }
         val initialConnFileLastModified = os.mtime(connFile)
         if (kernelBindToRandomPorts)
           // just in case, to be sure the the mtime is newer when the kernel
@@ -639,7 +719,7 @@ class KernelLauncher(
           else zeromqThreads.context
 
         val conn = {
-          val updatedParams =
+          def paramsFromConnectionFile: ConnectionParameters =
             if (kernelBindToRandomPorts) {
               retryPeriodicallyUntil(
                 System.currentTimeMillis() + 2.minutes.toMillis,
@@ -661,9 +741,27 @@ class KernelLauncher(
               }
               params
             }
+          val updatedParams =
+            registrationServiceOpt match {
+              case Some(registrationService) =>
+                try {
+                  val info = registrationService.waitForConnectionInfo(2.minutes)
+                  params.copy(
+                    ip = "127.0.0.1",
+                    stdin_port = info.stdin_port.toInt,
+                    control_port = info.control_port.toInt,
+                    hb_port = info.hb_port.toInt,
+                    shell_port = info.shell_port.toInt,
+                    iopub_port = info.iopub_port.toInt
+                  )
+                }
+                finally registrationService.close()
+              case None =>
+                paramsFromConnectionFile
+            }
 
           val delay =
-            if (kernelBindToRandomPorts)
+            if (kernelBindToRandomPorts || kernelUseRegistrationFile)
               // we already waited for the connection file to be updated, the kernel should already be
               // listening for connections at that time - but allow a generous margin, as a cold
               // kernel JVM handshake can be slow on busy / noisy CI runners
