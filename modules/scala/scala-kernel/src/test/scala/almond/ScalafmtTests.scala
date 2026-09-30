@@ -3,7 +3,7 @@ package almond
 import java.util.concurrent.Executors
 
 import almond.channels.{Channel, Message => RawMessage}
-import almond.interpreter.Message
+import almond.interpreter.{KernelSession, Message}
 import almond.logger.{Level, LoggerContext}
 import almond.protocol.{Header, RawJson}
 import almond.protocol.custom.Format
@@ -110,6 +110,7 @@ object ScalafmtTests extends TestSuite {
     fmtPool,
     queueEc,
     logCtx,
+    KernelSession.create(),
     "scala3"
   )
 

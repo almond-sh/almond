@@ -3,7 +3,7 @@ package almond.interpreter.input
 import java.util.concurrent.ConcurrentHashMap
 
 import almond.channels.{Channel, Message => RawMessage}
-import almond.interpreter.Message
+import almond.interpreter.{KernelSession, Message}
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.logger.LoggerContext
 import almond.protocol.Input
@@ -16,6 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.Success
 
 final class InputHandler(
+  session: KernelSession,
   futureEc: ExecutionContext,
   logCtx: LoggerContext,
   ioRuntime: IORuntime
@@ -50,7 +51,7 @@ final class InputHandler(
           // Sent with the idents of the parent (execute_request) message, so that the stdin
           // ROUTER socket routes it to the client that sent the execute_request
           val request = parentMessage
-            .publish(Input.requestType, Input.Request(prompt, password))
+            .publish(session, Input.requestType, Input.Request(prompt, password))
             .copy(idents = parentMessage.idents)
           // clients send the input_request header back as parent_header of their input_reply
           val id  = request.header.msg_id

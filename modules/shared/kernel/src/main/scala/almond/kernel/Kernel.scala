@@ -1,12 +1,16 @@
 package almond.kernel
 
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
-import java.util.UUID
 
 import almond.channels.zeromq.{ZeromqRegistration, ZeromqThreads}
 import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
-import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterpreter, Message}
+import almond.interpreter.{
+  IOInterpreter,
+  Interpreter,
+  InterpreterToIOInterpreter,
+  KernelSession,
+  Message
+}
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{
@@ -16,7 +20,7 @@ import almond.interpreter.messagehandlers.{
   MessageHandler
 }
 import almond.logger.LoggerContext
-import almond.protocol.{Header, Protocol, Registration, Status, Connection => JsonConnection}
+import almond.protocol.{Registration, Status, Connection => JsonConnection}
 import cats.effect.IO
 import cats.effect.std.Queue
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
@@ -29,6 +33,7 @@ import scala.concurrent.duration.Duration
 
 final case class Kernel(
   interpreter: IOInterpreter,
+  session: KernelSession,
   backgroundMessagesQueue: Queue[IO, (Channel, RawMessage)],
   executeQueue: Queue[IO, Option[(
     Option[(Channel, RawMessage)],
@@ -53,6 +58,7 @@ final case class Kernel(
 
       val interpreterMessageHandler = InterpreterMessageHandlers(
         interpreter,
+        session,
         backgroundCommHandlerOpt,
         Some(inputHandler),
         kernelThreads.queueEc,
@@ -67,7 +73,12 @@ final case class Kernel(
         case None =>
           MessageHandler.empty
         case Some(commHandler) =>
-          CommMessageHandlers(commHandler.commTargetManager, kernelThreads.queueEc, logCtx)
+          CommMessageHandlers(
+            commHandler.commTargetManager,
+            session,
+            kernelThreads.queueEc,
+            logCtx
+          )
             .messageHandler
       }
 
@@ -86,18 +97,7 @@ final case class Kernel(
 
         def sendStatus(status: Status) =
           Stream(
-            Message(
-              Header(
-                msg_id = UUID.randomUUID().toString,
-                username = "username",
-                session =
-                  UUID.randomUUID().toString, // Would there be a way to get the session id from the client?
-                msg_type = Status.messageType.messageType,
-                version = Some(Protocol.versionStr)
-              ),
-              status,
-              idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)
-            ).on(Channel.Publish)
+            Message.publish(session, Status.messageType, status).on(Channel.Publish)
           )
 
         val attemptInit = interpreter.init.attempt.flatMap { a =>
@@ -617,7 +617,8 @@ object Kernel {
     cancellableEc: ExecutionContext,
     logCtx: LoggerContext,
     extraHandler: MessageHandler,
-    noExecuteInputFor: Set[String]
+    noExecuteInputFor: Set[String],
+    session: KernelSession
   ): IO[Kernel] =
     create(
       new InterpreterToIOInterpreter(
@@ -630,7 +631,8 @@ object Kernel {
       kernelThreads,
       logCtx,
       extraHandler,
-      noExecuteInputFor
+      noExecuteInputFor,
+      session
     )
 
   def create(
@@ -647,7 +649,8 @@ object Kernel {
       cancellableEc,
       logCtx,
       MessageHandler.empty,
-      Set.empty
+      Set.empty,
+      KernelSession.create()
     )
 
   def create(
@@ -655,7 +658,8 @@ object Kernel {
     kernelThreads: KernelThreads,
     logCtx: LoggerContext,
     extraHandler: MessageHandler,
-    noExecuteInputFor: Set[String]
+    noExecuteInputFor: Set[String],
+    session: KernelSession
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.unbounded[IO, (Channel, RawMessage)]
@@ -669,6 +673,7 @@ object Kernel {
           Some {
             val h = new DefaultCommHandler(
               backgroundMessagesQueue,
+              session,
               kernelThreads.commEc,
               kernelThreads.ioRuntime
             )
@@ -679,10 +684,11 @@ object Kernel {
           None
       }
       inputHandler <- IO {
-        new InputHandler(kernelThreads.futureEc, logCtx, kernelThreads.ioRuntime)
+        new InputHandler(session, kernelThreads.futureEc, logCtx, kernelThreads.ioRuntime)
       }
     } yield Kernel(
       interpreter,
+      session,
       backgroundMessagesQueue,
       executeQueue,
       otherQueue,

@@ -221,6 +221,14 @@ Add entries to the Help menu (Jupyter classic). Use like
 
 #### `--connection-file`
 
+#### `--username`
+
+Set the user name in the headers of the messages sent by the kernel. Defaults to
+the name of the user running the kernel. Pass it along `--install` to write it in the kernel spec, like
+```bash
+--install --username jupyter
+```
+
 ## Other
 
 #### `--toree-magics`

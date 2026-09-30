@@ -5,7 +5,7 @@ import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHa
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0, blockingWithStatus}
 import almond.interpreter.util.DisplayDataOps._
-import almond.interpreter.{IOInterpreter, IsCompleteResult, Message}
+import almond.interpreter.{IOInterpreter, IsCompleteResult, KernelSession, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
 import almond.protocol.Codecs.unitCodec
@@ -22,6 +22,7 @@ import scala.concurrent.ExecutionContext
 
 final case class InterpreterMessageHandlers(
   interpreter: IOInterpreter,
+  session: KernelSession,
   commHandlerOpt: Option[CommHandler],
   inputHandlerOpt: Option[InputHandler],
   queueEc: ExecutionContext,
@@ -54,6 +55,7 @@ final case class InterpreterMessageHandlers(
     blockingWithStatus(
       Set(Channel.Requests),
       messageType,
+      session,
       queueEc,
       logCtx,
       _ => isExecuting.map(!_)
@@ -62,7 +64,7 @@ final case class InterpreterMessageHandlers(
     }
 
   def executeHandler: MessageHandler =
-    blocking0(Channel.Requests, Execute.requestType, queueEc, logCtx) {
+    blocking0(Channel.Requests, Execute.requestType, session, queueEc, logCtx) {
       (rawMessage, message, queue) =>
         val main = executeMain(rawMessage, message, queue)
         IO(executingCount.incrementAndGet())
@@ -76,7 +78,14 @@ final case class InterpreterMessageHandlers(
   ): IO[Unit] = {
 
     val payloads = new ListBuffer[String]
-    val handler  = new QueueOutputHandler(message, queue, commHandlerOpt, payloads, ioRuntime)
+    val handler = new QueueOutputHandler(
+      message,
+      session,
+      queue,
+      commHandlerOpt,
+      payloads,
+      ioRuntime
+    )
 
     def payloadsAsJson(): List[RawJson] =
       payloads.toList.map { str =>
@@ -112,7 +121,7 @@ final case class InterpreterMessageHandlers(
           IO.unit
         else
           message
-            .publish(Execute.inputType, inputMessage)
+            .publish(session, Execute.inputType, inputMessage)
             .enqueueOn0(Channel.Publish, queue)
       }
       res <- {
@@ -139,7 +148,7 @@ final case class InterpreterMessageHandlers(
             transient = Execute.DisplayData.Transient(v.data.idOpt)
           )
           message
-            .publish(Execute.resultType, result)
+            .publish(session, Execute.resultType, result)
             .enqueueOn0(Channel.Publish, queue)
         case e: ExecuteResult.Error =>
           val extra =
@@ -151,7 +160,7 @@ final case class InterpreterMessageHandlers(
           val error = Execute.Error(e.name, e.message, e.stackTrace)
           extra *>
             message
-              .publish(Execute.errorType, error)
+              .publish(session, Execute.errorType, error)
               .enqueueOn0(Channel.Publish, queue)
         case ExecuteResult.Abort =>
           IO.unit
@@ -188,7 +197,7 @@ final case class InterpreterMessageHandlers(
         respOpt match {
           case Right(resp) =>
             message
-              .reply(Execute.replyType, resp)
+              .reply(session, Execute.replyType, resp)
               .enqueueOn0(Channel.Requests, queue)
           case Left(e) =>
             queue.offer(Left(e))
@@ -210,7 +219,7 @@ final case class InterpreterMessageHandlers(
           res.metadata
         )
         _ <- message
-          .reply(Complete.replyType, reply)
+          .reply(session, Complete.replyType, reply)
           .enqueueOn(Channel.Requests, queue)
       } yield ()
     }
@@ -232,6 +241,7 @@ final case class InterpreterMessageHandlers(
         res <- interpreter.isComplete(message.content.code)
         _ <- message
           .reply(
+            session,
             IsComplete.replyType,
             res.fold(IsComplete.Reply("unknown")) {
               case i: IsCompleteResult.Incomplete => IsComplete.Reply(i.status, Some(i.indent))
@@ -258,7 +268,7 @@ final case class InterpreterMessageHandlers(
           metadata = resOpt.map(_.metadata).getOrElse(Map.empty)
         )
         _ <- message
-          .reply(Inspect.replyType, reply)
+          .reply(session, Inspect.replyType, reply)
           .enqueueOn(Channel.Requests, queue)
       } yield ()
     }
@@ -267,7 +277,7 @@ final case class InterpreterMessageHandlers(
     shellHandler(History.requestType) { (message, queue) =>
       // for now, always sending back an empty response
       message
-        .reply(History.replyType, History.Reply.Simple(Nil))
+        .reply(session, History.replyType, History.Reply.Simple(Nil))
         .enqueueOn(Channel.Requests, queue)
     }
 
@@ -277,6 +287,7 @@ final case class InterpreterMessageHandlers(
     blockingWithStatus(
       Set(Channel.Requests, Channel.Control),
       MessageType[Unit](KernelInfo.requestType.messageType),
+      session,
       queueEc,
       logCtx,
       publishStatus = _ => isExecuting.map(!_)
@@ -285,7 +296,7 @@ final case class InterpreterMessageHandlers(
       for {
         info <- interpreter.kernelInfo
         _ <- message
-          .reply(KernelInfo.replyType, info)
+          .reply(session, KernelInfo.replyType, info)
           .enqueueOn(channel, queue)
       } yield ()
     }
@@ -295,6 +306,7 @@ final case class InterpreterMessageHandlers(
     blockingWithStatus(
       Set(Channel.Control, Channel.Requests),
       Shutdown.requestType,
+      session,
       queueEc,
       logCtx,
       publishStatus = _ => isExecuting.map(!_)
@@ -304,18 +316,18 @@ final case class InterpreterMessageHandlers(
         _ <- exitSignal.set(true)
         _ <- interpreter.shutdown
         _ <- message
-          .reply(Shutdown.replyType, Shutdown.Reply(message.content.restart))
+          .reply(session, Shutdown.replyType, Shutdown.Reply(message.content.restart))
           .enqueueOn(channel, queue)
       } yield ()
     }
 
   def interruptHandler: MessageHandler =
-    blocking(Channel.Control, Interrupt.requestType, queueEc, logCtx) { (message, queue) =>
+    blocking(Channel.Control, Interrupt.requestType, session, queueEc, logCtx) { (message, queue) =>
 
       for {
         _ <- interpreter.interrupt
         _ <- message
-          .reply(Interrupt.replyType, Interrupt.Reply())
+          .reply(session, Interrupt.replyType, Interrupt.Reply())
           .enqueueOn(Channel.Control, queue)
       } yield ()
     }
@@ -344,6 +356,7 @@ object InterpreterMessageHandlers {
 
   private final class QueueOutputHandler(
     message: Message[_],
+    session: KernelSession,
     queue: Queue[IO, Either[Throwable, (Channel, RawMessage)]],
     commHandlerOpt: Option[CommHandler],
     payloads: ListBuffer[String],
@@ -352,7 +365,7 @@ object InterpreterMessageHandlers {
 
     private def print(on: String, s: String): Unit =
       message
-        .publish(Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
+        .publish(session, Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
         .enqueueOn0(Channel.Publish, queue)
         .unsafeRunSync()(ioRuntime)
 
@@ -370,14 +383,14 @@ object InterpreterMessageHandlers {
       )
 
       message
-        .publish(Execute.displayDataType, content)
+        .publish(session, Execute.displayDataType, content)
         .enqueueOn0(Channel.Publish, queue)
         .unsafeRunSync()(ioRuntime)
     }
 
     def clearOutput(waitForNewOutput: Boolean): Unit =
       message
-        .publish(Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
+        .publish(session, Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
         .enqueueOn0(Channel.Publish, queue)
         .unsafeRunSync()(ioRuntime)
 

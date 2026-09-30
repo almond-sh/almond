@@ -6,6 +6,7 @@ import almond.amm.AmmInterpreter
 import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
+import almond.interpreter.KernelSession
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
@@ -233,6 +234,11 @@ object ScalaKernel extends CaseApp[Options] {
 
     initThread.start()
 
+    val session = KernelSession.create(
+      options.kernelSessionId.map(_.trim).filter(_.nonEmpty),
+      options.username.map(_.trim).filter(_.nonEmpty)
+    )
+
     val fmtMessageHandler =
       if (options.scalafmt) {
         // thread shuts down after 1 minute of inactivity, automatically re-spawned
@@ -254,6 +260,7 @@ object ScalaKernel extends CaseApp[Options] {
           fmtPool,
           threads.kernelThreads.queueEc,
           logCtx,
+          session,
           Scalafmt.defaultDialectFor(interpreter.ammInterp.compilerBuilder.scalaVersion)
         )
         scalafmt.messageHandler
@@ -270,7 +277,8 @@ object ScalaKernel extends CaseApp[Options] {
         threads.cancellableEc,
         logCtx,
         fmtMessageHandler,
-        options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet
+        options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet,
+        session
       )
         .flatMap(_.runOnConnectionFile(
           connectionFile,

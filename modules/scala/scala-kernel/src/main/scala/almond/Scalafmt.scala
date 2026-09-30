@@ -5,6 +5,7 @@ import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.ConcurrentHashMap
 
 import almond.channels.Channel
+import almond.interpreter.KernelSession
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.logger.LoggerContext
 import almond.protocol.RawJson
@@ -20,6 +21,7 @@ final class Scalafmt(
   fmtPool: ExecutionContext,
   queueEc: ExecutionContext,
   logCtx: LoggerContext,
+  kernelSession: KernelSession,
   defaultDialect: String,
   defaultVersion: String = almond.api.Properties.defaultScalafmtVersion().getOrElse("3.7.15")
 ) {
@@ -112,12 +114,13 @@ final class Scalafmt(
       rawResult.stripSuffix("\n")
 
   def messageHandler: MessageHandler =
-    MessageHandler.blocking(Channel.Requests, Format.requestType, queueEc, logCtx) {
+    MessageHandler.blocking(Channel.Requests, Format.requestType, kernelSession, queueEc, logCtx) {
       (msg, queue) =>
         log.info(s"format message: $msg")
         def response(key: String, code: String, formatted: Either[String, String]) =
           msg
             .publish(
+              kernelSession,
               Format.responseType,
               Format.Response(
                 key = key,
@@ -152,7 +155,7 @@ final class Scalafmt(
         val sendReply = {
           val reply = Format.Reply()
           msg
-            .reply(Format.replyType, reply)
+            .reply(kernelSession, Format.replyType, reply)
             .enqueueOn(Channel.Requests, queue)
         }
         for {
