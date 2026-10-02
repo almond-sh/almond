@@ -920,6 +920,50 @@ object dev extends Module {
       .map(PathRef(_))
   }
 
+  /** The sources of the almond-scalafmt JupyterLab extension, if the `ALMOND_SCALAFMT_EXTENSION`
+    * environment variable points at them: their directory, and the source files in it. If the
+    * directory it points at doesn't exist, it's ignored, with a warning.
+    */
+  def scalafmtExtensionSources = Task.Input {
+    Task.env.get(LabExtension.scalafmtEnvVar)
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map(os.Path(_, BuildCtx.workspaceRoot))
+      .filter { dir =>
+        val exists = os.isDir(dir)
+        if (!exists)
+          System.err.println(
+            s"Warning: ${LabExtension.scalafmtEnvVar} points at " +
+              s"${PathRef.toResolvedPathString(dir)}, which doesn't exist, ignoring it"
+          )
+        exists
+      }
+      .map { dir =>
+        (PathRef.toResolvedPathString(dir), LabExtension.sources(dir).map(PathRef(_)))
+      }
+  }
+
+  /** The almond-scalafmt JupyterLab extension, built from the sources `ALMOND_SCALAFMT_EXTENSION`
+    * points at, if it's set. The dev.jupyter* commands starting JupyterLab enable it.
+    *
+    * Persistent, so that the dependencies of the extension stay around across builds.
+    */
+  def scalafmtExtension = Task(persistent = true) {
+    scalafmtExtensionSources().map { case (dir, sources) =>
+      val output = LabExtension.build(
+        JupyterServer.uvRunCommand(
+          UvLauncher.uv(Versions.uv),
+          BuildCtx.workspaceRoot,
+          JupyterServer.labGroups
+        ),
+        os.Path(dir),
+        sources.map(_.path),
+        Task.dest
+      )
+      PathRef(output)
+    }
+  }
+
   private def specialLauncher(fast: Boolean) =
     if (fast) scala.launcher.fastLauncher
     else scala.launcher.launcher
@@ -963,7 +1007,8 @@ object dev extends Module {
         BuildCtx.workspaceRoot,
         scala.`scala-kernel`(ScalaVersions.binary(scalaVersions.head)).publishVersion(),
         `local-repo`.localRepo().path,
-        acpAgents().map(_.path)
+        acpAgents().map(_.path),
+        scalafmtExtension().map(_.path).toSeq
       )
     }
   }
@@ -987,7 +1032,8 @@ object dev extends Module {
         BuildCtx.workspaceRoot,
         scala.`scala-kernel`(ScalaVersions.binary(scalaVersions.head)).publishVersion(),
         `local-repo`.localRepo().path,
-        acpAgents().map(_.path)
+        acpAgents().map(_.path),
+        scalafmtExtension().map(_.path).toSeq
       )
       cmd.shellCommand
     }

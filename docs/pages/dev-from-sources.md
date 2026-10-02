@@ -115,6 +115,30 @@ connections coming through it, and trusts the `X-Forwarded-*` headers set by the
 proxy. Other options (like `--no-browser` above, or `--port=…` to pick the local
 port the proxy forwards to) are passed to JupyterLab as is.
 
+### Use the scalafmt extension from its sources
+
+To work on [almond-scalafmt](https://github.com/almond-sh/almond-scalafmt), the
+JupyterLab extension formatting cells with scalafmt, point the `ALMOND_SCALAFMT_EXTENSION`
+environment variable at its sources (an absolute path, or a path relative to the almond
+sources):
+```text
+$ git clone https://github.com/almond-sh/almond-scalafmt.git work/almond-scalafmt
+$ ALMOND_SCALAFMT_EXTENSION=work/almond-scalafmt ./mill -i dev.jupyterFast
+```
+`dev.jupyter`, `dev.jupyterFast`, `dev.jupyterCmd`, and `dev.jupyterCmdFast` then build
+the extension, and enable it in JupyterLab and in the Jupyter Notebook UI. The extension
+needs to be a JupyterLab 4 prebuilt extension (with a `jupyterlab.outputDir` field in its
+`package.json`), and building it requires Node.js on the `PATH`. Its sources are copied
+under `out/dev/scalafmtExtension.dest` and built there, with the `jlpm` command of the
+Python environment of JupyterLab (nothing gets written to the extension sources). If
+the directory `ALMOND_SCALAFMT_EXTENSION` points at doesn't exist, the commands print a
+warning and run without the extension.
+
+After changing the extension sources, run the command again: it rebuilds the extension
+(keeping its dependencies around, so that this only takes a few seconds), and
+`dev.jupyter` / `dev.jupyterFast` restart JupyterLab with it. Reload JupyterLab from your
+browser to pick it up.
+
 ## Get the command to run JupyterLab yourself
 
 ```text
