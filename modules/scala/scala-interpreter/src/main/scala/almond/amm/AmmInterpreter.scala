@@ -66,6 +66,7 @@ object AmmInterpreter {
     jupyterApi: JupyterApiImpl,
     predefCode: String,
     predefFiles: Seq[Path],
+    dependencies: Seq[dependency.AnyDependency],
     frames0: Ref[List[Frame]],
     codeWrapper: CodeWrapper,
     extraRepos: Seq[String],
@@ -289,6 +290,18 @@ object AmmInterpreter {
           )
         }
 
+      if (dependencies.nonEmpty) {
+        log.debug("Loading upfront dependencies")
+        val deps = Execute.toCoursierDependencies(ammInterp0.scalaVersion, dependencies)
+        ammInterp0.loadIvy(deps: _*) match {
+          case Left(err) =>
+            throw new DependencyLoadingException(err)
+          case Right(loaded) =>
+            if (loaded.nonEmpty)
+              ammInterp0.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+        }
+      }
+
       log.debug("Initializing interpreter predef")
 
       val imports = ammonite.main.Defaults.replImports ++
@@ -331,6 +344,9 @@ object AmmInterpreter {
       else
         s"Caught exception while running predef: $msg"
   }
+
+  final class DependencyLoadingException(msg: String)
+      extends Exception(s"Error loading upfront dependencies: $msg")
 
   def defaultPkgName: Seq[String] =
     ammonite.interp.Interpreter.Parameters().pkgName.map(_.raw)

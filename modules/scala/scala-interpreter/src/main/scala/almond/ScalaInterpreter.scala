@@ -136,6 +136,7 @@ final class ScalaInterpreter(
       jupyterApi,
       params.predefCode,
       params.predefFiles,
+      params.dependencies,
       frames0,
       params.codeWrapper,
       params.extraRepos,
