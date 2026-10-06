@@ -24,8 +24,10 @@ $ npm install --package-lock-only --save-exact @agentclientprotocol/claude-agent
 from `acp-agents`.
 
 `jupyterlab-overrides.json` changes the defaults of some JupyterLab settings (theme,
-indentation, …). The dev.jupyter* commands copy it to the `overrides.d` directory of the
-JupyterLab application settings, in the uv-managed environment.
+indentation, completions shown while typing, …). The dev.jupyter* commands copy it to the
+`overrides.d` directory of the JupyterLab application settings, in the uv-managed
+environment, and the `Dockerfile` at the root of the repository copies it to the same
+place in the Docker images.
 
 To update the pinned Python versions, run
 ```text

@@ -23,6 +23,9 @@ $ docker run -it --rm -p 8888:8888 almondsh/almond:@LATEST_RELEASE@-scala-@SCALA
 See [here](install-versions.md) for the compatible Almond versions / Scala
 versions.
 
+JupyterLab in these images shows [completions while typing](usage-completion.md),
+follows the system theme, and indents with 2 spaces by default.
+
 ## Memory
 
 The kernels of the Docker images don't set a maximum heap size, so the JVM defaults to a quarter of

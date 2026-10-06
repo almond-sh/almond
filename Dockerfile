@@ -41,3 +41,9 @@ COPY scripts/install-kernels.sh .
 RUN ./install-kernels.sh && \
     rm install-kernels.sh && \
     rm -rf .ivy2
+
+# Default JupyterLab settings (completions shown while typing, 2-space indentation, …),
+# the same ones as the dev.jupyter* Mill commands use. Settings changed by users still take precedence.
+COPY --chown=1000:100 examples/jupyterlab-overrides.json jupyterlab-overrides.json
+RUN mkdir -p "${CONDA_DIR}/share/jupyter/lab/settings/overrides.d" && \
+    mv jupyterlab-overrides.json "${CONDA_DIR}/share/jupyter/lab/settings/overrides.d/almond.json"
