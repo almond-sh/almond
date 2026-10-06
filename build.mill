@@ -676,6 +676,7 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.local-repo=${RealPath.string(`local-repo`.localRepo().path)}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${CsLauncher.cs(Deps.csVersion)}",
+        s"-Dalmond.test.scala-cli-version=${Deps.scalaCliVersion}",
         s"-Dalmond.test.launcher-main-class=${scala.launcher.finalMainClass()}",
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",

@@ -480,10 +480,15 @@ object Tests {
     new File(javaHome, "bin/java" + ext).toString
   }
 
+  lazy val scalaCliVersion: String = sys.props.getOrElse(
+    "almond.test.scala-cli-version",
+    sys.error("almond.test.scala-cli-version Java property not set")
+  )
+
   lazy val scalaCliLauncher: File =
     coursierapi.Cache.create()
       .get(coursierapi.Artifact.of(
-        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.1/scala-cli"
+        s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliVersion/scala-cli"
       ))
 
   def toreeAddJarCustomProtocol(scalaVersion: String)(implicit
@@ -531,7 +536,7 @@ object Tests {
       "compile",
       "--server=false",
       "--print-class-path",
-      // Scala CLI 1.0.1 targets the JVM it runs on by default, and can't post-process
+      // Scala CLI targets the JVM it runs on by default, and older versions can't post-process
       // the class files it gets with recent JVMs (like Java 25)
       "--scalac-option=-release:17",
       "."
