@@ -112,4 +112,42 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
+  test0("Max heap from environment") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession("--env", "JDK_JAVA_OPTIONS=-Xmx768m") { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |val maxHeapArgs = java.lang.management.ManagementFactory.getRuntimeMXBean
+             |  .getInputArguments
+             |  .toArray
+             |  .toList
+             |  .filter(_.toString.startsWith("-Xmx"))""".stripMargin,
+          """maxHeapArgs: List[Object] = List("-Xmx768m")"""
+        )
+      }
+    }
+  }
+
+  test0("Java options from JAVA_OPTS") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession("--env", "JAVA_OPTS=-Xmx640m -Dfoo=from-env") { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |val foo = sys.props("foo")""".stripMargin,
+          """foo: String = "from-env""""
+        )
+        execute(
+          """val maxHeapArgs = java.lang.management.ManagementFactory.getRuntimeMXBean
+            |  .getInputArguments
+            |  .toArray
+            |  .toList
+            |  .filter(_.toString.startsWith("-Xmx"))""".stripMargin,
+          """maxHeapArgs: List[Object] = List("-Xmx640m")"""
+        )
+      }
+    }
+  }
+
 }
