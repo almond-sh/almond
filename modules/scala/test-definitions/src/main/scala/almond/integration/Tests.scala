@@ -531,6 +531,9 @@ object Tests {
       "compile",
       "--server=false",
       "--print-class-path",
+      // Scala CLI 1.0.1 targets the JVM it runs on by default, and can't post-process
+      // the class files it gets with recent JVMs (like Java 25)
+      "--scalac-option=-release:17",
       "."
     )
       .call(
