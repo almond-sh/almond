@@ -2,9 +2,11 @@ package almond.channels.zeromq
 
 import java.net.URI
 import java.nio.channels.{
+  CancelledKeyException,
   ClosedByInterruptException,
   ClosedChannelException,
   ClosedSelectorException,
+  SelectionKey,
   Selector
 }
 import java.nio.ByteBuffer
@@ -19,12 +21,12 @@ import cats.Parallel
 import cats.effect.IO
 import cats.syntax.apply._
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
-import org.zeromq.{SocketType, ZMQ, ZMQException}
-import org.zeromq.ZMQ.{PollItem, Poller}
+import org.zeromq.{SocketType, ZMQException}
 import zmq.ZError
 
 import scala.concurrent.Promise
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
+import scala.jdk.CollectionConverters._
 
 final class ZeromqConnection(
   params: ConnectionParameters,
@@ -235,15 +237,6 @@ final class ZeromqConnection(
   @volatile private var selectorOpt = Option.empty[Selector]
   private var actualParams          = params
 
-  private def withSelector[T](f: Selector => T): Option[T] =
-    selectorOpt match {
-      case Some(selector) =>
-        Some(f(selector))
-      case None =>
-        log.debug("Connection not opened")
-        None
-    }
-
   val open: IO[Map[Option[Channel], Int]] = {
 
     val log0 = IO(log.debug(s"Opening channels for $params"))
@@ -301,50 +294,118 @@ final class ZeromqConnection(
 
     val log0 = IO(log.debug(s"Sending message on $actualParams from $channel"))
 
-    log0 *> channelSocket0(channel).send(message)
+    // Sending processes the commands pending for the socket, possibly consuming the one that
+    // made its file descriptor readable, and that tryRead might be waiting for. So we wake
+    // tryRead up if input is pending after sending.
+    val sendAndMaybeWakeUpPolling = channelSocket0(channel).sendAndCheckInput(message).flatMap {
+      pendingInput =>
+        IO {
+          if (pendingInput)
+            selectorOpt.foreach(_.wakeup())
+        }
+    }
+
+    log0 *> sendAndMaybeWakeUpPolling
+  }
+
+  /** Waits for the file descriptors of the passed sockets to be readable, for at most timeout */
+  private def waitForCommands(
+    selector: Selector,
+    sockets: Seq[ZeromqSocket],
+    timeout: Duration
+  ): Unit = {
+    val fds = sockets.map(_.fd).toSet
+    // don't get woken up by the sockets we're not polling this time
+    for (key <- selector.keys().asScala if key.isValid && !fds(key.channel()))
+      key.interestOps(0)
+    for (fd <- fds)
+      Option(fd.keyFor(selector)) match {
+        case Some(key) =>
+          if (key.interestOps() != SelectionKey.OP_READ)
+            key.interestOps(SelectionKey.OP_READ)
+        case None =>
+          fd.register(selector, SelectionKey.OP_READ)
+      }
+    timeout match {
+      case d: FiniteDuration if d <= Duration.Zero => selector.selectNow()
+      case d: FiniteDuration                       => selector.select(math.max(1L, d.toMillis))
+      case _                                       => selector.select()
+    }
+    selector.selectedKeys().clear()
   }
 
   def tryRead(
     channels: Seq[Channel],
     pollingDelay: Duration
-  ): IO[Option[Either[Unit, (Channel, Message)]]] =
-    IO {
+  ): IO[Option[Either[Unit, (Channel, Message)]]] = {
 
-      // log.debug(s"Trying to read on $actualParams from $channels") // un-comment if you're, like, really debugging hard
+    // log.debug(s"Trying to read on $actualParams from $channels") // un-comment if you're, like, really debugging hard
 
-      val pollItems = channels
-        .map { channel =>
-          val socket = channelSocket0(channel)
-          (channel, new PollItem(socket.channel, Poller.POLLIN))
-        }
+    // We don't use ZMQ.poll here, as it makes the sockets process their pending commands, while
+    // JeroMQ sockets aren't thread-safe, and other threads use them to send messages (see
+    // https://github.com/almond-sh/almond/issues/549). Instead, we wait for the socket file
+    // descriptors to be readable on the polling thread, and check for input on the thread of
+    // each socket.
 
-      val closedOpt = withSelector { selector =>
-        try {
-          ZMQ.poll(selector, pollItems.map(_._2).toArray, pollingDelay.toMillis)
-          false
-        }
-        catch {
-          case _: ClosedSelectorException                                               => true
-          case _: ClosedChannelException                                                => true
-          case e: ZError.IOException if e.getCause.isInstanceOf[ClosedChannelException] => true
-        }
+    val sockets = channels.toList.map(channel => (channel, channelSocket0(channel)))
+
+    // checking all sockets, so that they all process their pending commands, and their file
+    // descriptors don't stay readable
+    val readableChannel: IO[Option[Channel]] =
+      Parallel.parTraverse(sockets) {
+        case (channel, socket) =>
+          socket.hasPendingInput.map((channel, _))
+      }.map(_.collectFirst { case (channel, true) => channel })
+
+    // file descriptors can also become readable because of commands not related to input
+    // (new peers, …), so we keep waiting until the deadline if no input is pending
+    def waitForInput(selector: Selector, deadlineOpt: Option[Deadline]): IO[Option[Channel]] =
+      readableChannel.flatMap {
+        case None =>
+          val timeLeft = deadlineOpt.fold[Duration](Duration.Inf)(_.timeLeft)
+          if (timeLeft <= Duration.Zero) IO.pure(None)
+          else
+            IO(waitForCommands(selector, sockets.map(_._2), timeLeft))
+              .evalOn(threads.pollingEces) *>
+              waitForInput(selector, deadlineOpt)
+        case readableOpt =>
+          IO.pure(readableOpt)
       }
 
-      if (closedOpt.getOrElse(true))
-        IO.pure(Some(Left(())))
-      else
-        pollItems
-          .collectFirst {
-            case (Channel.Publish, pi) if bind && pi.isReadable =>
+    val closed: PartialFunction[Throwable, Either[Unit, Option[Channel]]] = {
+      case _: ClosedSelectorException                                               => Left(())
+      case _: ClosedChannelException                                                => Left(())
+      case e: ZError.IOException if e.getCause.isInstanceOf[ClosedChannelException] => Left(())
+      // keys get cancelled when sockets get closed
+      case _: CancelledKeyException => Left(())
+    }
+
+    IO(selectorOpt).flatMap {
+      case None =>
+        IO(log.debug("Connection not opened")).as(Some(Left(())))
+      case Some(selector) =>
+        val deadlineOpt = pollingDelay match {
+          case d: FiniteDuration => Some(d.fromNow)
+          case _                 => None
+        }
+        waitForInput(selector, deadlineOpt)
+          .map[Either[Unit, Option[Channel]]](Right(_))
+          .recover(closed)
+          .flatMap {
+            case Left(()) =>
+              IO.pure(Some(Left(())))
+            case Right(None) =>
+              IO.pure(None)
+            case Right(Some(Channel.Publish)) if bind =>
               // the only things we can read on our XPUB socket are subscription events
               handleSubscriptionEvent.as(Option.empty[Either[Unit, (Channel, Message)]])
-            case (channel, pi) if pi.isReadable =>
+            case Right(Some(channel)) =>
               channelSocket0(channel)
                 .read
                 .map(_.map(msg => Right((channel, msg))))
           }
-          .getOrElse(IO.pure(None))
-    }.evalOn(threads.pollingEces).flatMap(identity)
+    }
+  }
 
   def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
 

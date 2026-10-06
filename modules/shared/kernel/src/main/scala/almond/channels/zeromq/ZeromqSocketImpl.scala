@@ -12,6 +12,7 @@ import javax.crypto.spec.SecretKeySpec
 import org.zeromq.{SocketType, ZMQ}
 
 import java.net.URI
+import java.nio.channels.{ClosedChannelException, SelectableChannel}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -104,6 +105,14 @@ final class ZeromqSocketImpl(
     // an iopub_welcome message each time a client subscribes
     channel.setXpubVerbose(true)
 
+  // JeroMQ sockets aren't thread-safe, so channel is only used from ec (that should be
+  // single-threaded) from here on. Having the publish socket accessed concurrently by
+  // several threads could corrupt its internal state, see
+  // https://github.com/almond-sh/almond/issues/549.
+
+  // Only reads a field of the socket, that doesn't change after its creation
+  val fd: SelectableChannel = channel.getFD
+
   @volatile private var opened = false
   @volatile private var closed = false
 
@@ -183,6 +192,12 @@ final class ZeromqSocketImpl(
     }
 
   def send(message: Message): IO[Unit] =
+    send0(message, checkInput = false).void
+
+  def sendAndCheckInput(message: Message): IO[Boolean] =
+    send0(message, checkInput = true)
+
+  private def send0(message: Message, checkInput: Boolean): IO[Boolean] =
     delayedCondition(!closed && opened, "Channel is not opened in send")(
       IO {
 
@@ -220,7 +235,7 @@ final class ZeromqSocketImpl(
         for ((buf, idx) <- message.buffers.iterator.zipWithIndex)
           channel.send(buf, if (idx == lastBufferIdx) 0 else ZMQ.SNDMORE)
 
-        ()
+        checkInput && hasPendingInput0()
       }.evalOn(ec)
     )
 
@@ -313,6 +328,17 @@ final class ZeromqSocketImpl(
       }
     }.evalOn(ec)
   )
+
+  private def hasPendingInput0(): Boolean = {
+    if (closed)
+      throw new ClosedChannelException
+    // getEvents returns -1 if the context is being terminated
+    val events = channel.getEvents
+    events >= 0 && (events & ZMQ.Poller.POLLIN) != 0
+  }
+
+  val hasPendingInput: IO[Boolean] =
+    IO(hasPendingInput0()).evalOn(ec)
 
   def close(lingerDuration: Duration): IO[Unit] = {
 

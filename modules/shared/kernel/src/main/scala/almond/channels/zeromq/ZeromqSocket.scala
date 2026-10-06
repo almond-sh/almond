@@ -6,6 +6,8 @@ import almond.util.Secret
 import cats.effect.IO
 import org.zeromq.{SocketType, ZMQ}
 
+import java.nio.channels.SelectableChannel
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
@@ -24,8 +26,37 @@ trait ZeromqSocket {
     */
   def readSubscriptionEvent: IO[Option[ZeromqSocket.SubscriptionEvent]]
   def send(message: Message): IO[Unit]
+
+  /** Sends a message, then checks whether input is pending, like [[hasPendingInput]] does
+    *
+    * Sending makes the socket process its pending commands, which may make its file descriptor (see
+    * [[fd]]) non-readable while input is pending.
+    */
+  def sendAndCheckInput(message: Message): IO[Boolean]
+
   def close(lingerDuration: Duration): IO[Unit]
 
+  /** Whether a message (or a subscription event, for XPUB sockets) can be read
+    *
+    * This processes the commands pending for the socket, which may make its file descriptor (see
+    * [[fd]]) non-readable.
+    *
+    * Fails with a [[java.nio.channels.ClosedChannelException]] if the socket is closed.
+    */
+  def hasPendingInput: IO[Boolean]
+
+  /** File descriptor that becomes readable when commands are pending for the socket (ZMQ_FD)
+    *
+    * Readiness of this file descriptor doesn't mean a message can be read, use [[hasPendingInput]]
+    * to check that. It can be waited for from any thread.
+    */
+  def fd: SelectableChannel
+
+  /** Underlying JeroMQ socket
+    *
+    * JeroMQ sockets aren't thread-safe, so this should only be used from the [[ExecutionContext]]
+    * that this [[ZeromqSocket]] runs its I/O operations on.
+    */
   def channel: ZMQ.Socket
 }
 
