@@ -1,6 +1,6 @@
 package almond.internals
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.{Files, Path, Paths}
 
 import almond.interpreter._
 import almond.interpreter.api.DisplayData
@@ -19,7 +19,7 @@ import scala.meta.pc.reports.EmptyReportContext
 import java.io.File
 import java.net.URI
 import java.util.Optional
-import java.util.zip.ZipFile
+import java.util.zip.{ZipException, ZipFile}
 
 import scala.collection.compat._
 import scala.collection.mutable
@@ -102,14 +102,20 @@ final class ScalaInterpreterInspections(
           new scala.reflect.internal.util.OffsetPosition(currentFile, index),
           r0
         )
-        r0.get.swap match {
+        val treeOrError = r0.get.swap.flatMap { tree =>
+          ScalaInterpreterInspections.inspectedTree(pressy)(tree).get.swap
+        }
+        treeOrError match {
           case Left(e) =>
             log.debug(
               s"Getting type info for '${code.take(pos)}|${code.drop(pos)}' via presentation compiler",
               e
             )
             None
-          case Right(tree) =>
+          case Right(None) =>
+            log.debug(s"Erroneous tree for '${code.take(pos)}|${code.drop(pos)}'")
+            None
+          case Right(Some(tree)) =>
             val typeStr = ScalaInterpreterInspections.typeOfTree(pressy)(tree)
               .get
               .fold(
@@ -220,6 +226,27 @@ final class ScalaInterpreterInspections(
 
 object ScalaInterpreterInspections {
 
+  // Picks the tree to inspect out of the one askTypeAt returned, on the PC thread, as
+  // checking for errors reads types. When the cursor sits right after a '.', like in
+  // "1.|", the parser yields a selection of an erroneous name, which types as <error>.
+  // We inspect its qualifier instead, like IPython does in such cases. None is returned
+  // if the tree is still erroneous, so that we don't report "<error>" as a type.
+  private def inspectedTree(c: Interactive)(t: c.Tree): c.Response[Option[c.Tree]] =
+    c.askForResponse { () =>
+      import c._
+
+      def isErroneous(tree: Tree): Boolean =
+        tree.isErroneous || (tree.symbol ne null) && tree.symbol.isError
+
+      val tree = t match {
+        case s: Select if isErroneous(s) && !isErroneous(s.qualifier) => s.qualifier
+        case other                                                    => other
+      }
+
+      if (isErroneous(tree)) None
+      else Some(tree)
+    }
+
   // from https://github.com/scalameta/metals/blob/cec8b98cba23110d5b2919d9879c78d3b0146ab2/metaserver/src/main/scala/scala/meta/languageserver/providers/HoverProvider.scala#L34-L51
   // (via https://github.com/almond-sh/almond/pull/235#discussion_r222696661)
   private def typeOfTree(c: Interactive)(t: c.Tree): c.Response[Option[String]] =
@@ -264,7 +291,7 @@ object ScalaInterpreterInspections {
           Paths.get(p.toURI)
       }
 
-    sourcePathFromJars(sessionJars) ++ baseSourcepath
+    sourcePathFromJars(sessionJars, log) ++ baseSourcepath
   }
 
   private def baseSourcePath(loader: ClassLoader, log: Logger): Seq[Path] = {
@@ -322,10 +349,14 @@ object ScalaInterpreterInspections {
     val checkForSources =
       baseJars.exists(_.getFileName.toString.endsWith(".jar")) &&
       !baseJars.exists(_.getFileName.toString.endsWith("-sources.jar"))
-    sourcePathFromJars(baseJars, checkForSources = checkForSources)
+    sourcePathFromJars(baseJars, log, checkForSources = checkForSources)
   }
 
-  private def sourcePathFromJars(jars: Seq[Path], checkForSources: Boolean = false): Seq[Path] = {
+  private def sourcePathFromJars(
+    jars: Seq[Path],
+    log: Logger,
+    checkForSources: Boolean = false
+  ): Seq[Path] = {
 
     val sources = new mutable.ListBuffer[Path]
 
@@ -334,28 +365,38 @@ object ScalaInterpreterInspections {
       if (name.endsWith("-sources.jar"))
         sources += jar
       else if (name.endsWith(".jar")) {
-        if (checkForSources) {
-          val foundSources = {
-            var zf: ZipFile = null
-            try {
-              zf = new ZipFile(jar.toFile)
-              zf.entries().asScala.exists { ent =>
-                val name = ent.getName
-                name.endsWith(".scala") || name.endsWith(".java")
-              }
-            }
-            finally
-              if (zf != null)
-                zf.close()
-          }
-          if (foundSources)
-            sources += jar
-        }
+        if (checkForSources && containsSources(jar, log))
+          sources += jar
       }
-      else
+      // Files that aren't JARs, like the launcher in the class path when the kernel is
+      // started via a coursier bootstrap, are only indexed if they contain sources. Indexing
+      // anything else makes mtags print stack traces for each of its entries.
+      else if (Files.isDirectory(jar) || containsSources(jar, log))
         sources += jar
     }
 
     sources.toList
+  }
+
+  private def containsSources(jar: Path, log: Logger): Boolean = {
+    var zf: ZipFile = null
+    try {
+      zf = new ZipFile(jar.toFile)
+      zf.entries().asScala.exists { ent =>
+        val name = ent.getName
+        name.endsWith(".scala") || name.endsWith(".java")
+      }
+    }
+    catch {
+      case e: ZipException =>
+        log.warn(
+          s"Ignoring $jar when looking for sources, as it could not be read as a ZIP file",
+          e
+        )
+        false
+    }
+    finally
+      if (zf != null)
+        zf.close()
   }
 }
