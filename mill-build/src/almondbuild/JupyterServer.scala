@@ -68,7 +68,7 @@ object JupyterServer {
   ): Seq[String] =
     uvRunCommand(uv, workspace, groups) ++ Seq("jupyter") ++ jupyterArgs
 
-  private def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
+  def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
     Seq(
       PathRef.toResolvedPathString(uv),
       "run",
@@ -107,7 +107,7 @@ object JupyterServer {
   /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
     * (the variable inspector, …), and Jupyter AI
     */
-  private def labGroups = Seq("lab", "ai")
+  def labGroups = Seq("lab", "ai")
 
   def writeKernelJson(
     launcher: os.Path,
@@ -416,6 +416,9 @@ object JupyterServer {
     *
     * @param launchers
     *   the kernel launchers to register, along with the full Scala version each of them runs
+    * @param labExtensions
+    *   JupyterLab extensions built from sources to enable, on top of the ones of the Python
+    *   environment (see [[LabExtension]])
     */
   def jupyterLabCommand(
     uv: os.Path,
@@ -427,7 +430,8 @@ object JupyterServer {
     workspace: os.Path,
     publishVersion: String,
     localRepoRoot: os.Path,
-    acpAgentsBin: Option[os.Path]
+    acpAgentsBin: Option[os.Path],
+    labExtensions: Seq[os.Path]
   ): Command = {
 
     writeKernelJsons(
@@ -441,6 +445,7 @@ object JupyterServer {
     )
 
     writeSettingsOverrides(uv, workspace, labGroups)
+    LabExtension.install(labExtensions, jupyterDir)
 
     os.makeDir.all(workspace / "notebooks")
     val (baseAddressOpt, args0) = extractBaseAddress(args)
@@ -462,6 +467,8 @@ object JupyterServer {
     *
     * @param launchers
     *   the kernel launchers to register, along with the full Scala version each of them runs
+    * @param labExtensions
+    *   JupyterLab extensions built from sources to enable (see [[LabExtension]])
     */
   def jupyterServer(
     uv: os.Path,
@@ -475,7 +482,8 @@ object JupyterServer {
     workspace: os.Path,
     publishVersion: String,
     localRepoRoot: os.Path,
-    acpAgentsBin: Option[os.Path]
+    acpAgentsBin: Option[os.Path],
+    labExtensions: Seq[os.Path]
   ): Seq[os.Path] = {
     val cmd = jupyterLabCommand(
       uv,
@@ -487,7 +495,8 @@ object JupyterServer {
       workspace,
       publishVersion,
       localRepoRoot,
-      acpAgentsBin
+      acpAgentsBin,
+      labExtensions
     )
     System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
     startBackground(
