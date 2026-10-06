@@ -169,6 +169,18 @@ added by default.) Use like
 --extra-repository sonatype:staging
 ```
 
+#### `--dependency`
+
+Add dependencies to the class path of user code when a kernel starts, before predef code
+and cells are run. Accepts the same dependency syntax as `//> using dep` directives,
+can be repeated, and is also available as `--dep`. Use like
+```bash
+--dependency org.typelevel::cats-core:2.12.0
+--dep com.lihaoyi::os-lib:0.11.4
+```
+Dependencies are resolved with the repositories passed via `--extra-repository`.
+The kernel fails to start if they can't be resolved.
+
 #### `--auto-dependency`
 
 #### `--force-property`

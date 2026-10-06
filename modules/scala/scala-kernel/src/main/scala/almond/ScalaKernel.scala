@@ -110,6 +110,7 @@ object ScalaKernel extends CaseApp[Options] {
     val mavenProfiles    = options.mavenProfiles()
     val extraLinks       = options.extraLinks()
     val predefFiles      = options.predefFiles()
+    val dependencies     = options.dependencies()
 
     val initialColors =
       if (options.color) ammonite.util.Colors.Default
@@ -158,6 +159,7 @@ object ScalaKernel extends CaseApp[Options] {
         extraLinks = extraLinks,
         predefCode = options.predefCode,
         predefFiles = predefFiles,
+        dependencies = dependencies,
         automaticDependencies = autoDependencies,
         automaticVersions = autoVersions,
         forceMavenProperties = forceProperties,

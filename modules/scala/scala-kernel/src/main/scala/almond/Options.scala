@@ -14,7 +14,7 @@ import caseapp.core.Scala3Helpers._
 import caseapp.core.help.Help
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
-import dependency.ScalaParameters
+import dependency.{AnyDependency, ScalaParameters}
 import dependency.api.ops._
 import dependency.parser.{DependencyParser, ModuleParser}
 
@@ -32,6 +32,9 @@ final case class Options(
   link: List[String] = Nil,
   predefCode: String = "",
   predef: List[String] = Nil,
+  @HelpMessage("Dependency to add to the user class path before running any user code, like org::name:version (can be repeated)")
+  @ExtraName("dep")
+    dependency: List[String] = Nil,
   autoDependency: List[String] = Nil,
   autoVersion: List[String] = Nil,
   defaultAutoDependencies: Boolean = true,
@@ -182,7 +185,7 @@ final case class Options(
     * `toCs` doesn't carry it over to the coursier-interface dependency, so we read it from the user
     * params the parser puts it in, and apply it ourselves.
     */
-  private def inlineConfiguration(dep: dependency.AnyDependency): Option[String] =
+  private def inlineConfiguration(dep: AnyDependency): Option[String] =
     dep.userParamsMap.get("$inlineConfiguration").flatMap(_.flatten.headOption)
 
   private lazy val ammSparkVersion = defaultAlmondSparkVersion
@@ -331,6 +334,19 @@ final case class Options(
       }
       path
     }
+
+  def dependencies(): Seq[AnyDependency] =
+    dependency
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map { input =>
+        DependencyParser.parse(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: malformed dependency '$input': $err")
+            sys.exit(1)
+          case Right(dep) => dep
+        }
+      }
 
   def leftoverMessages0(): Seq[(Channel, RawMessage)] =
     leftoverMessages.toSeq.flatMap { strPath =>

@@ -186,19 +186,7 @@ final class Execute(
       options.scalacOptions.toSeq.map(_.value.value)
     )
 
-    val params = ScalaParameters(ammInterp.scalaVersion)
-    val compatParams = ScalaParameters(
-      if (scala.util.Properties.versionNumberString.startsWith("2."))
-        scala.util.Properties.versionNumberString
-      else
-        "2.13.16" // kind of meh to hardcode that
-    )
-    val deps = options.dependencies.map { dep =>
-      val params0 =
-        if (dep.userParams.exists(_._1 == "compat")) compatParams
-        else params
-      dep.applyParams(params0).toCs
-    }
+    val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
     val loadDepsRes =
       if (deps.isEmpty) Right(Nil)
       else ammInterp.loadIvy(deps: _*)
@@ -793,6 +781,31 @@ object Execute {
       case e @ (_: coursierapi.error.RepositoryParsingError | _: IllegalArgumentException) =>
         Left(s"Error parsing repository '$input': ${e.getMessage}")
     }
+
+  /** Applies the Scala parameters of the passed Scala version to dependencies, and converts them to
+    * coursier-interface ones. Dependencies with a `compat` user param get those of the Scala 2
+    * library on the class path if there's one (Scala 2, or Scala 3 before 3.8), and those of the
+    * default Scala 2.13 version of Almond otherwise (Scala 3.8 and later, that ship their own
+    * library).
+    */
+  private[almond] def toCoursierDependencies(
+    scalaVersion: String,
+    dependencies: Seq[dependency.AnyDependency]
+  ): Seq[coursierapi.Dependency] = {
+    val params = ScalaParameters(scalaVersion)
+    val compatParams = ScalaParameters(
+      if (scala.util.Properties.versionNumberString.startsWith("2."))
+        scala.util.Properties.versionNumberString
+      else
+        almond.internal.InterpreterConstants.defaultScala213Version
+    )
+    dependencies.map { dep =>
+      val params0 =
+        if (dep.userParams.exists(_._1 == "compat")) compatParams
+        else params
+      dep.applyParams(params0).toCs
+    }
+  }
 
   private lazy val isJdk20OrHigher =
     sys.props

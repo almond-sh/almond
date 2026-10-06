@@ -230,6 +230,17 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
       else Nil
     scala213Options
   }
+  def generatedSources: T[Seq[PathRef]] = Task {
+    val constantsFileContent =
+      s"""package almond.internal
+         |
+         |object InterpreterConstants {
+         |  def defaultScala213Version = "${ScalaVersions.scala213}"
+         |}
+         |""".stripMargin
+    os.write(Task.dest / "InterpreterConstants.scala", constantsFileContent)
+    Seq(PathRef(Task.dest)) ++ super.generatedSources()
+  }
   object test extends Cross[ScalaInterpreterTests](ScalaVersions.fullVersionsFor(crossValue))
   trait ScalaInterpreterTests extends CrossSbtModuleTests with AlmondFullCrossTests {
     def scalaVersionSpecificModule = shared.`test-kit`(crossValue)

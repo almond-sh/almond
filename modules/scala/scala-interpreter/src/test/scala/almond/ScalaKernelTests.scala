@@ -740,6 +740,36 @@ object ScalaKernelTests extends TestSuite {
       )
     }
 
+    test("upfront dependencies") {
+
+      val predef =
+        """val predefName = classOf[picocli.CommandLine].getSimpleName
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          predefCode = predef,
+          dependencies = Seq(dependency.parser.DependencyParser.parse("info.picocli:picocli:4.7.3")
+            .fold(err => sys.error(err), identity))
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        "val fromPredef = predefName",
+        """fromPredef: String = "CommandLine""""
+      )
+      kernel.execute(
+        "val fromCell = classOf[picocli.CommandLine.Command].getName",
+        """fromCell: String = "picocli.CommandLine$Command""""
+      )
+    }
+
     test("simple exception handler") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.exceptionHandler()

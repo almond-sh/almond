@@ -28,6 +28,9 @@ final case class LauncherOptions(
   @ExtraName("extraClasspath")
     extraClassPath: List[String] = Nil,
   predef: List[String] = Nil,
+  @HelpMessage("Dependency to add to the user class path before running any user code, like org::name:version (can be repeated)")
+  @ExtraName("dep")
+    dependency: List[String] = Nil,
   extraStartupClassPath: List[String] = Nil,
   sharedDependencies: List[String] = Nil,
   compileOnly: Option[Boolean] = None,
@@ -90,6 +93,8 @@ final case class LauncherOptions(
       b ++= Seq("--extra-class-path", value)
     for (value <- predef)
       b ++= Seq("--predef", value)
+    for (value <- dependency)
+      b ++= Seq("--dependency", value)
     for (value <- compileOnly)
       b ++= Seq(s"--compile-only=$value")
     for (value <- lastValueOnly)

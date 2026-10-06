@@ -20,6 +20,7 @@ final case class ScalaInterpreterParams(
   extraLinks: Seq[KernelInfo.Link] = Nil,
   predefCode: String = "",
   predefFiles: Seq[Path] = Nil,
+  dependencies: Seq[dependency.AnyDependency] = Nil,
   automaticDependencies: Map[Module, Seq[Dependency]] = Map(),
   automaticVersions: Map[Module, String] = Map(),
   forceMavenProperties: Map[String, String] = Map(),
