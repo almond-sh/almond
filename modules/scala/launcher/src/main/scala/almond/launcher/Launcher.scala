@@ -171,10 +171,14 @@ object Launcher extends CaseApp[LauncherOptions] {
         params0.javaCmd.getOrElse(Seq("java"))
     }
 
-    val javaOptions = options.javaOpt ++ params0.javaOptions
+    // JAVA_OPTS comes first, so that options from the command-line or from directives win
+    val javaOptions = envOptions("JAVA_OPTS") ++ options.javaOpt ++ params0.javaOptions
 
+    // Options on the command-line take precedence over the ones in JDK_JAVA_OPTIONS or
+    // JAVA_TOOL_OPTIONS, so we don't pass our default max heap if users set one there
+    val jvmEnvJavaOptions = Seq("JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS").flatMap(envOptions)
     val memOptions =
-      if (javaOptions.exists(_.startsWith("-Xmx"))) Nil
+      if ((javaOptions ++ jvmEnvJavaOptions).exists(setsMaxHeap)) Nil
       else Seq("-Xmx512m")
 
     val proc = os.proc(
@@ -203,6 +207,15 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     (proc, scalaVersion, jvmIdOpt)
   }
+
+  private def envOptions(name: String): Seq[String] =
+    Option(System.getenv(name)).toSeq.flatMap(_.trim.split("\\s+")).filter(_.nonEmpty)
+
+  private def setsMaxHeap(javaOption: String): Boolean =
+    javaOption.startsWith("-Xmx") ||
+    javaOption.startsWith("-XX:MaxHeapSize=") ||
+    javaOption.startsWith("-XX:MaxRAM=") ||
+    javaOption.startsWith("-XX:MaxRAMPercentage=")
 
   private def launchActualKernel(proc: os.proc): Unit = {
 

@@ -145,6 +145,21 @@ To list the options that can be passed this way, run
 $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --help
 ```
 
+### Memory
+
+The kernel spawned by the launcher gets a maximum heap size of 512 MB by default. To change it, either
+pass a Java option at install time, like
+```text
+$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ --install --java-opt -Xmx4g
+```
+use a `//> using javaOpt "-Xmx4g"` directive in the first cells of a notebook, or set it in the
+`JAVA_OPTS`, `JDK_JAVA_OPTIONS` or `JAVA_TOOL_OPTIONS` environment variables of the kernel, like
+`JAVA_OPTS=-Xmx4g`. The default doesn't apply as soon as any of these sets
+`-Xmx`, `-XX:MaxHeapSize`, `-XX:MaxRAM`, or `-XX:MaxRAMPercentage`.
+
+The launcher passes the content of `JAVA_OPTS` to the kernel it spawns, before the
+options passed via `--java-opt` or `//> using javaOpt`, which take precedence over it.
+
 ## Custom URL protocol support
 
 Custom protocol support for `java.net.URL` needs the JARs supporting it to be passed to the `-cp`
