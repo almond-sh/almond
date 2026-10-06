@@ -320,6 +320,31 @@ object ScalaInterpreterTests extends TestSuite {
           "disabled"
       }
 
+      test("incomplete member selection") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+
+          // the qualifier is inspected, rather than the erroneous selection
+          // (see https://github.com/almond-sh/almond/issues/1447)
+          assert(html(interpreter, "1.", 2) == expected("Int"))
+          assert(html(interpreter, "\"foo\".", 6) == expected("String"))
+          assert(html(interpreter, "List(1, 2).", 11) == expected("List[Int]"))
+        }
+        else
+          "disabled"
+      }
+
+      test("erroneous tree") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+          val code        = "thisIsNotDefined."
+          val res         = interpreter.inspect(code, code.length, detailLevel = 0)
+          assert(res.isEmpty)
+        }
+        else
+          "disabled"
+      }
+
       test("constructor and inherited documentation") {
         if (TestUtil.isScala2) {
           val interpreter = newInterpreter()
