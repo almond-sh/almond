@@ -1,16 +1,20 @@
 package almond.channels.zeromq
 
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicLong
 
 import almond.channels.{Channel, ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.protocol.{Header, IopubWelcome}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.all._
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
+import org.zeromq.SocketType
 import utest._
 
-import scala.concurrent.duration.{Deadline, DurationInt, FiniteDuration}
+import scala.concurrent.duration.{Deadline, Duration, DurationInt, FiniteDuration}
+import scala.jdk.CollectionConverters._
 
 object ZeromqConnectionTests extends TestSuite {
 
@@ -208,6 +212,125 @@ object ZeromqConnectionTests extends TestSuite {
         } yield ()
 
       t.unsafeRunSync()(ioRuntime)
+    }
+
+    test("publish while polling") {
+
+      // Sends many messages on the publish socket, while channels are polled, and clients
+      // keep subscribing and unsubscribing (which sends commands to the publish socket).
+      // JeroMQ sockets aren't thread-safe, and these used to be accessed concurrently by the
+      // polling thread and the publish thread, which could leave the latter spinning forever
+      // in zmq.Signaler.recv (https://github.com/almond-sh/almond/issues/549).
+
+      val logCtx        = LoggerContext.nop
+      val params        = ConnectionParameters.randomLocal()
+      val kernelThreads = ZeromqThreads.create("test-kernel")
+      val ioRuntime     = IORuntime.global
+
+      // can be increased to run this test longer, when trying to reproduce issues
+      val duration = sys.props.get("almond.test.publish-while-polling.duration")
+        .map(Duration(_))
+        .collect { case d: FiniteDuration => d }
+        .getOrElse(5.seconds)
+      val stallTimeout = 10.seconds
+      val subscribers  = 4
+
+      def msg(idx: Long) = Message(
+        Nil,
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        s"content-$idx".getBytes(StandardCharsets.UTF_8)
+      )
+
+      @volatile var done = false
+      val sent           = new AtomicLong
+
+      def subscriberThread(idx: Int) =
+        new Thread(s"test-subscriber-$idx") {
+          setDaemon(true)
+          override def run(): Unit = {
+            val socket = kernelThreads.context.socket(SocketType.SUB)
+            try {
+              socket.setLinger(0)
+              socket.connect(params.uri(Channel.Publish))
+              val topic = s"topic-$idx".getBytes(StandardCharsets.UTF_8)
+              while (!done) {
+                socket.subscribe(topic)
+                socket.unsubscribe(topic)
+              }
+            }
+            finally socket.close()
+          }
+        }
+
+      def zeromqStacks(): String =
+        Thread.getAllStackTraces.asScala.toVector
+          .filter(_._1.getName.startsWith("test-kernel-zeromq-"))
+          .map {
+            case (thread, stack) =>
+              (s"${thread.getName} (${thread.getState})" +: stack.toVector.take(15).map("  " + _))
+                .mkString(System.lineSeparator())
+          }
+          .mkString(System.lineSeparator())
+
+      // fails if no message could be sent during stallTimeout
+      def watchdog(lastCount: Long, lastProgress: Deadline): IO[Unit] =
+        IO.sleep(500.millis) *> IO(sent.get()).flatMap { count =>
+          if (count != lastCount) watchdog(count, Deadline.now)
+          else if (Deadline.now - lastProgress > stallTimeout)
+            IO.raiseError(new Exception(
+              s"Publishing stalled after $count messages:" + System.lineSeparator() + zeromqStacks()
+            ))
+          else watchdog(lastCount, lastProgress)
+        }
+
+      def sendLoop(kernel: ZeromqConnection, deadline: Deadline): IO[Unit] =
+        IO.defer {
+          if (deadline.isOverdue()) IO.unit
+          else
+            kernel.send(Channel.Publish, msg(sent.get())) *>
+              IO(sent.incrementAndGet()) *>
+              sendLoop(kernel, deadline)
+        }
+
+      val t =
+        for {
+          kernel <- ZeromqConnection(
+            params,
+            bind = true,
+            None,
+            kernelThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false
+          )
+          _ <- kernel.open
+          poll = kernel
+            .tryRead(Channel.channels, 1.millis)
+            .flatMap {
+              case Some(Left(())) => IO.pure(true)
+              case _              => IO(done)
+            }
+            .iterateUntil(identity)
+          polling <- poll.start
+          threads = (1 to subscribers).map(subscriberThread)
+          _ <- IO(threads.foreach(_.start()))
+          // the send loop can't be cancelled if it hangs in JeroMQ, so we don't wait for it
+          // when the watchdog fails
+          res <- IO.race(watchdog(0L, Deadline.now), sendLoop(kernel, duration.fromNow)).attempt
+          _   <- IO { done = true }
+          _ <- res match {
+            case Left(e) => IO.raiseError(e)
+            case Right(_) =>
+              IO.blocking(threads.foreach(_.join())) *>
+                polling.joinWithNever *>
+                kernel.close(false, 2.seconds)
+          }
+        } yield ()
+
+      t.unsafeRunSync()(ioRuntime)
+      assert(sent.get() > 0L)
     }
 
   }
