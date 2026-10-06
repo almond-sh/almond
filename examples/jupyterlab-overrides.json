@@ -6,5 +6,9 @@
     "defaultConfig": {
       "indentUnit": "2"
     }
+  },
+  "@jupyterlab/apputils-extension:notification": {
+    "checkForUpdates": false,
+    "fetchNews": "false"
   }
 }
