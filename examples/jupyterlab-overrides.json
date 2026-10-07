@@ -10,5 +10,9 @@
   "@jupyterlab/apputils-extension:notification": {
     "checkForUpdates": false,
     "fetchNews": "false"
+  },
+  "@jupyterlab/completer-extension:manager": {
+    "autoCompletion": true,
+    "providerTimeout": 3000
   }
 }
