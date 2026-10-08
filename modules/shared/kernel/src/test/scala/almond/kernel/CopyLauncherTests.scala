@@ -38,6 +38,14 @@ object CopyLauncherTests extends TestSuite {
       assert(res == expectedRes)
     }
 
+    test("main JAR path with special characters") {
+      if (!scala.util.Properties.isWin)
+        for (path <- Seq("/foo/dir with space/a.jar", "/foo/a%20b#c?d/a.jar")) {
+          val res = Install.mainJarPath(path)
+          assert(res == path)
+        }
+    }
+
   }
 
 }

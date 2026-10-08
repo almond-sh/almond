@@ -147,6 +147,18 @@ object Install {
     }
   }
 
+  /** Normalizes the value of the `coursier.mainJar` property to a path.
+    *
+    * Paths.get throws if given paths like "/C:/foo" on Windows, hence the URI stuff for absolute
+    * paths. The multi-argument URI constructor escapes characters that are illegal in URIs, like
+    * spaces.
+    */
+  def mainJarPath(mainJar: String): String =
+    if (mainJar.startsWith("/"))
+      Paths.get(new URI("file", null, mainJar, null)).toString
+    else
+      mainJar
+
   /** Gets the command that launched the current application if possible.
     *
     * Works if the coursier launcher is involved.
@@ -160,13 +172,7 @@ object Install {
   ): Option[List[String]] =
     for {
       mainJar <- sys.props.get("coursier.mainJar")
-      mainJar0 =
-        if (mainJar.startsWith("/"))
-          // Paths.get throws if given paths like "C:\\foo" on Windows, without
-          // this URI stuff
-          Paths.get(new URI("file://" + mainJar)).toString
-        else
-          mainJar // that case shouldn't happen
+      mainJar0 = mainJarPath(mainJar)
       mainArgs = Iterator.from(0)
         .map(i => s"coursier.main.arg-$i")
         .map(sys.props.get)
