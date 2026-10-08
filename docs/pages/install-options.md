@@ -105,7 +105,8 @@ Accepts:
 - `default`: display each value defined or computed in a cell, along with its name
   and type (`a: Int = 1`)
 - `last`: only display the last value defined or computed in a cell, along with its
-  name and type
+  name and type. Expressions (not assigned to a `val`) with a rich display, such as
+  `Markdown("…")` or `Html("…")`, are still shown
 - `python`: display results like the Python kernel does, that is only display the
   value of the last expression of a cell, without its name and type
 

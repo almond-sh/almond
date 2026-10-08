@@ -93,6 +93,47 @@ object LastValueOnlyTests extends TestSuite {
       val html = output.displayed().flatMap(_.detailedData.get("text/html").flatMap(_.asString))
       assert(html == Seq("<b>explicit</b>", "<b>last</b>"))
     }
+    test("bare rich display expressions") {
+      val i      = interpreter()
+      val output = new MockOutputHandler
+      val result = i.execute(
+        """almond.display.Markdown("# Now you see me")
+          |almond.display.Markdown("# Now you don't")
+          |""".stripMargin,
+        outputHandler = Some(output)
+      )
+      assert(result == ExecuteResult.Success(DisplayData()))
+      val markdown =
+        output.displayed().flatMap(_.detailedData.get("text/markdown").flatMap(_.asString))
+      assert(markdown == Seq("# Now you see me", "# Now you don't"))
+    }
+    test("bare rich display expressions hide earlier values") {
+      val i      = interpreter()
+      val output = new MockOutputHandler
+      val result = i.execute(
+        """val first = almond.display.Html("<b>hidden</b>")
+          |val answer = 42
+          |almond.display.Html("<b>shown</b>")
+          |""".stripMargin,
+        outputHandler = Some(output)
+      )
+      assert(result == ExecuteResult.Success(DisplayData()))
+      val html = output.displayed().flatMap(_.detailedData.get("text/html").flatMap(_.asString))
+      assert(html == Seq("<b>shown</b>"))
+    }
+    test("values after bare rich display expressions") {
+      val i      = interpreter()
+      val output = new MockOutputHandler
+      val result = i.execute(
+        """almond.display.Html("<b>shown</b>")
+          |val answer = 42
+          |""".stripMargin,
+        outputHandler = Some(output)
+      )
+      assert(result == text("answer: Int = 42"))
+      val html = output.displayed().flatMap(_.detailedData.get("text/html").flatMap(_.asString))
+      assert(html == Seq("<b>shown</b>"))
+    }
     test("variable inspector keeps intermediate definitions") {
       val i = interpreter()
       assert(i.execute("kernel.VariableInspector.init()").success)

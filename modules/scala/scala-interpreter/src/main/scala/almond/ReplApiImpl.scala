@@ -31,6 +31,7 @@ final class ReplApiImpl(
   // combinePrints selects the value to display. Earlier values still execute.
   private class ValuePrinter(render: () => Iterator[String]) extends Iterator[String] {
     private lazy val underlying = render()
+    def force(): this.type      = { underlying; this }
     def hasNext: Boolean        = underlying.hasNext
     def next(): String          = underlying.next()
   }
@@ -38,6 +39,16 @@ final class ReplApiImpl(
   private[almond] def printValue(render: => Iterator[String]): Iterator[String] =
     if (outputStyle() == OutputStyle.Last) new ValuePrinter(() => render)
     else render
+
+  // Names Ammonite gives to the results of bare expressions, like "res2" or "res2_1"
+  private val expressionResultName = "res\\d+(_\\d+)?"
+
+  // Whether values of type T are rendered via rich displays (almond.display.Display, jvm-repr)
+  private def isRichDisplay[T](classTagT: ClassTag[T]): Boolean =
+    classTagT != null && (
+      classOf[almond.display.Display].isAssignableFrom(classTagT.runtimeClass) ||
+      (Displayers.registration().find(classTagT.runtimeClass) ne defaultDisplayer)
+    )
 
   def printSpecial[T](
     value: => T,
@@ -297,15 +308,27 @@ final class ReplApiImpl(
         tprint: TPrint[T],
         tcolors: TPrintColors,
         classTagT: ClassTag[T]
-      ): Iterator[String] = printValue {
-        // Passing the implicits explicitly - without `using`, that the oldest Scala 2 compilers
-        // we're built with don't accept
-        printSpecial(value, ident, custom, None, None, pprinter, None)(
-          tprint,
-          tcolors,
-          classTagT
-        ).getOrElse {
-          super.print(value, ident, custom)(tprint, tcolors, classTagT)
+      ): Iterator[String] = {
+        val printer = printValue {
+          // Passing the implicits explicitly - without `using`, that the oldest Scala 2 compilers
+          // we're built with don't accept
+          printSpecial(value, ident, custom, None, None, pprinter, None)(
+            tprint,
+            tcolors,
+            classTagT
+          ).getOrElse {
+            super.print(value, ident, custom)(tprint, tcolors, classTagT)
+          }
+        }
+        printer match {
+          // With the "last" output style, bare expressions with a rich display, like
+          // Markdown("…") or Html("…"), are still displayed (they're typically
+          // written for their display), while still hiding earlier values
+          case p: ValuePrinter
+              if ident.matches(expressionResultName) && isRichDisplay(classTagT) =>
+            p.force()
+          case _ =>
+            printer
         }
       }
     }
