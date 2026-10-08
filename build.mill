@@ -1233,11 +1233,27 @@ object ci extends Module {
           (batOutput, s"almond-scala-$sbv.bat")
         )
       }
+
+      // Archive for SDKMAN, which expects a zip with a single almond-<version> directory,
+      // with executables under its bin directory
+      val sdkmanDirName = s"almond-$almondVersion"
+      val sdkmanBinDir  = Task.dest / "sdkman" / sdkmanDirName / "bin"
+      os.remove.all(sdkmanBinDir / os.up)
+      for ((launcher, name) <- launchers)
+        os.copy(launcher, sdkmanBinDir / name, createFolders = true)
+      val sdkmanZip = Task.dest / s"$sdkmanDirName-sdkman.zip"
+      os.remove(sdkmanZip)
+      os.zip(
+        sdkmanZip,
+        Seq(sdkmanBinDir / os.up -> os.sub / sdkmanDirName),
+        preserveMtimes = true
+      )
+
       val (tag, overwriteAssets) =
         if (isSnapshot) ("nightly", true)
         else ("v" + almondVersion, false)
       Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
-        launchers*
+        launchers :+ (sdkmanZip, sdkmanZip.last)*
       )
     }
 }
