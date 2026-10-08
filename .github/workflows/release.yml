@@ -107,9 +107,17 @@ jobs:
       SDKMAN_VENDOR_EMAIL: ${{ secrets.SDKMAN_VENDOR_EMAIL }}
       SDKMAN_VENDOR_PASSWORD: ${{ secrets.SDKMAN_VENDOR_PASSWORD }}
 
-  update-docker-images:
+  # Builds the Docker images on a runner of each platform, then merges them in multi-platform images
+  build-docker-images:
     needs: release
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'almond-sh/almond'
     steps:
@@ -120,7 +128,34 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
-    - run: scripts/update-docker-images.sh
+    - uses: docker/setup-buildx-action@v4
+    - run: scripts/update-docker-images.sh build docker-images
+      shell: bash
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_PLATFORM: linux/${{ matrix.arch }}
+    - uses: actions/upload-artifact@v7
+      with:
+        name: docker-images-${{ matrix.arch }}
+        path: docker-images
+        if-no-files-found: error
+        retention-days: 1
+
+  update-docker-images:
+    needs: build-docker-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'almond-sh/almond'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: docker-images-*
+        merge-multiple: true
+        path: docker-images
+    - uses: docker/setup-buildx-action@v4
+    - run: scripts/update-docker-images.sh merge docker-images
       shell: bash
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}

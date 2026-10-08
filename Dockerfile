@@ -19,8 +19,15 @@ RUN apt-get -y update && \
     rm -rf /var/lib/apt/lists/*
 
 # Native coursier launcher as "cs", JVM one as "coursier"
+# On ARM64, we use the "container" native launcher, built with GraalVM container support disabled,
+# as GraalVM native images can crash when reading cgroup files in containers
+# (https://github.com/coursier/coursier/pull/2742)
 ARG COURSIER_VERSION=2.1.26
-RUN curl -fL https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/cs-$(uname -m)-pc-linux.gz | \
+RUN case "$(uname -m)" in \
+      aarch64) CS_LAUNCHER=cs-aarch64-pc-linux-container.gz ;; \
+      *) CS_LAUNCHER=cs-$(uname -m)-pc-linux.gz ;; \
+    esac && \
+    curl -fL https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/${CS_LAUNCHER} | \
       gzip -d > /usr/local/bin/cs && \
     chmod +x /usr/local/bin/cs && \
     curl -fLo /usr/local/bin/coursier https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/coursier && \
