@@ -1185,28 +1185,47 @@ object ci extends Module {
         ScalaVersions.scala213,
         ScalaVersions.scala3Latest
       )
-      val launchers = scalaVersions.map { sv =>
+      val launchers = scalaVersions.flatMap { sv =>
         val sbv    = sv.split('.').take(2).mkString(".")
         val suffix = ScalaVersions.binarySuffix(sv)
-        val output = Task.dest / s"launcher-$sv"
-        os.proc(
-          "cs",
-          "bootstrap",
-          "--no-default",
-          "-r",
-          "central",
-          "-r",
-          "jitpack",
-          s"sh.almond:scala-kernel_$suffix:$almondVersion",
-          "--shared",
-          s"sh.almond:scala-kernel-api_$suffix",
-          "--scala",
-          sv,
-          "-o",
-          PathRef.toAbsString(output)
-        ).call(stdin = os.Inherit, stdout = os.Inherit)
+        def bootstrap(output: os.Path, extraArgs: String*): Unit =
+          os.proc(
+            "cs",
+            "bootstrap",
+            "--no-default",
+            "-r",
+            "central",
+            "-r",
+            "jitpack",
+            s"sh.almond:scala-kernel_$suffix:$almondVersion",
+            "--shared",
+            s"sh.almond:scala-kernel-api_$suffix",
+            "--scala",
+            sv,
+            extraArgs,
+            "-o",
+            PathRef.toAbsString(output)
+          ).call(stdin = os.Inherit, stdout = os.Inherit)
 
-        (output, s"almond-scala-$sbv")
+        val output = Task.dest / s"launcher-$sv"
+        bootstrap(output)
+
+        // Same launcher, but with a Windows bat preamble rather than a sh one.
+        // cs bootstrap --bat only writes .bat files calling a separate launcher, so we
+        // prepend the preamble to a preamble-less launcher ourselves.
+        val jar = Task.dest / s"launcher-$sv.jar"
+        bootstrap(jar, "--preamble=false")
+        val batOutput = Task.dest / s"launcher-$sv.bat"
+        os.write.over(
+          batOutput,
+          coursier.launcher.Preamble().withKind(coursier.launcher.Preamble.Kind.Bat).value ++
+            os.read.bytes(jar)
+        )
+
+        Seq(
+          (output, s"almond-scala-$sbv"),
+          (batOutput, s"almond-scala-$sbv.bat")
+        )
       }
       val (tag, overwriteAssets) =
         if (almondVersion.endsWith("-SNAPSHOT")) ("nightly", true)
