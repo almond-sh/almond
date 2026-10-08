@@ -1175,6 +1175,8 @@ object dev extends Module {
 def ghOrg  = "almond-sh"
 def ghName = "almond"
 object ci extends Module {
+  def sdkmanZipName(almondVersion: String) = s"almond-$almondVersion-sdkman.zip"
+
   def uploadLaunchers(almondVersion: String = AlmondPublishModule.computeBuildVersion()) =
     Task.Command {
       def ghToken() = Option(System.getenv("UPLOAD_GH_TOKEN")).getOrElse {
@@ -1241,7 +1243,7 @@ object ci extends Module {
       os.remove.all(sdkmanBinDir / os.up)
       for ((launcher, name) <- launchers)
         os.copy(launcher, sdkmanBinDir / name, createFolders = true)
-      val sdkmanZip = Task.dest / s"$sdkmanDirName-sdkman.zip"
+      val sdkmanZip = Task.dest / sdkmanZipName(almondVersion)
       os.remove(sdkmanZip)
       os.zip(
         sdkmanZip,
@@ -1255,6 +1257,66 @@ object ci extends Module {
       Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
         launchers :+ (sdkmanZip, sdkmanZip.last)*
       )
+    }
+
+  /** Publishes the SDKMAN archive uploaded by [[uploadLaunchers]] to SDKMAN, via its State API
+    * (https://github.com/sdkman/sdkman-state/wiki/Vendor-API-Integration-Guide).
+    *
+    * This creates or updates the version on SDKMAN, so this can be run again for the same version.
+    */
+  def publishSdkman(almondVersion: String = AlmondPublishModule.computeBuildVersion()) =
+    Task.Command {
+      def env(name: String) = Task.env.get(name).filter(_.nonEmpty).getOrElse {
+        sys.error(s"$name not set")
+      }
+      val email    = env("SDKMAN_VENDOR_EMAIL")
+      val password = env("SDKMAN_VENDOR_PASSWORD")
+      if (almondVersion.endsWith("-SNAPSHOT"))
+        sys.error(s"Not publishing snapshot version $almondVersion to SDKMAN")
+
+      val url =
+        s"https://github.com/$ghOrg/$ghName/releases/download/v$almondVersion/${sdkmanZipName(almondVersion)}"
+
+      // Also ensures the archive was actually uploaded, and is a valid zip
+      System.err.println(s"Downloading $url")
+      val zipContent = requests.get(url, readTimeout = 60000).bytes
+      val zip        = Task.dest / sdkmanZipName(almondVersion)
+      os.write.over(zip, zipContent)
+      val zf = new java.util.zip.ZipFile(zip.toIO)
+      try assert(zf.size() > 0, s"$url is an empty zip")
+      finally zf.close()
+      val sha256 = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(zipContent)
+        .map(b => f"$b%02x")
+        .mkString
+
+      // Tokens are valid for 10 minutes, plenty for us
+      val token = ujson.read(
+        requests.post(
+          "https://state.sdkman.io/login",
+          data = ujson.Obj("email" -> email, "password" -> password)
+        ).text()
+      )("token").str
+
+      // SDKMAN makes the version with the "lts" tag the default one - give it to stable
+      // versions only, release candidates and such are only listed
+      val isStable = almondVersion.matches("\\d+\\.\\d+\\.\\d+")
+      val sdkmanVersion = ujson.Obj(
+        "candidate" -> "almond",
+        "version"   -> almondVersion,
+        "platform"  -> "UNIVERSAL",
+        "url"       -> url,
+        "sha256sum" -> sha256
+      )
+      if (isStable)
+        sdkmanVersion("tags") = ujson.Arr("lts")
+      System.err.println(s"Publishing ${sdkmanVersion.render(indent = 2)}")
+      requests.post(
+        "https://state.sdkman.io/versions",
+        auth = requests.RequestAuth.Bearer(token),
+        data = requests.RequestBlob.ByteSourceRequestBlob(sdkmanVersion)
+      )
+      System.err.println(s"Published almond $almondVersion to SDKMAN")
     }
 }
 
