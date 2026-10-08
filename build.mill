@@ -1185,6 +1185,7 @@ object ci extends Module {
       val scalaVersions = Seq(
         ScalaVersions.scala212,
         ScalaVersions.scala213,
+        ScalaVersions.scala3Compat,
         ScalaVersions.scala3Latest
       )
       val isSnapshot = almondVersion.endsWith("-SNAPSHOT")
@@ -1195,6 +1196,12 @@ object ci extends Module {
       val launchers = scalaVersions.flatMap { sv =>
         val sbv    = sv.split('.').take(2).mkString(".")
         val suffix = ScalaVersions.binarySuffix(sv)
+        // We publish modules per binary Scala version, whose dependencies pull Scala JARs of
+        // various versions. Like our own launchers (see AlmondForcedScalaVersion), force
+        // them all to sv, which --scala alone does only for scala-library.
+        val forceScalaArgs = AlmondForcedScalaVersion.scalaModules(sv).flatMap { (org, name) =>
+          Seq("-V", s"$org:$name:$sv")
+        }
         def bootstrap(output: os.Path, extraArgs: String*): Unit =
           os.proc(
             "cs",
@@ -1210,6 +1217,7 @@ object ci extends Module {
             s"sh.almond:scala-kernel-api_$suffix",
             "--scala",
             sv,
+            forceScalaArgs,
             extraArgs,
             "-o",
             PathRef.toAbsString(output)
