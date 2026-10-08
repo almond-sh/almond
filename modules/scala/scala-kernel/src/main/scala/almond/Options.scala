@@ -74,7 +74,11 @@ final case class Options(
     autoUpdateVars: Boolean = true,
   @HelpMessage("Whether to silence imports (not printing them back in output)")
     silentImports: Boolean = false,
-  @HelpMessage("Only display the last value of each cell")
+  @HelpMessage("How cell results are displayed: default (each value, with its name and type), last (only the last value, with its name and type), or python (like the Python kernel, only the value of the last expression) - can be changed mid-session with '//> using outputStyle default|last|python'")
+  @ValueDescription("default|last|python")
+    outputStyle: Option[String] = None,
+  @HelpMessage("Kept for compatibility, same as --output-style last")
+  @Hidden
     lastValueOnly: Boolean = false,
   @HelpMessage("Whether to use a notebook-specific coursier logger")
     useNotebookCoursierLogger: Boolean = false,
@@ -333,6 +337,20 @@ final case class Options(
         sys.exit(1)
       }
       path
+    }
+
+  def outputStyle0(): OutputStyle =
+    outputStyle.map(_.trim).filter(_.nonEmpty) match {
+      case Some(input) =>
+        OutputStyle.parse(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: $err")
+            sys.exit(1)
+          case Right(style) => style
+        }
+      case None =>
+        if (lastValueOnly) OutputStyle.Last
+        else OutputStyle.Default
     }
 
   def dependencies(): Seq[AnyDependency] =

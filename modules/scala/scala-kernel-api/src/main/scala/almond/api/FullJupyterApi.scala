@@ -17,6 +17,8 @@ trait FullJupyterApi extends JupyterApi { self =>
     classTagT: ClassTag[T] = null
   ): Iterator[String]
 
+  protected def printValueOnly[T](value: => T)(implicit classTagT: ClassTag[T]): Iterator[String]
+
   protected def ansiTextToHtml(text: String): String
 
   protected def declareVariable[T](name: String, value: => T, strValueOpt: Option[String])(implicit
@@ -55,6 +57,8 @@ trait FullJupyterApi extends JupyterApi { self =>
         tcolors,
         classTagT
       )
+    def printValueOnly[T](value: => T)(implicit classTagT: ClassTag[T] = null): Iterator[String] =
+      self.printValueOnly(value)(classTagT)
     def ansiTextToHtml(text: String): String =
       self.ansiTextToHtml(text)
     def declareVariable[T](name: String, value: => T, strValueOrNull: String = null)(implicit

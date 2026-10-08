@@ -62,6 +62,9 @@ final class JupyterApiImpl(
     }
   }
 
+  protected def printValueOnly[T](value: => T)(implicit classTagT: ClassTag[T]): Iterator[String] =
+    replApi.printValueOnly(value)(classTagT)
+
   override def silent(s: Boolean): Unit = silent0.update(s)
   override def silent: Boolean          = silent0.apply()
 

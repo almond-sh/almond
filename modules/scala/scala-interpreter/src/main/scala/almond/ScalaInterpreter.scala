@@ -57,6 +57,11 @@ final class ScalaInterpreter(
 
   private val silent0: Ref[Boolean] = Ref(false)
 
+  private val outputStyle0: Ref[OutputStyle] = Ref(
+    if (params.lastValueOnly && params.outputStyle == OutputStyle.Default) OutputStyle.Last
+    else params.outputStyle
+  )
+
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private val storage =
@@ -82,6 +87,7 @@ final class ScalaInterpreter(
     params.updateBackgroundVariablesEcOpt,
     commHandlerOpt,
     silent0,
+    outputStyle0,
     params.useThreadInterrupt,
     params.initialCellCount,
     enableExitHack = params.compileOnly,
@@ -102,7 +108,7 @@ final class ScalaInterpreter(
       colors0,
       ammInterp,
       sessApi,
-      lastValueOnly = params.lastValueOnly
+      outputStyle = () => outputStyle0()
     )
 
   val jupyterApi =
@@ -150,6 +156,7 @@ final class ScalaInterpreter(
       params.silentImports,
       logCtx,
       jupyterApi.VariableInspector.enabled,
+      () => outputStyle0(),
       outputDir = params.outputDir,
       compileOnly = params.compileOnly,
       addToreeApiCompatibilityImport = params.toreeApiCompatibility,

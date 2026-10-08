@@ -95,29 +95,48 @@ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --insta
 
 Add `--force` when replacing an existing kernel installation.
 
-To limit automatic output for values as well, use `--last-value-only`.
+To limit automatic output for values as well, use `--output-style`.
 
-#### `--last-value-only`
+#### `--output-style`
 
-Display only the last value defined or computed in each cell, reducing the output
+Change how the results of cells are displayed, for example to reduce the output
 chatter described in [issue #256](https://github.com/almond-sh/almond/issues/256).
-Disabled by default; pass `--last-value-only=false` to restore the usual output.
+Accepts:
+- `default`: display each value defined or computed in a cell, along with its name
+  and type (`a: Int = 1`)
+- `last`: only display the last value defined or computed in a cell, along with its
+  name and type
+- `python`: display results like the Python kernel does, that is only display the
+  value of the last expression of a cell, without its name and type
 
 Enable it when installing the kernel:
 
 ```bash
-cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --last-value-only
+cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --output-style python
 ```
 
 The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
 also accepts this option directly:
 
 ```bash
-cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --install --last-value-only
+cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --install --output-style python
 ```
 
 Add `--force` when replacing an existing kernel installation, then start a new
 kernel session.
+
+The output style can also be changed at any point in a session, for the cells that
+follow, with a using directive:
+
+```scala
+//> using outputStyle python
+```
+
+With any output style, all statements still execute, and the variables they define
+remain available in subsequent cells. Explicit output, such as `println` and
+`display()` calls, is still shown.
+
+##### `last`
 
 For example, this cell displays only `second: Int = 2`:
 
@@ -126,14 +145,42 @@ val first = 1
 val second = first + 1
 ```
 
-All statements still execute, and both variables remain available in subsequent
-cells. Import statements and class, method, and type definitions are not echoed.
-Trailing imports or definitions do not replace the last value. If the last value
-has type `Unit`, no automatic result is displayed.
+Import statements and class, method, and type definitions are not echoed. Trailing
+imports or definitions do not replace the last value. If the last value has type
+`Unit`, no automatic result is displayed. Rich values such as `almond.display.Html`
+are displayed automatically only when they are the last value in the cell.
 
-Explicit output, such as `println` and `display()` calls, is still shown. Rich
-values such as `almond.display.Html` are displayed automatically only when they
-are the last value in the cell.
+##### `python`
+
+For example, this cell displays nothing:
+
+```scala
+val records = (0 until 10).map(i => (i, i * i))
+val evenRecords = records.filter(_._1 % 2 == 0)
+```
+
+and this one only displays `Vector((0, 0), (2, 4))`:
+
+```scala
+evenRecords.take(2)
+```
+
+Nothing is displayed for `val` definitions, imports, or class, method, and type
+definitions, nor for expressions that are not the last statement of a cell. Like
+in the Python kernel, the value of the last expression isn't displayed either if
+the cell ends with a semicolon:
+
+```scala
+evenRecords.take(2);
+```
+
+If the last expression has type `Unit`, nothing is displayed. Rich values such as
+`almond.display.Html` are displayed automatically when they are the last
+expression of the cell.
+
+#### `--last-value-only`
+
+Kept for compatibility, same as `--output-style last`.
 
 #### `--predef-code`
 

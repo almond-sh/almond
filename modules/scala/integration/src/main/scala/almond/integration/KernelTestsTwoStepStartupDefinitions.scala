@@ -150,4 +150,78 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
+  test0("Output style directive before any code") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        // handled by the launcher, that passes it to the kernel upon startup
+        execute(
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |//> using outputStyle python""".stripMargin,
+          ""
+        )
+        execute(
+          "val a = 1",
+          ""
+        )
+        execute(
+          "a + 1",
+          "2"
+        )
+        // handled by the kernel
+        execute(
+          """//> using outputStyle default
+            |val b = a + 2""".stripMargin,
+          "b: Int = 3"
+        )
+      }
+    }
+  }
+
+  test0("Output style directive and code in first cell") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |//> using outputStyle python
+             |val a = 1
+             |a + 1""".stripMargin,
+          "2"
+        )
+      }
+    }
+  }
+
+  test0("Output style on command-line") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession("--output-style", "python") { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |val a = 1""".stripMargin,
+          ""
+        )
+        execute(
+          "a + 1",
+          "2"
+        )
+      }
+    }
+  }
+
+  test0("Last value only on command-line") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession("--last-value-only") { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScalaVersion}"
+             |val a = 1
+             |val b = a + 1""".stripMargin,
+          "b: Int = 2"
+        )
+      }
+    }
+  }
+
 }

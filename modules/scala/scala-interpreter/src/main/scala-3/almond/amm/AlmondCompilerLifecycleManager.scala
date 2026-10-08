@@ -17,6 +17,7 @@ class AlmondCompilerLifecycleManager(
   autoUpdateVars: Boolean,
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
+  outputStyle: () => almond.OutputStyle,
   outputDir: Option[Path],
   initialSettings: Seq[String],
   logCtx: LoggerContext,
@@ -39,6 +40,7 @@ class AlmondCompilerLifecycleManager(
       autoUpdateVars,
       silentImports,
       variableInspectorEnabled,
+      outputStyle,
       logCtx,
       logCode
     )

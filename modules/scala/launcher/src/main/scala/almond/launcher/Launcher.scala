@@ -259,6 +259,9 @@ object Launcher extends CaseApp[LauncherOptions] {
       sys.exit(0)
     }
 
+    // checking it early, rather than having the kernel fail upon startup later on
+    options.outputStyleOrExit()
+
     // FIXME We'd need coursier-interface to allow us to do these:
 
     // if (Properties.isWin && isGraalvmNativeImage)

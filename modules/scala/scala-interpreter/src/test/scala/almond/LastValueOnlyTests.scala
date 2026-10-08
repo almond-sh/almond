@@ -7,7 +7,9 @@ import utest._
 
 object LastValueOnlyTests extends TestSuite {
   private def interpreter(enabled: Boolean = true) = new ScalaInterpreter(
-    params = interpreterParams.copy(lastValueOnly = enabled),
+    params = interpreterParams.copy(
+      outputStyle = if (enabled) OutputStyle.Last else OutputStyle.Default
+    ),
     logCtx = logCtx
   )
 
@@ -18,6 +20,14 @@ object LastValueOnlyTests extends TestSuite {
       val i      = interpreter(enabled = false)
       val result = noCrLf(i.execute("val first = 1; val second = 2"))
       assert(result == text("first: Int = 1\nsecond: Int = 2"))
+    }
+    test("lastValueOnly parameter") {
+      val i = new ScalaInterpreter(
+        params = interpreterParams.copy(lastValueOnly = true),
+        logCtx = logCtx
+      )
+      val result = i.execute("val first = 1; val second = 2")
+      assert(result == text("second: Int = 2"))
     }
     test("definitions remain available") {
       val i      = interpreter()
