@@ -14,7 +14,7 @@ The following instances are available:
 ## `InterpAPI`
 
 [`InterpAPI`](https://github.com/lihaoyi/Ammonite/blob/master/amm/interp/src/main/scala/ammonite/interp/InterpAPI.scala) allows to
-- [load new dependencies](#load-dependencies) or [compiler plugins](#load-compiler-plugins),
+- [load new dependencies](#load-dependencies), [JARs](#load-jars) or [compiler plugins](#load-compiler-plugins),
 - [add repositories](#add-repositories) for dependencies,
 - [add exit hooks](#add-exit-hooks),
 - [configure compiler options](#configure-compiler-options).
@@ -88,6 +88,50 @@ loading more libraries, but also prevents upgrading an already loaded dependency
 in a later cell. To change those versions, restart the kernel and run the updated
 dependency cell first. The chosen versions still need to be compatible with the
 libraries that use them.
+
+### Load JARs
+
+`interp.load.cp` adds JARs or directories of class files to the class path of the session.
+It accepts an `os.Path`, a sequence of `os.Path`, or a `java.net.URL`:
+```scala
+interp.load.cp(os.Path("/path/to/lib.jar"))
+```
+```scala
+interp.load.cp(os.list(os.pwd / "lib").filter(_.ext == "jar"))
+```
+```scala
+interp.load.cp(
+  java.net.URI.create("https://repo1.maven.org/maven2/info/picocli/picocli/4.7.3/picocli-4.7.3.jar").toURL
+)
+```
+
+As with `interp.load.ivy`, the classes of these JARs can then be used in the cell right
+_after_ the one calling `interp.load.cp`.
+
+Note that when directly entering code in a notebook, the following syntax is preferred,
+and allows to use the JAR in the current cell rather than the next one:
+```scala
+import $cp.`/path/to/lib.jar`
+```
+
+Relative paths are resolved against the working directory of the kernel, which is usually
+the directory of the notebook:
+```scala
+import $cp.`lib/lib.jar`
+```
+
+A single path can also be written as `.`-separated segments, where `^` stands for the parent
+directory:
+```scala
+import $cp.^.lib.`lib.jar` // ../lib/lib.jar
+```
+
+If the kernel is started with [`--toree-magics`](install-options.md#--toree-magics), the
+`%AddJar` magic accepts a `file:` or `http(s):` URL, and adds the corresponding JAR to the session:
+```
+%AddJar file:/path/to/lib.jar
+%AddJar https://repo1.maven.org/maven2/info/picocli/picocli/4.7.3/picocli-4.7.3.jar
+```
 
 ### Load compiler plugins
 
