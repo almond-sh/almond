@@ -220,11 +220,61 @@ $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
   --predef predef.sc
 ```
 
+### Custom magics
+
+You can define your own line and cell magics, alongside the built-in ones, when `--toree-magics`
+or `--toree-compatibility` is enabled. Register them with `almond.toree.LineMagicHook.addHandler`
+and `almond.toree.CellMagicHook.addHandler`, typically from a predef script, so that they're available
+from the first cell on. They can also be registered from a notebook cell, in which case they're
+available in the cells that follow. Like the built-in magics, custom magic names are case-insensitive.
+A custom magic takes precedence over a built-in magic with the same name.
+
+A line magic handler receives the magic name, as written by users, and the whitespace-separated
+arguments that follow it. It returns either code that replaces the magic line, or an
+`almond.api.JupyterApi.ExecuteHookResult` that stops the cell execution and is reported to users
+as is. Line magics are only processed in the leading lines of a cell, possibly interleaved with
+empty lines or `//` comments.
+```scala
+almond.toree.LineMagicHook.addHandler("greet") { (_, args) =>
+  Right(s"""val greeting = "Hello ${args.mkString(" ")}"""")
+}
+```
+```scala
+%greet Alice
+// greeting: String = "Hello Alice"
+```
+
+A cell magic handler receives the magic name, and the content of the cell after its first
+`%%name` line. Like line magic handlers, it returns either code to run instead of the cell,
+or an `ExecuteHookResult`.
+```scala
+// cell magic that wraps a cell in a block, and assigns it to a 'thing' value
+almond.toree.CellMagicHook.addHandler("thing") { (_, content) =>
+  val nl = System.lineSeparator()
+  Right("val thing = {" + nl + content + nl + "}" + nl)
+}
+
+// cell magic that displays the cell content as is, rather than running it
+almond.toree.CellMagicHook.addHandler("echo") { (_, content) =>
+  import almond.api.JupyterApi
+  import almond.interpreter.api.DisplayData
+  Left(JupyterApi.ExecuteHookResult.Success(DisplayData.text(content)))
+}
+```
+```scala
+%%thing
+println("Hello")
+2
+// Hello
+// thing: Int = 2
+```
+
+Custom magics are listed by `%LsMagic`, along with the built-in ones. Remove all custom magics
+with `almond.toree.LineMagicHook.clearHandlers()` and `almond.toree.CellMagicHook.clearHandlers()`.
+
 ### Toree API
 
-Enable basic support for the Toree API with `--toree-api`.
-
-Enable it with the `--toree-magics` option, that both the former and the new Almond launcher accept:
+Enable basic support for the Toree API with `--toree-api`, that both the former and the new Almond launcher accept:
 ```text
 $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
   --install \
