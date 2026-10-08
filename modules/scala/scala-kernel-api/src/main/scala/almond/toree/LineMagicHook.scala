@@ -13,7 +13,7 @@ object LineMagicHook {
   private val userHandlers0 = new mutable.HashMap[String, LineMagicHandler]
 
   def addHandler(name: String)(handler: LineMagicHandler): Unit =
-    userHandlers0 += name -> handler
+    userHandlers0 += name.toLowerCase(Locale.ROOT) -> handler
 
   def clearHandlers(): Unit =
     userHandlers0.clear()
