@@ -4,8 +4,8 @@ set -eu
 [ -z "$SCALA_VERSIONS" ] && { echo "SCALA_VERSIONS is empty" ; exit 1; }
 [ -z "$ALMOND_VERSION" ] && { echo "ALMOND_VERSION is empty" ; exit 1; }
 
-# coursier command to use, override with COURSIER=/path/to/cs if needed
-COURSIER="${COURSIER:-coursier}"
+# coursier command to use (the native launcher in the Docker image), override with COURSIER=/path/to/coursier if needed
+COURSIER="${COURSIER:-cs}"
 # oldest coursier version known to work with the options passed below
 COURSIER_MIN_VERSION="2.1.25"
 command -v "$COURSIER" >/dev/null || { echo "coursier (${COURSIER}) not found" ; exit 1; }

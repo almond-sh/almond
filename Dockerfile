@@ -18,8 +18,12 @@ RUN apt-get -y update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -fL https://github.com/coursier/coursier/releases/download/v2.1.25/cs-$(uname -m)-pc-linux.gz | \
-      gzip -d > /usr/local/bin/coursier && \
+# Native coursier launcher as "cs", JVM one as "coursier"
+ARG COURSIER_VERSION=2.1.25
+RUN curl -fL https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/cs-$(uname -m)-pc-linux.gz | \
+      gzip -d > /usr/local/bin/cs && \
+    chmod +x /usr/local/bin/cs && \
+    curl -fLo /usr/local/bin/coursier https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/coursier && \
     chmod +x /usr/local/bin/coursier
 
 USER $NB_UID
