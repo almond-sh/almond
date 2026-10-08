@@ -1185,6 +1185,11 @@ object ci extends Module {
         ScalaVersions.scala213,
         ScalaVersions.scala3Latest
       )
+      val isSnapshot = almondVersion.endsWith("-SNAPSHOT")
+      // nightly launchers come from the snapshots published by the release job
+      val snapshotRepoArgs =
+        if (isSnapshot) Seq("-r", AlmondRepositories.mavenSnapshots)
+        else Nil
       val launchers = scalaVersions.flatMap { sv =>
         val sbv    = sv.split('.').take(2).mkString(".")
         val suffix = ScalaVersions.binarySuffix(sv)
@@ -1197,6 +1202,7 @@ object ci extends Module {
             "central",
             "-r",
             "jitpack",
+            snapshotRepoArgs,
             s"sh.almond:scala-kernel_$suffix:$almondVersion",
             "--shared",
             s"sh.almond:scala-kernel-api_$suffix",
@@ -1228,7 +1234,7 @@ object ci extends Module {
         )
       }
       val (tag, overwriteAssets) =
-        if (almondVersion.endsWith("-SNAPSHOT")) ("nightly", true)
+        if (isSnapshot) ("nightly", true)
         else ("v" + almondVersion, false)
       Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
         launchers*
