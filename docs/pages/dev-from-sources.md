@@ -29,16 +29,20 @@ We list below useful commands, to help get you started using mill to build almon
 ## Run a Jupyter notebook server without installing a kernel
 
 ```text
-$ ./mill -i dev.jupyterFast
+$ ./mill -i dev.jupyter
 ```
 
 This should
-- build almond launchers for Scala 2.13 and Scala 3, then
+- build almond, and publish its modules to a local Maven repository (`local-repo.localRepo`),
+- install kernels for Scala 2.13 and Scala 3 from it, with the same command as the
+  [installation instructions](quick-start-install.md), plus that repository, like
+  `cs launch --use-bootstrap almond:<version> --scala 2.13.18 -r file:///…/local-repo -- --install …`,
+  along with a "special" kernel, that runs the almond launcher, then
 - start JupyterLab in the current directory, in the background.
 
 Like `runBackground` in Mill, this command returns once JupyterLab is started, and
 prints the URLs it can be reached at. JupyterLab keeps running in the background, so
-that you can keep using mill (to rebuild the kernel launchers for example). Running the
+that you can keep using mill (to rebuild the kernels for example). Running the
 command again restarts JupyterLab, and
 ```text
 $ ./mill dev.jupyterStop
@@ -47,7 +51,7 @@ stops it. Its output goes to log files printed by the command. The command also
 returns their paths, so that `./mill show` prints them as JSON, which allows to
 start JupyterLab and follow its output in one go:
 ```text
-$ ./mill show dev.jupyterFast | jq -r '.[]' | xargs tail -f
+$ ./mill show dev.jupyter | jq -r '.[]' | xargs tail -f
 ```
 
 Neither JupyterLab nor Python need to be installed: the command downloads
@@ -93,14 +97,14 @@ Notebook File Browser" or "Open in Jupyter Notebook" in JupyterLab, "Open in
 JupyterLab" in the notebook UI), or change the URL by hand. To land on the classic
 UI by default, pass `--classic`:
 ```text
-$ ./mill -i dev.jupyterFast --classic
+$ ./mill -i dev.jupyter --classic
 ```
 
 Optionally, pass a Scala version and / or JupyterLab options, like
 ```text
-$ ./mill -i dev.jupyterFast 2.12.21
-$ ./mill -i dev.jupyterFast --ip=192.168.0.1
-$ ./mill -i dev.jupyterFast 2.12.21 --ip=192.168.0.1
+$ ./mill -i dev.jupyter 2.12.21
+$ ./mill -i dev.jupyter --ip=192.168.0.1
+$ ./mill -i dev.jupyter 2.12.21 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.) A Scala version replaces the
 default one with the same binary version (`2.13.17` replaces the Scala 2.13 kernel, say), or
@@ -109,7 +113,7 @@ gets its own kernel next to the default ones (`2.12.21` adds a Scala 2.12 kernel
 If you reach JupyterLab through a reverse proxy that handles HTTPS (Tailscale
 serve for example), pass the address you use in your browser with `--base-address`:
 ```text
-$ ./mill -i dev.jupyterFast --base-address=https://pc-home.tail381281.ts.net:36227 --no-browser
+$ ./mill -i dev.jupyter --base-address=https://pc-home.tail381281.ts.net:36227 --no-browser
 ```
 JupyterLab then displays its URLs with that address, accepts requests and websocket
 connections coming through it, and trusts the `X-Forwarded-*` headers set by the
@@ -124,9 +128,9 @@ environment variable at its sources (an absolute path, or a path relative to the
 sources):
 ```text
 $ git clone https://github.com/almond-sh/almond-scalafmt.git work/almond-scalafmt
-$ ALMOND_SCALAFMT_EXTENSION=work/almond-scalafmt ./mill -i dev.jupyterFast
+$ ALMOND_SCALAFMT_EXTENSION=work/almond-scalafmt ./mill -i dev.jupyter
 ```
-`dev.jupyter`, `dev.jupyterFast`, `dev.jupyterCmd`, and `dev.jupyterCmdFast` then build
+`dev.jupyter` and `dev.jupyterCmd` then build
 the extension, and enable it in JupyterLab and in the Jupyter Notebook UI. The extension
 needs to be a JupyterLab 4 prebuilt extension (with a `jupyterlab.outputDir` field in its
 `package.json`), and building it requires Node.js on the `PATH`. Its sources are copied
@@ -137,16 +141,16 @@ warning and run without the extension.
 
 After changing the extension sources, run the command again: it rebuilds the extension
 (keeping its dependencies around, so that this only takes a few seconds), and
-`dev.jupyter` / `dev.jupyterFast` restart JupyterLab with it. Reload JupyterLab from your
+`dev.jupyter` restarts JupyterLab with it. Reload JupyterLab from your
 browser to pick it up.
 
 ## Get the command to run JupyterLab yourself
 
 ```text
-$ ./mill show dev.jupyterCmdFast
+$ ./mill show dev.jupyterCmd
 ```
 
-This builds the launchers and writes the kernel specs like `dev.jupyterFast` does, but
+This installs the kernels like `dev.jupyter` does, but
 instead of starting JupyterLab, it prints the shell command line to do so, as a JSON
 string: a `cd` to the workspace, the environment variables to set, then the command
 itself, quoted as needed for POSIX shells:
@@ -156,11 +160,13 @@ itself, quoted as needed for POSIX shells:
 
 Pass it to `eval` to run JupyterLab, with jq for example:
 ```text
-$ ( eval "$(./mill show dev.jupyterCmdFast | jq -r .)" )
+$ ( eval "$(./mill show dev.jupyterCmd | jq -r .)" )
 ```
 (The subshell keeps the `cd` from changing the current directory of your shell.)
-Like `dev.jupyterFast`, it accepts a Scala version, `--classic`, `--base-address`, and
-JupyterLab options. `dev.jupyterCmd` does the same with standalone launchers.
+Like `dev.jupyter`, it accepts a Scala version, `--classic`, `--base-address`, and
+JupyterLab options.
+
+`dev.jupyterFast` and `dev.jupyterCmdFast` are the same as `dev.jupyter` and `dev.jupyterCmd`.
 
 ## Build a kernel launcher
 
@@ -192,8 +198,12 @@ $ ./mill -w dev.launcherFast
 ```
 
 If you [ran a JupyterLab server from the almond sources](#run-a-jupyter-notebook-server-without-installing-a-kernel),
-you can restart the kernel from a notebook via JupyterLab to pick a newly built launcher. Pass
-`./mill -w dev.launcher` the Scala version of the kernel you use in JupyterLab.
+its kernels load the almond JARs from the local repository. Re-publish them there upon source
+changes with
+```text
+$ ./mill -w local-repo.localRepo
+```
+then restart the kernel from a notebook via JupyterLab to pick them up.
 
 ## Useful commands
 
