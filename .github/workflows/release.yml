@@ -64,10 +64,16 @@ jobs:
         MILL_MAVEN_USERNAME: ${{ github.actor }}
         MILL_MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
+  # Launchers of tagged versions go to the release of their tag, those of snapshots
+  # pushed from main replace the ones of the "nightly" release
   upload-launcher:
     needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Nightly uploads replace assets, never run two of them at the same time
+    concurrency:
+      group: upload-launcher-${{ github.repository }}-${{ startsWith(github.ref, 'refs/tags/') && github.ref || 'nightly' }}
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -78,11 +84,28 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
-    - run: ./mill -i ci.uploadLaunchers
-      if: startsWith(github.ref, 'refs/tags/v')
+    - run: |
+        if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+          # Same as in the release job, so that we pick the snapshot version it published
+          for tag in $(git tag --points-at HEAD); do
+            git tag -d "$tag"
+          done
+        fi
+        ./mill -i ci.uploadLaunchers
+      if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.repository == 'almond-sh/almond')
       shell: bash
       env:
         UPLOAD_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sdkman:
+    needs: upload-launcher
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'almond-sh/almond'
+    uses: ./.github/workflows/sdkman.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      SDKMAN_VENDOR_EMAIL: ${{ secrets.SDKMAN_VENDOR_EMAIL }}
+      SDKMAN_VENDOR_PASSWORD: ${{ secrets.SDKMAN_VENDOR_PASSWORD }}
 
   update-docker-images:
     needs: release
