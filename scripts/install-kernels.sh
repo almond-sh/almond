@@ -7,7 +7,7 @@ set -eu
 # coursier command to use (the native launcher in the Docker image), override with COURSIER=/path/to/coursier if needed
 COURSIER="${COURSIER:-cs}"
 # oldest coursier version known to work with the options passed below
-COURSIER_MIN_VERSION="2.1.25"
+COURSIER_MIN_VERSION="2.1.26"
 command -v "$COURSIER" >/dev/null || { echo "coursier (${COURSIER}) not found" ; exit 1; }
 COURSIER_VERSION=$("$COURSIER" version 2>/dev/null | tail -n 1)
 if [[ $(printf '%s\n%s\n' "$COURSIER_MIN_VERSION" "$COURSIER_VERSION" | sort -V | head -n 1) != "$COURSIER_MIN_VERSION" ]]; then

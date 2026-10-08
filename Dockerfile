@@ -19,7 +19,7 @@ RUN apt-get -y update && \
     rm -rf /var/lib/apt/lists/*
 
 # Native coursier launcher as "cs", JVM one as "coursier"
-ARG COURSIER_VERSION=2.1.25
+ARG COURSIER_VERSION=2.1.26
 RUN curl -fL https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/cs-$(uname -m)-pc-linux.gz | \
       gzip -d > /usr/local/bin/cs && \
     chmod +x /usr/local/bin/cs && \
