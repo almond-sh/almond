@@ -114,6 +114,8 @@ object JupyterServer {
     *
     * @param cs
     *   the `cs` launcher installing the kernels
+    * @param appChannel
+    *   directory with the almond app descriptor (`almond.json`), the only channel `cs` gets it from
     * @param localRepo
     *   local Maven repository with the almond modules, along with their dependencies on Maven
     *   Central snapshots, if `useMavenSnapshots` is true
@@ -128,6 +130,7 @@ object JupyterServer {
     */
   final case class KernelSource(
     cs: String,
+    appChannel: os.Path,
     localRepo: os.Path,
     useMavenSnapshots: Boolean,
     kernelVersion: String,
@@ -141,6 +144,17 @@ object JupyterServer {
     // kernels embed predates that alias, and ignores COURSIER_REPOSITORIES altogether when it
     // can't parse it
     private def mavenSnapshots = "https://central.sonatype.com/repository/maven-snapshots"
+
+    /** Options making `cs launch` get the almond app descriptor from `appChannel`, and only from
+      * there
+      */
+    def csChannelArgs: Seq[String] =
+      Seq(
+        "--channel",
+        PathRef.toResolvedPathString(appChannel),
+        "--default-channels=false",
+        "--file-channels=false"
+      )
 
     /** Repositories passed to `cs launch`, on top of the default ones (JitPack is already added by
       * the almond app descriptor, but not when launching a dependency like the launcher one)
@@ -451,7 +465,7 @@ object JupyterServer {
         source,
         javaHome,
         jupyterDir,
-        Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion),
+        Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion) ++ source.csChannelArgs,
         kernelId(scalaVersion),
         s"Scala $scalaVersion (sources)",
         Nil

@@ -36,9 +36,14 @@ This should
 - build almond, and publish its modules to a local Maven repository (`local-repo.localRepo`),
 - install kernels for Scala 2.13 and Scala 3 from it, with the same command as the
   [installation instructions](quick-start-install.md), plus that repository, like
-  `cs launch --use-bootstrap almond:<version> --scala 2.13.18 -r file:///…/local-repo -- --install …`,
+  `cs launch --use-bootstrap almond:<version> --scala 2.13.18 --channel app -r file:///…/local-repo -- --install …`,
   along with a "special" kernel, that runs the almond launcher, then
 - start JupyterLab in the current directory, in the background.
+
+The `almond` app descriptor these commands use is `app/almond.json`, rather than the one
+of the [coursier apps channel](https://github.com/coursier/apps), that the installation
+instructions use. The two are expected to be the same, which the release CI checks
+(see `scripts/check-app-descriptor.sh`). When changing one, change the other too.
 
 Like `runBackground` in Mill, this command returns once JupyterLab is started, and
 prints the URLs it can be reached at. JupyterLab keeps running in the background, so

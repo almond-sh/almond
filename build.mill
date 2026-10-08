@@ -983,6 +983,7 @@ object dev extends Module {
     Task.Anon {
       JupyterServer.KernelSource(
         cs = CsLauncher.cs(Deps.csVersion),
+        appChannel = BuildCtx.workspaceRoot / "app",
         localRepo = `local-repo`.localRepo().path,
         useMavenSnapshots = `local-repo`.useMavenSnapshots(),
         kernelVersion = launcher.publishVersion(),
