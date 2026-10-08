@@ -185,7 +185,7 @@ object LineMagicHandlers {
 
       println("Available cell magics:")
       val cellKeys =
-        (CellMagicHandlers.handlerKeys ++ CellMagicHook.userHandlers.keys).toVector.sorted
+        (CellMagicHandlers.handlerKeys ++ CellMagicHook.userHandlers.keys).toVector.sorted.distinct
       println(cellKeys.map("%%" + _).mkString(" "))
       println()
 

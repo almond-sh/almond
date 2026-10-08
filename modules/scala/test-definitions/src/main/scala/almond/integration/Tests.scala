@@ -598,7 +598,7 @@ object Tests {
   def toreeCustomCellMagic()(implicit sessionId: SessionId, runner: Runner): Unit = {
 
     val predef =
-      """almond.toree.CellMagicHook.addHandler("test") { (_, content) =>
+      """almond.toree.CellMagicHook.addHandler("Test") { (_, content) =>
         |  import almond.api.JupyterApi
         |  import almond.interpreter.api.DisplayData
         |
@@ -611,6 +611,10 @@ object Tests {
         |
         |  val nl = System.lineSeparator()
         |  Right(s"val thing = {" + nl + content + nl + "}" + nl)
+        |}
+        |
+        |almond.toree.LineMagicHook.addHandler("Greet") { (_, args) =>
+        |  Right("val greeting = \"Hello " + args.mkString(" ") + "\"")
         |}
         |""".stripMargin
 
@@ -638,7 +642,7 @@ object Tests {
         "",
         stdout =
           "Available line magics:" + ls +
-            "%adddeps %addjar %lsmagic %truncation" + ls +
+            "%adddeps %addjar %greet %lsmagic %truncation" + ls +
             ls +
             "Available cell magics:" + ls +
             "%%html %%javascript %%test %%thing" + ls +
@@ -654,6 +658,11 @@ object Tests {
         stdout =
           "Hello" + ls +
             "thing: Int = 2"
+      )
+
+      execute(
+        "%GREET Alice",
+        "greeting: String = \"Hello Alice\""
       )
     }
   }
