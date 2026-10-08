@@ -14,6 +14,7 @@ class AlmondPreprocessor(
   autoUpdateVars: Boolean,
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
+  outputStyle: () => almond.OutputStyle,
   logCtx: almond.logger.LoggerContext,
   logCode: Boolean // FIXME Respect that
 ) extends Preprocessor(ctx, markGeneratedSections = false) {
@@ -34,17 +35,23 @@ class AlmondPreprocessor(
     markScript: Boolean,
     codeWrapper: ammonite.compiler.iface.CodeWrapper
   ): ammonite.util.Res[ammonite.compiler.iface.Preprocessor.Output] = {
+    val declarations =
+      if (variableInspectorEnabled()) declareVariablesCode(stmts, resultIndex)
+      else Nil
+    val extra =
+      if (declarations.isEmpty) Nil
+      else Seq(s"{ ${declarations.mkString("; ")}; _root_.scala.Iterator[String]() }")
     val printerTemplate0 =
-      if (variableInspectorEnabled()) {
-        val declarations = declareVariablesCode(stmts, resultIndex)
-        if (declarations.isEmpty) printerTemplate
-        else {
-          val extra = s"{ ${declarations.mkString("; ")}; _root_.scala.Iterator[String]() }"
-          (printers: String) =>
-            printerTemplate(if (printers.isEmpty) extra else s"$extra, $printers")
-        }
+      if (outputStyle() == almond.OutputStyle.Python) {
+        // discarding the printers of the Ammonite preprocessor, and only printing
+        // the last expression of the cell
+        val printers = extra ++ lastExpressionPrinter(stmts, resultIndex).toSeq
+        (_: String) => printerTemplate(printers.mkString(", "))
       }
-      else printerTemplate
+      else if (extra.isEmpty) printerTemplate
+      else
+        (printers: String) =>
+          printerTemplate((extra ++ Seq(printers).filter(_.nonEmpty)).mkString(", "))
     val res = super.transform(
       stmts,
       resultIndex,
@@ -65,6 +72,39 @@ class AlmondPreprocessor(
       }
     res
   }
+
+  /** In the Python output style, code printing the result of the last statement, if it's an
+    * expression and the cell doesn't end with a semicolon
+    */
+  private def lastExpressionPrinter(stmts: Seq[String], resultIndex: String): Option[String] =
+    if (PythonOutputStyle.endsWithSemicolon(stmts.mkString)) None
+    else
+      stmts
+        .iterator
+        .zipWithIndex
+        .flatMap { case (stmt, idx) => parse(stmt).filter(_.nonEmpty).map((_, idx)) }
+        .toVector
+        .lastOption
+        .collect {
+          case (Seq(tree), idx) if isExpression(tree) =>
+            PythonOutputStyle.printerCode(PythonOutputStyle.resultName(
+              resultIndex,
+              idx,
+              stmts.length
+            ))
+        }
+
+  /** Whether the Ammonite preprocessor handles a tree as an expression, whose result it puts in a
+    * `res…` variable
+    */
+  private def isExpression(tree: untpd.Tree): Boolean =
+    tree match {
+      case _: untpd.ModuleDef | _: untpd.TypeDef | _: untpd.DefDef | _: untpd.ValDef |
+          _: untpd.PatDef | _: untpd.Import | _: untpd.Export | _: untpd.ExtMethods =>
+        false
+      case _ =>
+        true
+    }
 
   // Variable inspector support: the Scala 2 AlmondPreprocessor adds a call to declareVariable to the
   // printer code of each definition and expression. The Scala 3 Ammonite preprocessor can't be

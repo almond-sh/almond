@@ -161,6 +161,11 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     value
   }
 
+  def mimaBinaryIssueFilters = Seq(
+    // implemented by the kernel, not meant to be implemented by users
+    ProblemFilter.exclude[ReversedMissingMethodProblem]("almond.api.FullJupyterApi.*")
+  )
+
   // We used to be published for each full Scala version until 0.15.0 - the artifacts we
   // publish since then (scala-kernel-api_2.13 rather than scala-kernel-api_2.13.18, …) can
   // only be compared with the releases from 0.15.0 on.

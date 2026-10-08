@@ -1,5 +1,6 @@
 package almond.launcher
 
+import almond.OutputStyle
 import almond.kernel.install.{Options => InstallOptions}
 import almond.launcher.directives.CustomGroup
 import caseapp._
@@ -41,7 +42,11 @@ final case class LauncherOptions(
     autoUpdateVars: Option[Boolean] = None,
   @HelpMessage("Whether to automatically update the output of lazy val-s upon computation (default: true)")
     autoUpdateLazyVals: Option[Boolean] = None,
-  @HelpMessage("Only display the last value of each cell")
+  @HelpMessage("How cell results are displayed: default (each value, with its name and type), last (only the last value, with its name and type), or python (like the Python kernel, only the value of the last expression) - can be changed mid-session with '//> using outputStyle default|last|python'")
+  @ValueDescription("default|last|python")
+    outputStyle: Option[String] = None,
+  @HelpMessage("Kept for compatibility, same as --output-style last")
+  @Hidden
     lastValueOnly: Option[Boolean] = None,
   useNotebookCoursierLogger: Option[Boolean] = None,
   customDirectiveGroup: List[String] = Nil,
@@ -99,6 +104,8 @@ final case class LauncherOptions(
       b ++= Seq(s"--compile-only=$value")
     for (value <- lastValueOnly)
       b ++= Seq(s"--last-value-only=$value")
+    for (value <- outputStyle)
+      b ++= Seq(s"--output-style=$value")
     for (value <- silentImports)
       b ++= Seq(s"--silent-imports=$value")
     for (value <- autoUpdateVars)
@@ -125,6 +132,16 @@ final case class LauncherOptions(
   }
 
   def quiet0 = quiet.getOrElse(true)
+
+  def outputStyleOrExit(): Option[OutputStyle] =
+    outputStyle.map { input =>
+      OutputStyle.parse(input) match {
+        case Left(err) =>
+          System.err.println(s"Error: $err")
+          sys.exit(1)
+        case Right(style) => style
+      }
+    }
 
   def customDirectiveGroupsOrExit(): Seq[CustomGroup] = {
     val maybeGroups = customDirectiveGroup

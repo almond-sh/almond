@@ -53,6 +53,7 @@ final class Execute(
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
   commHandlerOpt: => Option[CommHandler],
   silent: Ref[Boolean],
+  outputStyle: Ref[OutputStyle],
   useThreadInterrupt: Boolean,
   initialCellCount: Int,
   enableExitHack: Boolean,
@@ -185,6 +186,9 @@ final class Execute(
     almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
       options.scalacOptions.toSeq.map(_.value.value)
     )
+
+    for (value <- options.outputStyle)
+      outputStyle() = value
 
     val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
     val loadDepsRes =
