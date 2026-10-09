@@ -267,16 +267,42 @@ object Install {
     extraStartupClassPath: Seq[String]
   ): Path = {
 
+    val jupyterCommand = options.jupyterCommand.getOrElse(JupyterDirectories.defaultCommand)
+    val jupyterDirsOpt =
+      if (jupyterCommand.trim.isEmpty)
+        if (options.requireJupyter)
+          throw new InstallException.CannotGetJupyterDirectories("empty jupyter command")
+        else
+          None
+      else
+        JupyterDirectories.get(jupyterCommand) match {
+          case Right(dirs) => Some(dirs)
+          case Left(err) if options.requireJupyter =>
+            throw new InstallException.CannotGetJupyterDirectories(
+              s"running '$jupyterCommand' failed: $err"
+            )
+          case Left(err) =>
+            warn(
+              s"Warning: could not get the Jupyter directories via '$jupyterCommand': $err" +
+                System.lineSeparator() +
+                "Using default Jupyter directories instead. Pass --jupyter-command with the path " +
+                "of the jupyter command of your Jupyter installation, or --jupyter-path, " +
+                "if Jupyter doesn't find the kernel."
+            )
+            None
+        }
+
     val path =
       options.jupyterPath match {
         case Some(p) => Left(Paths.get(p))
         case None =>
-          Right(
-            if (options.global)
-              JupyterPath.System
-            else
-              JupyterPath.User
-          )
+          if (options.global)
+            Right(JupyterPath.System)
+          else
+            jupyterDirsOpt match {
+              case Some(dirs) => Left(dirs.userKernelsDir)
+              case None       => Right(JupyterPath.User)
+            }
       }
 
     val cmd =
@@ -289,7 +315,7 @@ object Install {
           if (options.arg.isEmpty)
             Install.currentAppCommand(
               extraStartupClassPath,
-              Set("--install", "--force", "--global").flatMap(s =>
+              Set("--install", "--force", "--global", "--require-jupyter").flatMap(s =>
                 Seq(s, s"$s=true")
               )
             ).getOrElse {
@@ -309,7 +335,7 @@ object Install {
           Some(Paths.get(f).toUri.toURL)
       }
 
-    Install.installIn(
+    val dir = Install.installIn(
       options.id.getOrElse(defaultId),
       KernelSpec(
         argv = (cmd ++ connectionFileArgs).toList,
@@ -323,6 +349,59 @@ object Install {
       force = options.force,
       copyLauncher = options.copyLauncher0
     )
+
+    for (dirs <- jupyterDirsOpt; message <- checkVisibility(dirs, dir))
+      warn(message)
+
+    dir
+  }
+
+  private def warn(message: String): Unit =
+    System.err.println(message)
+
+  private def samePath(a: Path, b: Path): Boolean =
+    a.toAbsolutePath.normalize == b.toAbsolutePath.normalize ||
+    Files.exists(a) && Files.exists(b) && Files.isSameFile(a, b)
+
+  /** Checks whether Jupyter is going to pick the kernel installed in `kernelDir`
+    *
+    * @return
+    *   a warning message, if Jupyter isn't going to pick it
+    */
+  def checkVisibility(dirs: JupyterDirectories, kernelDir: Path): Option[String] = {
+    val nl           = System.lineSeparator()
+    val kernelId     = kernelDir.getFileName.toString
+    val kernelsDir   = kernelDir.getParent
+    val kernelsDirs  = dirs.kernelsDirs
+    val kernelDirIdx = kernelsDirs.indexWhere(samePath(_, kernelsDir))
+    if (kernelDirIdx < 0) {
+      val hint = kernelsDirs.find(samePath(_, kernelsDir.resolve("kernels"))) match {
+        case Some(dir) =>
+          s"Did you mean to pass --jupyter-path $dir?"
+        case None =>
+          "Pass --jupyter-path with one of these directories to install the kernel there."
+      }
+      Some(
+        s"Warning: ${dirs.jupyter} doesn't look for kernels in $kernelsDir, so Jupyter might " +
+          s"not find this kernel. It looks for kernels in:" + nl +
+          kernelsDirs.map("  " + _ + nl).mkString +
+          hint
+      )
+    }
+    else {
+      // Jupyter picks the first kernel with a given id it finds
+      val shadowingKernelDirs = kernelsDirs
+        .take(kernelDirIdx)
+        .map(_.resolve(kernelId))
+        .filter(dir => Files.isRegularFile(dir.resolve("kernel.json")))
+      shadowingKernelDirs.headOption.map { shadowingKernelDir =>
+        s"Warning: another kernel with id $kernelId is installed in $shadowingKernelDir, which " +
+          s"${dirs.jupyter} looks at before $kernelsDir, so Jupyter is going to use that other " +
+          "kernel rather than this one. Remove that other kernel, pass --id to install this one " +
+          "under a different id, or pass " +
+          s"--jupyter-path ${shadowingKernelDir.getParent} --force to replace that other kernel."
+      }
+    }
   }
 
   def installOrError(

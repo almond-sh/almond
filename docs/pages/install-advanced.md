@@ -57,6 +57,31 @@ and copies it alongside the `kernel.json` file it generates for Jupyter to be ab
 Almond. That way, the launcher used during the installation can be safely deleted right after
 the installation.
 
+### Where the kernel gets installed
+
+By default, Almond asks the `jupyter` command found in the `PATH` where Jupyter looks for kernels
+(via `jupyter --data-dir` and `jupyter --paths --json`), and installs the kernel in the user kernel
+directory, like `jupyter kernelspec install --user` would. If `jupyter` can't be run, Almond prints
+a warning and falls back to the default Jupyter directories (`~/.local/share/jupyter/kernels` on Linux,
+`~/Library/Jupyter/kernels` on macOS, `%APPDATA%\jupyter\kernels` on Windows, taking into account
+environment variables such as `JUPYTER_DATA_DIR`).
+Pass `--require-jupyter` to make the installation fail instead, if `jupyter` can't be run.
+
+If the `jupyter` command of your Jupyter installation isn't in the `PATH` (on Windows, if you
+don't install Almond from an Anaconda Prompt for example), pass it with `--jupyter-command`:
+```text
+$ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --jupyter-command 'D:\anaconda3\Scripts\jupyter.exe'
+```
+
+You can also pass a kernel directory explicitly with `--jupyter-path`, or install the kernel
+system-wide with `--global`. After installing the kernel, Almond warns if Jupyter doesn't look for
+kernels in the directory it was installed in, or if another kernel with the same id takes
+precedence over it.
+
+Note that the kernel is installed for the user running the installation. When running Jupyter as
+another user (like in Docker images, where the installation often runs as `root`), pass `--global`
+or `--jupyter-path` to install the kernel in a directory that Jupyter looks at.
+
 ## Creating an Almond launcher and installing it
 
 This section describes how to install Almond for a specific Scala version. Even
