@@ -6,7 +6,7 @@
 # Can be used to create an image with a locally built almond that isn't on maven central yet.
 ARG LOCAL_IVY=no
 
-FROM jupyter/base-notebook as coursier_base
+FROM quay.io/jupyter/base-notebook as coursier_base
 
 USER root
 
