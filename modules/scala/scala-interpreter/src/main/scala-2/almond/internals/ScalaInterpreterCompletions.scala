@@ -28,7 +28,11 @@ object ScalaInterpreterCompletions {
 
     val log = logCtx(getClass)
 
-    val prefix  = previousImports + newLine + "object AutocompleteWrapper{" + newLine
+    // Not putting that code in the empty package, like cells (that live in ammonite.$sess) - its
+    // members would be completed, which includes the module-info classes at the root of some JARs
+    // of the class path, that the presentation compiler of Scala <= 2.12.8 fails to read
+    val prefix = "package almond_completions" + newLine + previousImports + newLine +
+      "object AutocompleteWrapper{" + newLine
     val suffix  = newLine + "}"
     val allCode = prefix + snippet + suffix
     val index   = snippetIndex + prefix.length

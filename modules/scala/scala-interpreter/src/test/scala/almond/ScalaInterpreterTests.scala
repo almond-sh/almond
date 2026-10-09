@@ -296,7 +296,7 @@ object ScalaInterpreterTests extends TestSuite {
       }
 
       test("backticks") {
-        // Scope completions crash in Ammonite's completion internals for Scala >= 3.9
+        // Scope completions crash in Ammonite 3.1.0's completion internals for Scala >= 3.9
         if (scala.util.Properties.versionNumberString.startsWith("3.9.")) "disabled"
         else backticksTest()
       }
