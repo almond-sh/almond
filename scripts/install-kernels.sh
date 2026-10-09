@@ -3,6 +3,18 @@ set -eu
 
 [ -z "$SCALA_VERSIONS" ] && { echo "SCALA_VERSIONS is empty" ; exit 1; }
 [ -z "$ALMOND_VERSION" ] && { echo "ALMOND_VERSION is empty" ; exit 1; }
+
+# coursier command to use (the native launcher in the Docker image), override with COURSIER=/path/to/coursier if needed
+COURSIER="${COURSIER:-cs}"
+# oldest coursier version known to work with the options passed below
+COURSIER_MIN_VERSION="2.1.26"
+command -v "$COURSIER" >/dev/null || { echo "coursier (${COURSIER}) not found" ; exit 1; }
+COURSIER_VERSION=$("$COURSIER" version 2>/dev/null | tail -n 1)
+if [[ $(printf '%s\n%s\n' "$COURSIER_MIN_VERSION" "$COURSIER_VERSION" | sort -V | head -n 1) != "$COURSIER_MIN_VERSION" ]]; then
+  echo "coursier ${COURSIER_VERSION} is too old, coursier >= ${COURSIER_MIN_VERSION} is required"
+  exit 1
+fi
+
 for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
   # remove patch version
   SCALA_MAJOR_VERSION=${SCALA_FULL_VERSION%.*}
@@ -25,10 +37,11 @@ for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
   if [[ ${ALMOND_VERSION} == *-SNAPSHOT ]]; then
     EXTRA_ARGS+=('--standalone')
   fi
-  coursier bootstrap \
+  # scala-kernel-api is loaded in a class loader shared with user code
+  "$COURSIER" bootstrap \
       -r jitpack \
-      -i user -I user:sh.almond:scala-kernel-api_${SCALA_SUFFIX}:${ALMOND_VERSION} \
       sh.almond:scala-kernel_${SCALA_SUFFIX}:${ALMOND_VERSION} \
+      --shared sh.almond:scala-kernel-api_${SCALA_SUFFIX} \
       --scala ${SCALA_FULL_VERSION} \
       --default=true --sources \
       -o almond "${EXTRA_ARGS[@]}"
