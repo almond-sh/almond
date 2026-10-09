@@ -78,6 +78,19 @@ object JupyterServer {
     ) ++
       groups.flatMap(group => Seq("--group", group))
 
+  /** The directory with the commands (`jupyter`, …) of the uv-managed environment of
+    * [[jupyterCommand]] (with the dependency groups `groups`)
+    */
+  private def jupyterScriptsDir(uv: os.Path, workspace: os.Path, groups: Seq[String]): os.Path = {
+    val scriptsDir = os.proc(
+      uvRunCommand(uv, workspace, groups),
+      "python",
+      "-c",
+      "import sysconfig; print(sysconfig.get_path('scripts'))"
+    ).call(cwd = workspace, stderr = os.Inherit).out.trim()
+    os.Path(scriptsDir)
+  }
+
   /** Makes the JupyterLab settings in `examples/jupyterlab-overrides.json` (theme following the
     * system one, 2-space indentation, …) the defaults of the uv-managed environment, for both
     * JupyterLab and the Jupyter Notebook UI. Settings changed by users still take precedence.
@@ -185,14 +198,20 @@ object JupyterServer {
   )
 
   /** Installs a kernel the way the installation pages of the documentation do, with a command like
-    * `cs launch --use-bootstrap almond:… -- --install`, in `jupyterDir/kernels`
+    * `cs launch --use-bootstrap almond:… -- --install`, letting the kernel ask the `jupyter`
+    * command in the `PATH` where to install itself. `JUPYTER_DATA_DIR` is set to `jupyterDir` for
+    * the installation, so that the kernel ends up in `jupyterDir/kernels` rather than in the
+    * Jupyter directory of the user.
     *
+    * @param jupyterScriptsDir
+    *   directory with the `jupyter` command, put first in the `PATH` of the installation
     * @param app
     *   what `cs launch` runs, along with its options
     */
   private def installKernel(
     source: KernelSource,
     javaHome: os.Path,
+    jupyterScriptsDir: os.Path,
     jupyterDir: os.Path,
     app: Seq[String],
     kernelId: String,
@@ -203,8 +222,6 @@ object JupyterServer {
       Seq(
         "--",
         "--install",
-        "--jupyter-path",
-        PathRef.toResolvedPathString(jupyterDir / "kernels"),
         "--id",
         kernelId,
         "--display-name",
@@ -217,12 +234,15 @@ object JupyterServer {
     System.err.println(s"Installing kernel $kernelId")
     os.proc(command).call(
       cwd = jupyterDir,
-      env = JavaHomes.environment(javaHome),
+      env = withPathPrefix(JavaHomes.environment(javaHome), Seq(jupyterScriptsDir)) +
+        ("JUPYTER_DATA_DIR" -> PathRef.toResolvedPathString(jupyterDir)),
       stdin = "",
       // kept off our stdout, that `show dev.jupyterCmd…` prints the command to
       stdout = os.ProcessOutput.Readlines(System.err.println),
       stderr = os.Inherit
     )
+    if (!os.isFile(jupyterDir / "kernels" / kernelId / "kernel.json"))
+      sys.error(s"Kernel $kernelId wasn't installed under ${jupyterDir / "kernels"}")
   }
 
   /** Environment for Jupyter: the JVM at `javaHome` (for the kernels it starts), the kernel specs
@@ -233,18 +253,21 @@ object JupyterServer {
     jupyterDir: os.Path,
     extraPath: Seq[os.Path] = Nil
   ): Map[String, String] = {
-    val javaEnv = JavaHomes.environment(javaHome)
-    val javaEnv0 =
-      if (extraPath.isEmpty) javaEnv
-      else {
-        // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
-        val (pathKey, pathValue) = javaEnv.find(_._1.equalsIgnoreCase("PATH")).get
-        val newPathValue =
-          (extraPath.map(PathRef.toResolvedPathString(_)) :+ pathValue).mkString(File.pathSeparator)
-        javaEnv + (pathKey -> newPathValue)
-      }
-    javaEnv0 + ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
+    val javaEnv = withPathPrefix(JavaHomes.environment(javaHome), extraPath)
+    javaEnv + ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
   }
+
+  /** Puts `dirs` first in the `PATH` of `env`, an environment coming from [[JavaHomes.environment]]
+    */
+  private def withPathPrefix(env: Map[String, String], dirs: Seq[os.Path]): Map[String, String] =
+    if (dirs.isEmpty) env
+    else {
+      // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
+      val (pathKey, pathValue) = env.find(_._1.equalsIgnoreCase("PATH")).get
+      val newPathValue =
+        (dirs.map(PathRef.toResolvedPathString(_)) :+ pathValue).mkString(File.pathSeparator)
+      env + (pathKey -> newPathValue)
+    }
 
   /** Extracts a `--classic` flag from the passed arguments, if any: whether the Jupyter Notebook UI
     * (the classic one, at `/tree`) should be the default UI rather than JupyterLab (at `/lab`).
@@ -448,22 +471,28 @@ object JupyterServer {
 
   /** Installs one kernel per element of `scalaVersions`, plus the special kernel (the almond
     * launcher, that fetches the kernel for the Scala version a notebook asks for at startup), in
-    * `jupyterDir/kernels`, with `cs launch` (see [[installKernel]]). Kernels installed there
-    * earlier are removed first.
+    * `jupyterDir/kernels`, with `cs launch` (see [[installKernel]]), relying on the `jupyter`
+    * command of the uv-managed environment with the dependency groups `groups`. Kernels installed
+    * there earlier are removed first.
     */
   private def installKernels(
+    uv: os.Path,
+    workspace: os.Path,
+    groups: Seq[String],
     source: KernelSource,
     javaHome: os.Path,
     scalaVersions: Seq[String],
     jupyterDir: os.Path,
     specialExtraOptions: String*
   ): Unit = {
+    val scriptsDir = jupyterScriptsDir(uv, workspace, groups)
     os.remove.all(jupyterDir / "kernels")
     os.makeDir.all(jupyterDir / "kernels")
     for (scalaVersion <- scalaVersions)
       installKernel(
         source,
         javaHome,
+        scriptsDir,
         jupyterDir,
         Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion) ++ source.csChannelArgs,
         kernelId(scalaVersion),
@@ -473,6 +502,7 @@ object JupyterServer {
     installKernel(
       source,
       javaHome,
+      scriptsDir,
       jupyterDir,
       Seq(source.launcherDependency, "--main-class", source.launcherMainClass),
       specialKernelId,
@@ -510,7 +540,16 @@ object JupyterServer {
     labExtensions: Seq[os.Path]
   ): Command = {
 
-    installKernels(source, javaHome, scalaVersions, jupyterDir, "--quiet=false")
+    installKernels(
+      uv,
+      workspace,
+      labGroups,
+      source,
+      javaHome,
+      scalaVersions,
+      jupyterDir,
+      "--quiet=false"
+    )
 
     writeSettingsOverrides(uv, workspace, labGroups)
     LabExtension.install(labExtensions, jupyterDir)
@@ -584,7 +623,7 @@ object JupyterServer {
     workspace: os.Path
   ): Unit = {
 
-    installKernels(source, javaHome, Seq(scalaVersion), jupyterDir)
+    installKernels(uv, workspace, Nil, source, javaHome, Seq(scalaVersion), jupyterDir)
 
     val command =
       jupyterCommand(uv, workspace, Nil, "console", s"--kernel=${kernelId(scalaVersion)}") ++ args
