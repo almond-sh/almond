@@ -109,41 +109,120 @@ object JupyterServer {
     */
   def labGroups = Seq("lab", "ai")
 
-  def writeKernelJson(
-    launcher: os.Path,
+  /** Where the kernels are installed from: the almond modules built from sources, published to a
+    * local Maven repository
+    *
+    * @param cs
+    *   the `cs` launcher installing the kernels
+    * @param appChannel
+    *   directory with the almond app descriptor (`almond.json`), the only channel `cs` gets it from
+    * @param localRepo
+    *   local Maven repository with the almond modules, along with their dependencies on Maven
+    *   Central snapshots, if `useMavenSnapshots` is true
+    * @param kernelVersion
+    *   the version of the almond modules in `localRepo`
+    * @param launcherDependency
+    *   the dependency of the almond launcher in `localRepo` (like `org:name:version`), that the
+    *   special kernel runs
+    * @param launcherMainClass
+    *   the main class of the almond launcher: cs can't find it on its own, as some of its
+    *   dependencies have their own `Main-Class`
+    */
+  final case class KernelSource(
+    cs: String,
+    appChannel: os.Path,
+    localRepo: os.Path,
+    useMavenSnapshots: Boolean,
+    kernelVersion: String,
+    launcherDependency: String,
+    launcherMainClass: String
+  ) {
+    private def localRepoUri =
+      java.nio.file.Paths.get(PathRef.toResolvedPathString(localRepo)).toUri.toASCIIString
+        .stripSuffix("/")
+    // Spelled as a URL rather than as the central:maven-snapshots alias, as the coursier the
+    // kernels embed predates that alias, and ignores COURSIER_REPOSITORIES altogether when it
+    // can't parse it
+    private def mavenSnapshots = "https://central.sonatype.com/repository/maven-snapshots"
+
+    /** Options making `cs launch` get the almond app descriptor from `appChannel`, and only from
+      * there
+      */
+    def csChannelArgs: Seq[String] =
+      Seq(
+        "--channel",
+        PathRef.toResolvedPathString(appChannel),
+        "--default-channels=false",
+        "--file-channels=false"
+      )
+
+    /** Repositories passed to `cs launch`, on top of the default ones (JitPack is already added by
+      * the almond app descriptor, but not when launching a dependency like the launcher one)
+      */
+    def csRepositoryArgs: Seq[String] =
+      Seq("-r", localRepoUri) ++
+        (if (useMavenSnapshots) Seq("-r", mavenSnapshots) else Nil) ++
+        Seq("-r", "jitpack")
+
+    /** Repositories the kernels resolve from at runtime, as a `COURSIER_REPOSITORIES` value: the
+      * special kernel fetches the actual kernel from them, and all the kernels the dependencies
+      * users add
+      */
+    def kernelRepositories: String =
+      (Seq(localRepoUri, "ivy2Local", "central") ++
+        (if (useMavenSnapshots) Seq(mavenSnapshots) else Nil)).mkString("|")
+  }
+
+  /** Options passed to all the kernels */
+  private def kernelOptions = Seq(
+    "--log",
+    "debug",
+    // for the variable inspector JupyterLab extension (installed with the lab dependency group)
+    "--variable-inspector",
+    "--toree-magics",
+    "--silent-imports",
+    "--use-notebook-coursier-logger"
+  )
+
+  /** Installs a kernel the way the installation pages of the documentation do, with a command like
+    * `cs launch --use-bootstrap almond:… -- --install`, in `jupyterDir/kernels`
+    *
+    * @param app
+    *   what `cs launch` runs, along with its options
+    */
+  private def installKernel(
+    source: KernelSource,
+    javaHome: os.Path,
     jupyterDir: os.Path,
-    workspace: os.Path,
-    localRepoRoot: os.Path,
-    publishVersion: String,
+    app: Seq[String],
     kernelId: String,
     name: String,
-    extraArgs: String*
+    extraOptions: Seq[String]
   ): Unit = {
-    val dir = jupyterDir / "kernels" / kernelId
-    val baseArgs = Seq(
-      PathRef.toResolvedPathString(launcher),
-      "--log",
-      "debug",
-      "--connection-file",
-      "{connection_file}",
-      // for the variable inspector JupyterLab extension (installed with the lab dependency group)
-      "--variable-inspector",
-      "--toree-magics",
-      "--use-notebook-coursier-logger",
-      "--silent-imports",
-      "--use-notebook-coursier-logger",
-      "--extra-repository",
-      java.nio.file.Paths.get(PathRef.toResolvedPathString(localRepoRoot)).toUri.toASCIIString
+    val command = Seq(source.cs, "launch", "--use-bootstrap") ++ app ++ source.csRepositoryArgs ++
+      Seq(
+        "--",
+        "--install",
+        "--jupyter-path",
+        PathRef.toResolvedPathString(jupyterDir / "kernels"),
+        "--id",
+        kernelId,
+        "--display-name",
+        name,
+        "--env",
+        s"COURSIER_REPOSITORIES=${source.kernelRepositories}"
+      ) ++
+      kernelOptions ++
+      extraOptions
+    System.err.println(s"Installing kernel $kernelId")
+    os.proc(command).call(
+      cwd = jupyterDir,
+      env = JavaHomes.environment(javaHome),
+      stdin = "",
+      // kept off our stdout, that `show dev.jupyterCmd…` prints the command to
+      stdout = os.ProcessOutput.Readlines(System.err.println),
+      stderr = os.Inherit
     )
-    val kernelJson = ujson.Obj(
-      "language"     -> ujson.Str("scala"),
-      "display_name" -> ujson.Str(name),
-      "argv" -> ujson.Arr(
-        (baseArgs ++ extraArgs).map(ujson.Str(_))*
-      )
-    ).render()
-    os.write.over(dir / "kernel.json", kernelJson, createFolders = true)
-    System.err.println(s"JUPYTER_PATH=${PathRef.toResolvedPathString(jupyterDir)}")
   }
 
   /** Environment for Jupyter: the JVM at `javaHome` (for the kernels it starts), the kernel specs
@@ -367,45 +446,44 @@ object JupyterServer {
     logFiles
   }
 
-  /** Writes the kernel specs of one kernel per element of `launchers`, plus the special launcher
-    * kernel.
-    *
-    * @param launchers
-    *   the kernel launchers to register, along with the full Scala version each of them runs
+  /** Installs one kernel per element of `scalaVersions`, plus the special kernel (the almond
+    * launcher, that fetches the kernel for the Scala version a notebook asks for at startup), in
+    * `jupyterDir/kernels`, with `cs launch` (see [[installKernel]]). Kernels installed there
+    * earlier are removed first.
     */
-  private def writeKernelJsons(
-    launchers: Seq[(String, os.Path)],
-    specialLauncher: os.Path,
+  private def installKernels(
+    source: KernelSource,
+    javaHome: os.Path,
+    scalaVersions: Seq[String],
     jupyterDir: os.Path,
-    workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path,
-    specialExtraArgs: String*
+    specialExtraOptions: String*
   ): Unit = {
-    for ((scalaVersion, launcher) <- launchers)
-      writeKernelJson(
-        launcher,
+    os.remove.all(jupyterDir / "kernels")
+    os.makeDir.all(jupyterDir / "kernels")
+    for (scalaVersion <- scalaVersions)
+      installKernel(
+        source,
+        javaHome,
         jupyterDir,
-        workspace,
-        localRepoRoot,
-        publishVersion,
+        Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion) ++ source.csChannelArgs,
         kernelId(scalaVersion),
-        s"Scala $scalaVersion (sources)"
+        s"Scala $scalaVersion (sources)",
+        Nil
       )
-    writeKernelJson(
-      specialLauncher,
+    installKernel(
+      source,
+      javaHome,
       jupyterDir,
-      workspace,
-      localRepoRoot,
-      publishVersion,
+      Seq(source.launcherDependency, "--main-class", source.launcherMainClass),
       specialKernelId,
       "Scala (special, sources)",
-      specialExtraArgs*
+      specialExtraOptions
     )
+    System.err.println(s"JUPYTER_PATH=${PathRef.toResolvedPathString(jupyterDir)}")
   }
 
-  /** Writes the kernel specs, with one kernel per element of `launchers` plus the special launcher
-    * kernel, and returns the command to run JupyterLab with them.
+  /** Installs the kernels, one per element of `scalaVersions` plus the special kernel, and returns
+    * the command to run JupyterLab with them.
     *
     * The server also serves the Jupyter Notebook UI (the classic one), under `/tree`. `args` may
     * contain `--base-address=…` and `--classic`, handled here, the rest is passed to JupyterLab.
@@ -414,8 +492,8 @@ object JupyterServer {
     * added to the `PATH` of JupyterLab, contains the `claude-agent-acp` and `codex-acp` commands
     * (see [[AcpAgents]]).
     *
-    * @param launchers
-    *   the kernel launchers to register, along with the full Scala version each of them runs
+    * @param scalaVersions
+    *   the full Scala versions to install a kernel for
     * @param labExtensions
     *   JupyterLab extensions built from sources to enable, on top of the ones of the Python
     *   environment (see [[LabExtension]])
@@ -423,26 +501,16 @@ object JupyterServer {
   def jupyterLabCommand(
     uv: os.Path,
     javaHome: os.Path,
-    launchers: Seq[(String, os.Path)],
-    specialLauncher: os.Path,
+    source: KernelSource,
+    scalaVersions: Seq[String],
     jupyterDir: os.Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path,
     acpAgentsBin: Option[os.Path],
     labExtensions: Seq[os.Path]
   ): Command = {
 
-    writeKernelJsons(
-      launchers,
-      specialLauncher,
-      jupyterDir,
-      workspace,
-      publishVersion,
-      localRepoRoot,
-      "--quiet=false"
-    )
+    installKernels(source, javaHome, scalaVersions, jupyterDir, "--quiet=false")
 
     writeSettingsOverrides(uv, workspace, labGroups)
     LabExtension.install(labExtensions, jupyterDir)
@@ -462,11 +530,11 @@ object JupyterServer {
     )
   }
 
-  /** Starts a JupyterLab server in the background, with one kernel per element of `launchers` plus
-    * the special launcher kernel, and returns the files its output goes to
+  /** Starts a JupyterLab server in the background, with one kernel per element of `scalaVersions`
+    * plus the special kernel, and returns the files its output goes to
     *
-    * @param launchers
-    *   the kernel launchers to register, along with the full Scala version each of them runs
+    * @param scalaVersions
+    *   the full Scala versions to install a kernel for
     * @param labExtensions
     *   JupyterLab extensions built from sources to enable (see [[LabExtension]])
     */
@@ -475,26 +543,22 @@ object JupyterServer {
     javaHome: os.Path,
     wrapperClassPath: Seq[os.Path],
     backgroundDir: os.Path,
-    launchers: Seq[(String, os.Path)],
-    specialLauncher: os.Path,
+    source: KernelSource,
+    scalaVersions: Seq[String],
     jupyterDir: os.Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path,
     acpAgentsBin: Option[os.Path],
     labExtensions: Seq[os.Path]
   ): Seq[os.Path] = {
     val cmd = jupyterLabCommand(
       uv,
       javaHome,
-      launchers,
-      specialLauncher,
+      source,
+      scalaVersions,
       jupyterDir,
       args,
       workspace,
-      publishVersion,
-      localRepoRoot,
       acpAgentsBin,
       labExtensions
     )
@@ -509,28 +573,18 @@ object JupyterServer {
     )
   }
 
-  /** Runs a Jupyter console on a kernel running Scala `scalaVersion`, started with `launcher` */
+  /** Runs a Jupyter console on a kernel running Scala `scalaVersion` */
   def jupyterConsole(
     uv: os.Path,
     javaHome: os.Path,
+    source: KernelSource,
     scalaVersion: String,
-    launcher: os.Path,
-    specialLauncher: os.Path,
     jupyterDir: os.Path,
     args: Seq[String],
-    workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path
+    workspace: os.Path
   ): Unit = {
 
-    writeKernelJsons(
-      Seq(scalaVersion -> launcher),
-      specialLauncher,
-      jupyterDir,
-      workspace,
-      publishVersion,
-      localRepoRoot
-    )
+    installKernels(source, javaHome, Seq(scalaVersion), jupyterDir)
 
     val command =
       jupyterCommand(uv, workspace, Nil, "console", s"--kernel=${kernelId(scalaVersion)}") ++ args

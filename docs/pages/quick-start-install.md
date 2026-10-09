@@ -23,6 +23,9 @@ $ ./coursier launch --use-bootstrap almond -- --install
 $ rm -f coursier
 ```
 
+This requires a coursier version newer than 2.1.26. Older versions don't set up the
+class loaders of Almond versions older than 0.15.0 correctly.
+
 Note the `--` before `--install`, separating the arguments passed to Almond
 from the ones handled by coursier.
 
