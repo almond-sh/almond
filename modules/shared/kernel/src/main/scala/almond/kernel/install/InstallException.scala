@@ -15,6 +15,11 @@ object InstallException {
         s"$dir already exists, pass --force to force erasing it"
       )
 
+  final class CannotGetJupyterDirectories(details: String) extends InstallException(
+        // FIXME we're hardcoding the require-jupyter option name here…
+        s"Could not get the Jupyter directories, required by --require-jupyter: $details"
+      )
+
   final class CannotGetKernelCommand extends InstallException(
         "Could not determine the command that launches the kernel. Run the kernel with coursier, or " +
           "pass the kernel command via --command first-arg --command second-arg …"

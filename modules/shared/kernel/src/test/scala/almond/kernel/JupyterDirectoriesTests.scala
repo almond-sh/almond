@@ -1,6 +1,6 @@
 package almond.kernel
 
-import almond.kernel.install.{Install, JupyterDirectories}
+import almond.kernel.install.{Install, InstallException, JupyterDirectories, Options}
 import almond.kernel.util.OS
 import utest._
 
@@ -94,6 +94,68 @@ object JupyterDirectoriesTests extends TestSuite {
           assert(res.isLeft)
           assert(res.left.toOption.exists(_.contains("not found")))
         }
+      }
+    }
+
+    test("install") {
+      def install(tmpDir: Path, requireJupyter: Boolean, jupyterCommand: String) =
+        Install.installOrError(
+          defaultId = "test",
+          defaultDisplayName = "Test",
+          language = "test",
+          options = Options(
+            arg = List("test-kernel"),
+            jupyterPath = Some(tmpDir.resolve("kernels").toString),
+            jupyterCommand = Some(jupyterCommand),
+            requireJupyter = requireJupyter
+          ),
+          extraStartupClassPath = Nil
+        )
+
+      test("fall back without jupyter") {
+        withTmpDir { tmpDir =>
+          val res = install(tmpDir, requireJupyter = false, tmpDir.resolve("nope/jupyter").toString)
+          assert(res == Right(tmpDir.resolve("kernels/test")))
+          assert(Files.isRegularFile(tmpDir.resolve("kernels/test/kernel.json")))
+        }
+      }
+
+      test("require jupyter") {
+        withTmpDir { tmpDir =>
+          val res = install(tmpDir, requireJupyter = true, tmpDir.resolve("nope/jupyter").toString)
+          assert(
+            res.left.toOption.exists(_.isInstanceOf[InstallException.CannotGetJupyterDirectories])
+          )
+          assert(res.left.toOption.exists(_.getMessage.contains("not found")))
+          assert(!Files.exists(tmpDir.resolve("kernels")))
+        }
+      }
+
+      test("require jupyter with empty command") {
+        withTmpDir { tmpDir =>
+          val res = install(tmpDir, requireJupyter = true, "")
+          assert(
+            res.left.toOption.exists(_.isInstanceOf[InstallException.CannotGetJupyterDirectories])
+          )
+          assert(!Files.exists(tmpDir.resolve("kernels")))
+        }
+      }
+
+      test("require jupyter with working jupyter") {
+        if (OS.current != OS.Windows)
+          withTmpDir { tmpDir =>
+            val jupyter = fakeJupyter(
+              tmpDir,
+              s"""case "$$1" in
+                 |  --data-dir) echo "$tmpDir" ;;
+                 |  --paths) echo '{"data": ["$tmpDir"]}' ;;
+                 |  *) exit 1 ;;
+                 |esac
+                 |""".stripMargin
+            )
+            val res = install(tmpDir, requireJupyter = true, jupyter.toString)
+            assert(res == Right(tmpDir.resolve("kernels/test")))
+          }
       }
     }
 

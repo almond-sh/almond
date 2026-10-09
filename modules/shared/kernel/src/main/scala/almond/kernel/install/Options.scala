@@ -21,6 +21,10 @@ final case class Options(
     "jupyter command to ask for the directories Jupyter relies on, either a name to look for in PATH or a path (default: jupyter, pass an empty value not to run it)"
   )
     jupyterCommand: Option[String] = None,
+  @HelpMessage(
+    "Fail if the directories Jupyter relies on can't be obtained from the jupyter command, rather than falling back to default Jupyter directories"
+  )
+    requireJupyter: Boolean = false,
   @HelpMessage("path to a 64x64 PNG logo for this kernel")
     logo: Option[String] = None,
   @HelpMessage(

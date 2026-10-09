@@ -269,10 +269,18 @@ object Install {
 
     val jupyterCommand = options.jupyterCommand.getOrElse(JupyterDirectories.defaultCommand)
     val jupyterDirsOpt =
-      if (jupyterCommand.trim.isEmpty) None
+      if (jupyterCommand.trim.isEmpty)
+        if (options.requireJupyter)
+          throw new InstallException.CannotGetJupyterDirectories("empty jupyter command")
+        else
+          None
       else
         JupyterDirectories.get(jupyterCommand) match {
           case Right(dirs) => Some(dirs)
+          case Left(err) if options.requireJupyter =>
+            throw new InstallException.CannotGetJupyterDirectories(
+              s"running '$jupyterCommand' failed: $err"
+            )
           case Left(err) =>
             warn(
               s"Warning: could not get the Jupyter directories via '$jupyterCommand': $err" +
@@ -307,7 +315,7 @@ object Install {
           if (options.arg.isEmpty)
             Install.currentAppCommand(
               extraStartupClassPath,
-              Set("--install", "--force", "--global").flatMap(s =>
+              Set("--install", "--force", "--global", "--require-jupyter").flatMap(s =>
                 Seq(s, s"$s=true")
               )
             ).getOrElse {

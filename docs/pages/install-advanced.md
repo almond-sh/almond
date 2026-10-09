@@ -65,6 +65,7 @@ directory, like `jupyter kernelspec install --user` would. If `jupyter` can't be
 a warning and falls back to the default Jupyter directories (`~/.local/share/jupyter/kernels` on Linux,
 `~/Library/Jupyter/kernels` on macOS, `%APPDATA%\jupyter\kernels` on Windows, taking into account
 environment variables such as `JUPYTER_DATA_DIR`).
+Pass `--require-jupyter` to make the installation fail instead, if `jupyter` can't be run.
 
 If the `jupyter` command of your Jupyter installation isn't in the `PATH` (on Windows, if you
 don't install Almond from an Anaconda Prompt for example), pass it with `--jupyter-command`:

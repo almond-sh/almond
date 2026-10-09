@@ -222,6 +222,8 @@ object JupyterServer {
       Seq(
         "--",
         "--install",
+        // fail rather than install the kernel elsewhere if the jupyter command can't be run
+        "--require-jupyter",
         "--id",
         kernelId,
         "--display-name",
