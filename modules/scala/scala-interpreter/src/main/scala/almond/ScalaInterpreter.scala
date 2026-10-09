@@ -241,20 +241,31 @@ final class ScalaInterpreter(
 
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, completions0, _, completionsWithTypes) = withCompilerLock {
+    val backquotedIdentOpt = BackquotedCompletion.find(code, pos)
+
+    val (newPos0, completions0, _, completionsWithTypes0) = withCompilerLock {
       ScalaInterpreterCompletions.complete(
         ammInterp.compilerManager,
         Some(ammInterp.dependencyComplete),
         pos,
         (ammInterp.predefImports ++ frames0().head.imports).toString(),
-        code,
+        backquotedIdentOpt.fold(code)(_.codeToComplete(code, pos)),
         logCtx
       )
     }
 
+    val (newPos, endPos, adjustCompletion) = backquotedIdentOpt
+      .flatMap(_.adjust(pos, newPos0))
+      .getOrElse((newPos0, pos, (s: String) => s))
+
     val completions = completions0
       .filter(!_.contains("$"))
       .filter(_.nonEmpty)
+      .map(adjustCompletion)
+    val completionsWithTypes = completionsWithTypes0.map {
+      case (compl, tpe) =>
+        (adjustCompletion(compl), tpe)
+    }
 
     val metadata =
       if (java.lang.Boolean.getBoolean("almond.completion.demo") && code.startsWith("// Demo"))
@@ -320,7 +331,7 @@ final class ScalaInterpreter(
 
     Completion(
       if (completions.isEmpty) pos else newPos,
-      pos,
+      if (completions.isEmpty) pos else endPos,
       completions.map(_.trim).distinct,
       None,
       metadata = metadata

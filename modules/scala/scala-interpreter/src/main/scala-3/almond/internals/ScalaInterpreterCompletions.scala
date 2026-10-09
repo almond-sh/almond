@@ -4,7 +4,6 @@ import almond.logger.LoggerContext
 import ammonite.compiler.Compiler
 import ammonite.compiler.internal.CompilerInternals
 import dotty.tools.dotc.{CompilationUnit, Compiler => DottyCompiler, Run, ScalacCommand}
-import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.{defn, Symbol}
 import dotty.tools.dotc.core.{Flags, MacroClassLoader, Mode}
@@ -13,6 +12,8 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{Property, SourceFile, SourcePosition}
 
 import java.nio.charset.StandardCharsets
+
+import scala.util.control.NonFatal
 
 object ScalaInterpreterCompletions {
 
@@ -88,27 +89,22 @@ object ScalaInterpreterCompletions {
     val ctx  = ctx0.fresh
     val file = SourceFile.virtual("<completions>", allCode, maybeIncomplete = true)
     val unit = CompilationUnit(file)(using ctx)
-    unit.tpdTree = {
-      given Context = ctx
-      import tpd._
-      tree match {
-        case PackageDef(_, p) =>
-          p.collectFirst {
-            case TypeDef(_, tmpl: Template) =>
-              tmpl.body
-                .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd }
-                .getOrElse(???)
-          }.getOrElse(???)
-        case _ => ???
-      }
-    }
+    unit.tpdTree = tree
     val ctx1   = ctx.fresh.setCompilationUnit(unit)
     val srcPos = SourcePosition(file, Span(index))
-    val (start, completions) = CompilerInternals.completionMaker.completions(
-      srcPos,
-      dependencyCompleteOpt = dependencyCompleteOpt,
-      enableDeep = false
-    )(using ctx1)
+    val (start, completions) =
+      try
+        CompilerInternals.completionMaker.completions(
+          srcPos,
+          dependencyCompleteOpt = dependencyCompleteOpt,
+          enableDeep = false
+        )(using ctx1)
+      catch {
+        case NonFatal(ex) =>
+          // the compiler internals Ammonite relies on can change between Scala versions
+          logCtx(getClass).info("Ignoring exception during completion", ex)
+          (index, Nil)
+      }
 
     val blacklistedPackages = Set("shaded")
 
