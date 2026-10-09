@@ -48,11 +48,17 @@ trait LoggerScala2Macros extends Cross.Module[String] with AlmondUnpublishedModu
 
 /** The API user code is written against - `almond.interpreter.api` for the kernels, and
   * `almond.api` / `almond.display` / `almond.input` for the users of the Scala kernel.
+  *
+  * Also ships the sources of [jvm-repr](https://github.com/jupyter/jvm-repr) (its `jupyter`
+  * package, in `src/main/java`), rather than depending on it: it is only published on JitPack.
   */
-trait Api extends Cross.Module[String] with AlmondModule with AlmondMima {
+trait Api extends Cross.Module[String] with AlmondModule with AlmondMima
+    with VendoredDependencies {
   def crossScalaVersion = crossValue
-  def mvnDeps = Seq(
-    Deps.jvmRepr
+
+  // the sources we ship are the ones of jvm-repr 0.4.0, plus its single later commit
+  def vendoredDependencies = Seq(
+    "com.github.jupyter:jvm-repr:0.4.0"
   )
 
   def mimaBinaryIssueFilters = Seq(
@@ -139,7 +145,6 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     Deps.ammoniteCompiler.exclude(("org.slf4j", "slf4j-api")),
     Deps.ammoniteReplApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.scalaCompiler(crossScalaVersion),
-    Deps.jvmRepr,
     Deps.coursierApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.collectionCompat,
     // Ammonite depends on an older pprint, bump it

@@ -14,6 +14,10 @@ trait UserDependencyList extends JavaModule {
     transitiveModuleDeps.collect {
       case mod: PublishModule => mod
     }
+  private def userVendoringModules: Seq[VendoredDependencies] =
+    transitiveModuleDeps.collect {
+      case mod: VendoredDependencies => mod
+    }
 
   def userDependencies = Task {
     val res = millResolver().resolution(
@@ -28,7 +32,14 @@ trait UserDependencyList extends JavaModule {
     val published = Task.traverse(userPublishModules)(_.artifactMetadata)().map { artifact =>
       (artifact.group, artifact.id, artifact.version)
     }
-    (external ++ published)
+    val vendored = Task.traverse(userVendoringModules)(_.vendoredDependencies)().flatten.map {
+      dep =>
+        dep.split(':') match {
+          case Array(org, name, ver) => (org, name, ver)
+          case _                     => sys.error(s"Malformed vendored dependency: $dep")
+        }
+    }
+    (external ++ published ++ vendored)
       .distinct
       .sorted
       .map {
