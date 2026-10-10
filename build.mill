@@ -1184,6 +1184,41 @@ def ghName = "almond"
 object ci extends Module {
   def sdkmanZipName(almondVersion: String) = s"almond-$almondVersion-sdkman.zip"
 
+  /** Fails if what we publish depends on snapshot versions, which releases shouldn't do
+    *
+    * Checks the dependencies of the modules we publish, along with the versions of the dependencies
+    * the kernel adds at runtime, that we write in property files.
+    */
+  def checkNoSnapshotDependencies() = Task.Command {
+    val fromDeps =
+      publishedModules.zip(Task.traverse(publishedModules)(_.snapshotDependencies)()).flatMap {
+        case (mod, deps) =>
+          deps.map(dep => s"$mod: $dep")
+      }
+    val fromProps =
+      propertyFileModules.zip(Task.traverse(propertyFileModules)(_.props)()).flatMap {
+        case (mod, content) =>
+          content.linesIterator.toSeq
+            .map(_.split("=", 2))
+            .collect {
+              case Array(key, value)
+                  if key != "version" && AlmondRepositories.isSnapshot(value) =>
+                s"$mod: $key=$value"
+            }
+      }
+    val found = fromDeps ++ fromProps
+    if (found.nonEmpty)
+      Task.fail(
+        s"Found ${found.length} snapshot dependencies:" + System.lineSeparator() +
+          found.mkString(System.lineSeparator())
+      )
+    System.err.println(s"No snapshot dependencies found in ${publishedModules.length} modules")
+  }
+  private def publishedModules =
+    `local-repo`.allModules.collect { case mod: AlmondPublishModule => mod }
+  private def propertyFileModules =
+    publishedModules.collect { case mod: PropertyFile => mod }
+
   def uploadLaunchers(almondVersion: String = AlmondPublishModule.computeBuildVersion()) =
     Task.Command {
       def ghToken() = Option(System.getenv("UPLOAD_GH_TOKEN")).getOrElse {

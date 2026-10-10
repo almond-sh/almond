@@ -1045,7 +1045,7 @@ object ScalaKernelTests extends TestSuite {
           else if (scalaVersion.startsWith("2.13."))
             "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:6)))" + System.lineSeparator()
           else
-            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65419)))" + System.lineSeparator()
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65425)))" + System.lineSeparator()
       )
     }
 
