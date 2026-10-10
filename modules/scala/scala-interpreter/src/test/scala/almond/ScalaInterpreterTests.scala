@@ -267,6 +267,40 @@ object ScalaInterpreterTests extends TestSuite {
         else "disabled"
       }
 
+      def backticksTest(): Unit = {
+        // see https://github.com/almond-sh/almond/issues/628
+        val interpreter = newInterpreter()
+        val res = interpreter.execute(
+          """val `a-b-c` = 2
+            |val abcdef = 3""".stripMargin
+        )
+        assert(res.asSuccess.nonEmpty)
+
+        def check(code: String, pos: Int, expectedRes: Completion): Unit = {
+          val res = interpreter.complete(code, pos).clearMetadata
+          assert(res == expectedRes)
+        }
+
+        // cursor before the closing backtick
+        check("`a-b`", 4, Completion(1, 4, Seq("a-b-c")))
+        check("List(`a-b`)", 9, Completion(6, 9, Seq("a-b-c")))
+        check("`ab`", 3, Completion(1, 3, Seq("abcdef")))
+        // cursor after the closing backtick
+        check("`a-b`", 5, Completion(0, 5, Seq("`a-b-c`")))
+        // no closing backtick
+        check("`a-b", 4, Completion(0, 4, Seq("`a-b-c`")))
+        check("`ab", 3, Completion(0, 3, Seq("`abcdef`")))
+        // no backtick around the completed identifier
+        check("abcd", 4, Completion(0, 4, Seq("abcdef")))
+        check("`a-b-c`.toSt", 12, Completion(8, 12, Seq("toString")))
+      }
+
+      test("backticks") {
+        // Scope completions crash in Ammonite 3.1.0's completion internals for Scala >= 3.9
+        if (scala.util.Properties.versionNumberString.startsWith("3.9.")) "disabled"
+        else backticksTest()
+      }
+
     }
 
     test("inspection") {
@@ -564,7 +598,7 @@ object ScalaInterpreterTests extends TestSuite {
                 |import org.scalacheck.ScalacheckShapeless._
                 |""".stripMargin
             val res = interpreter.execute(code)
-            assert(res.success)
+            assert(res.asSuccess.nonEmpty)
           }
         }
       }
@@ -576,7 +610,7 @@ object ScalaInterpreterTests extends TestSuite {
               |import org.scalacheck.Arbitrary
               |""".stripMargin
           val res = interpreter.execute(code)
-          assert(res.success)
+          assert(res.asSuccess.nonEmpty)
         }
       }
     }
@@ -594,7 +628,7 @@ object ScalaInterpreterTests extends TestSuite {
 
       implicit class ExecuteResultOps(private val res: ExecuteResult) {
         def assertSuccess(): ExecuteResult = {
-          assert(res.success)
+          assert(res.asSuccess.nonEmpty)
           res
         }
       }
