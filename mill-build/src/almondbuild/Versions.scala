@@ -1,7 +1,9 @@
 package almondbuild
 
 object Versions {
-  def ammonite      = "3.1.0"
+  // Snapshot of our Ammonite fork, pinned to a specific build of it: a timestamped version,
+  // rather than 3.1.1-SNAPSHOT that resolves to whatever was last published
+  def ammonite      = "3.1.1-20261009.100322-4"
   def caseApp       = "2.1.0"
   def coursier      = "2.1.25"
   def jsoniterScala = "2.13.5"

@@ -360,7 +360,7 @@ final class Execute(
       Name("cell"),
       Nil,
       pkgName.map(Name(_)),
-      Some(os.pwd / "(console)")
+      Some((os.pwd / "(console)").toNIO)
     )
     val maybeImports = Res.map(scripts) { script =>
       val input = script.value

@@ -92,12 +92,12 @@ libraries that use them.
 ### Load JARs
 
 `interp.load.cp` adds JARs or directories of class files to the class path of the session.
-It accepts an `os.Path`, a sequence of `os.Path`, or a `java.net.URL`:
+It accepts a `java.nio.file.Path`, a sequence of `java.nio.file.Path`, or a `java.net.URL`:
 ```scala
-interp.load.cp(os.Path("/path/to/lib.jar"))
+interp.load.cp(java.nio.file.Paths.get("/path/to/lib.jar"))
 ```
 ```scala
-interp.load.cp(os.list(os.pwd / "lib").filter(_.ext == "jar"))
+interp.load.cp(os.list(os.pwd / "lib").filter(_.ext == "jar").map(_.toNIO))
 ```
 ```scala
 interp.load.cp(

@@ -108,7 +108,7 @@ object AmmInterpreter {
             // read with the local charset…
             new String(Files.readAllBytes(path)),
             hardcoded = false,
-            Some(os.Path(path))
+            Some(path.toAbsolutePath.normalize)
           )
       }
 

@@ -261,7 +261,8 @@ final class ReplApiImpl(
           case _                   =>
         }
 
-      def exec(file: os.Path): Unit = {
+      def exec(path: java.nio.file.Path): Unit = {
+        val file = os.Path(path, os.pwd)
         ammInterp.watch(file)
         apply(normalizeNewlines(os.read(file)))
       }

@@ -129,6 +129,7 @@ interp.load.cp {
       jar.last.startsWith("scala-compiler-") ||
       jar.last.startsWith("spark-repl_")
     }
+    .map(_.toNIO)
 }
 ```
 

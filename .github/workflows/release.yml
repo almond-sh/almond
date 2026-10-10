@@ -26,6 +26,12 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
+    # Snapshots can depend on snapshots, releases can't. Every job publishing or uploading
+    # anything depends on this one, so failing here holds back the whole release.
+    - name: Check there are no snapshot dependencies
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: ./mill -i ci.checkNoSnapshotDependencies
+      shell: bash
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
         cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts

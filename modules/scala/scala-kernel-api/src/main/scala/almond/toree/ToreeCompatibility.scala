@@ -30,7 +30,7 @@ object ToreeCompatibility {
       val (fileUris, other) = uris.partition(_.getScheme == "file")
       for (uri <- other)
         System.err.println(s"Warning: ignoring $uri")
-      val files = fileUris.map(Paths.get(_)).map(os.Path(_, os.pwd))
+      val files = fileUris.map(Paths.get(_))
       interp.load.cp(files)
     }
   }

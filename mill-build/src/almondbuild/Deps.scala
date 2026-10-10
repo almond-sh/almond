@@ -36,6 +36,18 @@ object Deps {
   // kernel picks this version for it by default, when users load it with the `_` version.
   def almondJackson = mvn"sh.almond::json-api-jackson:0.15.0"
 
+  // All the modules of our Ammonite fork that we get, including those we only depend on
+  // transitively
+  def ammoniteModules =
+    Seq(
+      "ammonite-util",
+      "ammonite-terminal",
+      "ammonite-repl-api",
+      "ammonite-repl",
+      "ammonite-compiler"
+    )
+      .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}")
+
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
