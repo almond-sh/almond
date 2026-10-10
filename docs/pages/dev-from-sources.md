@@ -38,7 +38,14 @@ This should
   [installation instructions](quick-start-install.md), plus that repository, like
   `cs launch --use-bootstrap almond:<version> --scala 2.13.18 --channel app -r file:///…/local-repo -- --install …`,
   along with a "special" kernel, that runs the almond launcher, then
-- start JupyterLab in the current directory, in the background.
+- start JupyterLab in the `notebooks` directory, in the background.
+
+The [example notebooks](#validate-the-example-notebooks) are available from JupyterLab,
+under `examples`: `notebooks/examples` is a symbolic link to the `examples` directory,
+so that changes made to them from JupyterLab end up in the almond sources. Where
+symbolic links can't be created (Windows without developer mode, say), the notebooks
+get copied there instead. `notebooks/examples` is left as is if it already exists:
+remove it to have it re-created.
 
 The `almond` app descriptor these commands use is `app/almond.json`, rather than the one
 of the [coursier apps channel](https://github.com/coursier/apps), that the installation

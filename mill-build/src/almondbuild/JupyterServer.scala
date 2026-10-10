@@ -117,6 +117,32 @@ object JupyterServer {
     )
   }
 
+  /** Makes the example notebooks of `examples` available from JupyterLab, under
+    * `notebooks/examples`: a symbolic link to `examples`, so that changes made from JupyterLab end
+    * up in the example notebooks themselves. Where symbolic links can't be created (Windows without
+    * developer mode, …), the notebooks get copied there instead.
+    *
+    * Nothing is done if `notebooks/examples` already exists, so that a copy edited from JupyterLab
+    * doesn't get overwritten.
+    */
+  private def linkExamples(workspace: os.Path): Unit = {
+    val examplesDir = workspace / "examples"
+    val dest        = workspace / "notebooks" / "examples"
+    if (!os.exists(dest, followLinks = false))
+      try os.symlink(dest, os.up / "examples")
+      catch {
+        case e @ (_: UnsupportedOperationException | _: java.io.IOException) =>
+          System.err.println(
+            s"Could not create a symbolic link to ${PathRef.toResolvedPathString(examplesDir)} " +
+              s"at ${PathRef.toResolvedPathString(dest)} ($e), " +
+              "copying the example notebooks there instead"
+          )
+          os.makeDir.all(dest)
+          for (notebook <- os.list(examplesDir) if notebook.last.endsWith(".ipynb"))
+            os.copy(notebook, dest / notebook.last)
+      }
+  }
+
   /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
     * (the variable inspector, …), and Jupyter AI
     */
@@ -557,6 +583,7 @@ object JupyterServer {
     LabExtension.install(labExtensions, jupyterDir)
 
     os.makeDir.all(workspace / "notebooks")
+    linkExamples(workspace)
     val (baseAddressOpt, args0) = extractBaseAddress(args)
     val (classic, args1)        = extractClassic(args0)
     val command =
