@@ -1,7 +1,5 @@
 package almondbuild
 
-import mill.api.PathRef
-
 /** JupyterLab extensions built from sources, for the JupyterLab servers of the dev.jupyter*
   * commands. These are prebuilt (federated) extensions, like the ones generated from the JupyterLab
   * 4 extension template: their `package.json` has a `jupyterlab.outputDir` field, that `jlpm build`
@@ -47,7 +45,7 @@ object LabExtension {
     val packageJson = dir / "package.json"
     if (!os.isFile(packageJson))
       sys.error(
-        s"No package.json found in ${PathRef.toResolvedPathString(dir)}, " +
+        s"No package.json found in $dir, " +
           "is it a JupyterLab extension?"
       )
     ujson.read(os.read(packageJson)).obj.get("jupyterlab")
@@ -55,7 +53,7 @@ object LabExtension {
       .map(value => os.SubPath(value.str.stripPrefix("./")))
       .getOrElse {
         sys.error(
-          s"No jupyterlab.outputDir field in ${PathRef.toResolvedPathString(packageJson)}: " +
+          s"No jupyterlab.outputDir field in $packageJson: " +
             "only prebuilt extensions, like the ones of the JupyterLab 4 extension template, " +
             "are supported"
         )
@@ -106,7 +104,7 @@ object LabExtension {
         stderr = os.Inherit
       )
     System.err.println(
-      s"Building the $name JupyterLab extension from ${PathRef.toResolvedPathString(sourceDir)}"
+      s"Building the $name JupyterLab extension from $sourceDir"
     )
     jlpm("install")
     jlpm("run", "build")
@@ -114,7 +112,7 @@ object LabExtension {
     val output = workDir / outputDir(workDir)
     if (!os.isFile(output / "package.json"))
       sys.error(
-        s"Building $name didn't write ${PathRef.toResolvedPathString(output / "package.json")}"
+        s"Building $name didn't write ${output / "package.json"}"
       )
     output
   }

@@ -1,7 +1,5 @@
 package almondbuild
 
-import mill.api.PathRef
-
 import java.io.File
 
 import scala.jdk.OptionConverters.*
@@ -36,7 +34,7 @@ object JupyterServer {
       * shell the command is run in.
       */
     def shellWords: Seq[String] =
-      Seq(s"cd ${Command.shellQuote(PathRef.toResolvedPathString(cwd))} &&") ++
+      Seq(s"cd ${Command.shellQuote(cwd.toString)} &&") ++
         env.toSeq.map { case (k, v) => s"$k=${Command.shellQuote(v)}" } ++
         command.map(Command.shellQuote)
 
@@ -70,10 +68,10 @@ object JupyterServer {
 
   def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
     Seq(
-      PathRef.toResolvedPathString(uv),
+      uv.toString,
       "run",
       "--project",
-      PathRef.toResolvedPathString(workspace / "examples"),
+      (workspace / "examples").toString,
       "--frozen"
     ) ++
       groups.flatMap(group => Seq("--group", group))
@@ -133,8 +131,7 @@ object JupyterServer {
       catch {
         case e @ (_: UnsupportedOperationException | _: java.io.IOException) =>
           System.err.println(
-            s"Could not create a symbolic link to ${PathRef.toResolvedPathString(examplesDir)} " +
-              s"at ${PathRef.toResolvedPathString(dest)} ($e), " +
+            s"Could not create a symbolic link to $examplesDir at $dest ($e), " +
               "copying the example notebooks there instead"
           )
           os.makeDir.all(dest)
@@ -177,7 +174,7 @@ object JupyterServer {
     launcherMainClass: String
   ) {
     private def localRepoUri =
-      java.nio.file.Paths.get(PathRef.toResolvedPathString(localRepo)).toUri.toASCIIString
+      localRepo.toNIO.toUri.toASCIIString
         .stripSuffix("/")
     // Spelled as a URL rather than as the central:maven-snapshots alias, as the coursier the
     // kernels embed predates that alias, and ignores COURSIER_REPOSITORIES altogether when it
@@ -190,7 +187,7 @@ object JupyterServer {
     def csChannelArgs: Seq[String] =
       Seq(
         "--channel",
-        PathRef.toResolvedPathString(appChannel),
+        appChannel.toString,
         "--default-channels=false",
         "--file-channels=false"
       )
@@ -263,7 +260,7 @@ object JupyterServer {
     os.proc(command).call(
       cwd = jupyterDir,
       env = withPathPrefix(JavaHomes.environment(javaHome), Seq(jupyterScriptsDir)) +
-        ("JUPYTER_DATA_DIR" -> PathRef.toResolvedPathString(jupyterDir)),
+        ("JUPYTER_DATA_DIR" -> jupyterDir.toString),
       stdin = "",
       // kept off our stdout, that `show dev.jupyterCmd…` prints the command to
       stdout = os.ProcessOutput.Readlines(System.err.println),
@@ -282,7 +279,7 @@ object JupyterServer {
     extraPath: Seq[os.Path] = Nil
   ): Map[String, String] = {
     val javaEnv = withPathPrefix(JavaHomes.environment(javaHome), extraPath)
-    javaEnv + ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
+    javaEnv + ("JUPYTER_PATH" -> jupyterDir.toString)
   }
 
   /** Puts `dirs` first in the `PATH` of `env`, an environment coming from [[JavaHomes.environment]]
@@ -293,7 +290,7 @@ object JupyterServer {
       // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
       val (pathKey, pathValue) = env.find(_._1.equalsIgnoreCase("PATH")).get
       val newPathValue =
-        (dirs.map(PathRef.toResolvedPathString(_)) :+ pathValue).mkString(File.pathSeparator)
+        (dirs.map(_.toString) :+ pathValue).mkString(File.pathSeparator)
       env + (pathKey -> newPathValue)
     }
 
@@ -366,7 +363,7 @@ object JupyterServer {
     jupyterDir: os.Path,
     javaHome: os.Path
   ): Unit = {
-    System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
+    System.err.println(s"JAVA_HOME=$javaHome")
     val proc = os.proc(command).spawn(
       cwd = workspace,
       env = jupyterEnvironment(javaHome, jupyterDir),
@@ -443,11 +440,11 @@ object JupyterServer {
       currentPidFile(backgroundDir),
       backgroundDir / "lock",
       backgroundDir / "log"
-    ).map(PathRef.toResolvedPathString(_))
+    )
     val proc = os.proc(
-      PathRef.toResolvedPathString(javaExe),
+      javaExe,
       "-cp",
-      wrapperClassPath.map(PathRef.toResolvedPathString(_)).mkString(File.pathSeparator),
+      wrapperClassPath.map(_.toString).mkString(File.pathSeparator),
       "mill.javalib.backgroundwrapper.MillBackgroundWrapper",
       wrapperArgs,
       "<subprocess>",
@@ -537,7 +534,7 @@ object JupyterServer {
       "Scala (special, sources)",
       specialExtraOptions
     )
-    System.err.println(s"JUPYTER_PATH=${PathRef.toResolvedPathString(jupyterDir)}")
+    System.err.println(s"JUPYTER_PATH=$jupyterDir")
   }
 
   /** Installs the kernels, one per element of `scalaVersions` plus the special kernel, and returns
@@ -630,7 +627,7 @@ object JupyterServer {
       acpAgentsBin,
       labExtensions
     )
-    System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
+    System.err.println(s"JAVA_HOME=$javaHome")
     startBackground(
       javaHome,
       wrapperClassPath,

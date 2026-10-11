@@ -1,4 +1,4 @@
-//| mill-version: 2.0.0-M2
+//| mill-version: 1.3.0
 
 import almondbuild.*
 import almondbuild.modules.*
@@ -597,12 +597,12 @@ trait Examples extends SbtModule {
     }
     def forkArgs = Task {
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${RealPath.string(examplesDir().path)}",
-        s"-Dalmond.examples.output-dir=${RealPath.string(Task.dest / "output")}",
-        s"-Dalmond.examples.jupyter-path=${RealPath.string(Task.dest / "jupyter")}",
-        s"-Dalmond.examples.launcher=${RealPath.string(examplesKernel.launcher().path)}",
-        s"-Dalmond.examples.repo-root=${RealPath.string(`local-repo`.localRepo().path)}",
-        s"-Dalmond.examples.uv=${RealPath.string(UvLauncher.uv(Versions.uv))}"
+        s"-Dalmond.examples.dir=${examplesDir().path}",
+        s"-Dalmond.examples.output-dir=${Task.dest / "output"}",
+        s"-Dalmond.examples.jupyter-path=${Task.dest / "jupyter"}",
+        s"-Dalmond.examples.launcher=${examplesKernel.launcher().path}",
+        s"-Dalmond.examples.repo-root=${`local-repo`.localRepo().path}",
+        s"-Dalmond.examples.uv=${UvLauncher.uv(Versions.uv)}"
       )
     }
   }
@@ -695,7 +695,7 @@ trait Integration extends SbtModule {
         scala.`scala-kernel`(ScalaVersions.binary(ScalaVersions.scala3Latest)).publishVersion()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${RealPath.string(`local-repo`.localRepo().path)}",
+        s"-Dalmond.test.local-repo=${`local-repo`.localRepo().path}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${CsLauncher.cs(Deps.csVersion)}",
         s"-Dalmond.test.scala-cli-version=${Deps.scalaCliVersion}",
@@ -713,7 +713,7 @@ trait Integration extends SbtModule {
 
     def forkEnv = Task {
       super.forkEnv() ++ Seq(
-        "ALMOND_INTEGRATION_TMP"             -> RealPath.string(tmpDirBase().path),
+        "ALMOND_INTEGRATION_TMP"             -> tmpDirBase().path.toString,
         "ALMOND_INTEGRATION_MAVEN_SNAPSHOTS" -> `local-repo`.useMavenSnapshots().toString
       )
     }
@@ -754,15 +754,15 @@ trait ProxyTests extends SbtModule {
       val version =
         scala.`scala-kernel`(ScalaVersions.binary(kernelScalaVersion)).publishVersion()
       super.forkArgs() ++ Seq(
-        s"-Dalmond.proxy-tests.local-repo=${RealPath.string(`local-repo`.localRepo().path)}",
+        s"-Dalmond.proxy-tests.local-repo=${`local-repo`.localRepo().path}",
         s"-Dalmond.proxy-tests.version=$version",
         s"-Dalmond.proxy-tests.launcher-main-class=${scala.launcher.finalMainClass()}",
         s"-Dalmond.proxy-tests.scala-version=$kernelScalaVersion",
         s"-Dalmond.proxy-tests.cs-version=${Deps.csVersion}",
         s"-Dalmond.proxy-tests.uv-version=${Versions.uv}",
-        s"-Dalmond.proxy-tests.examples-dir=${RealPath.string(examplesDir().path)}",
-        s"-Dalmond.proxy-tests.docker-dir=${RealPath.string(dockerDir().path)}",
-        s"-Dalmond.proxy-tests.tmp-dir=${RealPath.string(tmpDirBase().path)}",
+        s"-Dalmond.proxy-tests.examples-dir=${examplesDir().path}",
+        s"-Dalmond.proxy-tests.docker-dir=${dockerDir().path}",
+        s"-Dalmond.proxy-tests.tmp-dir=${tmpDirBase().path}",
         s"-Dalmond.proxy-tests.maven-snapshots=${`local-repo`.useMavenSnapshots()}"
       )
     }
@@ -848,7 +848,7 @@ object docs extends ScalaModule with AlmondRepositories {
     val websiteDir = BuildCtx.workspaceRoot / "docs" / "website"
 
     if (npmInstall)
-      Util.run(Seq("npm", "install"), dir = PathRef.toAbsFile(websiteDir))
+      Util.run(Seq("npm", "install"), dir = websiteDir.toIO)
 
     def runMdoc(): Unit =
       // adapted from https://github.com/com-lihaoyi/mill/blob/c500ca986ab79af3ce59ba65a093146672092307/scalalib/src/JavaModule.scala#L488-L494
@@ -864,11 +864,11 @@ object docs extends ScalaModule with AlmondRepositories {
       if (yarnRunBuild)
         Util.withBgProcess(
           Seq("yarn", "run", "start"),
-          dir = PathRef.toAbsFile(websiteDir),
+          dir = websiteDir.toIO,
           waitFor =
             () =>
               Util.waitForDir(
-                PathRef.toAbsFile(BuildCtx.workspaceRoot / outputDir.split('/').toSeq)
+                (BuildCtx.workspaceRoot / outputDir.split('/').toSeq).toIO
               )
         ) {
           runMdoc()
@@ -878,9 +878,9 @@ object docs extends ScalaModule with AlmondRepositories {
     else {
       runMdoc()
       if (yarnRunBuild)
-        Util.run(Seq("yarn", "run", "build"), dir = PathRef.toAbsFile(websiteDir))
+        Util.run(Seq("yarn", "run", "build"), dir = websiteDir.toIO)
       if (relativize)
-        Relativize.relativize(PathRef.toAbsNioPath(websiteDir / "build"))
+        Relativize.relativize((websiteDir / "build").toNIO)
     }
   }
 }
@@ -950,12 +950,12 @@ object dev extends Module {
         if (!exists)
           System.err.println(
             s"Warning: ${LabExtension.scalafmtEnvVar} points at " +
-              s"${PathRef.toResolvedPathString(dir)}, which doesn't exist, ignoring it"
+              s"$dir, which doesn't exist, ignoring it"
           )
         exists
       }
       .map { dir =>
-        (PathRef.toResolvedPathString(dir), LabExtension.sources(dir).map(PathRef(_)))
+        (dir.toString, LabExtension.sources(dir).map(PathRef(_)))
       }
   }
 
@@ -1158,24 +1158,24 @@ object dev extends Module {
     val launcher =
       scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launchers(scalaVersion)
         .launcher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 
   def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher = scala.launcher.launcher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 
   def launcherFast(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher =
       scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launchers(scalaVersion)
         .fastLauncher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 
   def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher = scala.launcher.fastLauncher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 }
 
@@ -1262,7 +1262,7 @@ object ci extends Module {
             forceScalaArgs,
             extraArgs,
             "-o",
-            PathRef.toAbsString(output)
+            output
           ).call(stdin = os.Inherit, stdout = os.Inherit)
 
         val output = Task.dest / s"launcher-$sv"
