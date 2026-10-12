@@ -83,7 +83,7 @@ object Deps {
   // version it is published for: like scalac itself, it then runs alongside whichever full Scala
   // version the kernel is launched with, and the compiler internals it uses have been stable
   // enough across patch versions for that to work.
-  def mtagsVersion = "1.6.3"
+  def mtagsVersion = "1.6.4"
   def mtags(sv: String) = {
     val oldestMtagsScalaVersion =
       if (sv.startsWith("2.12.")) "2.12.17"
