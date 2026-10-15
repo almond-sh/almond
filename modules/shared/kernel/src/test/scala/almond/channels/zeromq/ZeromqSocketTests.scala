@@ -30,6 +30,18 @@ object ZeromqSocketTests extends TestSuite {
 
   val tests = Tests {
 
+    test("signatureForLog") {
+      val signature = "0123456789abcdef" * 4
+      val logged    = ZeromqSocketImpl.signatureForLog(signature)
+      assert(logged == "'01234567...' (64 chars)")
+
+      val malicious = ZeromqSocketImpl.signatureForLog("a\n\u001b[1'\\b")
+      assert(malicious == "'a\\u000a\\u001b[1\\'\\\\b' (8 chars)")
+
+      assert(ZeromqSocketImpl.signatureForLog("") == "'' (0 chars)")
+      assert(ZeromqSocketImpl.signatureForLog(null) == "no signature")
+    }
+
     test("simple") {
 
       val repEc = ExecutionContext.fromExecutorService(
