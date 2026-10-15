@@ -1253,8 +1253,6 @@ object ci extends Module {
             "--no-default",
             "-r",
             "central",
-            "-r",
-            "jitpack",
             snapshotRepoArgs,
             s"sh.almond:scala-kernel_$suffix:$almondVersion",
             "--shared",

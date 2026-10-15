@@ -39,7 +39,6 @@ for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
   fi
   # scala-kernel-api is loaded in a class loader shared with user code
   "$COURSIER" bootstrap \
-      -r jitpack \
       sh.almond:scala-kernel_${SCALA_SUFFIX}:${ALMOND_VERSION} \
       --shared sh.almond:scala-kernel-api_${SCALA_SUFFIX} \
       --scala ${SCALA_FULL_VERSION} \

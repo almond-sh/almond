@@ -1,7 +1,6 @@
 {
   "repositories": [
-    "central",
-    "jitpack"
+    "central"
   ],
   "dependencies": [
     "sh.almond::scala-kernel:latest.release"

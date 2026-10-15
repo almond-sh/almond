@@ -192,13 +192,10 @@ object JupyterServer {
         "--file-channels=false"
       )
 
-    /** Repositories passed to `cs launch`, on top of the default ones (JitPack is already added by
-      * the almond app descriptor, but not when launching a dependency like the launcher one)
-      */
+    /** Repositories passed to `cs launch`, on top of the default ones */
     def csRepositoryArgs: Seq[String] =
       Seq("-r", localRepoUri) ++
-        (if (useMavenSnapshots) Seq("-r", mavenSnapshots) else Nil) ++
-        Seq("-r", "jitpack")
+        (if (useMavenSnapshots) Seq("-r", mavenSnapshots) else Nil)
 
     /** Repositories the kernels resolve from at runtime, as a `COURSIER_REPOSITORIES` value: the
       * special kernel fetches the actual kernel from them, and all the kernels the dependencies

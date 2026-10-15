@@ -941,7 +941,7 @@ object Tests {
 
       val isScala2 = scalaVersion.startsWith("2.")
 
-      // that repository should already have been added by Almond, so we don't test much here…
+      // jvm-repr ships with Almond, so this only checks that the directive is accepted
       execute(
         """//> using repository "jitpack"
           |//> using dep "com.github.jupyter:jvm-repr:0.4.0"

@@ -81,7 +81,6 @@ object Launcher extends CaseApp[LauncherOptions] {
       .forceVersions(forcedVersions.asJava)
     def fetcher = coursierapi.Fetch.create()
       .withCache(cache)
-      .addRepositories(coursierapi.MavenRepository.of("https://jitpack.io"))
       .withResolutionParams(resolutionParams)
     def fetch(
       dep: coursierapi.Dependency,
