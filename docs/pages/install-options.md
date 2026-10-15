@@ -49,6 +49,13 @@ Whether to install this kernel system-wide or not.
 System-wide kernels get installed under `/usr/local/share/jupyter/kernels` (Linux and OS X). User-wide ones
 (default) under `~/.local/share/jupyter/kernels` (Linux) or `~/Library/Jupyter/kernels` (Mac).
 
+On Windows, like Jupyter itself since jupyter_core 5.8, system-wide kernels get installed under
+the `share\jupyter\kernels` directory of the Python environment of Jupyter, like
+`C:\Python313\share\jupyter\kernels`. Almond infers that environment from `CONDA_PREFIX` or from
+the location of the `jupyter` command (see `--jupyter-command`). `%PROGRAMDATA%\jupyter\kernels`
+is only used if the `JUPYTER_USE_PROGRAMDATA` environment variable is set, as non-admin users
+can create directories under `%PROGRAMDATA%`.
+
 #### `--jupyter-path`
 Path to your Jupyter kernels directory, e.g. `/opt/conda/share/jupyter/kernels`
 

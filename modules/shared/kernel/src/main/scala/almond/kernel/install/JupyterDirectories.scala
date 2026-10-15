@@ -34,6 +34,26 @@ final case class JupyterDirectories(
   /** Directories Jupyter looks for kernels into, by decreasing priority */
   def kernelsDirs: Seq[Path] =
     dataPaths.map(_.resolve("kernels"))
+
+  /** Kernels directory of the environment the `jupyter` executable belongs to, if Jupyter looks
+    * into it
+    *
+    * That's the `share/jupyter/kernels` directory of the Python prefix of Jupyter, like
+    * `C:\Python313\share\jupyter\kernels` for `C:\Python313\Scripts\jupyter.exe`.
+    */
+  def envKernelsDir: Option[Path] = {
+    def nameIs(path: Path, name: String): Boolean =
+      Option(path).flatMap(p => Option(p.getFileName)).exists(_.toString.equalsIgnoreCase(name))
+    val jupyter0 = jupyter.toAbsolutePath.normalize
+    dataPaths
+      .map(_.toAbsolutePath.normalize)
+      .filter(p => nameIs(p, "jupyter") && nameIs(p.getParent, "share"))
+      .filter(p => Option(p.getParent.getParent).exists(jupyter0.startsWith))
+      // if several prefixes match, pick the most specific one
+      .sortBy(-_.getNameCount)
+      .headOption
+      .map(_.resolve("kernels"))
+  }
 }
 
 object JupyterDirectories {

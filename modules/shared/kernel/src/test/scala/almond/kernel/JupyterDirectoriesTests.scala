@@ -210,6 +210,47 @@ object JupyterDirectoriesTests extends TestSuite {
       }
     }
 
+    test("envKernelsDir") {
+      test("prefix of jupyter") {
+        withTmpDir { tmpDir =>
+          val dirs = JupyterDirectories(
+            tmpDir.resolve("python/Scripts/jupyter.exe"),
+            tmpDir.resolve("user"),
+            Seq(
+              tmpDir.resolve("user"),
+              tmpDir.resolve("python/share/jupyter"),
+              tmpDir.resolve("other/share/jupyter")
+            )
+          )
+          assert(dirs.envKernelsDir == Some(tmpDir.resolve("python/share/jupyter/kernels")))
+        }
+      }
+
+      test("most specific prefix") {
+        withTmpDir { tmpDir =>
+          val dirs = JupyterDirectories(
+            tmpDir.resolve("base/envs/foo/Scripts/jupyter.exe"),
+            tmpDir.resolve("user"),
+            Seq(tmpDir.resolve("base/share/jupyter"), tmpDir.resolve("base/envs/foo/share/jupyter"))
+          )
+          assert(
+            dirs.envKernelsDir == Some(tmpDir.resolve("base/envs/foo/share/jupyter/kernels"))
+          )
+        }
+      }
+
+      test("no prefix of jupyter") {
+        withTmpDir { tmpDir =>
+          val dirs = JupyterDirectories(
+            tmpDir.resolve("python/Scripts/jupyter.exe"),
+            tmpDir.resolve("user"),
+            Seq(tmpDir.resolve("user"), tmpDir.resolve("ProgramData/jupyter"))
+          )
+          assert(dirs.envKernelsDir.isEmpty)
+        }
+      }
+    }
+
   }
 
 }

@@ -94,14 +94,14 @@ object JupyterPaths {
         )
       case OS.Windows =>
         // Since jupyter_core 5.8, %PROGRAMDATA% is only used if JUPYTER_USE_PROGRAMDATA is set,
-        // and the Python prefix is used instead. Former versions always used %PROGRAMDATA%,
-        // so we still use it if we don't know the Python prefix.
-        val programData = nonEmptyEnv("PROGRAMDATA").map(Paths.get(_, "jupyter", "kernels"))
-        val fromPrefix  = sysPrefix.map(_.resolve("share/jupyter/kernels"))
+        // and the Python prefix is used instead. Non-admin users can create directories under
+        // %PROGRAMDATA%, and could plant there a kernel directory that they can write to,
+        // before an admin installs a kernel in it (see CVE-2025-30167). So we don't fall
+        // back to %PROGRAMDATA% if we don't know the Python prefix.
         if (envSet("JUPYTER_USE_PROGRAMDATA").getOrElse(false))
-          programData.toSeq
+          nonEmptyEnv("PROGRAMDATA").map(Paths.get(_, "jupyter", "kernels")).toSeq
         else
-          fromPrefix.orElse(programData).toSeq
+          sysPrefix.map(_.resolve("share/jupyter/kernels")).toSeq
     }
 
   def userPath: Path =

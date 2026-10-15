@@ -7,7 +7,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
 
-import almond.kernel.util.JupyterPath
+import almond.kernel.util.{JupyterPath, OS}
 import almond.protocol.{ActualMap, KernelSpec}
 
 import scala.annotation.tailrec
@@ -294,7 +294,15 @@ object Install {
         case Some(p) => Left(Paths.get(p))
         case None =>
           if (options.global)
-            Right(JupyterPath.System)
+            if (OS.current == OS.Windows && JupyterPath.System.paths.isEmpty)
+              // No system-wide directory on Windows if we don't know the Python prefix of
+              // Jupyter (see JupyterPaths.systemPaths), so we try to infer it from jupyter.exe
+              jupyterDirsOpt.flatMap(_.envKernelsDir) match {
+                case Some(dir) => Left(dir)
+                case None      => throw new InstallException.CannotFindGlobalJupyterDirectory
+              }
+            else
+              Right(JupyterPath.System)
           else
             jupyterDirsOpt match {
               case Some(dirs) => Left(dirs.userKernelsDir)
