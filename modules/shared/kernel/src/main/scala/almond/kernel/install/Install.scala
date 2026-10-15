@@ -2,7 +2,7 @@ package almond.kernel.install
 
 import java.io.{ByteArrayOutputStream, File, InputStream}
 import java.net.{URI, URL}
-import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.file.{Files, LinkOption, Path, Paths, StandardCopyOption}
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
@@ -17,8 +17,9 @@ object Install {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
 
+  // Doesn't follow symbolic links: these get deleted, not what they point to
   private def deleteRecursively(f: Path): Unit = {
-    if (Files.isDirectory(f))
+    if (Files.isDirectory(f, LinkOption.NOFOLLOW_LINKS))
       Files.list(f)
         .iterator()
         .asScala
@@ -26,6 +27,13 @@ object Install {
 
     Files.deleteIfExists(f)
   }
+
+  // Same rule as jupyter_client for kernel names, minus "." and "..", which would
+  // make us install the kernel in the kernels directory itself, or in its parent
+  private val kernelIdPattern = "^[a-zA-Z0-9._-]+$".r.pattern
+
+  def validKernelId(kernelId: String): Boolean =
+    kernelIdPattern.matcher(kernelId).matches() && kernelId != "." && kernelId != ".."
 
   private def readFully(is: => InputStream): Array[Byte] = {
 
@@ -63,6 +71,9 @@ object Install {
     copyLauncher: Boolean = false
   ): Path = {
 
+    if (!validKernelId(kernelId))
+      throw new InstallException.InvalidKernelId(kernelId)
+
     // About the logo, don't know if other formats / sizes are allowed.
 
     // Ensure we can read that one upfront
@@ -78,16 +89,19 @@ object Install {
 
     val dir = jupyterDir.resolve(kernelId)
 
-    if (Files.exists(dir))
-      if (force)
+    if (Files.exists(dir, LinkOption.NOFOLLOW_LINKS))
+      if (!force)
+        throw new InstallException.InstallDirAlreadyExists(dir)
+      else if (Files.isSymbolicLink(dir))
+        // only removing the link, not what it points to
+        Files.delete(dir)
+      else
         // not deleting dir itself - on Windows, sometimes running into java.nio.file.AccessDeniedException in
         // createDirectories below else
         Files.list(dir)
           .iterator()
           .asScala
           .foreach(deleteRecursively)
-      else
-        throw new InstallException.InstallDirAlreadyExists(dir)
 
     Files.createDirectories(dir)
 

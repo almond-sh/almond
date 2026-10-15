@@ -10,6 +10,11 @@ object InstallException {
         s"No Jupyter directory $dirType found"
       )
 
+  final class InvalidKernelId(id: String) extends InstallException(
+        s"Invalid kernel id '$id': it must be made of letters, digits, '.', '_', or '-', " +
+          "and can't be '.' or '..'"
+      )
+
   final class InstallDirAlreadyExists(dir: Path) extends InstallException(
         // FIXME we're hardcoding the force option name here…
         s"$dir already exists, pass --force to force erasing it"
