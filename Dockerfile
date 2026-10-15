@@ -6,7 +6,9 @@
 # Can be used to create an image with a locally built almond that isn't on maven central yet.
 ARG LOCAL_IVY=no
 
-FROM quay.io/jupyter/base-notebook as coursier_base
+# Pinned by digest, so that rebuilding an almond version gives the same base image, and that a tag
+# moved on quay.io can't change what ends up in the images (Dependabot updates it)
+FROM quay.io/jupyter/base-notebook:lab-4.6.4@sha256:3fc2b8023bb7e3f11a09bd77aa07575c1ece16a0b9b64556757e34c52f667a1a as coursier_base
 
 USER root
 
@@ -22,16 +24,24 @@ RUN apt-get -y update && \
 # On ARM64, we use the "container" native launcher, built with GraalVM container support disabled,
 # as GraalVM native images can crash when reading cgroup files in containers
 # (https://github.com/coursier/coursier/pull/2742)
+# The SHA-256 checksums are those of the COURSIER_VERSION launchers, and need to be updated along with it
+# (they're listed on the GitHub release page, or can be computed with sha256sum).
 ARG COURSIER_VERSION=2.1.26
-RUN case "$(uname -m)" in \
-      aarch64) CS_LAUNCHER=cs-aarch64-pc-linux-container.gz ;; \
-      *) CS_LAUNCHER=cs-$(uname -m)-pc-linux.gz ;; \
-    esac && \
-    curl -fL https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/${CS_LAUNCHER} | \
-      gzip -d > /usr/local/bin/cs && \
-    chmod +x /usr/local/bin/cs && \
-    curl -fLo /usr/local/bin/coursier https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/coursier && \
-    chmod +x /usr/local/bin/coursier
+ARG CS_X86_64_SHA256=348e37bc2a8c706640e6b032c4551a0e055a7f1537485b4a91540e9d3598ec6d
+ARG CS_AARCH64_SHA256=5408497d21a728d02333d455f79cc8e445f863adef4fcc75b8ece955fc3ac1e8
+ARG COURSIER_SHA256=eb0c35379e76f44404f777ab0a2335ca5326f6b7721b8cdfa873e87bd9f4ac0c
+RUN set -eu; \
+    case "$(uname -m)" in \
+      x86_64) CS_LAUNCHER=cs-x86_64-pc-linux.gz; CS_SHA256="$CS_X86_64_SHA256" ;; \
+      aarch64) CS_LAUNCHER=cs-aarch64-pc-linux-container.gz; CS_SHA256="$CS_AARCH64_SHA256" ;; \
+      *) echo "Unsupported CPU architecture: $(uname -m)" >&2; exit 1 ;; \
+    esac; \
+    curl -fLo /tmp/cs.gz https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/${CS_LAUNCHER}; \
+    curl -fLo /usr/local/bin/coursier https://github.com/coursier/coursier/releases/download/v${COURSIER_VERSION}/coursier; \
+    printf '%s  %s\n' "$CS_SHA256" /tmp/cs.gz "$COURSIER_SHA256" /usr/local/bin/coursier | sha256sum --strict -c -; \
+    gzip -d < /tmp/cs.gz > /usr/local/bin/cs; \
+    rm -f /tmp/cs.gz; \
+    chmod +x /usr/local/bin/cs /usr/local/bin/coursier
 
 USER $NB_UID
 
