@@ -1,6 +1,7 @@
 package almond.channels.zeromq
 
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
 
 import almond.channels.{Channel, ConnectionParameters, Message}
@@ -87,13 +88,6 @@ object ZeromqConnectionTests extends TestSuite {
         "content".getBytes(StandardCharsets.UTF_8)
       )
 
-      def rawShellSocket(): ZMQ.Socket = {
-        val socket = clientThreads.context.socket(SocketType.DEALER)
-        socket.setLinger(0)
-        socket.connect(params.uri(Channel.Requests))
-        socket
-      }
-
       val t =
         for {
           kernel <- params.channels(
@@ -121,10 +115,9 @@ object ZeromqConnectionTests extends TestSuite {
             .compile
             .drain
             .start
-          raw <- IO(rawShellSocket())
-          // a lone frame, without "<IDS|MSG>" delimiter: reading it blocks the shell socket
-          // until more frames arrive
-          _ <- IO(raw.send("junk"))
+          // blocks the thread of the shell socket, like a read stuck on it would
+          shellLatch = new CountDownLatch(1)
+          _ <- IO(kernelThreads.channelEces(Channel.Requests).execute(() => shellLatch.await()))
           _ <- IO.sleep(1.second)
           _ <- client.send(Channel.Control, msg0)
           res <- received.get.timeoutTo(
@@ -133,17 +126,104 @@ object ZeromqConnectionTests extends TestSuite {
           )
           _ = assert(res._1 == Channel.Control)
           _ = assert(res._2.copy(idents = Nil) == msg0)
-          // unblock the shell socket, so that the stream and the channels can be closed
-          _ <- IO {
-            raw.sendMore("<IDS|MSG>")
-            raw.sendMore("invalid-signature")
-            raw.sendMore("{}")
-            raw.sendMore("{}")
-            raw.sendMore("{}")
-            raw.send("{}")
-          }
+          _ <- IO(shellLatch.countDown())
           _ <- fiber.joinWithNever
+          _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+          _ <- client.close(partial = false, lingerDuration = 2.seconds)
+        } yield ()
+
+      t.unsafeRunSync()(ioRuntime)
+    }
+
+    test("malformed messages are dropped") {
+
+      val logCtx        = LoggerContext.nop
+      val params        = ConnectionParameters.randomLocal()
+      val kernelThreads = ZeromqThreads.create("test-kernel")
+      val clientThreads = ZeromqThreads.create("test-client")
+      val ioRuntime     = IORuntime.global
+
+      val msg0 = Message(
+        Nil,
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        "content".getBytes(StandardCharsets.UTF_8)
+      )
+
+      val rawIdentity    = "raw".getBytes(StandardCharsets.UTF_8)
+      val clientIdentity = "client"
+
+      def rawShellSocket(): ZMQ.Socket = {
+        val socket = clientThreads.context.socket(SocketType.DEALER)
+        socket.setLinger(0)
+        socket.setIdentity(rawIdentity)
+        socket.connect(params.uri(Channel.Requests))
+        socket
+      }
+
+      def readShell(kernel: ZeromqConnection, deadline: Deadline): IO[Message] =
+        kernel.tryRead(Seq(Channel.Requests), 100.millis).flatMap {
+          case Some(Right((_, m))) => IO.pure(m)
+          case Some(Left(()))      => IO.raiseError(new Exception("connection closed"))
+          case None if deadline.isOverdue() =>
+            IO.raiseError(new Exception("No message on shell"))
+          case None => readShell(kernel, deadline)
+        }
+
+      // Sends a malformed message, has the kernel start reading while it's the only pending
+      // message, then sends a valid message
+      def check(
+        kernel: ZeromqConnection,
+        client: ZeromqConnection,
+        malformedFrames: Seq[String]
+      ): IO[Unit] =
+        for {
+          raw <- IO(rawShellSocket())
+          _ <- IO {
+            for (frame <- malformedFrames.init)
+              raw.sendMore(frame)
+            raw.send(malformedFrames.last)
+          }
+          _       <- IO.sleep(500.millis)
+          reading <- readShell(kernel, 10.seconds.fromNow).start
+          _       <- IO.sleep(500.millis)
+          _       <- client.send(Channel.Requests, msg0)
+          message <- reading.joinWithNever
+          // the frames of the malformed message mustn't end up in the idents of the valid one,
+          // or replies would be routed to the peer that sent them
+          _ = assert(
+            message.idents.map(_.toVector) ==
+              Seq(clientIdentity.getBytes(StandardCharsets.UTF_8).toVector)
+          )
+          _ = assert(message.copy(idents = Nil) == msg0)
           _ <- IO(raw.close())
+        } yield ()
+
+      val t =
+        for {
+          kernel <- params.channels(
+            bind = true,
+            kernelThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false,
+            identityOpt = None
+          )
+          client <- params.channels(
+            bind = false,
+            clientThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false,
+            identityOpt = Some(clientIdentity)
+          )
+          _ <- kernel.open
+          _ <- client.open
+          // lone frame, without "<IDS|MSG>" delimiter
+          _ <- check(kernel, client, Seq("junk"))
+          // too few frames after the delimiter
+          _ <- check(kernel, client, Seq("<IDS|MSG>", "signature", "{}"))
           _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
           _ <- client.close(partial = false, lingerDuration = 2.seconds)
         } yield ()

@@ -17,6 +17,14 @@ trait ZeromqSocket {
     *   Randomly chosen port, if the port was picked this way
     */
   def open: IO[Option[Int]]
+
+  /** Reads a single message
+    *
+    * Waits for a message if none is available (use [[hasPendingInput]] to check that first).
+    *
+    * @return
+    *   the message, or [[scala.None]] if it was malformed, or had an invalid signature
+    */
   def read: IO[Option[Message]]
 
   /** Reads a subscription event, for XPUB sockets
