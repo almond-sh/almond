@@ -6,11 +6,11 @@ import java.util.concurrent.atomic.AtomicLong
 import almond.channels.{Channel, ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.protocol.{Header, IopubWelcome}
-import cats.effect.IO
+import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
 import cats.syntax.all._
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
-import org.zeromq.SocketType
+import org.zeromq.{SocketType, ZMQ}
 import utest._
 
 import scala.concurrent.duration.{Deadline, Duration, DurationInt, FiniteDuration}
@@ -66,6 +66,86 @@ object ZeromqConnectionTests extends TestSuite {
           // TODO Enforce this is run via bracketing
           _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
           _ <- server.close(partial = false, lingerDuration = 2.seconds)
+        } yield ()
+
+      t.unsafeRunSync()(ioRuntime)
+    }
+
+    test("stuck channel doesn't hold up the others") {
+
+      val logCtx        = LoggerContext.nop
+      val params        = ConnectionParameters.randomLocal()
+      val kernelThreads = ZeromqThreads.create("test-kernel")
+      val clientThreads = ZeromqThreads.create("test-client")
+      val ioRuntime     = IORuntime.global
+
+      val msg0 = Message(
+        Nil,
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        "content".getBytes(StandardCharsets.UTF_8)
+      )
+
+      def rawShellSocket(): ZMQ.Socket = {
+        val socket = clientThreads.context.socket(SocketType.DEALER)
+        socket.setLinger(0)
+        socket.connect(params.uri(Channel.Requests))
+        socket
+      }
+
+      val t =
+        for {
+          kernel <- params.channels(
+            bind = true,
+            kernelThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false,
+            identityOpt = None
+          )
+          client <- params.channels(
+            bind = false,
+            clientThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false,
+            identityOpt = None
+          )
+          _        <- kernel.open
+          _        <- client.open
+          received <- Deferred[IO, (Channel, Message)]
+          fiber <- kernel.stream()
+            .evalMap(received.complete)
+            .take(1)
+            .compile
+            .drain
+            .start
+          raw <- IO(rawShellSocket())
+          // a lone frame, without "<IDS|MSG>" delimiter: reading it blocks the shell socket
+          // until more frames arrive
+          _ <- IO(raw.send("junk"))
+          _ <- IO.sleep(1.second)
+          _ <- client.send(Channel.Control, msg0)
+          res <- received.get.timeoutTo(
+            10.seconds,
+            IO.raiseError(new Exception("Message on control held up by stuck shell channel"))
+          )
+          _ = assert(res._1 == Channel.Control)
+          _ = assert(res._2.copy(idents = Nil) == msg0)
+          // unblock the shell socket, so that the stream and the channels can be closed
+          _ <- IO {
+            raw.sendMore("<IDS|MSG>")
+            raw.sendMore("invalid-signature")
+            raw.sendMore("{}")
+            raw.sendMore("{}")
+            raw.sendMore("{}")
+            raw.send("{}")
+          }
+          _ <- fiber.joinWithNever
+          _ <- IO(raw.close())
+          _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+          _ <- client.close(partial = false, lingerDuration = 2.seconds)
         } yield ()
 
       t.unsafeRunSync()(ioRuntime)

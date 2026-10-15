@@ -26,7 +26,6 @@ import zmq.ZError
 
 import scala.concurrent.Promise
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
-import scala.jdk.CollectionConverters._
 
 final class ZeromqConnection(
   params: ConnectionParameters,
@@ -234,8 +233,40 @@ final class ZeromqConnection(
         IO.unit
     }
 
-  @volatile private var selectorOpt = Option.empty[Selector]
-  private var actualParams          = params
+  /** Selector for a set of channels that are polled together
+    *
+    * Each set of channels gets its own selector, so that polling some channels doesn't hold up
+    * polling the others (see [[Connection.stream]], that polls each channel on its own).
+    */
+  private final class Poller(val channels: Set[Channel]) {
+    val selector: Selector = Selector.open()
+    try
+      for (channel <- channels)
+        channelSocket0(channel).fd.register(selector, SelectionKey.OP_READ)
+    catch {
+      case e: Throwable =>
+        selector.close()
+        throw e
+    }
+  }
+
+  // None if the connection isn't opened, or got closed. Only updated while holding the lock of
+  // this connection.
+  @volatile private var pollersOpt = Option.empty[Map[Set[Channel], Poller]]
+  private var actualParams         = params
+
+  private def pollerFor(channels: Set[Channel]): Option[Poller] =
+    synchronized {
+      pollersOpt.map { pollers =>
+        pollers.getOrElse(
+          channels, {
+            val poller = new Poller(channels)
+            pollersOpt = Some(pollers + (channels -> poller))
+            poller
+          }
+        )
+      }
+    }
 
   val open: IO[Map[Option[Channel], Int]] = {
 
@@ -260,8 +291,8 @@ final class ZeromqConnection(
       synchronized {
         for (thread <- heartBeatThreadOpt if thread.getState == Thread.State.NEW)
           thread.start()
-        if (selectorOpt.isEmpty)
-          selectorOpt = Some(Selector.open())
+        if (pollersOpt.isEmpty)
+          pollersOpt = Some(Map.empty)
       }
     }.evalOn(threads.selectorOpenCloseEces)
 
@@ -301,38 +332,30 @@ final class ZeromqConnection(
       pendingInput =>
         IO {
           if (pendingInput)
-            selectorOpt.foreach(_.wakeup())
+            for {
+              pollers <- pollersOpt
+              poller  <- pollers.valuesIterator
+              if poller.channels(channel)
+            }
+              poller.selector.wakeup()
         }
     }
 
     log0 *> sendAndMaybeWakeUpPolling
   }
 
-  /** Waits for the file descriptors of the passed sockets to be readable, for at most timeout */
-  private def waitForCommands(
-    selector: Selector,
-    sockets: Seq[ZeromqSocket],
-    timeout: Duration
-  ): Unit = {
-    val fds = sockets.map(_.fd).toSet
-    // don't get woken up by the sockets we're not polling this time
-    for (key <- selector.keys().asScala if key.isValid && !fds(key.channel()))
-      key.interestOps(0)
-    for (fd <- fds)
-      Option(fd.keyFor(selector)) match {
-        case Some(key) =>
-          if (key.interestOps() != SelectionKey.OP_READ)
-            key.interestOps(SelectionKey.OP_READ)
-        case None =>
-          fd.register(selector, SelectionKey.OP_READ)
+  /** Waits for the file descriptors of the sockets of poller to be readable, for at most timeout */
+  private def waitForCommands(poller: Poller, timeout: Duration): Unit =
+    // selected-key sets aren't thread-safe
+    poller.synchronized {
+      val selector = poller.selector
+      timeout match {
+        case d: FiniteDuration if d <= Duration.Zero => selector.selectNow()
+        case d: FiniteDuration                       => selector.select(math.max(1L, d.toMillis))
+        case _                                       => selector.select()
       }
-    timeout match {
-      case d: FiniteDuration if d <= Duration.Zero => selector.selectNow()
-      case d: FiniteDuration                       => selector.select(math.max(1L, d.toMillis))
-      case _                                       => selector.select()
+      selector.selectedKeys().clear()
     }
-    selector.selectedKeys().clear()
-  }
 
   def tryRead(
     channels: Seq[Channel],
@@ -344,7 +367,7 @@ final class ZeromqConnection(
     // We don't use ZMQ.poll here, as it makes the sockets process their pending commands, while
     // JeroMQ sockets aren't thread-safe, and other threads use them to send messages (see
     // https://github.com/almond-sh/almond/issues/549). Instead, we wait for the socket file
-    // descriptors to be readable on the polling thread, and check for input on the thread of
+    // descriptors to be readable on a blocking thread, and check for input on the thread of
     // each socket.
 
     val sockets = channels.toList.map(channel => (channel, channelSocket0(channel)))
@@ -359,15 +382,14 @@ final class ZeromqConnection(
 
     // file descriptors can also become readable because of commands not related to input
     // (new peers, …), so we keep waiting until the deadline if no input is pending
-    def waitForInput(selector: Selector, deadlineOpt: Option[Deadline]): IO[Option[Channel]] =
+    def waitForInput(poller: Poller, deadlineOpt: Option[Deadline]): IO[Option[Channel]] =
       readableChannel.flatMap {
         case None =>
           val timeLeft = deadlineOpt.fold[Duration](Duration.Inf)(_.timeLeft)
           if (timeLeft <= Duration.Zero) IO.pure(None)
           else
-            IO(waitForCommands(selector, sockets.map(_._2), timeLeft))
-              .evalOn(threads.pollingEces) *>
-              waitForInput(selector, deadlineOpt)
+            IO.blocking(waitForCommands(poller, timeLeft)) *>
+              waitForInput(poller, deadlineOpt)
         case readableOpt =>
           IO.pure(readableOpt)
       }
@@ -380,31 +402,31 @@ final class ZeromqConnection(
       case _: CancelledKeyException => Left(())
     }
 
-    IO(selectorOpt).flatMap {
-      case None =>
-        IO(log.debug("Connection not opened")).as(Some(Left(())))
-      case Some(selector) =>
-        val deadlineOpt = pollingDelay match {
-          case d: FiniteDuration => Some(d.fromNow)
-          case _                 => None
-        }
-        waitForInput(selector, deadlineOpt)
-          .map[Either[Unit, Option[Channel]]](Right(_))
-          .recover(closed)
-          .flatMap {
-            case Left(()) =>
-              IO.pure(Some(Left(())))
-            case Right(None) =>
-              IO.pure(None)
-            case Right(Some(Channel.Publish)) if bind =>
-              // the only things we can read on our XPUB socket are subscription events
-              handleSubscriptionEvent.as(Option.empty[Either[Unit, (Channel, Message)]])
-            case Right(Some(channel)) =>
-              channelSocket0(channel)
-                .read
-                .map(_.map(msg => Right((channel, msg))))
+    IO(pollerFor(channels.toSet))
+      .flatMap {
+        case None =>
+          IO(log.debug("Connection not opened")).as(Left(()))
+        case Some(poller) =>
+          val deadlineOpt = pollingDelay match {
+            case d: FiniteDuration => Some(d.fromNow)
+            case _                 => None
           }
-    }
+          waitForInput(poller, deadlineOpt).map(Right(_))
+      }
+      .recover(closed)
+      .flatMap {
+        case Left(()) =>
+          IO.pure(Some(Left(())))
+        case Right(None) =>
+          IO.pure(None)
+        case Right(Some(Channel.Publish)) if bind =>
+          // the only things we can read on our XPUB socket are subscription events
+          handleSubscriptionEvent.as(Option.empty[Either[Unit, (Channel, Message)]])
+        case Right(Some(channel)) =>
+          channelSocket0(channel)
+            .read
+            .map(_.map(msg => Right((channel, msg))))
+      }
   }
 
   def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
@@ -425,8 +447,11 @@ final class ZeromqConnection(
       if (!partial)
         heartBeatThreadOpt.foreach(_.interrupt())
 
-      selectorOpt.foreach(_.close())
-      selectorOpt = None
+      synchronized {
+        for (pollers <- pollersOpt; poller <- pollers.valuesIterator)
+          poller.selector.close()
+        pollersOpt = None
+      }
 
       log.debug(s"Closed channels for $actualParams" + (if (partial) " (partial)" else ""))
     }.evalOn(threads.selectorOpenCloseEces)
