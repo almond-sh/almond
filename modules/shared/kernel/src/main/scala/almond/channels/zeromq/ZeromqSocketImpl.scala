@@ -13,6 +13,7 @@ import org.zeromq.{SocketType, ZMQ}
 
 import java.net.URI
 import java.nio.channels.{ClosedChannelException, SelectableChannel}
+import java.security.MessageDigest
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -266,10 +267,15 @@ final class ZeromqSocketImpl(
 
   private def checkSignature(message: Message, signature: String): Option[Message] = {
 
-    val expectedSignature =
+    // Constant-time comparison, so that response times don't leak how much of the
+    // signature is correct
+    def validSignature = signature != null && MessageDigest.isEqual(
       hmac(message.header, message.parentHeader, message.metadata, message.content)
+        .getBytes(UTF_8),
+      signature.getBytes(UTF_8)
+    )
 
-    if (expectedSignature == signature || !enableMac) {
+    if (!enableMac || validSignature) {
       log.debug {
         val nl = System.lineSeparator()
         val headerStr = Try(new String(message.header, UTF_8))
