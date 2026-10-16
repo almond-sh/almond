@@ -13,6 +13,7 @@ import org.zeromq.{SocketType, ZMQ}
 
 import java.net.URI
 import java.nio.channels.{ClosedChannelException, SelectableChannel}
+import java.security.MessageDigest
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -266,10 +267,15 @@ final class ZeromqSocketImpl(
 
   private def checkSignature(message: Message, signature: String): Option[Message] = {
 
-    val expectedSignature =
+    // Constant-time comparison, so that response times don't leak how much of the
+    // signature is correct
+    def validSignature = signature != null && MessageDigest.isEqual(
       hmac(message.header, message.parentHeader, message.metadata, message.content)
+        .getBytes(UTF_8),
+      signature.getBytes(UTF_8)
+    )
 
-    if (expectedSignature == signature || !enableMac) {
+    if (!enableMac || validSignature) {
       log.debug {
         val nl = System.lineSeparator()
         val headerStr = Try(new String(message.header, UTF_8))
@@ -290,7 +296,9 @@ final class ZeromqSocketImpl(
       Some(message)
     }
     else {
-      log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
+      // Never log the expected signature: anyone reading the logs could use it to get the
+      // message they sent accepted
+      log.error(s"Invalid HMAC signature, got ${signatureForLog(signature)}")
       None
     }
   }
@@ -414,6 +422,23 @@ object ZeromqSocketImpl {
 
   private def delayedCondition[T](cond: => Boolean, msg: String)(t: IO[T]): IO[T] =
     IO(assert(cond, msg)) *> t
+
+  private val maxLoggedSignatureLength = 8
+
+  // The received signature is attacker-controlled: only log a short prefix of it, with
+  // anything but printable ASCII escaped, so that it can't inject newlines or terminal
+  // escape sequences in the logs
+  private[zeromq] def signatureForLog(signature: String): String =
+    if (signature == null) "no signature"
+    else {
+      val prefix = signature.iterator.take(maxLoggedSignatureLength).map {
+        case c @ ('\\' | '\'')         => "\\" + c
+        case c if c >= ' ' && c <= '~' => c.toString
+        case c                         => f"\\u${c.toInt}%04x"
+      }.mkString
+      val suffix = if (signature.length > maxLoggedSignatureLength) "..." else ""
+      s"'$prefix$suffix' (${signature.length} chars)"
+    }
 
   private[zeromq] def removePort(uri: URI): URI =
     new URI(
