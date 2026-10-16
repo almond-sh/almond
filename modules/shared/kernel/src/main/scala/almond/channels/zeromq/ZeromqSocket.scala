@@ -94,7 +94,8 @@ object ZeromqSocket {
     algorithm: String,
     lingerPeriod: Option[Duration],
     logCtx: LoggerContext,
-    bindToRandomPort: Boolean
+    bindToRandomPort: Boolean,
+    maxMessageSize: Option[Long]
   ): ZeromqSocket =
     new ZeromqSocketImpl(
       ec,
@@ -108,7 +109,39 @@ object ZeromqSocket {
       algorithm,
       lingerPeriod,
       logCtx,
-      bindToRandomPort = bindToRandomPort
+      bindToRandomPort = bindToRandomPort,
+      maxMessageSize = maxMessageSize
+    )
+
+  @deprecated("Use the override accepting maxMessageSize", "0.15.1")
+  def apply(
+    ec: ExecutionContext,
+    socketType: SocketType,
+    bind: Boolean,
+    uri: String,
+    identityOpt: Option[Array[Byte]],
+    subscribeOpt: Option[Array[Byte]],
+    context: ZMQ.Context,
+    key: Secret[String],
+    algorithm: String,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    bindToRandomPort: Boolean
+  ): ZeromqSocket =
+    apply(
+      ec,
+      socketType,
+      bind,
+      uri,
+      identityOpt,
+      subscribeOpt,
+      context,
+      key,
+      algorithm,
+      lingerPeriod,
+      logCtx,
+      bindToRandomPort = bindToRandomPort,
+      maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
     )
 
   @deprecated("Use the override accepting bindToRandomPort", "0.14.2")

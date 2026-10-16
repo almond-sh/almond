@@ -31,8 +31,39 @@ final class ZeromqSocketImpl(
   algorithm: String,
   lingerPeriod: Option[Duration],
   logCtx: LoggerContext,
-  bindToRandomPort: Boolean
+  bindToRandomPort: Boolean,
+  maxMessageSize: Option[Long]
 ) extends ZeromqSocket {
+
+  @deprecated("Use the override accepting maxMessageSize", "0.15.1")
+  def this(
+    ec: ExecutionContext,
+    socketType: SocketType,
+    bind: Boolean,
+    uri: String,
+    identityOpt: Option[Array[Byte]],
+    subscribeOpt: Option[Array[Byte]],
+    context: ZMQ.Context,
+    key: Secret[String],
+    algorithm: String,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    bindToRandomPort: Boolean
+  ) = this(
+    ec = ec,
+    socketType = socketType,
+    bind = bind,
+    uri = uri,
+    identityOpt = identityOpt,
+    subscribeOpt = subscribeOpt,
+    context = context,
+    key = key,
+    algorithm = algorithm,
+    lingerPeriod = lingerPeriod,
+    logCtx = logCtx,
+    bindToRandomPort = bindToRandomPort,
+    maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
+  )
 
   @deprecated("Use the override accepting bindToRandomPort", "0.14.2")
   def this(
@@ -59,7 +90,8 @@ final class ZeromqSocketImpl(
     algorithm = algorithm,
     lingerPeriod = lingerPeriod,
     logCtx = logCtx,
-    bindToRandomPort = true
+    bindToRandomPort = true,
+    maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
   )
 
   import ZeromqSocketImpl._
@@ -98,13 +130,16 @@ final class ZeromqSocketImpl(
   }
   if (socketType == SocketType.ROUTER)
     channel.setRouterHandover(true)
-  if (socketType == SocketType.PUB || socketType == SocketType.XPUB)
-    // If publisher's socket queue gets filled, all new messages are dropped; remove queue size constraint
-    channel.setHWM(0)
-  if (socketType == SocketType.XPUB)
-    // Pass all subscriptions to us, not just the first one for a given topic, so that we can send
-    // an iopub_welcome message each time a client subscribes
-    channel.setXpubVerbose(true)
+  // Rejects incoming messages larger than that before allocating memory for them. JeroMQ allocates
+  // the full size announced in a frame header upfront, so a single frame could otherwise make us
+  // allocate up to 2 GB.
+  for (size <- maxMessageSize)
+    channel.setMaxMsgSize(size)
+  // We keep the default high water mark (1000 messages) of publisher sockets, like ipykernel
+  // and xeus do: if a subscriber doesn't read its messages, new messages for it get dropped
+  // rather than queued indefinitely in memory. And we don't enable XPUB verbose mode, so that
+  // we only get notified of (and send iopub_welcome messages for) a topic the first time it's
+  // subscribed to, like ipykernel.
 
   // JeroMQ sockets aren't thread-safe, so channel is only used from ec (that should be
   // single-threaded) from here on. Having the publish socket accessed concurrently by

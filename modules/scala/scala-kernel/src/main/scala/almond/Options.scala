@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 
 import almond.api.Properties
 import almond.channels.{Channel, Message => RawMessage}
+import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
 import almond.kernel.MessageFile
 import almond.kernel.install.{Options => InstallOptions}
@@ -158,6 +159,10 @@ final case class Options(
     "and update the connection file with the actually used ports"
   )
     bindToRandomPorts: Option[Boolean] = None,
+
+  @HelpMessage("Maximum size of the ZeroMQ messages accepted by the kernel, like 500m, 2g, or 1048576 (in bytes), or none for no limit (default: 500m). Peers sending larger messages get disconnected.")
+  @ValueDescription("size|none")
+    maxMessageSize: Option[String] = None,
 
   @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
   @Hidden
@@ -351,6 +356,19 @@ final case class Options(
       case None =>
         if (lastValueOnly) OutputStyle.Last
         else OutputStyle.Default
+    }
+
+  def maxMessageSize0(): Option[Long] =
+    maxMessageSize.map(_.trim).filter(_.nonEmpty) match {
+      case Some(input) =>
+        ZeromqThreads.parseMaxMessageSize(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: $err")
+            sys.exit(1)
+          case Right(sizeOpt) => sizeOpt
+        }
+      case None =>
+        Some(ZeromqThreads.defaultMaxMessageSize)
     }
 
   def dependencies(): Seq[AnyDependency] =

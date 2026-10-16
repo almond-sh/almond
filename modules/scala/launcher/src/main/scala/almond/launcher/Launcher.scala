@@ -260,6 +260,7 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     // checking it early, rather than having the kernel fail upon startup later on
     options.outputStyleOrExit()
+    val maxMessageSize = options.maxMessageSizeOrExit()
 
     // FIXME We'd need coursier-interface to allow us to do these:
 
@@ -344,7 +345,8 @@ object Launcher extends CaseApp[LauncherOptions] {
     val cancellablesEc =
       singleThreadedExecutionContextExecutorService("scala-launcher-cancellables")
 
-    val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
+    val zeromqThreads =
+      ZeromqThreads.create("scala-kernel-launcher").withMaxMessageSize(maxMessageSize)
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
 
     val registrationOpt = Registration.fromPathIfRegistration(Paths.get(connectionFile))
