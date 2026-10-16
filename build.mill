@@ -1067,7 +1067,8 @@ object dev extends Module {
   }
 
   /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`), on a kernel
-    * running the Scala version passed as first argument, or Scala 2.13 by default.
+    * running the Scala version passed as first argument, or Scala 2.13 by default. Pass
+    * `--kernel=xpython` to run xeus-python instead.
     *
     * Exclusive, like `cli.run` in the coursier build: Mill runs it once every other task is done,
     * with its prompt / ticker disabled, so that only the console is writing to the terminal (the
