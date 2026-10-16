@@ -5,7 +5,7 @@ import java.net.{URL, URLConnection}
 import java.nio.file.{Files, Paths}
 import java.util.Base64
 
-import almond.display.UpdatableDisplay
+import almond.display.{HtmlUtils, UpdatableDisplay}
 import almond.interpreter.api.DisplayData.ContentType
 import almond.interpreter.api.{DisplayData, OutputHandler}
 
@@ -145,10 +145,10 @@ object Display {
         contentType -> Base64.getEncoder.encodeToString(rawImage)
       }
       else {
-        val dimensionAttrs = dimensionMetadata(width, height).map { case (k, v) =>
-          s"$k=$v"
-        }.mkString(" ")
-        ContentType.html -> s"<img src='$url' $dimensionAttrs/>"
+        val dimensionAttrs = (width.map("width" -> _).toSeq ++ height.map("height" -> _).toSeq)
+          .map { case (k, v) => s"""$k="${HtmlUtils.escape(v)}"""" }
+          .mkString(" ")
+        ContentType.html -> s"<img src='${HtmlUtils.escape(url)}' $dimensionAttrs/>"
       }
       DisplayData()
         .add(mimeType, value)
