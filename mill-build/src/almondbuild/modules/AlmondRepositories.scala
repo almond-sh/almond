@@ -11,7 +11,7 @@ trait AlmondRepositories extends JavaModule {
     val snapshots =
       if (hasSnapshotDeps()) Seq(AlmondRepositories.mavenSnapshots)
       else Nil
-    super.repositories() ++ Seq("jitpack") ++ snapshots
+    super.repositories() ++ snapshots
   }
 
   /** Pins all the modules of our Ammonite fork to the snapshot build we depend on, when we depend

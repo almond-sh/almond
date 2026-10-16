@@ -79,8 +79,7 @@ class ProxyTests extends munit.FunSuite {
   /** The same, for the cs command generating the launchers */
   private def csRepositoryArgs: Seq[String] =
     Seq("-r", localRepoInContainer) ++
-      (if (useMavenSnapshots) Seq("-r", mavenSnapshots) else Nil) ++
-      Seq("-r", "jitpack")
+      (if (useMavenSnapshots) Seq("-r", mavenSnapshots) else Nil)
 
   private def shellQuote(s: String): String =
     "'" + s.replace("'", "'\\''") + "'"
@@ -223,10 +222,6 @@ class ProxyTests extends munit.FunSuite {
            |snapshots.from=$mavenSnapshots
            |snapshots.to=http://$ip/maven-snapshots
            |snapshots.type=maven
-           |
-           |jitpack.from=https://jitpack.io
-           |jitpack.to=http://$ip/jitpack
-           |jitpack.type=maven
            |""".stripMargin
       os.write.over(
         home / ".config" / "coursier" / "mirror.properties",

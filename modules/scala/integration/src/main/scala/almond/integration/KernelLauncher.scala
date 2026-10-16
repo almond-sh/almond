@@ -288,10 +288,7 @@ class KernelLauncher(
       "ivy2Local",
       "-r",
       "central"
-    ) ++ snapshotRepoArgs ++ Seq(
-      "-r",
-      "jitpack"
-    )
+    ) ++ snapshotRepoArgs
     val launcherArgs =
       if (isTwoStepStartup)
         // Passing the main class explicitly: coursier-launcher 2.1.25 pulls in jarjar, whose jars

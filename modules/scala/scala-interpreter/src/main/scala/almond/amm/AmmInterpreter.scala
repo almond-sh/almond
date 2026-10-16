@@ -257,10 +257,8 @@ object AmmInterpreter {
           f0
       }
 
-      // TODO: remove jitpack once jvm-repr is published to central
-      val allExtraRepos = extraRepos ++ Seq("https://jitpack.io")
       ammInterp0.repositories() = ammInterp0.repositories() ++
-        allExtraRepos.flatMap { r =>
+        extraRepos.flatMap { r =>
           almond.Execute.parseRepository(r) match {
             case Left(err) =>
               System.err.println(s"Warning: ignoring repository ($err)")
