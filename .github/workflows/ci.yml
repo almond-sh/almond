@@ -29,9 +29,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
     - id: versions
       run: echo "json=$(./mill -i dev.ciScalaVersionsJson)" >> "$GITHUB_OUTPUT"
 
@@ -54,9 +51,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -89,10 +83,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
-        apps:
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -133,10 +123,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
-        apps:
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -150,7 +136,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        OS: ["ubuntu-22.04", macos-15, windows-latest]
+        # Not on ubuntu-22.04, whose GLIBC is too old for the native Mill launcher - the JVM-based
+        # one it falls back to there needs a java command on the PATH, that we don't install.
+        OS: [ubuntu-latest, macos-15, windows-latest]
         GROUP: ["212", "213", "3"]
     steps:
     - uses: actions/checkout@v7
@@ -164,10 +152,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
-        apps: scala-cli
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -202,9 +186,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
     # -j 1 like the integration tests: the localRepo tasks don't like being run in parallel
     - run: ./mill -i -j 1 scala.proxy-tests.test
       shell: bash
@@ -224,9 +205,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
     # Only check the modules affected by the changes of pull requests (checks everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -248,10 +226,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
-        apps: cs
     - run: ./mill docs.generate
       shell: bash
 
@@ -284,10 +258,6 @@ jobs:
       with:
         path: ~/.cache/mill/download
         key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
-    - uses: coursier/setup-action@v3.0
-      with:
-        jvm: 21
-        apps:
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
         echo "-Xmx2g" > .mill-jvm-opts

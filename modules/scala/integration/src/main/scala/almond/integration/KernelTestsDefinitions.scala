@@ -8,13 +8,6 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   override def mightRetry = true
 
-  lazy val javaMajorVersion = {
-    val versionString =
-      sys.props.getOrElse("java.version", sys.error("java.version property not set"))
-        .stripPrefix("1.") // for Java 8 and below
-    versionString.takeWhile(_ != '.').toInt
-  }
-
   test0("jvm-repr") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
@@ -119,7 +112,10 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
       }
     }
 
-  if (kernelLauncher.defaultScalaVersion.startsWith("2.") && javaMajorVersion >= 11)
+  if (
+    kernelLauncher.defaultScalaVersion.startsWith("2.") &&
+    kernelLauncher.kernelJavaMajorVersion >= 11
+  )
     test0("inspections") { implicit forceVersion =>
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()
