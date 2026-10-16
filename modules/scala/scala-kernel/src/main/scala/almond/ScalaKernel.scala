@@ -149,7 +149,12 @@ object ScalaKernel extends CaseApp[Options] {
         KernelOptions()
     }
 
-    val threads = ScalaKernelThreads.create("scala-kernel")
+    val threads = {
+      val threads0 = ScalaKernelThreads.create("scala-kernel")
+      threads0.copy(
+        zeromqThreads = threads0.zeromqThreads.withMaxMessageSize(options.maxMessageSize0())
+      )
+    }
 
     val interpreter = new ScalaInterpreter(
       params = ScalaInterpreterParams(

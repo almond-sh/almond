@@ -83,7 +83,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val control0 = ZeromqSocket(
@@ -98,7 +99,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val publish0 = ZeromqSocket(
@@ -113,7 +115,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val stdin0 = ZeromqSocket(
@@ -128,7 +131,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val heartBeatPortPromiseAndUri = {
@@ -154,6 +158,8 @@ final class ZeromqConnection(
             val heartbeat = threads.context.socket(repReq)
 
             heartbeat.setLinger(1000)
+            for (size <- threads.maxMessageSize)
+              heartbeat.setMaxMsgSize(size)
             heartBeatPortPromiseAndUri match {
               case Some((promise, uri0)) =>
                 val port = heartbeat.bindToRandomPort(uri0)

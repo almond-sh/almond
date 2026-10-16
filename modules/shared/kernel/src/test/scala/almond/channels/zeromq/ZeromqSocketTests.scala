@@ -68,7 +68,8 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false
+        bindToRandomPort = false,
+        maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
       )
 
       val req = ZeromqSocket(
@@ -83,7 +84,8 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false
+        bindToRandomPort = false,
+        maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
       )
 
       val msg = Message(
@@ -135,7 +137,8 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false
+        bindToRandomPort = false,
+        maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
       )
 
       val req = ZeromqSocket(
@@ -150,7 +153,8 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false
+        bindToRandomPort = false,
+        maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
       )
 
       val msg = Message(
@@ -204,7 +208,8 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false
+        bindToRandomPort = false,
+        maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
       )
 
       val dealer = ZeromqSocket(
@@ -219,7 +224,8 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false
+        bindToRandomPort = false,
+        maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
       )
 
       def msg(content: String, buffers: String*) =

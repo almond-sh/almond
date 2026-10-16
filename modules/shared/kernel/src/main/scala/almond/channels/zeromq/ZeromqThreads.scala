@@ -14,8 +14,23 @@ final class ZeromqThreads private (
   val channelEces: Channel => ExecutionContextExecutorService,
   val selectorOpenCloseEces: ExecutionContextExecutorService,
   private val pollingEcesOpt: Option[ExecutionContextExecutorService],
-  val context: ZMQ.Context
+  val context: ZMQ.Context,
+  val maxMessageSize: Option[Long]
 ) extends Product with Serializable with ZeromqThreadsCompat with AutoCloseable {
+
+  private def this(
+    channelEces: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEces: ExecutionContextExecutorService,
+    pollingEcesOpt: Option[ExecutionContextExecutorService],
+    context: ZMQ.Context
+  ) =
+    this(
+      channelEces,
+      selectorOpenCloseEces,
+      pollingEcesOpt,
+      context,
+      Some(ZeromqThreads.defaultMaxMessageSize)
+    )
 
   def this(
     channelEces: Channel => ExecutionContextExecutorService,
@@ -58,6 +73,19 @@ final class ZeromqThreads private (
   private def pollingEces0: ExecutionContextExecutorService =
     pollingEcesOpt.getOrElse(selectorOpenCloseEces)
 
+  /** Maximum size of the messages accepted by the sockets using this, [[scala.None]] for no limit
+    *
+    * Peers sending larger messages get disconnected.
+    */
+  def withMaxMessageSize(maxMessageSize: Option[Long]): ZeromqThreads =
+    new ZeromqThreads(
+      channelEces,
+      selectorOpenCloseEces,
+      pollingEcesOpt,
+      context,
+      maxMessageSize
+    )
+
   override def canEqual(that: Any): Boolean =
     that.isInstanceOf[ZeromqThreads]
   override def productArity: Int = 4
@@ -75,12 +103,13 @@ final class ZeromqThreads private (
       channelEces == other.channelEces &&
       selectorOpenCloseEces == other.selectorOpenCloseEces &&
       pollingEcesOpt == other.pollingEcesOpt &&
-      context == other.context
+      context == other.context &&
+      maxMessageSize == other.maxMessageSize
     }
   override def hashCode(): Int =
     MurmurHash3.productHash(this)
   override def toString(): String =
-    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces0, $context)"
+    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces0, $context, $maxMessageSize)"
 
   @deprecated("Use with* methods instead", "0.14.2")
   def copy(
@@ -93,7 +122,8 @@ final class ZeromqThreads private (
       c => ZeromqThreads.eces(ecs(c)),
       ZeromqThreads.eces(selectorOpenCloseEc),
       Some(ZeromqThreads.eces(pollingEc)),
-      context
+      context,
+      maxMessageSize
     )
 
   def close(): Unit = {
@@ -120,6 +150,34 @@ final class ZeromqThreads private (
 }
 
 object ZeromqThreads extends ZeromqThreadsCompat.Companion {
+
+  /** Default maximum size of incoming messages (500 MiB) */
+  def defaultMaxMessageSize: Long = 500L * 1024L * 1024L
+
+  /** Parses a size, like "500m", "2g", "1048576", or "none" for no limit
+    *
+    * Suffixes (k, m, g, optionally followed by b or ib) are powers of 1024.
+    */
+  def parseMaxMessageSize(input: String): Either[String, Option[Long]] = {
+    val input0 = input.trim.toLowerCase(java.util.Locale.ROOT)
+    if (input0 == "none" || input0 == "unlimited" || input0 == "-1") Right(None)
+    else {
+      val (num, factor) = input0.stripSuffix("ib").stripSuffix("b") match {
+        case s if s.endsWith("k") => (s.dropRight(1), 1024L)
+        case s if s.endsWith("m") => (s.dropRight(1), 1024L * 1024L)
+        case s if s.endsWith("g") => (s.dropRight(1), 1024L * 1024L * 1024L)
+        case s                    => (s, 1L)
+      }
+      val sizeOpt =
+        if (num.nonEmpty && num.forall(_.isDigit))
+          scala.util.Try(Math.multiplyExact(num.toLong, factor)).toOption
+        else
+          None
+      sizeOpt.filter(_ > 0L).map(Some(_)).toRight(
+        s"Malformed size '$input' (expected something like 500m, 2g, 1048576, or none)"
+      )
+    }
+  }
 
   private def eces(ec: ExecutionContext): ExecutionContextExecutorService =
     ec match {

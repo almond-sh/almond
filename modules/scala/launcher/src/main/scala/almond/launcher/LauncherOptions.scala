@@ -1,6 +1,7 @@
 package almond.launcher
 
 import almond.OutputStyle
+import almond.channels.zeromq.ZeromqThreads
 import almond.kernel.install.{Options => InstallOptions}
 import almond.launcher.directives.CustomGroup
 import caseapp._
@@ -58,6 +59,9 @@ final case class LauncherOptions(
     "and update the connection file with the actually used ports"
   )
     bindToRandomPorts: Option[Boolean] = None,
+  @HelpMessage("Maximum size of the ZeroMQ messages accepted by the kernel, like 500m, 2g, or 1048576 (in bytes), or none for no limit (default: 500m). Peers sending larger messages get disconnected.")
+  @ValueDescription("size|none")
+    maxMessageSize: Option[String] = None,
   @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
   @Hidden
     wrapperName: Option[String] = None,
@@ -128,6 +132,8 @@ final case class LauncherOptions(
       b += s"--log-code=$logCode0"
     for (value <- username)
       b ++= Seq("--username", value)
+    for (value <- maxMessageSize)
+      b += s"--max-message-size=$value"
     b.result()
   }
 
@@ -141,6 +147,19 @@ final case class LauncherOptions(
           sys.exit(1)
         case Right(style) => style
       }
+    }
+
+  def maxMessageSizeOrExit(): Option[Long] =
+    maxMessageSize.map(_.trim).filter(_.nonEmpty) match {
+      case Some(input) =>
+        ZeromqThreads.parseMaxMessageSize(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: $err")
+            sys.exit(1)
+          case Right(sizeOpt) => sizeOpt
+        }
+      case None =>
+        Some(ZeromqThreads.defaultMaxMessageSize)
     }
 
   def customDirectiveGroupsOrExit(): Seq[CustomGroup] = {

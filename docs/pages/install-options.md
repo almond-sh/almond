@@ -296,6 +296,16 @@ the name of the user running the kernel. Pass it along `--install` to write it i
 --install --username jupyter
 ```
 
+#### `--max-message-size`
+
+Maximum size of the ZeroMQ messages accepted by the kernel, `500m` by default. Peers sending
+larger messages get disconnected. Accepts sizes in bytes, optionally with a `k`, `m`, or `g` suffix
+(powers of 1024), or `none` to accept messages of any size. Pass it along `--install` to write it
+in the kernel spec, like
+```bash
+--install --max-message-size 2g
+```
+
 ## Other
 
 #### `--toree-magics`

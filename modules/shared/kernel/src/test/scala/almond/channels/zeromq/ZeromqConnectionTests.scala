@@ -231,6 +231,91 @@ object ZeromqConnectionTests extends TestSuite {
       t.unsafeRunSync()(ioRuntime)
     }
 
+    test("messages above max size are dropped") {
+
+      val logCtx = LoggerContext.nop
+      val params = ConnectionParameters.randomLocal()
+      val kernelThreads =
+        ZeromqThreads.create("test-kernel").withMaxMessageSize(Some(64L * 1024L))
+      val clientThreads = ZeromqThreads.create("test-client")
+      val ioRuntime     = IORuntime.global
+
+      def message(content: Array[Byte]) = Message(
+        Nil,
+        "header".getBytes(StandardCharsets.UTF_8),
+        "parent_header".getBytes(StandardCharsets.UTF_8),
+        "metadata".getBytes(StandardCharsets.UTF_8),
+        content
+      )
+      val smallMsg = message("content".getBytes(StandardCharsets.UTF_8))
+      val largeMsg = message(Array.fill[Byte](1024 * 1024)('a'.toByte))
+
+      def readShell(kernel: ZeromqConnection, deadline: Deadline): IO[Message] =
+        kernel.tryRead(Seq(Channel.Requests), 100.millis).flatMap {
+          case Some(Right((_, m))) => IO.pure(m)
+          case Some(Left(()))      => IO.raiseError(new Exception("connection closed"))
+          case None if deadline.isOverdue() =>
+            IO.raiseError(new Exception("No message on shell"))
+          case None => readShell(kernel, deadline)
+        }
+
+      def client(identity: String) =
+        params.channels(
+          bind = false,
+          clientThreads,
+          None,
+          logCtx,
+          bindToRandomPorts = false,
+          identityOpt = Some(identity)
+        )
+
+      val t =
+        for {
+          kernel <- params.channels(
+            bind = true,
+            kernelThreads,
+            None,
+            logCtx,
+            bindToRandomPorts = false,
+            identityOpt = None
+          )
+          largeClient <- client("large")
+          smallClient <- client("small")
+          _           <- kernel.open
+          _           <- largeClient.open
+          _           <- smallClient.open
+          _           <- largeClient.send(Channel.Requests, largeMsg)
+          _           <- IO.sleep(500.millis)
+          _           <- smallClient.send(Channel.Requests, smallMsg)
+          received    <- readShell(kernel, 10.seconds.fromNow)
+          _ = assert(
+            received.idents.map(_.toVector) ==
+              Seq("small".getBytes(StandardCharsets.UTF_8).toVector)
+          )
+          _ = assert(received.copy(idents = Nil) == smallMsg)
+          _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+          _ <- largeClient.close(partial = false, lingerDuration = 2.seconds)
+          _ <- smallClient.close(partial = false, lingerDuration = 2.seconds)
+        } yield ()
+
+      t.unsafeRunSync()(ioRuntime)
+    }
+
+    test("parse max message size") {
+      val mib = 1024L * 1024L
+      assert(ZeromqThreads.parseMaxMessageSize("500m") == Right(Some(500L * mib)))
+      assert(ZeromqThreads.parseMaxMessageSize(" 500MB ") == Right(Some(500L * mib)))
+      assert(ZeromqThreads.parseMaxMessageSize("2GiB") == Right(Some(2048L * mib)))
+      assert(ZeromqThreads.parseMaxMessageSize("64k") == Right(Some(64L * 1024L)))
+      assert(ZeromqThreads.parseMaxMessageSize("1048576") == Right(Some(mib)))
+      assert(ZeromqThreads.parseMaxMessageSize("none") == Right(None))
+      assert(ZeromqThreads.parseMaxMessageSize("-1") == Right(None))
+      assert(ZeromqThreads.parseMaxMessageSize("0").isLeft)
+      assert(ZeromqThreads.parseMaxMessageSize("m").isLeft)
+      assert(ZeromqThreads.parseMaxMessageSize("12x").isLeft)
+      assert(ZeromqThreads.parseMaxMessageSize("99999999999999g").isLeft)
+    }
+
     test("stdin messages are routed to the requesting client") {
 
       val logCtx        = LoggerContext.nop
