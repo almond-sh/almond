@@ -65,7 +65,7 @@ object LineMagicHook {
                 System.err.println(s"Warning: ignoring unrecognized Toree line magic $name")
               case Some(handler) =>
                 handler.handle(name, values) match {
-                  case Left(res) => errorOpt = Some(res)
+                  case Left(res)             => errorOpt = Some(res)
                   case Right(substituteCode) =>
                     remainingCode ++= substituteCode
                     remainingCode ++= rawLine.substring(line.length)

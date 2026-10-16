@@ -12,14 +12,14 @@ package almond.api.internal
   * upon every change.
   */
 final class Modifiable[T](initialValue: T) {
-  @volatile private var value0: T = initialValue
-  @volatile private var listeners = List.empty[T => Unit]
+  @volatile private var value0: T   = initialValue
+  @volatile private var listeners   = List.empty[T => Unit]
   def onChange: (T => Unit) => Unit = { f =>
     synchronized {
       listeners = f :: listeners
     }
   }
-  def value: T = value0
+  def value: T            = value0
   def value_=(v: T): Unit = {
     value0 = v
     listeners.foreach(_(v))

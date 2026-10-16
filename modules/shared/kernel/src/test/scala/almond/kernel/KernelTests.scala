@@ -209,7 +209,7 @@ object KernelTests extends TestSuite {
         "execute_reply"
       )
 
-      val (commMsgTypes, stdMsgTypes) = msgTypes.partition(_.startsWith("comm_"))
+      val (commMsgTypes, stdMsgTypes)                 = msgTypes.partition(_.startsWith("comm_"))
       val (expectedCommMsgTypes, expectedStdMsgTypes) =
         expectedMsgTypes.partition(_.startsWith("comm_"))
 
@@ -230,7 +230,7 @@ object KernelTests extends TestSuite {
 
       val sessionId = UUID.randomUUID().toString
       val commId    = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", Comm.openType, sessionId),
           Comm.Open(commId, "unknown-target", RawJson.emptyObj)
@@ -256,7 +256,7 @@ object KernelTests extends TestSuite {
 
       def replyStatuses(stopOnError: Option[Boolean]): Seq[String] = {
 
-        val replyCount = new AtomicInteger
+        val replyCount                                           = new AtomicInteger
         val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
             IO {
@@ -264,7 +264,7 @@ object KernelTests extends TestSuite {
             }
 
         val sessionId = UUID.randomUUID().toString
-        val input = Stream("error-after:200", "echo:foo", "echo:bar").map { code =>
+        val input     = Stream("error-after:200", "echo:foo", "echo:bar").map { code =>
           Message(
             Header.random("test", Execute.requestType, sessionId),
             Execute.Request(code, stop_on_error = stopOnError)
@@ -310,7 +310,7 @@ object KernelTests extends TestSuite {
       }
 
       test("aborted replies") {
-        val sessionId = UUID.randomUUID().toString
+        val sessionId             = UUID.randomUUID().toString
         def request(code: String) =
           Message(
             Header.random("test", Execute.requestType, sessionId),
@@ -327,7 +327,7 @@ object KernelTests extends TestSuite {
 
         // we stop the pseudo-client at the execute_reply of the last request
 
-        val lastMsgId = requests.last.header.msg_id
+        val lastMsgId                                            = requests.last.header.msg_id
         val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
           (_, m) =>
             IO.pure(
@@ -482,7 +482,7 @@ object KernelTests extends TestSuite {
         (_, m) => IO.pure(m.header.msg_type == "history_reply")
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", History.requestType, sessionId),
           History.Request(output = false, raw = false, History.AccessType.Range)
@@ -492,7 +492,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+      val t           = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -539,7 +539,7 @@ object KernelTests extends TestSuite {
           IO.pure(false)
 
       val sessionId = UUID.randomUUID().toString
-      val request = Message(
+      val request   = Message(
         Header.random("test", Shutdown.requestType, sessionId),
         Shutdown.Request(restart = false)
       )
@@ -548,7 +548,7 @@ object KernelTests extends TestSuite {
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
       val interpreter = new TestInterpreter
-      val t = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+      val t           = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
@@ -594,7 +594,7 @@ object KernelTests extends TestSuite {
       val rawMetadata = """{ "a": 2, "b": [true, false, "s"] }"""
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
+      val input     = Stream(
         Message(
           Header.random("test", Complete.requestType, sessionId),
           Complete.Request(s"meta:$rawMetadata", 5)

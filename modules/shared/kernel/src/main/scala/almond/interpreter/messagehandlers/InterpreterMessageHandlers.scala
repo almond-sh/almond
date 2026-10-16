@@ -78,7 +78,7 @@ final case class InterpreterMessageHandlers(
   ): IO[Unit] = {
 
     val payloads = new ListBuffer[String]
-    val handler = new QueueOutputHandler(
+    val handler  = new QueueOutputHandler(
       message,
       session,
       queue,
@@ -137,7 +137,7 @@ final case class InterpreterMessageHandlers(
           )
       }
       countAfter <- interpreter.executionCount
-      _ <- res match {
+      _          <- res match {
         case v: ExecuteResult.Success if silent || v.data.isEmpty =>
           IO.unit
         case v: ExecuteResult.Success =>
@@ -239,7 +239,7 @@ final case class InterpreterMessageHandlers(
 
       for {
         res <- interpreter.isComplete(message.content.code)
-        _ <- message
+        _   <- message
           .reply(
             session,
             IsComplete.replyType,
@@ -295,7 +295,7 @@ final case class InterpreterMessageHandlers(
 
       for {
         info <- interpreter.kernelInfo
-        _ <- message
+        _    <- message
           .reply(session, KernelInfo.replyType, info)
           .enqueueOn(channel, queue)
       } yield ()

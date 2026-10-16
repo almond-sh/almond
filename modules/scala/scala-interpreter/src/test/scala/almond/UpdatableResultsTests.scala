@@ -42,7 +42,7 @@ object UpdatableResultsTests extends TestSuite {
       val r = new UpdatableResults(ec, LoggerContext.nop, updates.add, Some(1.hour))
       r.add(DisplayData.text("n = <n>"), Map("<n>" -> "0"))
 
-      val computed = new AtomicInteger
+      val computed                 = new AtomicInteger
       def value(s: String): String = {
         computed.incrementAndGet()
         s
@@ -88,7 +88,7 @@ object UpdatableResultsTests extends TestSuite {
       val r       = new UpdatableResults(ec, LoggerContext.nop, updates.add, None)
       r.add(DisplayData.text("n = <n>"), Map("<n>" -> "0"))
 
-      val computed = new AtomicInteger
+      val computed                 = new AtomicInteger
       def value(s: String): String = {
         computed.incrementAndGet()
         s

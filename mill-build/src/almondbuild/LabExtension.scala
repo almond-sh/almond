@@ -95,7 +95,7 @@ object LabExtension {
     for (f <- sources)
       os.copy(f, workDir / f.subRelativeTo(sourceDir), createFolders = true)
 
-    val name = ujson.read(os.read(workDir / "package.json"))("name").str
+    val name                      = ujson.read(os.read(workDir / "package.json"))("name").str
     def jlpm(args: String*): Unit =
       os.proc(uvRun, "jlpm", args).call(
         cwd = workDir,

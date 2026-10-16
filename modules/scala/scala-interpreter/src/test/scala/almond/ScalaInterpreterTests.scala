@@ -177,7 +177,7 @@ object ScalaInterpreterTests extends TestSuite {
       }
 
       test("respect store history") {
-        val interpreter = newInterpreter()
+        val interpreter      = newInterpreter()
         val noHistoryTextOpt = interpreter.execute("2", storeHistory = false)
           .asSuccess
           .flatMap(_.data.detailedData.get("text/plain"))
@@ -223,7 +223,7 @@ object ScalaInterpreterTests extends TestSuite {
         val expectedRes            = Completion(0, 3, Seq("List"))
         val alternativeExpectedRes = Completion(0, 3, Seq("scala.List"))
         val res0                   = interpreter.complete(code, code.length).clearMetadata
-        val res = res0.copy(
+        val res                    = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
         val alternativeRes = res0.copy(
@@ -256,7 +256,7 @@ object ScalaInterpreterTests extends TestSuite {
           ) ++ extraCompletions
         )
         val res0 = interpreter.complete(code, code.length).clearMetadata
-        val res = res0.copy(
+        val res  = res0.copy(
           completions = res0.completions.filter(expectedRes.completions.toSet)
         )
         assert(res == expectedRes)
@@ -270,7 +270,7 @@ object ScalaInterpreterTests extends TestSuite {
       def backticksTest(): Unit = {
         // see https://github.com/almond-sh/almond/issues/628
         val interpreter = newInterpreter()
-        val res = interpreter.execute(
+        val res         = interpreter.execute(
           """val `a-b-c` = 2
             |val abcdef = 3""".stripMargin
         )
@@ -319,15 +319,15 @@ object ScalaInterpreterTests extends TestSuite {
         if (TestUtil.isScala2) {
           val interpreter = newInterpreter()
 
-          val defCode = "def increment(n: Int): Int = n + 1"
-          val defRes  = html(interpreter, defCode, defCode.indexOf("increment") + 1)
+          val defCode        = "def increment(n: Int): Int = n + 1"
+          val defRes         = html(interpreter, defCode, defCode.indexOf("increment") + 1)
           val expectedDefRes =
             if (isScala212) expected("(n: Int)Int")
             else expected("(n: Int): Int")
           assert(defRes == expectedDefRes)
 
           val inferredValCode = "val message = List(1, 2, 3).mkString"
-          val inferredValRes =
+          val inferredValRes  =
             html(interpreter, inferredValCode, inferredValCode.indexOf("message") + 1)
           assert(inferredValRes == expected("String"))
 
@@ -450,7 +450,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(true)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter().execute(code)
+        val res         = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = false
             |silentAfter: Boolean = true""".stripMargin
@@ -465,7 +465,7 @@ object ScalaInterpreterTests extends TestSuite {
             | kernel.silent(false)
             | val silentAfter = kernel.silent
             |""".stripMargin
-        val res = newInterpreter().execute(code)
+        val res         = newInterpreter().execute(code)
         val expectedRes = ExecuteResult.Success(DisplayData.text(
           """silentBefore: Boolean = true
             |silentAfter: Boolean = false""".stripMargin
@@ -486,10 +486,10 @@ object ScalaInterpreterTests extends TestSuite {
           """
             | val effectInNextExecuteAgain = 0
             |""".stripMargin
-        val i    = newInterpreter()
-        val res0 = i.execute(code0)
-        val res1 = i.execute(code1)
-        val res2 = i.execute(code2)
+        val i            = newInterpreter()
+        val res0         = i.execute(code0)
+        val res1         = i.execute(code1)
+        val res2         = i.execute(code2)
         val expectedRes0 = ExecuteResult.Success(DisplayData.text(
           "noEffectInSameExecute: Boolean = true"
         ))
@@ -734,7 +734,7 @@ object ScalaInterpreterTests extends TestSuite {
 
       interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
         .assertSuccess()
-      val Seq(after4) = outputHandler.displayed()
+      val Seq(after4)    = outputHandler.displayed()
       val expectedAfter4 = after2.text.stripSuffix("]") +
         """,{"varName":"lz","varSize":"","varShape":"","varContent":"[lazy]","varType":"Int","isMatrix":false}""" +
         """,{"varName":"d","varSize":"","varShape":"","varContent":"[def]","varType":"Int","isMatrix":false}""" +

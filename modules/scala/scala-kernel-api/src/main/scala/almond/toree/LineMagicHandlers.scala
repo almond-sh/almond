@@ -54,10 +54,10 @@ object LineMagicHandlers {
 
     private def parseParams(args: List[String], params: Params): Params =
       args match {
-        case Nil                 => params
-        case "--trace" :: t      => parseParams(t, params.copy(trace = true))
-        case "--verbose" :: t    => parseParams(t, params.copy(verbose = true))
-        case "--transitive" :: t => parseParams(t, params.copy(transitive = true))
+        case Nil                                 => params
+        case "--trace" :: t                      => parseParams(t, params.copy(trace = true))
+        case "--verbose" :: t                    => parseParams(t, params.copy(verbose = true))
+        case "--transitive" :: t                 => parseParams(t, params.copy(transitive = true))
         case "--abort-on-resolution-errors" :: t =>
           parseParams(t, params.copy(abortOnResolutionErrors = true))
         case "--repository" :: repo :: t =>
@@ -78,7 +78,7 @@ object LineMagicHandlers {
           if (params.magic)
             System.err.println(s"Warning: ignoring unsupported %AddJar argument --magic")
 
-          val q = "\""
+          val q    = "\""
           val path =
             if (uri.getScheme == "file")
               Paths.get(uri).toString
@@ -122,7 +122,7 @@ object LineMagicHandlers {
         case Nil            => params
         case "-f" :: t      => parseParams(t, params.copy(force = true))
         case "--magic" :: t => parseParams(t, params.copy(magic = true))
-        case other :: t =>
+        case other :: t     =>
           System.err.println(s"Warning: ignoring unrecognized %AddJar argument '$other'")
           parseParams(t, params)
       }
@@ -198,8 +198,8 @@ object LineMagicHandlers {
       val current = pprinter()
       current.defaultWidth != Int.MaxValue && current.defaultHeight != Int.MaxValue
     }
-    private var formerWidth  = pprinter().defaultWidth
-    private var formerHeight = pprinter().defaultHeight
+    private var formerWidth     = pprinter().defaultWidth
+    private var formerHeight    = pprinter().defaultHeight
     private def disable(): Unit =
       if (enabled()) {
         formerWidth = pprinter().defaultWidth

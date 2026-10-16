@@ -35,8 +35,8 @@ object MessageFile {
 
   private implicit val channelCodec: JsonValueCodec[Channel] =
     new JsonValueCodec[Channel] {
-      val stringCodec: JsonValueCodec[String] = JsonCodecMaker.make
-      def nullValue                           = Channel.Requests
+      val stringCodec: JsonValueCodec[String]           = JsonCodecMaker.make
+      def nullValue                                     = Channel.Requests
       def decodeValue(in: JsonReader, default: Channel) = {
         val s = stringCodec.decodeValue(in, stringCodec.nullValue)
         Channel.map.getOrElse(

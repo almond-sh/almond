@@ -50,7 +50,7 @@ object JupyterDirectoriesTests extends TestSuite {
                 |esac
                 |""".stripMargin
             )
-            val res = JupyterDirectories.get(jupyter.toString)
+            val res      = JupyterDirectories.get(jupyter.toString)
             val expected = Right(
               JupyterDirectories(
                 jupyter,

@@ -136,9 +136,9 @@ class AlmondPreprocessor(
         case Parsed.Success((lhs, tpeOpt, rhs), _) if lhs.startsWith("lazy val ") =>
           val mod     = Name.backtickWrap(t.name.decoded + "$value")
           val tpePart = tpeOpt.fold("")(t => "[" + t + "]")
-          val c = s"""val $mod = new _root_.almond.api.internal.Lazy$tpePart(() => $rhs)
-                     |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
-                     |""".stripMargin
+          val c       = s"""val $mod = new _root_.almond.api.internal.Lazy$tpePart(() => $rhs)
+                           |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
+                           |""".stripMargin
           (c, Some(mod + ".onChange"))
         case _ =>
           (code, None)
@@ -161,9 +161,9 @@ class AlmondPreprocessor(
         case Parsed.Success((lhs, tpeOpt, rhs), _) if lhs.startsWith("var ") =>
           val mod     = Name.backtickWrap(t.name.decoded + "$value")
           val tpePart = tpeOpt.fold("")(t => "[" + t + "]")
-          val c = s"""val $mod = new _root_.almond.api.internal.Modifiable$tpePart($rhs)
-                     |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
-                     |""".stripMargin
+          val c       = s"""val $mod = new _root_.almond.api.internal.Modifiable$tpePart($rhs)
+                           |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
+                           |""".stripMargin
           (c, Some(mod + ".onChange"))
         case _ =>
           (code, None)
@@ -177,7 +177,7 @@ class AlmondPreprocessor(
 
   val extraCode: (String, String, G#Tree) => Option[String] = {
     case (_, code, t: G#ValDef) if !t.mods.hasFlag(Flags.LAZY) =>
-      val ident = Name.backtickWrap(t.name.decoded)
+      val ident      = Name.backtickWrap(t.name.decoded)
       val extraCode0 =
         s"""_root_.almond
            |  .api
@@ -187,7 +187,7 @@ class AlmondPreprocessor(
            |  .declareVariable(${fastparse.internal.Util.literalize(ident)}, $ident)""".stripMargin
       Some(extraCode0)
     case (_, code, t: G#ValDef) if t.mods.hasFlag(Flags.LAZY) =>
-      val ident = Name.backtickWrap(t.name.decoded)
+      val ident      = Name.backtickWrap(t.name.decoded)
       val extraCode0 =
         s"""_root_.almond
            |  .api
@@ -200,7 +200,7 @@ class AlmondPreprocessor(
       Some(extraCode0)
     case (_, code, t: G#DefDef) =>
       if (t.tparams.isEmpty && t.vparamss.isEmpty) {
-        val ident = Name.backtickWrap(t.name.decoded)
+        val ident      = Name.backtickWrap(t.name.decoded)
         val extraCode0 =
           s"""_root_.almond
              |  .api
@@ -218,8 +218,8 @@ class AlmondPreprocessor(
     case (_, _, _: G#ClassDef)  => None
     case (_, _, _: G#TypeDef)   => None
     case (_, _, _: G#Import)    => None
-    case (_, code, t) =>
-      val ident = code
+    case (_, code, t)           =>
+      val ident      = code
       val extraCode0 =
         s"""_root_.almond
            |  .api
@@ -260,8 +260,8 @@ class AlmondPreprocessor(
     def withExtra = {
       val extraOpt = extraCode(a, code, t)
       (resOpt, extraOpt) match {
-        case (None, _)         => None
-        case (Some(res), None) => Some(res)
+        case (None, _)                => None
+        case (Some(res), None)        => Some(res)
         case (Some(res), Some(extra)) =>
           Some(res.copy(printer = s"{ $extra; _root_.scala.Iterator[String]() }" +: res.printer))
       }

@@ -24,7 +24,7 @@ object Scala212_8JrtPatch extends ExternalModule with ScalaModule {
   def scalaVersion  = scalaVersion0
   // The oldest JVM Mill runs scalac on - the one ScalaVersions.jvmVersionFor picks for 2.12.8
   def jvmVersion = "17"
-  def sources = Task.Sources(
+  def sources    = Task.Sources(
     BuildCtx.workspaceRoot / "mill-build" / "scalac-patches" / "scala-2.12.8"
   )
   def compileMvnDeps = Seq(Deps.scalaCompiler(scalaVersion0))

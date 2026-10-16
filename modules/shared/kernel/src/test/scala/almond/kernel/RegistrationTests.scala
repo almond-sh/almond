@@ -109,7 +109,7 @@ object RegistrationTests extends TestSuite {
       val registrationPort = registrationSocket.bindToRandomPort("tcp://127.0.0.1")
 
       val registrationFile = Files.createTempFile("almond-test-registration", ".json")
-      val registration = Registration(
+      val registration     = Registration(
         kernel_id = kernelId,
         transport = "tcp",
         registration_ip = "127.0.0.1",
@@ -219,8 +219,8 @@ object RegistrationTests extends TestSuite {
               bindToRandomPorts = false,
               identityOpt = None
             )
-            _ <- client.open
-            _ <- client.send(Channel.Requests, kernelInfoRequest.asRawMessage)
+            _     <- client.open
+            _     <- client.send(Channel.Requests, kernelInfoRequest.asRawMessage)
             reply <- readReply(client, Channel.Requests, KernelInfo.replyType.messageType)
               .timeout(20.seconds)
             _ <- client.send(Channel.Control, shutdownRequest.asRawMessage)
