@@ -25,6 +25,14 @@ object InstallException {
         s"Could not get the Jupyter directories, required by --require-jupyter: $details"
       )
 
+  final class CannotFindGlobalJupyterDirectory extends InstallException(
+        // FIXME we're hardcoding option names here…
+        "Could not find a system-wide Jupyter kernels directory. Pass --jupyter-command with the " +
+          "path of the jupyter command of your Jupyter installation, or --jupyter-path with the " +
+          "kernels directory to install the kernel in. Alternatively, set " +
+          "JUPYTER_USE_PROGRAMDATA=1 to install it under %PROGRAMDATA%\\jupyter\\kernels."
+      )
+
   final class CannotGetKernelCommand extends InstallException(
         "Could not determine the command that launches the kernel. Run the kernel with coursier, or " +
           "pass the kernel command via --command first-arg --command second-arg …"
