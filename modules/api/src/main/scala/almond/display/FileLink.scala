@@ -28,9 +28,10 @@ final class FileLink private (
     copy(urlPrefix = urlPrefix)
 
   private def html: String = {
+    HtmlUtils.checkUrl(urlPrefix + link)
     val link0 = new URI(urlPrefix + link).toASCIIString
     beforeHtml +
-      s"""<a href="$link0" target='_blank'>${FileLink.escapeHTML(link)}</a>""" +
+      s"""<a href="${HtmlUtils.escape(link0)}" target='_blank'>${HtmlUtils.escape(link)}</a>""" +
       afterHtml
   }
 
@@ -42,20 +43,4 @@ final class FileLink private (
 object FileLink {
   def apply(link: String): FileLink =
     new FileLink(link, "", "<br>", "", UpdatableDisplay.generateId())
-
-  // https://stackoverflow.com/a/25228492/3714539
-  private def escapeHTML(s: String): String = {
-    val out = new StringBuilder(java.lang.Math.max(16, s.length))
-    for (i <- 0 until s.length) {
-      val c = s.charAt(i)
-      if (c > 127 || c == '"' || c == '<' || c == '>' || c == '&') {
-        out.append("&#")
-        out.append(c.toInt)
-        out.append(';')
-      }
-      else
-        out.append(c)
-    }
-    out.toString
-  }
 }

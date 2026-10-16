@@ -34,8 +34,9 @@ final class IFrame private (
     copy(height = heightOpt)
 
   private def html: String = {
-    val widthPart  = width.fold("")(w => s"""width="$w"""")
-    val heightPart = height.fold("")(h => s"""height="$h"""")
+    HtmlUtils.checkUrl(src)
+    val widthPart  = width.fold("")(w => s"""width="${HtmlUtils.escape(w)}"""")
+    val heightPart = height.fold("")(h => s"""height="${HtmlUtils.escape(h)}"""")
     val url = src + {
       if (params.isEmpty) ""
       else {
@@ -47,11 +48,10 @@ final class IFrame private (
           .mkString("?", "&", "")
       }
     }
-    // FIXME Escaping of width / height
     s"""<iframe
        |  $widthPart
        |  $heightPart
-       |  src="$url"
+       |  src="${HtmlUtils.escape(url)}"
        |>
        |</iframe>
      """.stripMargin
