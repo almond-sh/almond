@@ -11,6 +11,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Only runs on main save caches, and pull requests restore those. The ones pull requests would
+# save could only be restored by later runs of the same pull request, and would evict those of
+# main, as a repository only gets 10 GB of caches. For main's caches to fit in there, jobs share a
+# cache per OS (the Linux integration tests getting their own one), and only one job writes each
+# of them, the one fetching the most dependencies. The others only restore them (cacheMode: read),
+# and fetch what they lack on their own. Besides the coursier cache, coursier/cache-action handles
+# the Mill one, which has the Mill distributions the ./mill launcher downloads.
 jobs:
   scala-versions:
     runs-on: ubuntu-latest
@@ -22,13 +29,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     - id: versions
       run: echo "json=$(./mill -i dev.ciScalaVersionsJson)" >> "$GITHUB_OUTPUT"
 
@@ -44,13 +49,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -76,13 +79,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -116,13 +117,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -145,13 +144,13 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os == 'Linux' && 'Linux-integration' || runner.os }}
+        ignoreMatrix: true
+        # Except on Windows, group 213 runs KernelTestsTwoStepStartup, whose kernels switch to every
+        # Scala version we test. On macOS and Windows, this saves the cache of all the jobs there.
+        cacheMode: ${{ github.ref == 'refs/heads/main' && matrix.GROUP == '213' && 'write' || 'read' }}
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -179,13 +178,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     # -j 1 like the integration tests: the localRepo tasks don't like being run in parallel
     - run: ./mill -i -j 1 scala.proxy-tests.test
       shell: bash
@@ -198,13 +195,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     # Only check the modules affected by the changes of pull requests (checks everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
@@ -219,13 +214,11 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
     - run: ./mill docs.generate
       shell: bash
 
@@ -251,13 +244,12 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v8
-    # The ./mill launcher downloads Mill from Maven Central, which rate-limits the many jobs below
-    # doing that at the same time (HTTP 429). The Mill version is set in build.mill.
-    - uses: actions/cache@v6
+    - uses: coursier/cache-action@v8.2.0
       with:
-        path: ~/.cache/mill/download
-        key: mill-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.mill', 'mill', 'mill.bat') }}
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        # This job compiles every module, for all the Scala versions we publish for
+        cacheMode: ${{ github.ref == 'refs/heads/main' && 'write' || 'read' }}
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
         echo "-Xmx2g" > .mill-jvm-opts
