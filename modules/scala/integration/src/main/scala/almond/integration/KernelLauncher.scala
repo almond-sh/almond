@@ -8,6 +8,7 @@ import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
+import coursier.jvm.{JavaHome, JvmCache}
 import fs2.concurrent.SignallingRef
 import io.github.alexarchambault.testutil.{TestOutput, TestUtil}
 import org.zeromq.{SocketType, ZMQ}
@@ -18,7 +19,7 @@ import java.nio.channels.ClosedSelectorException
 import java.nio.file.FileSystemException
 import java.security.SecureRandom
 import java.util.UUID
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 import java.util.concurrent.atomic.AtomicInteger
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -80,6 +81,34 @@ object KernelLauncher {
     "almond.test.launcher-main-class",
     sys.error("almond.test.launcher-main-class Java property not set")
   )
+
+  /** A JVM to run kernels on
+    *
+    * @param java
+    *   path to its java command
+    * @param env
+    *   environment variables making it the default JVM of the processes that get them (and of the
+    *   processes they start)
+    */
+  final case class Jvm(java: String, env: Map[String, String])
+
+  private lazy val jvmCache = JvmCache().withDefaultIndex
+  private lazy val javaHome = JavaHome().withCache(jvmCache)
+  private val jvms          = new ConcurrentHashMap[String, Jvm]
+
+  /** The JVM with the passed coursier id, downloaded to the coursier cache if needed. */
+  def jvm(id: String): Jvm =
+    jvms.computeIfAbsent(
+      id,
+      { id =>
+        val home = javaHome.get(id).unsafeRun()(jvmCache.archiveCache.cache.ec)
+        val java = JavaHome.javaBin(home.toPath, JavaHome.defaultPathExtensions).getOrElse {
+          sys.error(s"No java command found in JVM $id under $home")
+        }
+        val env = javaHome.environmentFor(isSystem = false, home).transientUpdates().toMap
+        Jvm(java.toString, env)
+      }
+    )
 
   /** Coursier arguments forcing the Scala artifacts to `scalaVersion`. */
   def scalaForcedVersionArgs(scalaVersion: String): Seq[String] = {
@@ -259,6 +288,20 @@ class KernelLauncher(
   import KernelLauncher._
 
   def isTwoStepStartup = launcherType.isTwoStepStartup
+
+  /** Coursier id of the JVM the kernels run on - the build picks it, see the integration test
+    * module there.
+    */
+  private lazy val kernelJvmId = {
+    val prop =
+      if (isTwoStepStartup) "almond.test.two-step-startup-jvm"
+      else s"almond.test.jvm.$defaultScalaVersion"
+    sys.props.getOrElse(prop, sys.error(s"$prop Java property not set"))
+  }
+  private lazy val kernelJvm = jvm(kernelJvmId)
+
+  /** Major Java version the kernels run on: the build passes these as JVM ids. */
+  def kernelJavaMajorVersion: Int = kernelJvmId.toInt
 
   def kernelBindToRandomPorts: Boolean = true
 
@@ -538,7 +581,7 @@ class KernelLauncher(
               .filter(_.nonEmpty)
               .mkString(File.pathSeparator)
             Seq[os.Shellable](
-              "java",
+              kernelJvm.java,
               "-Xmx1g",
               "-cp",
               baseCp,
@@ -546,7 +589,7 @@ class KernelLauncher(
             )
           case LauncherType.Jvm =>
             Seq[os.Shellable](
-              "java",
+              kernelJvm.java,
               "-Xmx1g",
               "-cp",
               jarLauncher(output),
@@ -580,18 +623,29 @@ class KernelLauncher(
           twoStepStartupOpts,
           options
         )
-        proc0.call(stdin = os.Inherit, stdout = output.processOutput, stderr = output.processOutput)
+        proc0.call(
+          env = kernelJvm.env,
+          stdin = os.Inherit,
+          stdout = output.processOutput,
+          stderr = output.processOutput
+        )
 
         val specFile = dir / kernelId / "kernel.json"
         val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
 
+        // Kernel specs run "java", that a JVM looks up in its own PATH when starting a process,
+        // rather than in the PATH it passes to that process
+        val argv = spec.argv match {
+          case "java" :: args => kernelJvm.java :: args
+          case other          => other
+        }
         val f: os.Path => os.Shellable =
           connFile =>
-            spec.argv.map {
+            argv.map {
               case "{connection_file}" => connFile: os.Shellable
               case arg                 => arg: os.Shellable
             }
-        (f, spec.env.map)
+        (f, kernelJvm.env ++ spec.env.map)
       }
 
       def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T =

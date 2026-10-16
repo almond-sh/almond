@@ -30,7 +30,10 @@ class Examples extends munit.FunSuite {
       "--trap-output",
       "--extra-repository",
       ExampleProperties.repoRoot.toNIO.toUri.toASCIIString
-    ).call(cwd = ExampleProperties.directory, env = Map("ALMOND_USE_RANDOM_IDS" -> "false"))
+    ).call(
+      cwd = ExampleProperties.directory,
+      env = ExampleProperties.jvmEnv ++ Map("ALMOND_USE_RANDOM_IDS" -> "false")
+    )
 
     path
   }
@@ -146,7 +149,8 @@ class Examples extends munit.FunSuite {
         s"--output=$output"
       ).call(
         cwd = ExampleProperties.directory,
-        env = Map(
+        // Jupyter starts the kernel with the java command of that JVM
+        env = ExampleProperties.jvmEnv ++ Map(
           "JUPYTER_PATH"          -> jupyterPath.toString,
           "ALMOND_USE_RANDOM_IDS" -> "false"
         ),

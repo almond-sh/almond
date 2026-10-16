@@ -588,6 +588,7 @@ trait Examples extends SbtModule {
     def testFramework = "munit.Framework"
     def mvnDeps = Task {
       super.mvnDeps() ++ Seq(
+        Deps.coursierJvm,
         Deps.expecty,
         Deps.munit,
         Deps.osLib,
@@ -602,7 +603,8 @@ trait Examples extends SbtModule {
         s"-Dalmond.examples.jupyter-path=${Task.dest / "jupyter"}",
         s"-Dalmond.examples.launcher=${examplesKernel.launcher().path}",
         s"-Dalmond.examples.repo-root=${`local-repo`.localRepo().path}",
-        s"-Dalmond.examples.uv=${UvLauncher.uv(Versions.uv)}"
+        s"-Dalmond.examples.uv=${UvLauncher.uv(Versions.uv)}",
+        s"-Dalmond.examples.jvm=${ScalaVersions.oldestJvmFor(examplesScalaVersion)}"
       )
     }
   }
@@ -648,6 +650,7 @@ trait Integration extends SbtModule {
     scala.`test-definitions`(scalaVersion0)
   )
   def mvnDeps = super.mvnDeps() ++ Seq(
+    Deps.coursierJvm,
     Deps.munit,
     Deps.osLib,
     Deps.pprint,
@@ -705,7 +708,19 @@ trait Integration extends SbtModule {
         s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
         s"-Dalmond.test.library-properties-scala-version=${helper.libraryPropertiesScalaVersion()}",
         s"-Dalmond.test.shapeless-version-pulled-by-kernel=${shapelessVersion()}"
-      )
+      ) ++ kernelJvmArgs
+    }
+
+    /** The JVMs the kernels run on, as coursier JVM ids: the oldest one each Scala version under
+      * test supports. Two-step startup launchers can switch from their default Scala version to any
+      * of the others, so they get the most recent of these, that runs all of them.
+      */
+    private def kernelJvmArgs = {
+      val scalaVersions =
+        Seq(ScalaVersions.scala3Latest, ScalaVersions.scala212, ScalaVersions.scala213)
+      val jvms = scalaVersions.map(sv => sv -> ScalaVersions.oldestJvmFor(sv))
+      jvms.map((sv, jvm) => s"-Dalmond.test.jvm.$sv=$jvm") :+
+        s"-Dalmond.test.two-step-startup-jvm=${jvms.map(_._2).maxBy(_.toInt)}"
     }
     def tmpDirBase = Task(persistent = true) {
       PathRef(Task.dest / "working-dir")
