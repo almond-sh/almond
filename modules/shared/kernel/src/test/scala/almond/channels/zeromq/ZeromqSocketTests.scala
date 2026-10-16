@@ -242,6 +242,43 @@ object ZeromqSocketTests extends TestSuite {
       t.unsafeRunSync()(ioRuntime)
     }
 
+    test("parse frames") {
+
+      def frames(strings: String*): Seq[Array[Byte]] =
+        strings.map(_.getBytes(StandardCharsets.UTF_8))
+
+      def str(b: Array[Byte]) = new String(b, StandardCharsets.UTF_8)
+
+      test("valid") {
+        val res = ZeromqSocketImpl.parseFrames(
+          frames("id-1", "id-2", "<IDS|MSG>", "sig", "h", "p", "m", "c", "buf-1", "buf-2")
+        )
+        val (message, signature) = res.fold(err => sys.error(err), identity)
+        assert(signature == "sig")
+        assert(message.idents.map(b => str(b.toArray)) == Seq("id-1", "id-2"))
+        assert(str(message.header) == "h")
+        assert(str(message.parentHeader) == "p")
+        assert(str(message.metadata) == "m")
+        assert(str(message.content) == "c")
+        assert(message.buffers.map(str) == Seq("buf-1", "buf-2"))
+      }
+
+      test("no delimiter") {
+        assert(ZeromqSocketImpl.parseFrames(frames("junk")).isLeft)
+        assert(ZeromqSocketImpl.parseFrames(frames("id", "sig", "h", "p", "m", "c")).isLeft)
+      }
+
+      test("too few frames") {
+        assert(ZeromqSocketImpl.parseFrames(frames("id", "<IDS|MSG>")).isLeft)
+        assert(ZeromqSocketImpl.parseFrames(frames("id", "<IDS|MSG>", "sig", "h", "p", "m")).isLeft)
+      }
+
+      test("null frame") {
+        val frames0 = frames("id", "<IDS|MSG>", "sig", "h", "p", "m", "c") :+ (null: Array[Byte])
+        assert(ZeromqSocketImpl.parseFrames(frames0).isLeft)
+      }
+    }
+
   }
 
 }

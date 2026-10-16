@@ -847,8 +847,10 @@ object docs extends ScalaModule with AlmondRepositories {
 
     val websiteDir = BuildCtx.workspaceRoot / "docs" / "website"
 
+    // --ignore-scripts: some website dependencies download binaries from their install scripts.
+    // Without them, Docusaurus just doesn't optimize the website images.
     if (npmInstall)
-      Util.run(Seq("npm", "install"), dir = websiteDir.toIO)
+      Util.run(Seq("npm", "ci", "--ignore-scripts"), dir = websiteDir.toIO)
 
     def runMdoc(): Unit =
       // adapted from https://github.com/com-lihaoyi/mill/blob/c500ca986ab79af3ce59ba65a093146672092307/scalalib/src/JavaModule.scala#L488-L494

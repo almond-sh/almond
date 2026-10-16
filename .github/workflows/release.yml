@@ -179,17 +179,20 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-  update-website:
+  build-website:
     needs: [upload-launcher, update-docker-images]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # This job runs npm packages, so it holds no secrets and gets a read-only token.
+    # The website is pushed by update-website, which runs none of them.
     permissions:
-      contents: write
+      contents: read
     steps:
     - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
+        persist-credentials: false
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -200,16 +203,51 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
         WEBSITE_DIR: docs/website
         VERSIONED_DOCS_REPO: almond-sh/versioned-docs
-    - run: |
-        scripts/website0/versioned-docs.sh
-        ./mill docs.generate --npm-install --yarn-run-build --relativize
-        scripts/website0/push-website.sh
+    - run: scripts/website0/versioned-docs.sh
+      if: "!startsWith(github.ref, 'refs/tags/v')"
+      shell: bash
+      env:
+        WEBSITE_DIR: docs/website
+        VERSIONED_DOCS_REPO: almond-sh/versioned-docs
+    - run: ./mill docs.generate --npm-install --yarn-run-build --relativize
+      shell: bash
+    - uses: actions/upload-artifact@v7
+      with:
+        name: website
+        path: |
+          docs/website/build
+          docs/website/versioned_docs
+          docs/website/versioned_sidebars
+          docs/website/versions.json
+        if-no-files-found: error
+        retention-days: 1
+
+  update-website:
+    needs: build-website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - uses: actions/download-artifact@v8
+      with:
+        name: website
+        path: website
+    - run: scripts/website0/versioned-docs.sh --push
+      if: startsWith(github.ref, 'refs/tags/v')
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        WEBSITE_DIR: website
+        VERSIONED_DOCS_REPO: almond-sh/versioned-docs
+    - run: scripts/website0/push-website.sh
       shell: bash
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        WEBSITE_DIR: docs/website
+        WEBSITE_DIR: website
         REPO: almond-sh/almond
-        VERSIONED_DOCS_REPO: almond-sh/versioned-docs

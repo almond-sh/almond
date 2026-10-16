@@ -10,12 +10,28 @@ import org.zeromq.ZMQ
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.util.hashing.MurmurHash3
 
-final class ZeromqThreads(
+final class ZeromqThreads private (
   val channelEces: Channel => ExecutionContextExecutorService,
   val selectorOpenCloseEces: ExecutionContextExecutorService,
-  val pollingEces: ExecutionContextExecutorService,
+  private val pollingEcesOpt: Option[ExecutionContextExecutorService],
   val context: ZMQ.Context
 ) extends Product with Serializable with ZeromqThreadsCompat with AutoCloseable {
+
+  def this(
+    channelEces: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEces: ExecutionContextExecutorService,
+    context: ZMQ.Context
+  ) =
+    this(channelEces, selectorOpenCloseEces, None, context)
+
+  @deprecated("pollingEces isn't used anymore, use the constructor not accepting it", "0.15.1")
+  def this(
+    channelEces: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEces: ExecutionContextExecutorService,
+    pollingEces: ExecutionContextExecutorService,
+    context: ZMQ.Context
+  ) =
+    this(channelEces, selectorOpenCloseEces, Some(pollingEces), context)
 
   @deprecated("Use the constructor accepting ExecutionContextExecutorService-s instead", "0.14.2")
   def this(
@@ -27,9 +43,20 @@ final class ZeromqThreads(
     this(
       c => ZeromqThreads.eces(ecs(c)),
       ZeromqThreads.eces(selectorOpenCloseEc),
-      ZeromqThreads.eces(pollingEc),
+      Some(ZeromqThreads.eces(pollingEc)),
       context
     )
+
+  /** Not used by almond anymore
+    *
+    * If none was passed when creating this [[ZeromqThreads]], this is [[selectorOpenCloseEces]].
+    */
+  @deprecated("Not used anymore", "0.15.1")
+  def pollingEces: ExecutionContextExecutorService =
+    pollingEces0
+
+  private def pollingEces0: ExecutionContextExecutorService =
+    pollingEcesOpt.getOrElse(selectorOpenCloseEces)
 
   override def canEqual(that: Any): Boolean =
     that.isInstanceOf[ZeromqThreads]
@@ -38,7 +65,7 @@ final class ZeromqThreads(
     n match {
       case 0 => channelEces
       case 1 => selectorOpenCloseEces
-      case 2 => pollingEces
+      case 2 => pollingEces0
       case 3 => context
       case _ => throw new NoSuchElementException
     }
@@ -47,25 +74,25 @@ final class ZeromqThreads(
       val other = that.asInstanceOf[ZeromqThreads]
       channelEces == other.channelEces &&
       selectorOpenCloseEces == other.selectorOpenCloseEces &&
-      pollingEces == other.pollingEces &&
+      pollingEcesOpt == other.pollingEcesOpt &&
       context == other.context
     }
   override def hashCode(): Int =
     MurmurHash3.productHash(this)
   override def toString(): String =
-    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces, $context)"
+    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces0, $context)"
 
   @deprecated("Use with* methods instead", "0.14.2")
   def copy(
     ecs: Channel => ExecutionContext = c => channelEces(c),
     selectorOpenCloseEc: ExecutionContext = selectorOpenCloseEces,
-    pollingEc: ExecutionContext = pollingEces,
+    pollingEc: ExecutionContext = pollingEces0,
     context: ZMQ.Context = context
   ): ZeromqThreads =
     new ZeromqThreads(
       c => ZeromqThreads.eces(ecs(c)),
       ZeromqThreads.eces(selectorOpenCloseEc),
-      ZeromqThreads.eces(pollingEc),
+      Some(ZeromqThreads.eces(pollingEc)),
       context
     )
 
@@ -78,7 +105,7 @@ final class ZeromqThreads(
     for (c <- Channel.channels)
       channelEces(c).shutdown()
     selectorOpenCloseEces.shutdown()
-    pollingEces.shutdown()
+    pollingEcesOpt.foreach(_.shutdown())
   }
 
   @deprecated("Use channelEces instead", "0.14.2")
@@ -88,8 +115,8 @@ final class ZeromqThreads(
   @deprecated("Use selectorOpenCloseEces instead", "0.14.2")
   def selectorOpenCloseEc: ExecutionContext = selectorOpenCloseEces
 
-  @deprecated("Use pollingEces instead", "0.14.2")
-  def pollingEc: ExecutionContext = pollingEces
+  @deprecated("Not used anymore", "0.14.2")
+  def pollingEc: ExecutionContext = pollingEces0
 }
 
 object ZeromqThreads extends ZeromqThreadsCompat.Companion {
@@ -137,10 +164,11 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
     new ZeromqThreads(
       c => eces(ecs(c)),
       eces(selectorOpenCloseEc),
-      eces(pollingEc),
+      Some(eces(pollingEc)),
       context
     )
 
+  @deprecated("pollingEc isn't used anymore, use the override not accepting it", "0.15.1")
   def apply(
     ecs: Channel => ExecutionContextExecutorService,
     selectorOpenCloseEc: ExecutionContextExecutorService,
@@ -150,7 +178,18 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
     new ZeromqThreads(
       ecs,
       selectorOpenCloseEc,
-      pollingEc,
+      Some(pollingEc),
+      context
+    )
+
+  def apply(
+    ecs: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEc: ExecutionContextExecutorService,
+    context: ZMQ.Context
+  ): ZeromqThreads =
+    new ZeromqThreads(
+      ecs,
+      selectorOpenCloseEc,
       context
     )
 
@@ -161,9 +200,6 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
       2,
       daemonThreadFactory(s"$name-zeromq-open-close")
     ))
-    val zeromqPollingEc = ExecutionContext.fromExecutorService(
-      Executors.newSingleThreadExecutor(daemonThreadFactory(s"$name-zeromq-polling"))
-    )
     val zeromqChannelEcs = Channel.channels.map(c =>
       c -> ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor(daemonThreadFactory(s"$name-zeromq-$c"))
@@ -173,7 +209,6 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
     ZeromqThreads(
       zeromqChannelEcs,
       zeromqOpenCloseEc,
-      zeromqPollingEc,
       ctx
     )
   }

@@ -5,7 +5,7 @@ object Versions {
   // rather than 3.1.1-SNAPSHOT that resolves to whatever was last published
   def ammonite      = "3.1.1-20261009.100322-4"
   def caseApp       = "2.1.1"
-  def coursier      = "2.1.25"
+  def coursier      = "2.1.26"
   def jsoniterScala = "2.13.5"
   def devJvm        = "21" // JVM the dev.jupyter* commands run the kernel with
   def scalafmt      = "3.9.6"

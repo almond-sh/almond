@@ -492,7 +492,7 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     log.debug("Closing ZeroMQ context")
     IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.pollingEces)
+      .evalOn(zeromqThreads.selectorOpenCloseEces)
       .unsafeRunSync()(kernelThreads.ioRuntime)
     log.debug("ZeroMQ context closed")
 

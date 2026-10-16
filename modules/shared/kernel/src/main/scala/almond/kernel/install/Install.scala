@@ -1,8 +1,9 @@
 package almond.kernel.install
 
-import java.io.{ByteArrayOutputStream, File, IOException, InputStream}
+import java.io.{ByteArrayOutputStream, File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
 
@@ -109,16 +110,12 @@ object Install {
               throw new Exception(
                 s"Launcher $launcher0 in kernel spec command is not a regular file"
               )
-            try Files.copy(
-                Paths.get(launcher0),
-                dest,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.COPY_ATTRIBUTES
-              )
-            catch {
-              case _: IOException =>
-                Files.copy(Paths.get(launcher0), dest, StandardCopyOption.REPLACE_EXISTING)
-            }
+            // Not using COPY_ATTRIBUTES, as it would copy the owner of the source too. When
+            // installing as root a launcher bootstrapped by a regular user, that user would end up
+            // owning a launcher run by all users.
+            Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING)
+            if (dest.getFileSystem.supportedFileAttributeViews.contains("posix"))
+              Files.setPosixFilePermissions(dest, PosixFilePermissions.fromString("rwxr-xr-x"))
             spec.copy(
               argv = spec.argv.updated(pos, spec.argv(pos).replace(launcher0, dest.toString))
             )
