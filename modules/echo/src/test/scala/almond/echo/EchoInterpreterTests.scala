@@ -35,7 +35,7 @@ object EchoInterpreterTests extends TestSuite {
       val expectedRes = ExecuteResult.Success()
       assert(res == expectedRes)
 
-      val output = outputHandler.result()
+      val output         = outputHandler.result()
       val expectedOutput = Seq(
         TestOutputHandler.Output.Stdout("foo")
       )

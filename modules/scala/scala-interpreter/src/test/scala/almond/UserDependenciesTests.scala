@@ -31,7 +31,7 @@ object UserDependenciesTests extends TestSuite {
       assert(UserDependencies.knownScalaVersions().contains(sv))
       val name = UserDependencies.resourceName(sv)
       assert(name == s"almond/almond-user-dependencies-$sv.txt")
-      val deps = ammonite.main.Defaults.alreadyLoadedDependencies(name)
+      val deps           = ammonite.main.Defaults.alreadyLoadedDependencies(name)
       val compilerModule =
         if (sv.startsWith("2.")) ("org.scala-lang", "scala-compiler")
         else ("org.scala-lang", "scala3-compiler_3")

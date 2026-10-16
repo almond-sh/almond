@@ -31,7 +31,7 @@ final class Scalafmt(
   private lazy val interface =
     ScalafmtInterface.create(Thread.currentThread().getContextClassLoader)
 
-  private val confFilesMap = new ConcurrentHashMap[String, Path]
+  private val confFilesMap                 = new ConcurrentHashMap[String, Path]
   private def confFile(conf: String): Path = {
     val confFile = Files.createTempFile("test-scalafmt", ".conf")
     confFile.toFile.deleteOnExit()
@@ -55,7 +55,7 @@ final class Scalafmt(
 
   /** Scalafmt configuration, from the (JSON) one sent by the front-end, and our defaults */
   private def conf(userConf: RawJson): String = {
-    val json = userConf.toString.trim
+    val json       = userConf.toString.trim
     val userConfig =
       if (json.isEmpty || json == "null") ConfigFactory.empty()
       else {
@@ -134,11 +134,11 @@ final class Scalafmt(
         val sendResponses =
           for {
             sessionOrError <- IO(session(conf(msg.content.conf))).attempt.evalOn(fmtPool)
-            _ <- msg.content.cells.toVector.traverse {
+            _              <- msg.content.cells.toVector.traverse {
               case (key, code) =>
                 for {
                   formatted <- sessionOrError match {
-                    case Left(e) => IO.pure(Left(errorMessage(e)))
+                    case Left(e)         => IO.pure(Left(errorMessage(e)))
                     case Right(session0) =>
                       IO(format(
                         session0,

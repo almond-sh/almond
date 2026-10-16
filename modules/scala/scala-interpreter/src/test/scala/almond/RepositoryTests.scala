@@ -52,7 +52,7 @@ object RepositoryTests extends TestSuite {
 
     test("using repository ivy pattern") {
       val interp = newInterpreter()
-      val added = addedRepositories(
+      val added  = addedRepositories(
         interp,
         "//> using repository ivy:https://foo.com/ivy/[defaultPattern]"
       )
@@ -63,7 +63,7 @@ object RepositoryTests extends TestSuite {
 
     test("using repository predefined") {
       val interp = newInterpreter()
-      val added = addedRepositories(
+      val added  = addedRepositories(
         interp,
         "//> using repository m2Local jitpack sonatype:snapshots"
       )
@@ -79,7 +79,7 @@ object RepositoryTests extends TestSuite {
       val interp = newInterpreter()
       val before = repositories(interp)
       val res    = interp.execute("//> using repository not-a-repository")
-      val msg = res match {
+      val msg    = res match {
         case e: ExecuteResult.Error => e.message
         case other                  => sys.error(s"Expected error, got $other")
       }

@@ -102,7 +102,7 @@ object Registration {
     )
 
     def parsePort(json: RawJson): Int = {
-      val s = new String(json.value, UTF_8).trim
+      val s  = new String(json.value, UTF_8).trim
       val s0 =
         if (s.length >= 2 && s.startsWith("\"") && s.endsWith("\"")) s.substring(1, s.length - 1)
         else s

@@ -45,9 +45,9 @@ final class ReloadingSourceHook(underlying: ImportHook) extends ImportHook {
 
   private def versioned(res: ImportHook.Result.Source): ImportHook.Result.Source = synchronized {
     res.codeSource.path match {
-      case None => res
+      case None       => res
       case Some(path) =>
-        val hash = ReloadingSourceHook.hash(res.code)
+        val hash    = ReloadingSourceHook.hash(res.code)
         val version = loaded.get(path) match {
           case None                 => 0
           case Some((`hash`, ver))  => ver

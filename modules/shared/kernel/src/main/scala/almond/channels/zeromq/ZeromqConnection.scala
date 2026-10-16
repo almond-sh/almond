@@ -207,7 +207,7 @@ final class ZeromqConnection(
       }
     subscriptionStrOpt.map { subscriptionStr =>
       val msgType = IopubWelcome.messageType.messageType
-      val header = Header(
+      val header  = Header(
         msg_id = UUID.randomUUID().toString,
         username = "kernel",
         session = welcomeSession,

@@ -15,11 +15,11 @@ class NotebookCacheLogger(
 ) extends coursierapi.CacheLogger {
   private val log = logCtx(getClass)
   import scalatags.Text.all._
-  private var ids         = new ConcurrentHashMap[String, String]
-  private var totalLength = new ConcurrentHashMap[String, JLong]
-  private var downloaded  = new ConcurrentHashMap[String, JLong]
-  private var threadOpt   = Option.empty[Thread]
-  private val updates     = new ConcurrentHashMap[String, String]
+  private var ids                 = new ConcurrentHashMap[String, String]
+  private var totalLength         = new ConcurrentHashMap[String, JLong]
+  private var downloaded          = new ConcurrentHashMap[String, JLong]
+  private var threadOpt           = Option.empty[Thread]
+  private val updates             = new ConcurrentHashMap[String, String]
   private def newThread(): Thread =
     new Thread("cs-logger") {
       setDaemon(true)

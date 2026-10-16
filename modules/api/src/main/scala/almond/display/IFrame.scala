@@ -37,7 +37,7 @@ final class IFrame private (
     HtmlUtils.checkUrl(src)
     val widthPart  = width.fold("")(w => s"""width="${HtmlUtils.escape(w)}"""")
     val heightPart = height.fold("")(h => s"""height="${HtmlUtils.escape(h)}"""")
-    val url = src + {
+    val url        = src + {
       if (params.isEmpty) ""
       else {
         def encode(s: String): String =
