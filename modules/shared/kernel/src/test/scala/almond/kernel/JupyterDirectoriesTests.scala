@@ -157,6 +157,47 @@ object JupyterDirectoriesTests extends TestSuite {
             assert(res == Right(tmpDir.resolve("kernels/test")))
           }
       }
+
+      test("kernel.json permissions") {
+        if (OS.current != OS.Windows)
+          withTmpDir { tmpDir =>
+            val jupyter = fakeJupyter(
+              tmpDir,
+              s"""case "$$1" in
+                 |  --data-dir) echo "$tmpDir/user" ;;
+                 |  --paths) echo '{"data": ["$tmpDir/user"]}' ;;
+                 |  *) exit 1 ;;
+                 |esac
+                 |""".stripMargin
+            )
+            def permissions(kernelDir: Path) =
+              PosixFilePermissions.toString(
+                Files.getPosixFilePermissions(kernelDir.resolve("kernel.json"))
+              )
+
+            // installed in the user kernel directory: only readable by the user
+            val userRes = Install.installOrError(
+              defaultId = "test",
+              defaultDisplayName = "Test",
+              language = "test",
+              options = Options(
+                arg = List("test-kernel"),
+                jupyterCommand = Some(jupyter.toString),
+                env = List("SECRET=foo")
+              ),
+              extraStartupClassPath = Nil
+            )
+            assert(userRes == Right(tmpDir.resolve("user/kernels/test")))
+            val userPerms = permissions(tmpDir.resolve("user/kernels/test"))
+            assert(userPerms == "rw-------")
+
+            // installed in a directory passed explicitly: possibly shared, left as is
+            val sharedRes = install(tmpDir, requireJupyter = true, jupyter.toString)
+            assert(sharedRes == Right(tmpDir.resolve("kernels/test")))
+            val sharedPerms = permissions(tmpDir.resolve("kernels/test"))
+            assert(sharedPerms != "rw-------")
+          }
+      }
     }
 
     test("checkVisibility") {
