@@ -244,59 +244,56 @@ final class ZeromqSocketImpl(
     "Channel is not opened in read"
   )(
     IO {
-
-      val idents =
-        Iterator.continually(channel.recv())
-          .takeWhile(!_.sameElements(delimiterBytes))
-          .toVector
-          .map(_.toSeq)
-
-      val signature = channel.recvStr()
-
-      // FIXME Check for null return values of recv
-      val header       = channel.recv()
-      val parentHeader = channel.recv()
-      val metaData     = channel.recv()
-      val content      = channel.recv()
-
-      // Extra frames after content are binary buffers (not covered by the signature).
-      // They must be read here, or they'd be picked as the idents of the next message.
-      val buffers =
-        Iterator.continually(channel)
-          .takeWhile(_.hasReceiveMore)
-          .map(_.recv())
-          .toVector
-
-      val message = Message(idents, header, parentHeader, metaData, content, buffers)
-
-      val expectedSignature = hmac(header, parentHeader, metaData, content)
-
-      if (expectedSignature == signature || !enableMac) {
-        log.debug {
-          val nl = System.lineSeparator()
-          val headerStr = Try(new String(message.header, UTF_8))
-            .getOrElse(message.header.toString)
-          s"Received on $uri:" + nl +
-            "  header: " +
-            headerStr +
-            nl +
-            "  content: " +
-            Try(new String(message.content, "UTF-8"))
-              .toOption
-              .getOrElse(message.content.toString) +
-            nl +
-            "  idents: " + identsAsStrings(message.idents) +
-            (if (message.buffers.isEmpty) ""
-             else nl + "  buffers: " + message.buffers.map(_.length).mkString(", ") + " bytes")
-        }
-        Some(message)
-      }
-      else {
-        log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
-        None
+      // Reading exactly the frames of one ZeroMQ message. ZeroMQ delivers multipart messages
+      // atomically, so once its first frame is there, the following ones can be read without
+      // blocking. We mustn't read past the last frame (when hasReceiveMore is false), as that
+      // would block until another message arrives, and take its frames, that may come from
+      // another peer, as part of this message.
+      val frames =
+        Iterator(channel.recv()) ++
+          Iterator.continually(channel)
+            .takeWhile(_.hasReceiveMore)
+            .map(_.recv())
+      parseFrames(frames.toVector) match {
+        case Left(err) =>
+          log.warn(s"Ignoring malformed message on $uri: $err")
+          None
+        case Right((message, signature)) =>
+          checkSignature(message, signature)
       }
     }.evalOn(ec)
   )
+
+  private def checkSignature(message: Message, signature: String): Option[Message] = {
+
+    val expectedSignature =
+      hmac(message.header, message.parentHeader, message.metadata, message.content)
+
+    if (expectedSignature == signature || !enableMac) {
+      log.debug {
+        val nl = System.lineSeparator()
+        val headerStr = Try(new String(message.header, UTF_8))
+          .getOrElse(message.header.toString)
+        s"Received on $uri:" + nl +
+          "  header: " +
+          headerStr +
+          nl +
+          "  content: " +
+          Try(new String(message.content, "UTF-8"))
+            .toOption
+            .getOrElse(message.content.toString) +
+          nl +
+          "  idents: " + identsAsStrings(message.idents) +
+          (if (message.buffers.isEmpty) ""
+           else nl + "  buffers: " + message.buffers.map(_.length).mkString(", ") + " bytes")
+      }
+      Some(message)
+    }
+    else {
+      log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
+      None
+    }
+  }
 
   val readSubscriptionEvent: IO[Option[ZeromqSocket.SubscriptionEvent]] = delayedCondition(
     !closed && opened,
@@ -379,6 +376,41 @@ object ZeromqSocketImpl {
 
   private val delimiterBytes: Array[Byte] =
     "<IDS|MSG>".getBytes(UTF_8)
+
+  /** Parses the frames of a single ZeroMQ message
+    *
+    * @return
+    *   the message and its signature, or an error message if the frames don't form a valid Jupyter
+    *   message (idents, then "<IDS|MSG>", signature, header, parent header, metadata, content, and
+    *   optional buffers)
+    */
+  private[zeromq] def parseFrames(
+    frames: Seq[Array[Byte]]
+  ): Either[String, (Message, String)] = {
+    val delimiterIdx = frames.indexWhere(f => f != null && f.sameElements(delimiterBytes))
+    if (frames.contains(null))
+      Left(s"got null frame among ${frames.length} frame(s)")
+    else if (delimiterIdx < 0)
+      Left(s"no delimiter among ${frames.length} frame(s)")
+    else {
+      val afterDelimiter = frames.drop(delimiterIdx + 1)
+      afterDelimiter match {
+        case Seq(signature, header, parentHeader, metadata, content, buffers @ _*) =>
+          val message = Message(
+            frames.take(delimiterIdx).map(_.toSeq),
+            header,
+            parentHeader,
+            metadata,
+            content,
+            // Extra frames after content are binary buffers (not covered by the signature)
+            buffers
+          )
+          Right((message, new String(signature, UTF_8)))
+        case _ =>
+          Left(s"expected at least 5 frames after delimiter, got ${afterDelimiter.length}")
+      }
+    }
+  }
 
   private def delayedCondition[T](cond: => Boolean, msg: String)(t: IO[T]): IO[T] =
     IO(assert(cond, msg)) *> t
