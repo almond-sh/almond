@@ -53,6 +53,10 @@ object Install {
   }
 
   /** Installs a Jupyter kernel.
+    *
+    * @param ownerOnly
+    *   whether to make kernel.json readable only by its owner (on POSIX file systems), as it can
+    *   contain secrets in its environment variables
     */
   def installIn(
     kernelId: String,
@@ -60,7 +64,8 @@ object Install {
     jupyterPath: Either[Path, JupyterPath],
     logo64PngOpt: Option[URL] = None,
     force: Boolean = false,
-    copyLauncher: Boolean = false
+    copyLauncher: Boolean = false,
+    ownerOnly: Boolean = false
   ): Path = {
 
     // About the logo, don't know if other formats / sizes are allowed.
@@ -125,7 +130,17 @@ object Install {
 
     val kernelJsonContent = writeToArray(spec0, WriterConfig.withIndentionStep(2))
 
-    Files.write(dir.resolve("kernel.json"), kernelJsonContent)
+    val kernelJson = dir.resolve("kernel.json")
+    if (ownerOnly && dir.getFileSystem.supportedFileAttributeViews.contains("posix")) {
+      // creating the file with the right permissions upfront, so that its content is never
+      // readable by others
+      Files.deleteIfExists(kernelJson)
+      Files.createFile(
+        kernelJson,
+        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"))
+      )
+    }
+    Files.write(kernelJson, kernelJsonContent)
     for (b <- logoContentOpt)
       Files.write(dir.resolve("logo-64x64.png"), b)
 
@@ -167,6 +182,12 @@ object Install {
     extraStartupClassPath: Seq[String],
     filterOutArgs: Set[String] = Set.empty
   ): Option[List[String]] =
+    currentAppCommand0(extraStartupClassPath, _.filter(!filterOutArgs(_)))
+
+  private def currentAppCommand0(
+    extraStartupClassPath: Seq[String],
+    processArgs: List[String] => List[String]
+  ): Option[List[String]] =
     for {
       mainJar <- sys.props.get("coursier.mainJar")
       mainJar0 = mainJarPath(mainJar)
@@ -174,10 +195,56 @@ object Install {
         .map(i => s"coursier.main.arg-$i")
         .map(sys.props.get)
         .takeWhile(_.nonEmpty)
-        .collect { case Some(arg) if !filterOutArgs(arg) => arg }
+        .flatten
         .toList
       cp = (extraStartupClassPath :+ mainJar0).mkString(File.pathSeparator)
-    } yield "java" :: "-cp" :: cp :: mainClass(mainJar0) :: mainArgs
+    } yield "java" :: "-cp" :: cp :: mainClass(mainJar0) :: processArgs(mainArgs)
+
+  // Options of Options (and --install), that only matter when installing the kernel. These
+  // must not end up in the command of the installed kernel: their values would be visible
+  // to all local users via ps, and --env values in particular can be secrets.
+  // Should be kept in sync with Options (InstallArgsTests in scala-kernel checks that).
+  private val installOnlyFlags = Set(
+    "--install",
+    "--force",
+    "-f",
+    "--global",
+    "--require-jupyter",
+    "--interrupt-via-message",
+    "--copy-launcher"
+  )
+  private val installOnlyOptions = Set(
+    "--id",
+    "--display-name",
+    "--name",
+    "-N",
+    "--jupyter-path",
+    "--jupyter-command",
+    "--logo",
+    "--arg",
+    "--command",
+    "--env"
+  )
+
+  /** Removes the install-only options (like `--install`, `--env`, `--id`, …) and their values from
+    * the arguments of the current app
+    */
+  def withoutInstallArgs(args: List[String]): List[String] = {
+    def hasValue(arg: String, names: Set[String]) =
+      names.exists(name => arg.startsWith(name + "="))
+    @tailrec
+    def helper(args: List[String], acc: List[String]): List[String] =
+      args match {
+        case Nil                                       => acc.reverse
+        case "--" :: _                                 => acc.reverse ::: args
+        case h :: t if installOnlyFlags(h)             => helper(t, acc)
+        case h :: t if hasValue(h, installOnlyFlags)   => helper(t, acc)
+        case h :: t if installOnlyOptions(h)           => helper(t.drop(1), acc)
+        case h :: t if hasValue(h, installOnlyOptions) => helper(t, acc)
+        case h :: t                                    => helper(t, h :: acc)
+      }
+    helper(args, Nil)
+  }
 
   /** Gets the command that launched the current application if possible.
     *
@@ -310,12 +377,7 @@ object Install {
             .toSeq
         case None =>
           if (options.arg.isEmpty)
-            Install.currentAppCommand(
-              extraStartupClassPath,
-              Set("--install", "--force", "--global", "--require-jupyter").flatMap(s =>
-                Seq(s, s"$s=true")
-              )
-            ).getOrElse {
+            Install.currentAppCommand0(extraStartupClassPath, withoutInstallArgs).getOrElse {
               throw new InstallException.CannotGetKernelCommand
             }
           else
@@ -344,7 +406,10 @@ object Install {
       path,
       logo64PngOpt = logoOpt,
       force = options.force,
-      copyLauncher = options.copyLauncher0
+      copyLauncher = options.copyLauncher0,
+      // Only the user needs to read kernels installed in their own kernel directory. Kernels
+      // installed globally or via --jupyter-path can be meant for other users too.
+      ownerOnly = options.jupyterPath.isEmpty && !options.global
     )
 
     for (dirs <- jupyterDirsOpt; message <- checkVisibility(dirs, dir))
