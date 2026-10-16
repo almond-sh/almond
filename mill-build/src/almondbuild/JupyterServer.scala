@@ -140,10 +140,15 @@ object JupyterServer {
       }
   }
 
-  /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
-    * (the variable inspector, …), and Jupyter AI
+  /** Dependency groups of `examples/pyproject.toml` with kernels other than almond, whose kernel
+    * specs Jupyter picks up from the uv-managed environment: xeus-python (kernel id `xpython`)
     */
-  def labGroups = Seq("lab", "ai")
+  def kernelGroups = Seq("xeus")
+
+  /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
+    * (the variable inspector, …), Jupyter AI, and the kernels of [[kernelGroups]]
+    */
+  def labGroups = Seq("lab", "ai") ++ kernelGroups
 
   /** Where the kernels are installed from: the almond modules built from sources, published to a
     * local Maven repository
@@ -635,7 +640,10 @@ object JupyterServer {
     )
   }
 
-  /** Runs a Jupyter console on a kernel running Scala `scalaVersion` */
+  /** Runs a Jupyter console on a kernel running Scala `scalaVersion`. `args` are passed to `jupyter
+    * console`: a `--kernel=…` there replaces that kernel (`--kernel=xpython` runs xeus-python,
+    * say).
+    */
   def jupyterConsole(
     uv: os.Path,
     javaHome: os.Path,
@@ -646,10 +654,13 @@ object JupyterServer {
     workspace: os.Path
   ): Unit = {
 
-    installKernels(uv, workspace, Nil, source, javaHome, Seq(scalaVersion), jupyterDir)
+    installKernels(uv, workspace, kernelGroups, source, javaHome, Seq(scalaVersion), jupyterDir)
 
+    // jupyter console rejects several --kernel options, so only pass ours if args has none
+    val hasKernelArg = args.exists(arg => arg == "--kernel" || arg.startsWith("--kernel="))
+    val kernelArgs   = if (hasKernelArg) Nil else Seq(s"--kernel=${kernelId(scalaVersion)}")
     val command =
-      jupyterCommand(uv, workspace, Nil, "console", s"--kernel=${kernelId(scalaVersion)}") ++ args
+      jupyterCommand(uv, workspace, kernelGroups, Seq("console") ++ kernelArgs ++ args*)
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }

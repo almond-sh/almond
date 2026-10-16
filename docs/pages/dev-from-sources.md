@@ -75,6 +75,17 @@ From the JupyterLab instance, select the kernel "Scala 2.13.18 (sources)" or
 "Scala 3.9.0 (sources)" (the exact Scala versions can differ, see the
 [Scala versions](#list-available-scala-versions) commands below).
 
+The [xeus-python](https://github.com/jupyter-xeus/xeus-python) kernel is also available,
+as "Python . (XPython)" (kernel id `xpython`, the display name comes as is from its
+package), along with its "raw" variant and the standard Python kernel (ipykernel). These
+come from the Python environment of JupyterLab, at the versions pinned in
+`examples/uv.lock`. As xeus-python is built on
+[xeus](https://github.com/jupyter-xeus/xeus) and
+[xeus-zmq](https://github.com/jupyter-xeus/xeus-zmq), this is handy to compare how
+almond and xeus kernels behave. `dev.jupyterConsole` can run it too, with
+`./mill -i dev.jupyterConsole --kernel=xpython`. (No xeus-python wheels exist for Linux
+ARM64, so it isn't installed there.)
+
 JupyterLab starts with a few settings changed from its defaults: its theme follows
 the system one (light or dark), editors indent with 2 spaces, and
 [completions are shown while typing](usage-completion.md). These are listed in
