@@ -83,7 +83,10 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
   test0("toree AddJar custom protocol") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarCustomProtocol(kernelLauncher.defaultScalaVersion)
+      almond.integration.Tests.toreeAddJarCustomProtocol(
+        kernelLauncher.defaultScalaVersion,
+        kernelLauncher.kernelJavaMajorVersion
+      )
     }
   }
 
@@ -112,9 +115,10 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
       }
     }
 
+  // Scala 2 inspections rely on mtags, whose recent versions need Java 17
   if (
     kernelLauncher.defaultScalaVersion.startsWith("2.") &&
-    kernelLauncher.kernelJavaMajorVersion >= 11
+    kernelLauncher.kernelJavaMajorVersion >= 17
   )
     test0("inspections") { implicit forceVersion =>
       kernelLauncher.withKernel { implicit runner =>
