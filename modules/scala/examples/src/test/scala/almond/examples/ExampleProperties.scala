@@ -38,6 +38,16 @@ object ExampleProperties {
     )
     os.Path(pathStr)
   }
+  lazy val scalaVersion =
+    sys.props.getOrElse(
+      "almond.examples.scala-version",
+      sys.error("Expected almond.examples.scala-version to be set")
+    )
+  lazy val referenceScalaVersion =
+    sys.props.getOrElse(
+      "almond.examples.reference-scala-version",
+      sys.error("Expected almond.examples.reference-scala-version to be set")
+    )
   lazy val jupyterPath = {
     val pathStr = sys.props.getOrElse(
       "almond.examples.jupyter-path",

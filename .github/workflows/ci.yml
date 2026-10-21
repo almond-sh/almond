@@ -57,7 +57,8 @@ jobs:
     # Only run the tests affected by the changes of pull requests (runs everything elsewhere)
     - run: .github/scripts/selective-prepare.sh
       shell: bash
-    - run: ./mill -i selective.run scala.examples.test
+    # Runs the example notebooks with each of the Scala versions of ScalaVersions.examples
+    - run: ./mill -i selective.run 'scala.examples[_].test'
 
   test:
     needs: scala-versions

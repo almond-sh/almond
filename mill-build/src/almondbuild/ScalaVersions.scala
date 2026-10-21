@@ -55,6 +55,15 @@ object ScalaVersions {
     (scala3 ++ scala2Subset).sortBy(Version(_))(using Ordering[Version].reverse)
   }
 
+  /** The Scala versions the example notebooks of `examples` are run with.
+    *
+    * The notebooks there record the outputs of the first one, the reference version, that's not
+    * bumped along with [[scala212]] so that they don't need to be updated every time. The other
+    * ones get the same outputs, but for the notebooks that have a copy for their binary version in
+    * `examples/scala-2.13` or `examples/scala-3`, that are run and compared with instead.
+    */
+  val examples = Seq("2.12.20", scala213, scala3Latest)
+
   /** The [[binaries]] entry a full Scala version's modules are built under. */
   def binary(sv: String) =
     if (sv.startsWith("2.12.")) scala212Oldest
