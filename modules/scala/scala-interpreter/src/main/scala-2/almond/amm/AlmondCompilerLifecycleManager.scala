@@ -7,7 +7,6 @@ import ammonite.compiler.CompilerLifecycleManager
 import ammonite.compiler.iface
 
 class AlmondCompilerLifecycleManager(
-  rtCacheDir: Option[Path],
   headFrame: => ammonite.util.Frame,
   dependencyCompleteOpt: => Option[String => (Int, Seq[String])],
   classPathWhitelist: Set[Seq[String]],
@@ -22,7 +21,6 @@ class AlmondCompilerLifecycleManager(
   logCtx: LoggerContext,
   logCode: Boolean
 ) extends CompilerLifecycleManager(
-      rtCacheDir,
       headFrame,
       dependencyCompleteOpt,
       classPathWhitelist,

@@ -168,7 +168,6 @@ object AmmInterpreter {
           parameters = interpParams
         ) {
           override val compilerManager = new AlmondCompilerLifecycleManager(
-            storage0.dirOpt.map(_.toNIO),
             headFrame,
             Some(dependencyComplete),
             Set.empty,
