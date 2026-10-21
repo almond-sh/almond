@@ -8,7 +8,6 @@ import ammonite.compiler.iface
 import dotty.tools.dotc.util.SourceFile
 
 class AlmondCompilerLifecycleManager(
-  rtCacheDir: Option[Path],
   headFrame: => ammonite.util.Frame,
   dependencyCompleteOpt: => Option[String => (Int, Seq[String])],
   classPathWhitelist: Set[Seq[String]],
@@ -23,7 +22,6 @@ class AlmondCompilerLifecycleManager(
   logCtx: LoggerContext,
   logCode: Boolean
 ) extends CompilerLifecycleManager(
-      rtCacheDir,
       headFrame,
       dependencyCompleteOpt,
       classPathWhitelist,

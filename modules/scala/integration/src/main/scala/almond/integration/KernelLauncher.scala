@@ -310,6 +310,12 @@ class KernelLauncher(
     */
   def kernelUseRegistrationFile: Boolean = false
 
+  /** Whether to generate a standalone launcher, embedding all the kernel JARs, rather than one
+    * pointing at the coursier cache. Only applies to the [[KernelLauncher.LauncherType.Legacy]]
+    * launchers: with a two-step startup, the launcher generates the kernel launcher itself.
+    */
+  def standaloneLauncher: Boolean = false
+
   private def generateLauncher(output: TestOutput, extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
     val tmpDir            = os.temp.dir(prefix = "almond-tests", perms = perms)
@@ -347,10 +353,13 @@ class KernelLauncher(
           "--scala",
           defaultScalaVersion
         ) ++ scalaForcedVersionArgs(defaultScalaVersion)
+    val standaloneArgs =
+      if (standaloneLauncher && !isTwoStepStartup) Seq("--standalone")
+      else Seq("--embed-files=false")
     val res = os.proc(
       cs,
       "bootstrap",
-      "--embed-files=false",
+      standaloneArgs,
       "--default=true",
       "--sources",
       extraOpts,
@@ -580,12 +589,16 @@ class KernelLauncher(
             val baseCp = (extraClassPath :+ jarLauncher0.toString)
               .filter(_.nonEmpty)
               .mkString(File.pathSeparator)
+            // standalone launchers have a main class of their own, that reads the JARs they embed
+            val mainClass =
+              if (standaloneLauncher) "coursier.bootstrap.launcher.ResourcesLauncher"
+              else "coursier.bootstrap.launcher.Launcher"
             Seq[os.Shellable](
               kernelJvm.java,
               "-Xmx1g",
               "-cp",
               baseCp,
-              "coursier.bootstrap.launcher.Launcher"
+              mainClass
             )
           case LauncherType.Jvm =>
             Seq[os.Shellable](
