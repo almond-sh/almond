@@ -19,3 +19,12 @@ $ ./almond --install
 $ rm -f almond # the generated launcher can be removed after install, it copied itself in the kernel installation directory
 ```
 
+
+Kernels run from such a launcher read the JARs it embeds through `jar:` URLs, rather
+than from the file system. Up to almond 0.15.0, this makes them noticeably slower
+than kernels installed by the default command whenever the Scala compiler is
+(re-)created - when the first cell runs, and each time dependencies are added - and
+makes them use more memory. With Scala 3, these versions can't compile any cell from
+such a launcher. This should be fixed in almond 0.16.0 and later, whose kernels read
+these JARs about as fast as those of the file system. See
+[#1244](https://github.com/almond-sh/almond/issues/1244).
