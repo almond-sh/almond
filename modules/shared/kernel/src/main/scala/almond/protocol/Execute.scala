@@ -173,8 +173,9 @@ object Execute {
     // user_expressions is required in execute_reply, even when empty
     implicit val successCodec: JsonValueCodec[Reply.Success] =
       JsonCodecMaker.make[Reply.Success](CodecMakerConfig.withTransientEmpty(false))
+    // traceback is required in errored execute_reply, even when empty
     implicit val errorCodec: JsonValueCodec[Reply.Error] =
-      JsonCodecMaker.make[Reply.Error]
+      JsonCodecMaker.make[Reply.Error](CodecMakerConfig.withTransientEmpty(false))
     implicit val abortCodec: JsonValueCodec[Reply.Abort] =
       JsonCodecMaker.make[Reply.Abort]
 
@@ -217,8 +218,9 @@ object Execute {
   implicit val displayDataCodec: JsonValueCodec[DisplayData] =
     JsonCodecMaker.makeWithRequiredCollectionFields[DisplayData]
 
+  // traceback is required in error messages, even when empty (nbconvert fails without it)
   implicit val errorCodec: JsonValueCodec[Error] =
-    JsonCodecMaker.make
+    JsonCodecMaker.make[Error](CodecMakerConfig.withTransientEmpty(false))
 
   implicit val clearOutputCodec: JsonValueCodec[ClearOutput] =
     JsonCodecMaker.make
