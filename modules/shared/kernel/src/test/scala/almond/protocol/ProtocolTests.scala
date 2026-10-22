@@ -102,6 +102,27 @@ object ProtocolTests extends TestSuite {
         val decoded = readFromString(json)(Execute.replyCodec)
         assert(decoded == reply)
       }
+      test("preserve empty traceback field in errored json reply") {
+        val reply: Execute.Reply = Execute.Reply.Error("Error", "oops", Nil, 1)
+        val json                 = writeToString(reply)(Execute.replyCodec)
+        assert(json.contains(""""traceback":[]"""))
+        val decoded = readFromString(json)(Execute.replyCodec)
+        assert(decoded == reply)
+      }
+    }
+
+    test("error") {
+      test("preserve empty traceback field") {
+        val error = Execute.Error("Error", "oops", Nil)
+        val json  = writeToString(error)(Execute.errorCodec)
+        assert(json == """{"ename":"Error","evalue":"oops","traceback":[]}""")
+        val decoded = readFromString(json)(Execute.errorCodec)
+        assert(decoded == error)
+      }
+      test("read error without traceback") {
+        val decoded = readFromString("""{"ename":"Error","evalue":"oops"}""")(Execute.errorCodec)
+        assert(decoded == Execute.Error("Error", "oops", Nil))
+      }
     }
 
     test("kernel_info_reply") {
