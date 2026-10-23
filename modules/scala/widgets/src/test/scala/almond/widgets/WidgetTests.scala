@@ -138,6 +138,18 @@ object WidgetTests extends TestSuite {
       }
     }
 
+    test("toString") {
+      withEnv { env =>
+        // fields that differ from their defaults, in the order properties are declared, whatever
+        // the order they were set in (ListMap#updated moves keys last in Scala 2.12)
+        val slider = env(IntSlider(value = 5, description = "n", max = 10))
+        assert(slider.toString == "IntSlider(description=\"n\", max=10, value=5)")
+        slider.value() = 6
+        assert(slider.toString == "IntSlider(description=\"n\", max=10, value=6)")
+        assert(env(Label()).toString == "Label()")
+      }
+    }
+
     test("kernel-side updates") {
       withEnv { env =>
         val text = env(Text(value = "a")).open()

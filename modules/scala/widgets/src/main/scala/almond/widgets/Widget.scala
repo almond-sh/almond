@@ -79,7 +79,7 @@ abstract class Widget {
   ): StateProp[T] = {
     lock.synchronized {
       val encoded = codec.encode(default)
-      state0 = state0.updated(name, encoded)
+      state0 = Widget.updated(state0, name, encoded)
       defaults = defaults.updated(name, encoded)
       references0 = references0.updated(name, codec.references(default))
       if (!echo)
@@ -139,7 +139,7 @@ abstract class Widget {
       if (former == value && state0.contains(name)) None
       else {
         val formerRefs = references0.getOrElse(name, Nil)
-        state0 = state0.updated(name, value)
+        state0 = Widget.updated(state0, name, value)
         references0 = references0.updated(name, references)
         if (opened && !closed)
           if (holdCount > 0) {
@@ -294,7 +294,7 @@ abstract class Widget {
       id0 = commId
       opened = true
       for ((name, value) <- state.fields if !name.startsWith("_"))
-        state0 = state0.updated(name, value)
+        state0 = Widget.updated(state0, name, value)
     }
   }
 
@@ -350,7 +350,7 @@ abstract class Widget {
           if (former == value) Nil
           else {
             val formerRefs = references0.getOrElse(name, Nil)
-            state0 = state0.updated(name, value)
+            state0 = Widget.updated(state0, name, value)
             // widgets referenced by front-ends are open, and can be found via the manager
             references0 = references0 - name
             Seq((name, former, value, formerRefs))
@@ -389,6 +389,17 @@ abstract class Widget {
 }
 
 object Widget {
+
+  // ListMap#updated keeps the position of existing keys in Scala 2.13 and 3, but moves them
+  // last in Scala 2.12: this keeps the order of the state (that of the property declarations)
+  // the same everywhere
+  private def updated(
+    map: ListMap[String, JsonValue],
+    key: String,
+    value: JsonValue
+  ): ListMap[String, JsonValue] =
+    if (map.contains(key)) map.map { case (k, v) => if (k == key) (k, value) else (k, v) }
+    else map.updated(key, value)
 
   // Like the ids of updatable displays (see JupyterApi), ids are random unless
   // ALMOND_USE_RANDOM_IDS is false, so that tests get the same ids every time
