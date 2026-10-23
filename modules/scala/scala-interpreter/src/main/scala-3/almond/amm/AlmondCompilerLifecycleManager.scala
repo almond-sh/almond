@@ -64,8 +64,17 @@ object AlmondCompilerLifecycleManager {
       }
     // Scala 3.9 warns (E230) about identifiers containing `$`, which the code wrappers
     // use (`$sess`, `$main`, ...), so every cell would print those warnings.
-    if (isAtLeast_3_9) Seq("-Wconf:id=E230:s")
-    else Nil
+    val wconf =
+      if (isAtLeast_3_9) Seq("-Wconf:id=E230:s")
+      else Nil
+    // Read the doc comments that Scala 3 libraries embed in their TASTy files,
+    // for inspections (see ScalaInterpreterInspections). -Yread-docs was renamed
+    // -Xread-docs in recent Scala versions, which warn when passed the former.
+    val hasXreadDocs =
+      scala.util.Try(
+        classOf[dotty.tools.dotc.config.ScalaSettings].getMethod("XreadComments")
+      ).isSuccess
+    wconf :+ (if (hasXreadDocs) "-Xread-docs" else "-Yread-docs")
   }
 
   def closeCompiler(compiler: iface.Compiler): Unit =
