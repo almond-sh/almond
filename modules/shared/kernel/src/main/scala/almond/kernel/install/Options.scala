@@ -41,7 +41,9 @@ final case class Options(
     "Whether to copy the kernel launcher in the kernelspec directory (default: false if --arg or --command specified, true else)"
   )
     copyLauncher: Option[Boolean] = None,
-  @HelpMessage("Environment variables to pass to the kernel via its connection file")
+  @HelpMessage(
+    "Environment variables to set in the kernel spec, that Jupyter passes to the kernel when starting it"
+  )
   @ValueDescription("name=value")
     env: List[String] = Nil
 ) {
