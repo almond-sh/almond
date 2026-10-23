@@ -41,7 +41,11 @@ if [ "$(uname -s)" = "Linux" ]; then
   known_classes="
 almond.integration.KernelTestsSimple212
 almond.integration.KernelTestsSimple213
+almond.integration.KernelTestsRegistration
 almond.integration.KernelTestsSimple3
+almond.integration.KernelTestsStandalone212
+almond.integration.KernelTestsStandalone213
+almond.integration.KernelTestsStandalone3
 almond.integration.KernelTestsTwoStepStartup
 almond.integration.KernelTestsTwoStepStartup212
 almond.integration.KernelTestsTwoStepStartup213
@@ -68,15 +72,15 @@ fi
 case "$group" in
   212)
     tests="almond.integration.KernelTestsTwoStepStartup212.*"
-    $windows || tests="almond.integration.KernelTestsSimple212.* $tests"
+    $windows || tests="almond.integration.KernelTestsSimple212.* almond.integration.KernelTestsStandalone212.* $tests"
     ;;
   213)
     tests="almond.integration.KernelTestsTwoStepStartup213.*"
-    $windows || tests="almond.integration.KernelTestsSimple213.* almond.integration.KernelTestsTwoStepStartup.* $tests"
+    $windows || tests="almond.integration.KernelTestsSimple213.* almond.integration.KernelTestsStandalone213.* almond.integration.KernelTestsTwoStepStartup.* $tests"
     ;;
   3)
     tests="almond.integration.KernelTestsTwoStepStartup3.*"
-    $windows || tests="almond.integration.KernelTestsSimple3.* $tests"
+    $windows || tests="almond.integration.KernelTestsSimple3.* almond.integration.KernelTestsStandalone3.* almond.integration.KernelTestsRegistration.* $tests"
     ;;
   all)
     if $windows; then

@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 
 import almond.api.Properties
 import almond.channels.{Channel, Message => RawMessage}
+import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
 import almond.kernel.MessageFile
 import almond.kernel.install.{Options => InstallOptions}
@@ -14,7 +15,7 @@ import caseapp.core.Scala3Helpers._
 import caseapp.core.help.Help
 import com.github.plokhotnyuk.jsoniter_scala.core.readFromArray
 import coursierapi.{Dependency, Module}
-import dependency.ScalaParameters
+import dependency.{AnyDependency, ScalaParameters}
 import dependency.api.ops._
 import dependency.parser.{DependencyParser, ModuleParser}
 
@@ -32,6 +33,9 @@ final case class Options(
   link: List[String] = Nil,
   predefCode: String = "",
   predef: List[String] = Nil,
+  @HelpMessage("Dependency to add to the user class path before running any user code, like org::name:version (can be repeated)")
+  @ExtraName("dep")
+    dependency: List[String] = Nil,
   autoDependency: List[String] = Nil,
   autoVersion: List[String] = Nil,
   defaultAutoDependencies: Boolean = true,
@@ -71,7 +75,11 @@ final case class Options(
     autoUpdateVars: Boolean = true,
   @HelpMessage("Whether to silence imports (not printing them back in output)")
     silentImports: Boolean = false,
-  @HelpMessage("Only display the last value of each cell")
+  @HelpMessage("How cell results are displayed: default (each value, with its name and type), last (only the last value, with its name and type), or python (like the Python kernel, only the value of the last expression) - can be changed mid-session with '//> using outputStyle default|last|python'")
+  @ValueDescription("default|last|python")
+    outputStyle: Option[String] = None,
+  @HelpMessage("Kept for compatibility, same as --output-style last")
+  @Hidden
     lastValueOnly: Boolean = false,
   @HelpMessage("Whether to use a notebook-specific coursier logger")
     useNotebookCoursierLogger: Boolean = false,
@@ -123,6 +131,13 @@ final case class Options(
   @Hidden
     noExecuteInputFor: List[String] = Nil,
 
+  @HelpMessage("Session id to use in the headers of the messages sent by the kernel (random if not specified)")
+  @Hidden
+    kernelSessionId: Option[String] = None,
+
+  @HelpMessage("User name to use in the headers of the messages sent by the kernel (default: name of the user running the kernel)")
+    username: Option[String] = None,
+
   @HelpMessage("Path of JSON file with using directives kernel options")
   @Hidden
     kernelOptions: Option[String] = None,
@@ -144,6 +159,10 @@ final case class Options(
     "and update the connection file with the actually used ports"
   )
     bindToRandomPorts: Option[Boolean] = None,
+
+  @HelpMessage("Maximum size of the ZeroMQ messages accepted by the kernel, like 500m, 2g, or 1048576 (in bytes), or none for no limit (default: 500m). Peers sending larger messages get disconnected.")
+  @ValueDescription("size|none")
+    maxMessageSize: Option[String] = None,
 
   @HelpMessage("Class name to use to wrap user code - wrapping classes will be this name with an integer index appended")
   @Hidden
@@ -175,7 +194,7 @@ final case class Options(
     * `toCs` doesn't carry it over to the coursier-interface dependency, so we read it from the user
     * params the parser puts it in, and apply it ourselves.
     */
-  private def inlineConfiguration(dep: dependency.AnyDependency): Option[String] =
+  private def inlineConfiguration(dep: AnyDependency): Option[String] =
     dep.userParamsMap.get("$inlineConfiguration").flatMap(_.flatten.headOption)
 
   private lazy val ammSparkVersion = defaultAlmondSparkVersion
@@ -185,7 +204,7 @@ final case class Options(
   private lazy val almondScalapyVersion = defaultAlmondScalapyVersion
     .map(_.trim)
     .filter(_.nonEmpty)
-    .getOrElse(Properties.version)
+    .getOrElse(Properties.almondScalapyVersion)
 
   def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
 
@@ -248,7 +267,7 @@ final case class Options(
         Map(
           Module.of("sh.almond", s"almond-spark_$sbv")     -> Properties.ammoniteSparkVersion,
           Module.of("sh.almond", s"ammonite-spark_$sbv")   -> Properties.ammoniteSparkVersion,
-          Module.of("sh.almond", s"json-api-jackson_$sbv") -> Properties.version
+          Module.of("sh.almond", s"json-api-jackson_$sbv") -> Properties.jsonApiJacksonVersion
         )
       else
         Map.empty[Module, String]
@@ -324,6 +343,46 @@ final case class Options(
       }
       path
     }
+
+  def outputStyle0(): OutputStyle =
+    outputStyle.map(_.trim).filter(_.nonEmpty) match {
+      case Some(input) =>
+        OutputStyle.parse(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: $err")
+            sys.exit(1)
+          case Right(style) => style
+        }
+      case None =>
+        if (lastValueOnly) OutputStyle.Last
+        else OutputStyle.Default
+    }
+
+  def maxMessageSize0(): Option[Long] =
+    maxMessageSize.map(_.trim).filter(_.nonEmpty) match {
+      case Some(input) =>
+        ZeromqThreads.parseMaxMessageSize(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: $err")
+            sys.exit(1)
+          case Right(sizeOpt) => sizeOpt
+        }
+      case None =>
+        Some(ZeromqThreads.defaultMaxMessageSize)
+    }
+
+  def dependencies(): Seq[AnyDependency] =
+    dependency
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map { input =>
+        DependencyParser.parse(input) match {
+          case Left(err) =>
+            System.err.println(s"Error: malformed dependency '$input': $err")
+            sys.exit(1)
+          case Right(dep) => dep
+        }
+      }
 
   def leftoverMessages0(): Seq[(Channel, RawMessage)] =
     leftoverMessages.toSeq.flatMap { strPath =>

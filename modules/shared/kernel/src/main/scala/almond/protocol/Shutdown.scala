@@ -6,7 +6,15 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 object Shutdown {
 
   final case class Request(restart: Boolean)
-  final case class Reply(restart: Boolean)
+  final case class Reply(
+    restart: Boolean,
+    status: String // no default value here for the value not to be swallowed by the JSON encoder
+  )
+
+  object Reply {
+    def apply(restart: Boolean): Reply =
+      Reply(restart, "ok")
+  }
 
   def requestType = MessageType[Request]("shutdown_request")
   def replyType   = MessageType[Reply]("shutdown_reply")

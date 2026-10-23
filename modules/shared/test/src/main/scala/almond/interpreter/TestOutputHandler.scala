@@ -30,6 +30,11 @@ final class TestOutputHandler extends OutputHandler {
     lock.synchronized {
       output += Output.UpdateDisplay(displayData)
     }
+
+  def clearOutput(waitForNewOutput: Boolean): Unit =
+    lock.synchronized {
+      output += Output.ClearOutput(waitForNewOutput)
+    }
   def canOutput(): Boolean =
     true
 
@@ -46,10 +51,11 @@ object TestOutputHandler {
   sealed abstract class Output extends Product with Serializable
 
   object Output {
-    final case class Stdout(s: String)                extends Output
-    final case class Stderr(s: String)                extends Output
-    final case class Display(data: DisplayData)       extends Output
-    final case class UpdateDisplay(data: DisplayData) extends Output
+    final case class Stdout(s: String)                      extends Output
+    final case class Stderr(s: String)                      extends Output
+    final case class Display(data: DisplayData)             extends Output
+    final case class UpdateDisplay(data: DisplayData)       extends Output
+    final case class ClearOutput(waitForNewOutput: Boolean) extends Output
   }
 
 }

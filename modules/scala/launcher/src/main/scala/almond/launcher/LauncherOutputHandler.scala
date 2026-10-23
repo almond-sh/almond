@@ -4,7 +4,7 @@ import almond.interpreter.api.OutputHandler
 import almond.interpreter.util.DisplayDataOps._
 
 import java.util.concurrent.LinkedBlockingQueue
-import almond.interpreter.Message
+import almond.interpreter.{KernelSession, Message}
 import almond.protocol.RawJson
 import almond.protocol.Execute
 import cats.effect.unsafe.IORuntime
@@ -22,11 +22,13 @@ object LauncherOutputHandler {
   private final case class Display(data: almond.interpreter.api.DisplayData) extends Value
   private final case class UpdateDisplay(updateData: almond.interpreter.api.DisplayData)
       extends Value
+  private final case class ClearOutput(waitForNewOutput: Boolean) extends Value
 
 }
 
 class LauncherOutputHandler(
   firstMessage: Message[RawJson],
+  session: KernelSession,
   conn: Connection,
   ioRuntime: IORuntime
 ) extends OutputHandler {
@@ -49,12 +51,14 @@ class LauncherOutputHandler(
           val msg0 = value match {
             case Stderr(stdErrMsg) =>
               firstMessage.publish(
+                session,
                 Execute.streamType,
                 Execute.Stream("stderr", stdErrMsg),
                 ident = Some("stderr")
               ).asRawMessage
             case Stdout(stdOutMsg) =>
               firstMessage.publish(
+                session,
                 Execute.streamType,
                 Execute.Stream("stdout", stdOutMsg),
                 ident = Some("stdout")
@@ -66,6 +70,7 @@ class LauncherOutputHandler(
                 Execute.DisplayData.Transient(data.idOpt)
               )
               firstMessage.publish(
+                session,
                 Execute.displayDataType,
                 content,
                 ident = Some(Execute.displayDataType.messageType)
@@ -77,9 +82,17 @@ class LauncherOutputHandler(
                 Execute.DisplayData.Transient(data.idOpt)
               )
               firstMessage.publish(
+                session,
                 Execute.updateDisplayDataType,
                 content,
                 ident = Some(Execute.updateDisplayDataType.messageType)
+              ).asRawMessage
+            case ClearOutput(waitForNewOutput) =>
+              firstMessage.publish(
+                session,
+                Execute.clearOutputType,
+                Execute.ClearOutput(waitForNewOutput),
+                ident = Some(Execute.clearOutputType.messageType)
               ).asRawMessage
           }
           try
@@ -102,6 +115,8 @@ class LauncherOutputHandler(
     queue.add(Display(displayData))
   def updateDisplay(displayData: almond.interpreter.api.DisplayData): Unit =
     queue.add(UpdateDisplay(displayData))
+  def clearOutput(waitForNewOutput: Boolean): Unit =
+    queue.add(ClearOutput(waitForNewOutput))
   def canOutput(): Boolean = true
 
   def messageIdOpt: Option[String] = None

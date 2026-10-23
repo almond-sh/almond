@@ -6,6 +6,7 @@ import ammonite.util.Util.CodeSource
 
 import java.math.BigInteger
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import java.security.MessageDigest
 
 import scala.collection.mutable
@@ -27,7 +28,7 @@ import scala.collection.mutable
 final class ReloadingSourceHook(underlying: ImportHook) extends ImportHook {
 
   // script path -> (hash of its content, version used in its wrapper name) when it was last loaded
-  private val loaded = mutable.Map.empty[os.Path, (String, Int)]
+  private val loaded = mutable.Map.empty[Path, (String, Int)]
 
   def handle(
     source: CodeSource,

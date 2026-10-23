@@ -3,7 +3,7 @@ package almond
 import java.nio.file.{Path, Paths}
 
 import almond.interpreter.api.{DisplayData, ExecuteResult}
-import almond.interpreter.{Completion, Interpreter}
+import almond.interpreter.{Completion, Interpreter, IsCompleteResult}
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.RawJson
 import almond.testkit.TestLogging.logCtx
@@ -279,6 +279,40 @@ object ScalaInterpreterTests extends TestSuite {
         else "disabled"
       }
 
+      def backticksTest(): Unit = {
+        // see https://github.com/almond-sh/almond/issues/628
+        val interpreter = newInterpreter()
+        val res = interpreter.execute(
+          """val `a-b-c` = 2
+            |val abcdef = 3""".stripMargin
+        )
+        assert(res.asSuccess.nonEmpty)
+
+        def check(code: String, pos: Int, expectedRes: Completion): Unit = {
+          val res = interpreter.complete(code, pos).clearMetadata
+          assert(res == expectedRes)
+        }
+
+        // cursor before the closing backtick
+        check("`a-b`", 4, Completion(1, 4, Seq("a-b-c")))
+        check("List(`a-b`)", 9, Completion(6, 9, Seq("a-b-c")))
+        check("`ab`", 3, Completion(1, 3, Seq("abcdef")))
+        // cursor after the closing backtick
+        check("`a-b`", 5, Completion(0, 5, Seq("`a-b-c`")))
+        // no closing backtick
+        check("`a-b", 4, Completion(0, 4, Seq("`a-b-c`")))
+        check("`ab", 3, Completion(0, 3, Seq("`abcdef`")))
+        // no backtick around the completed identifier
+        check("abcd", 4, Completion(0, 4, Seq("abcdef")))
+        check("`a-b-c`.toSt", 12, Completion(8, 12, Seq("toString")))
+      }
+
+      test("backticks") {
+        // Scope completions crash in Ammonite 3.1.0's completion internals for Scala >= 3.9
+        if (scala.util.Properties.versionNumberString.startsWith("3.9.")) "disabled"
+        else backticksTest()
+      }
+
     }
 
     test("inspection results") {
@@ -347,6 +381,31 @@ object ScalaInterpreterTests extends TestSuite {
         }
         else
           assert(lines(interpreter, code, pos) == Vector("Type: scala.collection.mutable"))
+      }
+
+      test("incomplete member selection") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+
+          // the qualifier is inspected, rather than the erroneous selection
+          // (see https://github.com/almond-sh/almond/issues/1447)
+          assert(html(interpreter, "1.", 2) == expected("Int"))
+          assert(html(interpreter, "\"foo\".", 6) == expected("String"))
+          assert(html(interpreter, "List(1, 2).", 11) == expected("List[Int]"))
+        }
+        else
+          "disabled"
+      }
+
+      test("erroneous tree") {
+        if (TestUtil.isScala2) {
+          val interpreter = newInterpreter()
+          val code        = "thisIsNotDefined."
+          val res         = interpreter.inspect(code, code.length, detailLevel = 0)
+          assert(res.isEmpty)
+        }
+        else
+          "disabled"
       }
 
       test("constructor and inherited documentation") {
@@ -516,6 +575,46 @@ object ScalaInterpreterTests extends TestSuite {
       assert(data.exists(_._1 == "text/plain"))
     }
 
+    test("is complete") {
+      def check(code: String, expected: IsCompleteResult): Unit = {
+        val res = interpreter.isComplete(code)
+        assert(res == Some(expected))
+      }
+
+      test("complete") {
+        check("val n = 2", IsCompleteResult.Complete)
+      }
+      test("invalid") {
+        check("val n = )", IsCompleteResult.Invalid)
+      }
+      test("incomplete") {
+        test("new block") {
+          check("def f(n: Int) = {", IsCompleteResult.Incomplete("  "))
+        }
+        test("nested block") {
+          val code =
+            """def f(n: Int) = {
+              |  if (n > 0) {""".stripMargin
+          check(code, IsCompleteResult.Incomplete("    "))
+        }
+        test("keep indentation") {
+          val code =
+            """def f(n: Int) = {
+              |  val m = n + 1""".stripMargin
+          check(code, IsCompleteResult.Incomplete("  "))
+        }
+        test("after closed block") {
+          val code =
+            """def f(n: Int) = {
+              |  if (n > 0) {
+              |    n
+              |  }
+              |""".stripMargin
+          check(code, IsCompleteResult.Incomplete("  "))
+        }
+      }
+    }
+
     test("dependencies") {
       test("auto dependency") {
         test("example") {
@@ -525,7 +624,7 @@ object ScalaInterpreterTests extends TestSuite {
                 |import org.scalacheck.ScalacheckShapeless._
                 |""".stripMargin
             val res = interpreter.execute(code)
-            assert(res.success)
+            assert(res.asSuccess.nonEmpty)
           }
         }
       }
@@ -537,16 +636,25 @@ object ScalaInterpreterTests extends TestSuite {
               |import org.scalacheck.Arbitrary
               |""".stripMargin
           val res = interpreter.execute(code)
-          assert(res.success)
+          assert(res.asSuccess.nonEmpty)
         }
       }
     }
+
+    /** Name of the value printed last in a successful result, like "res12" */
+    def resultName(res: ExecuteResult): String =
+      res.asSuccess
+        .flatMap(_.data.detailedData.get("text/plain"))
+        .flatMap(_.asString)
+        .flatMap(_.linesIterator.toList.lastOption)
+        .getOrElse("")
+        .takeWhile(_ != ':')
 
     def variableInspectorTest(): Unit = {
 
       implicit class ExecuteResultOps(private val res: ExecuteResult) {
         def assertSuccess(): ExecuteResult = {
-          assert(res.success)
+          assert(res.asSuccess.nonEmpty)
           res
         }
       }
@@ -631,10 +739,57 @@ object ScalaInterpreterTests extends TestSuite {
 
       interpreter.execute("type Str = String")
         .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after3) = outputHandler.displayed()
+      assert(after3.text == after2.text)
+
+      interpreter.execute("lazy val lz = 5")
+        .assertSuccess()
+      interpreter.execute("def d = 6")
+        .assertSuccess()
+      interpreter.execute("def f(i: Int) = i")
+        .assertSuccess()
+      interpreter.execute("private val priv = 7")
+        .assertSuccess()
+      // name of the result, like "res12"
+      val listResName = resultName(interpreter.execute("List(1, 2)").assertSuccess())
+      interpreter.execute("println(\"foo\")")
+        .assertSuccess()
+
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after4) = outputHandler.displayed()
+      val expectedAfter4 = after2.text.stripSuffix("]") +
+        """,{"varName":"lz","varSize":"","varShape":"","varContent":"[lazy]","varType":"Int","isMatrix":false}""" +
+        """,{"varName":"d","varSize":"","varShape":"","varContent":"[def]","varType":"Int","isMatrix":false}""" +
+        (if (TestUtil.isScala2)
+           """,{"varName":"priv","varSize":"","varShape":"","varContent":"7","varType":"Int","isMatrix":false}"""
+         else "") +
+        s""",{"varName":"$listResName","varSize":"","varShape":"","varContent":"List(1, 2)","varType":"List[Int]","isMatrix":false}]"""
+      assert(after4.text == expectedAfter4)
     }
     test("variable inspector") {
-      if (TestUtil.isScala2) variableInspectorTest()
-      else "disabled"
+      variableInspectorTest()
+    }
+    test("variable inspector with several statements per cell") {
+      val interpreter = newInterpreter()
+      val initCode    = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
+      assert(interpreter.execute(initCode).success)
+      val res = interpreter.execute("val (a, b) = (1, \"foo\")\nval c = a + 1\nc * 2")
+      assert(res.success)
+      // like "res2_2"
+      val resName = resultName(res)
+      assert(resName.endsWith("_2"))
+      val outputHandler = new MockOutputHandler
+      val dictListCode  = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.dictList()"
+      assert(interpreter.execute(dictListCode, outputHandler = Some(outputHandler)).success)
+      val text = outputHandler.displayed()
+        .flatMap(_.detailedData.get("text/plain").flatMap(_.asString))
+        .mkString
+      for (name <- Seq("a", "b", "c", resName))
+        assert(text.contains(s""""varName":"$name""""))
     }
   }
 

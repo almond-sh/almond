@@ -2,23 +2,27 @@ package almond.integration
 
 import almond.channels.zeromq.ZeromqThreads
 import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
-import almond.protocol.{Connection => ConnectionSpec, KernelSpec}
+import almond.protocol.{Connection => ConnectionSpec, KernelSpec, Registration}
 import almond.testkit.Dsl._
 import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
+import coursier.jvm.{JavaHome, JvmCache}
 import fs2.concurrent.SignallingRef
 import io.github.alexarchambault.testutil.{TestOutput, TestUtil}
-import org.zeromq.ZMQ
+import org.zeromq.{SocketType, ZMQ}
 
 import java.io.{File, IOException}
+import java.nio.charset.StandardCharsets
 import java.nio.channels.ClosedSelectorException
 import java.nio.file.FileSystemException
 import java.security.SecureRandom
 import java.util.UUID
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 import java.util.concurrent.atomic.AtomicInteger
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, ExecutionContext}
@@ -77,6 +81,34 @@ object KernelLauncher {
     "almond.test.launcher-main-class",
     sys.error("almond.test.launcher-main-class Java property not set")
   )
+
+  /** A JVM to run kernels on
+    *
+    * @param java
+    *   path to its java command
+    * @param env
+    *   environment variables making it the default JVM of the processes that get them (and of the
+    *   processes they start)
+    */
+  final case class Jvm(java: String, env: Map[String, String])
+
+  private lazy val jvmCache = JvmCache().withDefaultIndex
+  private lazy val javaHome = JavaHome().withCache(jvmCache)
+  private val jvms          = new ConcurrentHashMap[String, Jvm]
+
+  /** The JVM with the passed coursier id, downloaded to the coursier cache if needed. */
+  def jvm(id: String): Jvm =
+    jvms.computeIfAbsent(
+      id,
+      { id =>
+        val home = javaHome.get(id).unsafeRun()(jvmCache.archiveCache.cache.ec)
+        val java = JavaHome.javaBin(home.toPath, JavaHome.defaultPathExtensions).getOrElse {
+          sys.error(s"No java command found in JVM $id under $home")
+        }
+        val env = javaHome.environmentFor(isSystem = false, home).transientUpdates().toMap
+        Jvm(java.toString, env)
+      }
+    )
 
   /** Coursier arguments forcing the Scala artifacts to `scalaVersion`. */
   def scalaForcedVersionArgs(scalaVersion: String): Seq[String] = {
@@ -165,6 +197,69 @@ object KernelLauncher {
     }
   }
 
+  /** Pseudo registration service, receiving the connection info of kernels started with a
+    * registration file (kernel startup handshake)
+    */
+  private final class RegistrationService(key: almond.util.Secret[String]) {
+    private val delimiter = "<IDS|MSG>".getBytes(StandardCharsets.UTF_8)
+    private val context   = ZMQ.context(1)
+    private val socket    = context.socket(SocketType.ROUTER)
+    socket.setLinger(1000)
+    private val port = socket.bindToRandomPort("tcp://127.0.0.1")
+
+    val registration: Registration =
+      Registration(
+        kernel_id = UUID.randomUUID().toString,
+        transport = "tcp",
+        registration_ip = "127.0.0.1",
+        registration_port = port,
+        key = key,
+        signature_scheme = Some("hmac-sha256")
+      )
+
+    private def hmac(content: Array[Byte]): Array[Byte] = {
+      val mac = Mac.getInstance("HmacSHA256")
+      mac.init(new SecretKeySpec(key.value.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+      mac.doFinal(content).map(b => f"$b%02x").mkString.getBytes(StandardCharsets.UTF_8)
+    }
+
+    def waitForConnectionInfo(timeout: FiniteDuration): Registration.ConnectionInfo = {
+      socket.setReceiveTimeOut(timeout.toMillis.toInt)
+      val routingId = socket.recv()
+      if (routingId == null)
+        throw new TimeoutException(s"No connection info received from kernel after $timeout")
+      val frames = {
+        val b = Vector.newBuilder[Array[Byte]]
+        while (socket.hasReceiveMore)
+          b += socket.recv()
+        b.result()
+      }
+      frames match {
+        case Seq(delim, signature, content)
+            if java.util.Arrays.equals(delim, delimiter) &&
+            java.util.Arrays.equals(signature, hmac(content)) =>
+          val ack = "ACK".getBytes(StandardCharsets.UTF_8)
+          socket.sendMore(routingId)
+          socket.sendMore(delimiter)
+          socket.sendMore(hmac(ack))
+          socket.send(ack)
+          val info = readFromArray(content)(Registration.ConnectionInfo.codec)
+          assert(
+            info.kernel_id == registration.kernel_id,
+            s"Unexpected kernel id ${info.kernel_id}"
+          )
+          info
+        case _ =>
+          sys.error(s"Malformed or badly signed registration message (${frames.length} frame(s))")
+      }
+    }
+
+    def close(): Unit = {
+      socket.close()
+      context.close()
+    }
+  }
+
   @tailrec
   private def retryPeriodicallyUntil[T](retryUntil: Long, period: Long)(f: => Option[T]): T = {
     val now = System.currentTimeMillis()
@@ -194,7 +289,32 @@ class KernelLauncher(
 
   def isTwoStepStartup = launcherType.isTwoStepStartup
 
+  /** Coursier id of the JVM the kernels run on - the build picks it, see the integration test
+    * module there.
+    */
+  private lazy val kernelJvmId = {
+    val prop =
+      if (isTwoStepStartup) "almond.test.two-step-startup-jvm"
+      else s"almond.test.jvm.$defaultScalaVersion"
+    sys.props.getOrElse(prop, sys.error(s"$prop Java property not set"))
+  }
+  private lazy val kernelJvm = jvm(kernelJvmId)
+
+  /** Major Java version the kernels run on: the build passes these as JVM ids. */
+  def kernelJavaMajorVersion: Int = kernelJvmId.toInt
+
   def kernelBindToRandomPorts: Boolean = true
+
+  /** Whether to pass a registration file rather than a connection file to the kernel (kernel
+    * startup handshake), and get the kernel ports via a pseudo registration service
+    */
+  def kernelUseRegistrationFile: Boolean = false
+
+  /** Whether to generate a standalone launcher, embedding all the kernel JARs, rather than one
+    * pointing at the coursier cache. Only applies to the [[KernelLauncher.LauncherType.Legacy]]
+    * launchers: with a two-step startup, the launcher generates the kernel launcher itself.
+    */
+  def standaloneLauncher: Boolean = false
 
   private def generateLauncher(output: TestOutput, extraOptions: Seq[String] = Nil): os.Path = {
     val perms: os.PermSet = if (Properties.isWin) null else "rwx------"
@@ -217,10 +337,7 @@ class KernelLauncher(
       "ivy2Local",
       "-r",
       "central"
-    ) ++ snapshotRepoArgs ++ Seq(
-      "-r",
-      "jitpack"
-    )
+    ) ++ snapshotRepoArgs
     val launcherArgs =
       if (isTwoStepStartup)
         // Passing the main class explicitly: coursier-launcher 2.1.25 pulls in jarjar, whose jars
@@ -236,10 +353,13 @@ class KernelLauncher(
           "--scala",
           defaultScalaVersion
         ) ++ scalaForcedVersionArgs(defaultScalaVersion)
+    val standaloneArgs =
+      if (standaloneLauncher && !isTwoStepStartup) Seq("--standalone")
+      else Seq("--embed-files=false")
     val res = os.proc(
       cs,
       "bootstrap",
-      "--embed-files=false",
+      standaloneArgs,
       "--default=true",
       "--sources",
       extraOpts,
@@ -469,16 +589,20 @@ class KernelLauncher(
             val baseCp = (extraClassPath :+ jarLauncher0.toString)
               .filter(_.nonEmpty)
               .mkString(File.pathSeparator)
+            // standalone launchers have a main class of their own, that reads the JARs they embed
+            val mainClass =
+              if (standaloneLauncher) "coursier.bootstrap.launcher.ResourcesLauncher"
+              else "coursier.bootstrap.launcher.Launcher"
             Seq[os.Shellable](
-              "java",
+              kernelJvm.java,
               "-Xmx1g",
               "-cp",
               baseCp,
-              "coursier.bootstrap.launcher.Launcher"
+              mainClass
             )
           case LauncherType.Jvm =>
             Seq[os.Shellable](
-              "java",
+              kernelJvm.java,
               "-Xmx1g",
               "-cp",
               jarLauncher(output),
@@ -512,18 +636,29 @@ class KernelLauncher(
           twoStepStartupOpts,
           options
         )
-        proc0.call(stdin = os.Inherit, stdout = output.processOutput, stderr = output.processOutput)
+        proc0.call(
+          env = kernelJvm.env,
+          stdin = os.Inherit,
+          stdout = output.processOutput,
+          stderr = output.processOutput
+        )
 
         val specFile = dir / kernelId / "kernel.json"
         val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
 
+        // Kernel specs run "java", that a JVM looks up in its own PATH when starting a process,
+        // rather than in the PATH it passes to that process
+        val argv = spec.argv match {
+          case "java" :: args => kernelJvm.java :: args
+          case other          => other
+        }
         val f: os.Path => os.Shellable =
           connFile =>
-            spec.argv.map {
+            argv.map {
               case "{connection_file}" => connFile: os.Shellable
               case arg                 => arg: os.Shellable
             }
-        (f, spec.env.map)
+        (f, kernelJvm.env ++ spec.env.map)
       }
 
       def withSession[T](options: String*)(f: Session => T)(implicit sessionId: SessionId): T =
@@ -595,11 +730,20 @@ class KernelLauncher(
         val connFile = dir / "connection.json"
 
         val params =
-          if (kernelBindToRandomPorts) ConnectionParameters.randomZeroPorts()
+          if (kernelBindToRandomPorts || kernelUseRegistrationFile)
+            ConnectionParameters.randomZeroPorts()
           else ConnectionParameters.randomLocal()
-        val connDetails = ConnectionSpec.fromParams(params)
 
-        os.write(connFile, writeToArray(connDetails))
+        val registrationServiceOpt =
+          if (kernelUseRegistrationFile) {
+            val registrationService = new RegistrationService(params.key)
+            os.write(connFile, writeToArray(registrationService.registration)(Registration.codec))
+            Some(registrationService)
+          }
+          else {
+            os.write(connFile, writeToArray(ConnectionSpec.fromParams(params)))
+            None
+          }
         val initialConnFileLastModified = os.mtime(connFile)
         if (kernelBindToRandomPorts)
           // just in case, to be sure the the mtime is newer when the kernel
@@ -639,7 +783,7 @@ class KernelLauncher(
           else zeromqThreads.context
 
         val conn = {
-          val updatedParams =
+          def paramsFromConnectionFile: ConnectionParameters =
             if (kernelBindToRandomPorts) {
               retryPeriodicallyUntil(
                 System.currentTimeMillis() + 2.minutes.toMillis,
@@ -661,9 +805,27 @@ class KernelLauncher(
               }
               params
             }
+          val updatedParams =
+            registrationServiceOpt match {
+              case Some(registrationService) =>
+                try {
+                  val info = registrationService.waitForConnectionInfo(2.minutes)
+                  params.copy(
+                    ip = "127.0.0.1",
+                    stdin_port = info.stdin_port.toInt,
+                    control_port = info.control_port.toInt,
+                    hb_port = info.hb_port.toInt,
+                    shell_port = info.shell_port.toInt,
+                    iopub_port = info.iopub_port.toInt
+                  )
+                }
+                finally registrationService.close()
+              case None =>
+                paramsFromConnectionFile
+            }
 
           val delay =
-            if (kernelBindToRandomPorts)
+            if (kernelBindToRandomPorts || kernelUseRegistrationFile)
               // we already waited for the connection file to be updated, the kernel should already be
               // listening for connections at that time - but allow a generous margin, as a cold
               // kernel JVM handshake can be slow on busy / noisy CI runners

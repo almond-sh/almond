@@ -4,13 +4,14 @@ import almond.channels.{Channel, Connection, Message => RawMessage}
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
 import almond.directives.KernelOptions
-import almond.interpreter.ExecuteError
+import almond.interpreter.{ExecuteError, KernelSession}
 import almond.interpreter.api.{DisplayData, OutputHandler}
+import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, LoggerContext}
-import almond.protocol.{Execute, RawJson}
+import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnection}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -36,6 +37,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     currentCellCount: Int,
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
+    session: KernelSession,
     params0: LauncherParameters,
     kernelOptions: KernelOptions,
     outputHandler: OutputHandler,
@@ -79,7 +81,6 @@ object Launcher extends CaseApp[LauncherOptions] {
       .forceVersions(forcedVersions.asJava)
     def fetcher = coursierapi.Fetch.create()
       .withCache(cache)
-      .addRepositories(coursierapi.MavenRepository.of("https://jitpack.io"))
       .withResolutionParams(resolutionParams)
     def fetch(
       dep: coursierapi.Dependency,
@@ -169,10 +170,14 @@ object Launcher extends CaseApp[LauncherOptions] {
         params0.javaCmd.getOrElse(Seq("java"))
     }
 
-    val javaOptions = options.javaOpt ++ params0.javaOptions
+    // JAVA_OPTS comes first, so that options from the command-line or from directives win
+    val javaOptions = envOptions("JAVA_OPTS") ++ options.javaOpt ++ params0.javaOptions
 
+    // Options on the command-line take precedence over the ones in JDK_JAVA_OPTIONS or
+    // JAVA_TOOL_OPTIONS, so we don't pass our default max heap if users set one there
+    val jvmEnvJavaOptions = Seq("JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS").flatMap(envOptions)
     val memOptions =
-      if (javaOptions.exists(_.startsWith("-Xmx"))) Nil
+      if ((javaOptions ++ jvmEnvJavaOptions).exists(setsMaxHeap)) Nil
       else Seq("-Xmx512m")
 
     val proc = os.proc(
@@ -190,6 +195,10 @@ object Launcher extends CaseApp[LauncherOptions] {
       currentCellCount,
       msgFileArgs,
       noExecuteInputArgs,
+      // so that the messages of the sub-kernel have the same session id as ours - both
+      // processes are the same kernel from the point of view of the frontend
+      "--kernel-session-id",
+      session.id,
       optionsArgs,
       options.kernelOptions,
       params0.kernelOptions
@@ -197,6 +206,15 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     (proc, scalaVersion, jvmIdOpt)
   }
+
+  private def envOptions(name: String): Seq[String] =
+    Option(System.getenv(name)).toSeq.flatMap(_.trim.split("\\s+")).filter(_.nonEmpty)
+
+  private def setsMaxHeap(javaOption: String): Boolean =
+    javaOption.startsWith("-Xmx") ||
+    javaOption.startsWith("-XX:MaxHeapSize=") ||
+    javaOption.startsWith("-XX:MaxRAM=") ||
+    javaOption.startsWith("-XX:MaxRAMPercentage=")
 
   private def launchActualKernel(proc: os.proc): Unit = {
 
@@ -239,6 +257,10 @@ object Launcher extends CaseApp[LauncherOptions] {
       println(Properties.version)
       sys.exit(0)
     }
+
+    // checking it early, rather than having the kernel fail upon startup later on
+    options.outputStyleOrExit()
+    val maxMessageSize = options.maxMessageSizeOrExit()
 
     // FIXME We'd need coursier-interface to allow us to do these:
 
@@ -323,26 +345,60 @@ object Launcher extends CaseApp[LauncherOptions] {
     val cancellablesEc =
       singleThreadedExecutionContextExecutorService("scala-launcher-cancellables")
 
-    val zeromqThreads = ZeromqThreads.create("scala-kernel-launcher")
+    val zeromqThreads =
+      ZeromqThreads.create("scala-kernel-launcher").withMaxMessageSize(maxMessageSize)
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
 
+    val registrationOpt = Registration.fromPathIfRegistration(Paths.get(connectionFile))
+      .unsafeRunSync()(kernelThreads.ioRuntime)
+
+    // If we're passed a registration file (kernel startup handshake), we bind random ports and send
+    // them to the registration service ourselves, and pass a regular connection file with those
+    // ports to the actual kernel
+    val kernelConnectionFile = registrationOpt match {
+      case Some(registration) =>
+        val content = writeToArray(JsonConnection.fromParams(registration.connectionParameters))
+        os.temp(
+          content,
+          prefix = "almond-kernel-connection-",
+          suffix = ".json",
+          perms = if (scala.util.Properties.isWin) null else "rw-------"
+        ).toString
+      case None =>
+        connectionFile
+    }
+
     val interpreter = new LauncherInterpreter(
-      connectionFile,
+      kernelConnectionFile,
       options
     )
 
+    val session = KernelSession.create(None, options.username.map(_.trim).filter(_.nonEmpty))
+
     val (run, conn) =
-      Kernel.create(interpreter, interpreterEc, kernelThreads, cancellablesEc, logCtx)
+      Kernel
+        .create(
+          interpreter,
+          interpreterEc,
+          kernelThreads,
+          cancellablesEc,
+          logCtx,
+          MessageHandler.empty,
+          Set.empty,
+          session
+        )
         .flatMap(_.runOnConnectionFileAllowClose(
-          connectionFile,
+          Paths.get(kernelConnectionFile),
           "scala",
           zeromqThreads,
           Nil,
           autoClose = false,
           lingerDuration = Duration.Inf, // unused here
           bindToRandomPorts =
-            if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
-            else None
+            if (registrationOpt.nonEmpty || options.bindToRandomPorts.getOrElse(true))
+              Some(Paths.get(kernelConnectionFile))
+            else None,
+          registrationOpt = registrationOpt
         ))
         .unsafeRunSync()(kernelThreads.ioRuntime)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(kernelThreads.ioRuntime)
@@ -370,7 +426,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
 
     val outputHandlerOpt = firstMessageOpt.map { firstMessage =>
-      new LauncherOutputHandler(firstMessage, conn, kernelThreads.ioRuntime)
+      new LauncherOutputHandler(firstMessage, session, conn, kernelThreads.ioRuntime)
     }
 
     val maybeActualKernelCommand =
@@ -378,11 +434,12 @@ object Launcher extends CaseApp[LauncherOptions] {
         val (launcherParams, kernelParams) =
           interpreter.params.processCustomDirectives(interpreter.kernelOptions)
         val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
-          connectionFile,
+          kernelConnectionFile,
           leftoverMessagesFileOpt,
           interpreter.lineCount,
           options,
           firstMessageIdOpt.toSeq,
+          session,
           launcherParams,
           kernelParams,
           outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
@@ -410,6 +467,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           val firstMessage = firstMessageOpt.getOrElse(sys.error("Cannot happen"))
           val err          = ExecuteError.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
           val errMsg = firstMessage.publish(
+            session,
             Execute.errorType,
             Execute.Error("", "", List(err.message))
           )
@@ -435,7 +493,7 @@ object Launcher extends CaseApp[LauncherOptions] {
 
     log.debug("Closing ZeroMQ context")
     IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.pollingEces)
+      .evalOn(zeromqThreads.selectorOpenCloseEces)
       .unsafeRunSync()(kernelThreads.ioRuntime)
     log.debug("ZeroMQ context closed")
 

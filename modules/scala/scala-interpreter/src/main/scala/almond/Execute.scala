@@ -29,7 +29,7 @@ import ammonite.repl.{Repl, Signaller}
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
 import ammonite.util.Util.CodeSource
-import coursierapi.{IvyRepository, MavenRepository}
+import coursierapi.{Repository, RepositoryParser}
 import dependency.ScalaParameters
 import dependency.api.ops._
 import fastparse.Parsed
@@ -53,6 +53,7 @@ final class Execute(
   updateBackgroundVariablesEcOpt: Option[ExecutionContext],
   commHandlerOpt: => Option[CommHandler],
   silent: Ref[Boolean],
+  outputStyle: Ref[OutputStyle],
   useThreadInterrupt: Boolean,
   initialCellCount: Int,
   enableExitHack: Boolean,
@@ -165,32 +166,31 @@ final class Execute(
     options: KernelOptions
   ): Either[String, Unit] = {
 
-    for (input <- options.extraRepositories) {
-      val repo =
-        if (input.startsWith("ivy:"))
-          IvyRepository.of(input.drop("ivy:".length))
-        else
-          MavenRepository.of(input)
-      ammInterp.repositories.update(ammInterp.repositories() :+ repo)
+    val maybeRepositories = options.extraRepositories
+      .foldLeft[Either[String, Seq[Repository]]](Right(Nil)) {
+        case (Left(err), _)      => Left(err)
+        case (Right(acc), input) => Execute.parseRepository(input).map(acc :+ _)
+      }
+
+    maybeRepositories.flatMap { repositories =>
+      ammInterp.repositories.update(ammInterp.repositories() ++ repositories)
+      useOptions0(ammInterp, options)
     }
+  }
+
+  private def useOptions0(
+    ammInterp: ammonite.interp.Interpreter,
+    options: KernelOptions
+  ): Either[String, Unit] = {
 
     almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
       options.scalacOptions.toSeq.map(_.value.value)
     )
 
-    val params = ScalaParameters(ammInterp.scalaVersion)
-    val compatParams = ScalaParameters(
-      if (scala.util.Properties.versionNumberString.startsWith("2."))
-        scala.util.Properties.versionNumberString
-      else
-        "2.13.16" // kind of meh to hardcode that
-    )
-    val deps = options.dependencies.map { dep =>
-      val params0 =
-        if (dep.userParams.exists(_._1 == "compat")) compatParams
-        else params
-      dep.applyParams(params0).toCs
-    }
+    for (value <- options.outputStyle)
+      outputStyle() = value
+
+    val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
     val loadDepsRes =
       if (deps.isEmpty) Right(Nil)
       else ammInterp.loadIvy(deps: _*)
@@ -360,7 +360,7 @@ final class Execute(
       Name("cell"),
       Nil,
       pkgName.map(Name(_)),
-      Some(os.pwd / "(console)")
+      Some((os.pwd / "(console)").toNIO)
     )
     val maybeImports = Res.map(scripts) { script =>
       val input = script.value
@@ -772,6 +772,45 @@ final class Execute(
 object Execute {
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
+
+  /** Parses repositories the same way as Coursier and Scala CLI: URLs, `ivy:`-prefixed Ivy
+    * patterns, but also predefined repositories like `m2Local`, `ivy2Local`, `jitpack`, or
+    * `sonatype:snapshots`
+    */
+  private[almond] def parseRepository(input: String): Either[String, Repository] =
+    try Right(RepositoryParser.repository(input))
+    catch {
+      // RepositoryParsingError is the declared error, but malformed URLs actually
+      // end up as IllegalArgumentException-s
+      case e @ (_: coursierapi.error.RepositoryParsingError | _: IllegalArgumentException) =>
+        Left(s"Error parsing repository '$input': ${e.getMessage}")
+    }
+
+  /** Applies the Scala parameters of the passed Scala version to dependencies, and converts them to
+    * coursier-interface ones. Dependencies with a `compat` user param get those of the Scala 2
+    * library on the class path if there's one (Scala 2, or Scala 3 before 3.8), and those of the
+    * default Scala 2.13 version of Almond otherwise (Scala 3.8 and later, that ship their own
+    * library).
+    */
+  private[almond] def toCoursierDependencies(
+    scalaVersion: String,
+    dependencies: Seq[dependency.AnyDependency]
+  ): Seq[coursierapi.Dependency] = {
+    val params = ScalaParameters(scalaVersion)
+    val compatParams = ScalaParameters(
+      if (scala.util.Properties.versionNumberString.startsWith("2."))
+        scala.util.Properties.versionNumberString
+      else
+        almond.internal.InterpreterConstants.defaultScala213Version
+    )
+    dependencies.map { dep =>
+      val params0 =
+        if (dep.userParams.exists(_._1 == "compat")) compatParams
+        else params
+      dep.applyParams(params0).toCs
+    }
+  }
+
   private lazy val isJdk20OrHigher =
     sys.props
       .get("java.version")

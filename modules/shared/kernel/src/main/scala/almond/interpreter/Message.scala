@@ -27,40 +27,32 @@ final case class Message[T](
   def messageType: MessageType[T] =
     MessageType(header.msg_type)
 
-  private def replyHeader(messageType: MessageType[_]): Header =
-    header
-      .withMsgId(UUID.randomUUID().toString)
-      .withMsgType(messageType.messageType)
-
   /** Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Publish]]
     * channel.
     *
     * Sets the identity of the response message for the [[Channel.Publish]] channel.
     */
   def publish[U](
+    session: KernelSession,
     messageType: MessageType[U],
     content: U,
     metadata: RawJson = RawJson.emptyObj,
     ident: Option[String] = None
   ): Message[U] =
-    Message(
-      replyHeader(messageType),
-      content,
-      Some(header),
-      List(ident.getOrElse(messageType.messageType).getBytes(StandardCharsets.UTF_8).toSeq),
-      metadata
-    )
+    Message.publish(session, messageType, content, metadata, ident)
+      .copy(parent_header = Some(header))
 
   /** Creates a response [[Message]] to this [[Message]], to be sent on the [[Channel.Requests]]
     * channel.
     */
   def reply[U](
+    session: KernelSession,
     messageType: MessageType[U],
     content: U,
     metadata: RawJson = RawJson.emptyObj
   ): Message[U] =
     Message(
-      replyHeader(messageType),
+      session.header(messageType),
       content,
       Some(header),
       idents,
@@ -129,6 +121,24 @@ final case class Message[T](
 object Message {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
+
+  /** Creates a [[Message]] not in response to another message, to be sent on the
+    * [[Channel.Publish]] channel.
+    */
+  def publish[T](
+    session: KernelSession,
+    messageType: MessageType[T],
+    content: T,
+    metadata: RawJson = RawJson.emptyObj,
+    ident: Option[String] = None
+  ): Message[T] =
+    Message(
+      session.header(messageType),
+      content,
+      None,
+      List(ident.getOrElse(messageType.messageType).getBytes(StandardCharsets.UTF_8).toSeq),
+      metadata
+    )
 
   def parse[T: JsonValueCodec](rawMessage: RawMessage): Either[Throwable, Message[T]] =
     for {

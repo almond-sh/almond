@@ -12,6 +12,8 @@ import javax.crypto.spec.SecretKeySpec
 import org.zeromq.{SocketType, ZMQ}
 
 import java.net.URI
+import java.nio.channels.{ClosedChannelException, SelectableChannel}
+import java.security.MessageDigest
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -29,8 +31,39 @@ final class ZeromqSocketImpl(
   algorithm: String,
   lingerPeriod: Option[Duration],
   logCtx: LoggerContext,
-  bindToRandomPort: Boolean
+  bindToRandomPort: Boolean,
+  maxMessageSize: Option[Long]
 ) extends ZeromqSocket {
+
+  @deprecated("Use the override accepting maxMessageSize", "0.15.1")
+  def this(
+    ec: ExecutionContext,
+    socketType: SocketType,
+    bind: Boolean,
+    uri: String,
+    identityOpt: Option[Array[Byte]],
+    subscribeOpt: Option[Array[Byte]],
+    context: ZMQ.Context,
+    key: Secret[String],
+    algorithm: String,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    bindToRandomPort: Boolean
+  ) = this(
+    ec = ec,
+    socketType = socketType,
+    bind = bind,
+    uri = uri,
+    identityOpt = identityOpt,
+    subscribeOpt = subscribeOpt,
+    context = context,
+    key = key,
+    algorithm = algorithm,
+    lingerPeriod = lingerPeriod,
+    logCtx = logCtx,
+    bindToRandomPort = bindToRandomPort,
+    maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
+  )
 
   @deprecated("Use the override accepting bindToRandomPort", "0.14.2")
   def this(
@@ -57,7 +90,8 @@ final class ZeromqSocketImpl(
     algorithm = algorithm,
     lingerPeriod = lingerPeriod,
     logCtx = logCtx,
-    bindToRandomPort = true
+    bindToRandomPort = true,
+    maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
   )
 
   import ZeromqSocketImpl._
@@ -96,9 +130,24 @@ final class ZeromqSocketImpl(
   }
   if (socketType == SocketType.ROUTER)
     channel.setRouterHandover(true)
-  if (socketType == SocketType.PUB)
-    // If publisher's socket queue gets filled, all new messages are dropped; remove queue size constraint
-    channel.setHWM(0)
+  // Rejects incoming messages larger than that before allocating memory for them. JeroMQ allocates
+  // the full size announced in a frame header upfront, so a single frame could otherwise make us
+  // allocate up to 2 GB.
+  for (size <- maxMessageSize)
+    channel.setMaxMsgSize(size)
+  // We keep the default high water mark (1000 messages) of publisher sockets, like ipykernel
+  // and xeus do: if a subscriber doesn't read its messages, new messages for it get dropped
+  // rather than queued indefinitely in memory. And we don't enable XPUB verbose mode, so that
+  // we only get notified of (and send iopub_welcome messages for) a topic the first time it's
+  // subscribed to, like ipykernel.
+
+  // JeroMQ sockets aren't thread-safe, so channel is only used from ec (that should be
+  // single-threaded) from here on. Having the publish socket accessed concurrently by
+  // several threads could corrupt its internal state, see
+  // https://github.com/almond-sh/almond/issues/549.
+
+  // Only reads a field of the socket, that doesn't change after its creation
+  val fd: SelectableChannel = channel.getFD
 
   @volatile private var opened = false
   @volatile private var closed = false
@@ -179,6 +228,12 @@ final class ZeromqSocketImpl(
     }
 
   def send(message: Message): IO[Unit] =
+    send0(message, checkInput = false).void
+
+  def sendAndCheckInput(message: Message): IO[Boolean] =
+    send0(message, checkInput = true)
+
+  private def send0(message: Message, checkInput: Boolean): IO[Boolean] =
     delayedCondition(!closed && opened, "Channel is not opened in send")(
       IO {
 
@@ -211,9 +266,12 @@ final class ZeromqSocketImpl(
         channel.send(message.header, ZMQ.SNDMORE)
         channel.send(message.parentHeader, ZMQ.SNDMORE)
         channel.send(message.metadata, ZMQ.SNDMORE)
-        channel.send(message.content)
+        channel.send(message.content, if (message.buffers.isEmpty) 0 else ZMQ.SNDMORE)
+        val lastBufferIdx = message.buffers.length - 1
+        for ((buf, idx) <- message.buffers.iterator.zipWithIndex)
+          channel.send(buf, if (idx == lastBufferIdx) 0 else ZMQ.SNDMORE)
 
-        ()
+        checkInput && hasPendingInput0()
       }.evalOn(ec)
     )
 
@@ -222,49 +280,105 @@ final class ZeromqSocketImpl(
     "Channel is not opened in read"
   )(
     IO {
-
-      val idents =
-        Iterator.continually(channel.recv())
-          .takeWhile(!_.sameElements(delimiterBytes))
-          .toVector
-          .map(_.toSeq)
-
-      val signature = channel.recvStr()
-
-      // FIXME Check for null return values of recv
-      val header       = channel.recv()
-      val parentHeader = channel.recv()
-      val metaData     = channel.recv()
-      val content      = channel.recv()
-
-      val message = Message(idents, header, parentHeader, metaData, content)
-
-      val expectedSignature = hmac(header, parentHeader, metaData, content)
-
-      if (expectedSignature == signature || !enableMac) {
-        log.debug {
-          val nl = System.lineSeparator()
-          val headerStr = Try(new String(message.header, UTF_8))
-            .getOrElse(message.header.toString)
-          s"Received on $uri:" + nl +
-            "  header: " +
-            headerStr +
-            nl +
-            "  content: " +
-            Try(new String(message.content, "UTF-8"))
-              .toOption
-              .getOrElse(message.content.toString) +
-            nl +
-            "  idents: " + identsAsStrings(message.idents)
-        }
-        Some(message)
-      }
-      else {
-        log.error(s"Invalid HMAC signature, got '$signature', expected '$expectedSignature'")
-        None
+      // Reading exactly the frames of one ZeroMQ message. ZeroMQ delivers multipart messages
+      // atomically, so once its first frame is there, the following ones can be read without
+      // blocking. We mustn't read past the last frame (when hasReceiveMore is false), as that
+      // would block until another message arrives, and take its frames, that may come from
+      // another peer, as part of this message.
+      val frames =
+        Iterator(channel.recv()) ++
+          Iterator.continually(channel)
+            .takeWhile(_.hasReceiveMore)
+            .map(_.recv())
+      parseFrames(frames.toVector) match {
+        case Left(err) =>
+          log.warn(s"Ignoring malformed message on $uri: $err")
+          None
+        case Right((message, signature)) =>
+          checkSignature(message, signature)
       }
     }.evalOn(ec)
   )
+
+  private def checkSignature(message: Message, signature: String): Option[Message] = {
+
+    // Constant-time comparison, so that response times don't leak how much of the
+    // signature is correct
+    def validSignature = signature != null && MessageDigest.isEqual(
+      hmac(message.header, message.parentHeader, message.metadata, message.content)
+        .getBytes(UTF_8),
+      signature.getBytes(UTF_8)
+    )
+
+    if (!enableMac || validSignature) {
+      log.debug {
+        val nl = System.lineSeparator()
+        val headerStr = Try(new String(message.header, UTF_8))
+          .getOrElse(message.header.toString)
+        s"Received on $uri:" + nl +
+          "  header: " +
+          headerStr +
+          nl +
+          "  content: " +
+          Try(new String(message.content, "UTF-8"))
+            .toOption
+            .getOrElse(message.content.toString) +
+          nl +
+          "  idents: " + identsAsStrings(message.idents) +
+          (if (message.buffers.isEmpty) ""
+           else nl + "  buffers: " + message.buffers.map(_.length).mkString(", ") + " bytes")
+      }
+      Some(message)
+    }
+    else {
+      // Never log the expected signature: anyone reading the logs could use it to get the
+      // message they sent accepted
+      log.error(s"Invalid HMAC signature, got ${signatureForLog(signature)}")
+      None
+    }
+  }
+
+  val readSubscriptionEvent: IO[Option[ZeromqSocket.SubscriptionEvent]] = delayedCondition(
+    !closed && opened,
+    "Channel is not opened in readSubscriptionEvent"
+  )(
+    IO {
+      // subscription events are single frames: 1 (subscribe) or 0 (unsubscribe), then the topic
+      val frames =
+        Iterator(channel.recv()) ++
+          Iterator.continually(channel)
+            .takeWhile(_.hasReceiveMore)
+            .map(_.recv())
+      frames.toVector match {
+        case Vector(frame) if frame != null && frame.nonEmpty && (frame(0) == 0 || frame(0) == 1) =>
+          val event = ZeromqSocket.SubscriptionEvent(
+            subscribe = frame(0) == 1,
+            topic = frame.toSeq.drop(1)
+          )
+          log.debug {
+            val topic = Try(new String(event.topic.toArray, UTF_8)).getOrElse(event.topic.toString)
+            "Received " +
+              (if (event.subscribe) "subscription" else "unsubscription") +
+              s" for '$topic' on $uri"
+          }
+          Some(event)
+        case other =>
+          log.warn(s"Ignoring unrecognized subscription event (${other.length} frame(s)) on $uri")
+          None
+      }
+    }.evalOn(ec)
+  )
+
+  private def hasPendingInput0(): Boolean = {
+    if (closed)
+      throw new ClosedChannelException
+    // getEvents returns -1 if the context is being terminated
+    val events = channel.getEvents
+    events >= 0 && (events & ZMQ.Poller.POLLIN) != 0
+  }
+
+  val hasPendingInput: IO[Boolean] =
+    IO(hasPendingInput0()).evalOn(ec)
 
   def close(lingerDuration: Duration): IO[Unit] = {
 
@@ -306,8 +420,60 @@ object ZeromqSocketImpl {
   private val delimiterBytes: Array[Byte] =
     "<IDS|MSG>".getBytes(UTF_8)
 
+  /** Parses the frames of a single ZeroMQ message
+    *
+    * @return
+    *   the message and its signature, or an error message if the frames don't form a valid Jupyter
+    *   message (idents, then "<IDS|MSG>", signature, header, parent header, metadata, content, and
+    *   optional buffers)
+    */
+  private[zeromq] def parseFrames(
+    frames: Seq[Array[Byte]]
+  ): Either[String, (Message, String)] = {
+    val delimiterIdx = frames.indexWhere(f => f != null && f.sameElements(delimiterBytes))
+    if (frames.contains(null))
+      Left(s"got null frame among ${frames.length} frame(s)")
+    else if (delimiterIdx < 0)
+      Left(s"no delimiter among ${frames.length} frame(s)")
+    else {
+      val afterDelimiter = frames.drop(delimiterIdx + 1)
+      afterDelimiter match {
+        case Seq(signature, header, parentHeader, metadata, content, buffers @ _*) =>
+          val message = Message(
+            frames.take(delimiterIdx).map(_.toSeq),
+            header,
+            parentHeader,
+            metadata,
+            content,
+            // Extra frames after content are binary buffers (not covered by the signature)
+            buffers
+          )
+          Right((message, new String(signature, UTF_8)))
+        case _ =>
+          Left(s"expected at least 5 frames after delimiter, got ${afterDelimiter.length}")
+      }
+    }
+  }
+
   private def delayedCondition[T](cond: => Boolean, msg: String)(t: IO[T]): IO[T] =
     IO(assert(cond, msg)) *> t
+
+  private val maxLoggedSignatureLength = 8
+
+  // The received signature is attacker-controlled: only log a short prefix of it, with
+  // anything but printable ASCII escaped, so that it can't inject newlines or terminal
+  // escape sequences in the logs
+  private[zeromq] def signatureForLog(signature: String): String =
+    if (signature == null) "no signature"
+    else {
+      val prefix = signature.iterator.take(maxLoggedSignatureLength).map {
+        case c @ ('\\' | '\'')         => "\\" + c
+        case c if c >= ' ' && c <= '~' => c.toString
+        case c                         => f"\\u${c.toInt}%04x"
+      }.mkString
+      val suffix = if (signature.length > maxLoggedSignatureLength) "..." else ""
+      s"'$prefix$suffix' (${signature.length} chars)"
+    }
 
   private[zeromq] def removePort(uri: URI): URI =
     new URI(

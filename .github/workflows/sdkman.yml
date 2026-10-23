@@ -1,0 +1,43 @@
+name: SDKMAN
+# Publishes the SDKMAN archive of a release to SDKMAN (see ci.publishSdkman in build.mill).
+# Called by the release workflow once the archive is uploaded, can also be run by hand
+# to (re-)publish a version, as publishing creates or updates it.
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+    secrets:
+      SDKMAN_VENDOR_EMAIL:
+        required: false
+      SDKMAN_VENDOR_PASSWORD:
+        required: false
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Almond version to publish, like 0.15.1 (its release needs an almond-<version>-sdkman.zip asset)"
+        required: true
+        type: string
+
+jobs:
+  publish:
+    if: github.repository == 'almond-sh/almond'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/setup-action@v3.0
+      with:
+        jvm: 21
+    - run: ./mill -i ci.publishSdkman --almondVersion "${VERSION#v}"
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SDKMAN_VENDOR_EMAIL: ${{ secrets.SDKMAN_VENDOR_EMAIL }}
+        SDKMAN_VENDOR_PASSWORD: ${{ secrets.SDKMAN_VENDOR_PASSWORD }}

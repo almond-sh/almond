@@ -22,6 +22,22 @@ trait AlmondPublishModule extends PublishModule with ScalaModule with AlmondJvmT
   )
   def publishVersion = Task(AlmondPublishModule.buildVersion())
 
+  /** Our dependencies with a snapshot version, transitive ones included, as `org:name:version` */
+  def snapshotDependencies: T[Seq[String]] = Task {
+    millResolver()
+      .resolution(Seq(coursierDependencyTask()))
+      .orderedDependencies
+      .filter(_.module.organization.value != "mill-internal")
+      .map { dep =>
+        (dep.module.organization.value, dep.module.name.value, dep.versionConstraint.asString)
+      }
+      .collect {
+        case (org, name, ver) if AlmondRepositories.isSnapshot(ver) =>
+          s"$org:$name:$ver"
+      }
+      .distinct
+  }
+
   // We don't publish any documentation, publish empty doc JARs
   def docJar: T[PathRef] = Task {
     AlmondPublishModule.emptyZip()

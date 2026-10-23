@@ -109,9 +109,14 @@ object ScalaKernelTests extends TestSuite {
 
       // When the pseudo-client exits
 
+      val exitMsgId = UUID.randomUUID().toString
+
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && m.content.toString().contains("exit"))
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitMsgId)
+          )
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
@@ -120,7 +125,7 @@ object ScalaKernelTests extends TestSuite {
       val input = Stream(
         executeMessage("val n = scala.io.StdIn.readInt()"),
         executeMessage("val m = new java.util.Scanner(System.in).nextInt()"),
-        executeMessage("""val s = "exit"""")
+        executeMessage("""val s = "exit"""", msgId = exitMsgId)
       )
 
       val streams =
@@ -188,13 +193,12 @@ object ScalaKernelTests extends TestSuite {
 
       val messageTypes = streams.generatedMessageTypes()
 
+      // no execute_input for the aborted cells
       val expectedMessageTypes = Seq(
         "execute_input",
         "error",
         "execute_reply",
-        "execute_input",
         "execute_reply",
-        "execute_input",
         "execute_reply"
       )
 
@@ -234,6 +238,11 @@ object ScalaKernelTests extends TestSuite {
     test("updatable display") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.updatableDisplay()
+    }
+
+    test("clear output") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.clearOutput()
     }
 
     test("auto-update Future results upon completion") {
@@ -532,7 +541,9 @@ object ScalaKernelTests extends TestSuite {
           streams.generatedMessageTypes(Set(Channel.Publish, Channel.Requests)).toVector
         val (firstCell, rest) = messageTypes.splitAt(messageTypes.indexOf("execute_reply") + 1)
         assert(firstCell.count(_ == "display_data") == 1)
-        assert(rest.lastOption.contains("execute_reply"))
+        // Not checking that execute_reply comes last: updates are enqueued before it, but via
+        // the background messages queue, which Kernel merges with replies in a non-deterministic
+        // order. They're still all received before the kernel stream completes.
         assert(rest.count(_ == "execute_reply") == 1)
 
         // Before updates were coalesced, one update was sent per increment
@@ -729,6 +740,36 @@ object ScalaKernelTests extends TestSuite {
       )
     }
 
+    test("upfront dependencies") {
+
+      val predef =
+        """val predefName = classOf[picocli.CommandLine].getSimpleName
+          |""".stripMargin
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          predefCode = predef,
+          dependencies = Seq(dependency.parser.DependencyParser.parse("info.picocli:picocli:4.7.3")
+            .fold(err => sys.error(err), identity))
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute(
+        "val fromPredef = predefName",
+        """fromPredef: String = "CommandLine""""
+      )
+      kernel.execute(
+        "val fromCell = classOf[picocli.CommandLine.Command].getName",
+        """fromCell: String = "picocli.CommandLine$Command""""
+      )
+    }
+
     test("simple exception handler") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.exceptionHandler()
@@ -913,15 +954,15 @@ object ScalaKernelTests extends TestSuite {
         replyPayloads = Seq("""{"source": "foo"}""", """{"source": "thing"}""")
       )
 
-      // payload in cell that throws an exception
+      // payload in cell that throws an exception, not sent in the error reply
       kernel.execute(
         s"""publish.addPayload($tq{"source": "other"}$tq); throw new Exception("foo")""",
-        replyPayloads = Seq("""{"source": "other"}"""),
+        replyPayloads = Nil,
         expectError = true
       )
     }
 
-    test("payload from exception handler") {
+    test("no payload from exception handler") {
 
       val tq = "\"\"\""
       val predef =
@@ -945,12 +986,11 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
+      // error replies don't have payloads
       kernel.execute(
         """throw new CustomException("thing")""",
         expectError = true,
-        replyPayloads = Seq(
-          """{"source": "foo", "value": "thing"}"""
-        )
+        replyPayloads = Nil
       )
     }
 
@@ -1005,7 +1045,7 @@ object ScalaKernelTests extends TestSuite {
           else if (scalaVersion.startsWith("2.13."))
             "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:6)))" + System.lineSeparator()
           else
-            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65419)))" + System.lineSeparator()
+            "Error(java.lang.Exception,THE ERROR,List(java.lang.Exception: THE ERROR,   ammonite.$sess.cmd3$Helper.<init>(cmd3.sc:1),   ammonite.$sess.cmd3$.<clinit>(cmd3.sc:65425)))" + System.lineSeparator()
       )
     }
 
@@ -1201,6 +1241,90 @@ object ScalaKernelTests extends TestSuite {
       val statusesDuringCompletion =
         statuses(fromKernel.slice(completeReplyIdx, executeReplyIdx))
       assert(!statusesDuringCompletion.contains("idle"))
+    }
+
+    test("kernel info on control channel while a cell is running") {
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams,
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      val sleepMsgId      = UUID.randomUUID().toString
+      val kernelInfoMsgId = UUID.randomUUID().toString
+
+      // Only send the kernel info request once the cell is running
+      val latch = new java.util.concurrent.CountDownLatch(1)
+      ScalaKernelTests.latch = latch
+
+      val input = Stream(
+        executeMessage(
+          "almond.ScalaKernelTests.latch.countDown(); Thread.sleep(3000L)",
+          sleepMsgId
+        )
+      ) ++
+        Stream.exec(IO.blocking(latch.await())) ++
+        Stream(
+          Message(
+            Header(
+              msg_id = kernelInfoMsgId,
+              username = "test",
+              session = sessionId.sessionId,
+              msg_type = KernelInfo.requestType.messageType,
+              version = Some(Protocol.versionStr)
+            ),
+            ()
+          ).on(Channel.Control)(Codecs.unitCodec)
+        )
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == sleepMsgId)
+          )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      kernel.run(streams.source, streams.sink, Nil)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      val fromKernel = streams.generatedMessages.toVector.collect {
+        case Left((c, m)) => (c, m)
+      }
+      val kernelInfoReplyIdx = fromKernel.indexWhere {
+        case (c, m) =>
+          c == Channel.Control && m.header.msg_type == "kernel_info_reply" &&
+          m.parent_header.exists(_.msg_id == kernelInfoMsgId)
+      }
+      val executeReplyIdx = fromKernel.indexWhere {
+        case (c, m) =>
+          c == Channel.Requests && m.header.msg_type == "execute_reply" &&
+          m.parent_header.exists(_.msg_id == sleepMsgId)
+      }
+      assert(kernelInfoReplyIdx >= 0)
+      assert(executeReplyIdx >= 0)
+      assert(kernelInfoReplyIdx < executeReplyIdx)
+
+      // The kernel must still be reported as busy until the cell is done running
+      def statuses(messages: Seq[(Channel, Message[RawJson])]) =
+        messages.collect {
+          case (Channel.Publish, m) if m.header.msg_type == Status.messageType.messageType =>
+            m -> com.github.plokhotnyuk.jsoniter_scala.core
+              .readFromArray(m.content.value)(Status.codec)
+              .execution_state
+        }
+      val statusesBeforeExecuteReply = statuses(fromKernel.take(executeReplyIdx))
+      assert(statusesBeforeExecuteReply.lastOption.map(_._2).contains("busy"))
+      val kernelInfoStatuses = statusesBeforeExecuteReply.filter {
+        case (m, _) =>
+          m.parent_header.exists(_.msg_id == kernelInfoMsgId)
+      }
+      assert(kernelInfoStatuses.isEmpty)
     }
   }
 

@@ -66,6 +66,7 @@ object AmmInterpreter {
     jupyterApi: JupyterApiImpl,
     predefCode: String,
     predefFiles: Seq[Path],
+    dependencies: Seq[dependency.AnyDependency],
     frames0: Ref[List[Frame]],
     codeWrapper: CodeWrapper,
     extraRepos: Seq[String],
@@ -79,6 +80,7 @@ object AmmInterpreter {
     silentImports: Boolean,
     logCtx: LoggerContext,
     variableInspectorEnabled: () => Boolean,
+    outputStyle: () => almond.OutputStyle,
     outputDir: Either[os.Path, Boolean],
     compileOnly: Boolean,
     addToreeApiCompatibilityImport: Boolean,
@@ -106,7 +108,7 @@ object AmmInterpreter {
             // read with the local charset…
             new String(Files.readAllBytes(path)),
             hardcoded = false,
-            Some(os.Path(path))
+            Some(path.toAbsolutePath.normalize)
           )
       }
 
@@ -138,8 +140,9 @@ object AmmInterpreter {
         wd = os.pwd,
         colors = replApi.colors,
         verboseOutput = true, // ???
-        alreadyLoadedDependencies =
-          ammonite.main.Defaults.alreadyLoadedDependencies("almond/almond-user-dependencies.txt"),
+        alreadyLoadedDependencies = ammonite.main.Defaults.alreadyLoadedDependencies(
+          UserDependencies.resourceName(AlmondCompilerLifecycleManager.compilerVersion)
+        ),
         wrapperNamePrefix = wrapperNamePrefix,
         pkgName = pkgName.map(Name(_)),
         // like the Ammonite ones, but reloading scripts that changed since they were last loaded
@@ -165,7 +168,6 @@ object AmmInterpreter {
           parameters = interpParams
         ) {
           override val compilerManager = new AlmondCompilerLifecycleManager(
-            storage0.dirOpt.map(_.toNIO),
             headFrame,
             Some(dependencyComplete),
             Set.empty,
@@ -174,6 +176,7 @@ object AmmInterpreter {
             autoUpdateVars,
             silentImports,
             variableInspectorEnabled,
+            outputStyle,
             outputDir0,
             initialSettings,
             logCtx,
@@ -253,14 +256,15 @@ object AmmInterpreter {
           f0
       }
 
-      // TODO: remove jitpack once jvm-repr is published to central
-      val allExtraRepos = extraRepos ++ Seq("https://jitpack.io")
       ammInterp0.repositories() = ammInterp0.repositories() ++
-        allExtraRepos.map { r =>
-          if (r.startsWith("ivy:"))
-            coursierapi.IvyRepository.of(r.stripPrefix("ivy:"))
-          else
-            coursierapi.MavenRepository.of(r)
+        extraRepos.flatMap { r =>
+          almond.Execute.parseRepository(r) match {
+            case Left(err) =>
+              System.err.println(s"Warning: ignoring repository ($err)")
+              Nil
+            case Right(repo) =>
+              Seq(repo)
+          }
         }
 
       log.debug("Processing dependency-related params")
@@ -284,6 +288,18 @@ object AmmInterpreter {
             mavenProfiles0.foldLeft(fetch.getResolutionParams)(_.addProfile(_))
           )
         }
+
+      if (dependencies.nonEmpty) {
+        log.debug("Loading upfront dependencies")
+        val deps = Execute.toCoursierDependencies(ammInterp0.scalaVersion, dependencies)
+        ammInterp0.loadIvy(deps: _*) match {
+          case Left(err) =>
+            throw new DependencyLoadingException(err)
+          case Right(loaded) =>
+            if (loaded.nonEmpty)
+              ammInterp0.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+        }
+      }
 
       log.debug("Initializing interpreter predef")
 
@@ -327,6 +343,9 @@ object AmmInterpreter {
       else
         s"Caught exception while running predef: $msg"
   }
+
+  final class DependencyLoadingException(msg: String)
+      extends Exception(s"Error loading upfront dependencies: $msg")
 
   def defaultPkgName: Seq[String] =
     ammonite.interp.Interpreter.Parameters().pkgName.map(_.raw)

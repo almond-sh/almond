@@ -89,8 +89,10 @@ final class Image private (
           Map(contentType -> b0)
         }
         else {
-          val attrs = metadata().map { case (k, v) => s"$k=$v" }.mkString(" ")
-          Map(Html.mimeType -> s"<img src='${url.toExternalForm}' $attrs />")
+          val attrs = metadata()
+            .map { case (k, v) => s"""$k="${HtmlUtils.escape(v)}"""" }
+            .mkString(" ")
+          Map(Html.mimeType -> s"<img src='${HtmlUtils.escape(url.toExternalForm)}' $attrs />")
         }
 
       case Right(b) =>

@@ -1,7 +1,7 @@
 package almond.internals
 
 import java.io.{OutputStream, PrintStream}
-import java.nio.{ByteBuffer, CharBuffer}
+import java.nio.{Buffer, ByteBuffer, CharBuffer}
 import java.nio.charset.{Charset, CoderResult}
 
 class FunctionOutputStream(
@@ -53,9 +53,12 @@ class FunctionOutputStream(
     var r: CoderResult = null
 
     while (r == null || r.isOverflow) {
+      // The buffer methods returning buffers are called via Buffer: since Java 9, ByteBuffer and
+      // CharBuffer override them with more precise return types, that don't exist on Java 8. Our
+      // Scala 2.12 builds can't pass -release 8 to scalac, and would link against those.
       if (r != null) {
-        readBuf.position(0)
-        readBuf.limit(writeBuf.position())
+        (readBuf: Buffer).position(0)
+        (readBuf: Buffer).limit(writeBuf.position())
       }
 
       r = decoder.decode(readBuf, out, false)
@@ -67,13 +70,13 @@ class FunctionOutputStream(
       else {
         if (outLen > 0) {
           val s = new String(outArray, 0, outLen)
-          out.clear()
+          (out: Buffer).clear()
           f(s)
         }
         val read      = readBuf.position()
         val avail     = writeBuf.position()
         val remaining = avail - read
-        writeBuf.position(remaining)
+        (writeBuf: Buffer).position(remaining)
         if (remaining > 0)
           System.arraycopy(inArray, read, inArray, 0, remaining)
       }

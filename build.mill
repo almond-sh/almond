@@ -1,4 +1,4 @@
-//| mill-version: 2.0.0-M2
+//| mill-version: 1.3.0
 
 import almondbuild.*
 import almondbuild.modules.*
@@ -48,11 +48,17 @@ trait LoggerScala2Macros extends Cross.Module[String] with AlmondUnpublishedModu
 
 /** The API user code is written against - `almond.interpreter.api` for the kernels, and
   * `almond.api` / `almond.display` / `almond.input` for the users of the Scala kernel.
+  *
+  * Also ships the sources of [jvm-repr](https://github.com/jupyter/jvm-repr) (its `jupyter`
+  * package, in `src/main/java`), rather than depending on it: it is only published on JitPack.
   */
-trait Api extends Cross.Module[String] with AlmondModule with AlmondMima {
+trait Api extends Cross.Module[String] with AlmondModule with AlmondMima
+    with VendoredDependencies {
   def crossScalaVersion = crossValue
-  def mvnDeps = Seq(
-    Deps.jvmRepr
+
+  // the sources we ship are the ones of jvm-repr 0.4.0, plus its single later commit
+  def vendoredDependencies = Seq(
+    "com.github.jupyter:jvm-repr:0.4.0"
   )
 
   def mimaBinaryIssueFilters = Seq(
@@ -63,14 +69,17 @@ trait Api extends Cross.Module[String] with AlmondModule with AlmondMima {
     ProblemFilter.exclude[ReversedMissingMethodProblem]("almond.api.JupyterApi.*")
   )
 
-  // Our classes used to be published as two modules, interpreter-api and jupyter-api -
-  // keep checking them against those, our own name has no release to be compared with yet.
+  // Our classes used to be published as two modules, interpreter-api and jupyter-api,
+  // until 0.15.0 - keep checking them against those for the releases before it.
   def mimaPreviousArtifacts = Task {
+    val cutOff   = Version("0.15.0")
     val versions = mimaPreviousVersions().distinct
     mill.api.Result.Success(
       for {
-        name    <- Seq("interpreter-api", "jupyter-api")
         version <- versions
+        name <-
+          if (Version(version) < cutOff) Seq("interpreter-api", "jupyter-api")
+          else Seq(artifactName())
       } yield mvn"${pomSettings().organization}:$name${artifactSuffix()}:$version"
     )
   }
@@ -136,7 +145,6 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     Deps.ammoniteCompiler.exclude(("org.slf4j", "slf4j-api")),
     Deps.ammoniteReplApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.scalaCompiler(crossScalaVersion),
-    Deps.jvmRepr,
     Deps.coursierApi.exclude(("org.slf4j", "slf4j-api")),
     Deps.collectionCompat,
     // Ammonite depends on an older pprint, bump it
@@ -158,10 +166,26 @@ trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with Depende
     value
   }
 
-  // We used to be published for each full Scala version - the artifacts we publish now
-  // (scala-kernel-api_2.13 rather than scala-kernel-api_2.13.18, …) have no release to be
-  // compared with yet.
-  def mimaPreviousVersions = Task(Seq.empty[String])
+  def mimaBinaryIssueFilters = Seq(
+    // implemented by the kernel, not meant to be implemented by users
+    ProblemFilter.exclude[ReversedMissingMethodProblem]("almond.api.FullJupyterApi.*")
+  )
+
+  // We used to be published for each full Scala version until 0.15.0 - the artifacts we
+  // publish since then (scala-kernel-api_2.13 rather than scala-kernel-api_2.13.18, …) can
+  // only be compared with the releases from 0.15.0 on.
+  def mimaPreviousVersions = Task {
+    val cutOff = Version("0.15.0")
+    super.mimaPreviousVersions()
+      .filter(v => Version(v) >= cutOff)
+  }
+
+  def userDependenciesByScalaVersion = Task {
+    Task.traverse(ScalaVersions.fullVersionsFor(crossValue)) { sv =>
+      val api = scala.`scala-kernel`(crossValue).launchers(sv).api
+      Task.Anon((sv, api.userDependencies()))
+    }()
+  }
 
   def propertyFilePath = "almond/almond.properties"
   def propertyExtra = Task {
@@ -215,6 +239,17 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
       if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations")
       else Nil
     scala213Options
+  }
+  def generatedSources: T[Seq[PathRef]] = Task {
+    val constantsFileContent =
+      s"""package almond.internal
+         |
+         |object InterpreterConstants {
+         |  def defaultScala213Version = "${ScalaVersions.scala213}"
+         |}
+         |""".stripMargin
+    os.write(Task.dest / "InterpreterConstants.scala", constantsFileContent)
+    Seq(PathRef(Task.dest)) ++ super.generatedSources()
   }
   object test extends Cross[ScalaInterpreterTests](ScalaVersions.fullVersionsFor(crossValue))
   trait ScalaInterpreterTests extends CrossSbtModuleTests with AlmondFullCrossTests {
@@ -339,7 +374,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
 
     /** The kernel API, whose dependencies go to the shared class loader, resolved like us. */
     object api extends AlmondCrossSbtModule with AlmondRepositories with ExternalSources
-        with AlmondForcedScalaVersion {
+        with AlmondForcedScalaVersion with UserDependencyList {
       def crossValue        = Launchers.this.crossValue
       def crossScalaVersion = crossValue
       def moduleDeps        = Seq(scala.`scala-kernel-api`(ScalaVersions.binary(crossValue)))
@@ -440,16 +475,6 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   def resources = super.resources
 }
 
-trait AlmondScalaPy extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def mvnDeps = Seq(
-    Deps.jvmRepr
-  )
-  def compileMvnDeps = Seq(
-    Deps.scalapy
-  )
-}
-
 /** Not published any more - only kept around to be built and tested here */
 trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   def crossScalaVersion = crossValue
@@ -459,22 +484,6 @@ trait AlmondRx extends Cross.Module[String] with AlmondUnpublishedModule {
   def mvnDeps = Seq(
     Deps.scalaRx
   )
-}
-
-trait JsonApiJackson extends Cross.Module[String] with AlmondModule with AlmondMima {
-  def crossScalaVersion = crossValue
-  def moduleDeps = Seq(
-    api()
-  )
-  def mvnDeps = Seq(
-    mvn"com.fasterxml.jackson.module::jackson-module-scala:2.22.3"
-  )
-  override def mimaPreviousVersions = Task {
-    // module added only in 0.14.2
-    val cutOff = Version("0.14.1")
-    super.mimaPreviousVersions()
-      .filter(v => Version(v) > cutOff)
-  }
 }
 
 // The echo kernel is a demo kernel, only built and published for Scala 3
@@ -510,25 +519,21 @@ object scala extends Module {
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
   object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
   object launcher            extends Launcher
-  object `almond-scalapy`    extends Cross[AlmondScalaPy](ScalaVersions.binaries)
   object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
-  object `json-api-jackson`  extends Cross[JsonApiJackson](ScalaVersions.binaries)
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
   object integration        extends Integration
   object `proxy-tests`      extends ProxyTests
 
-  object examples extends Examples
+  object examples extends Cross[Examples](ScalaVersions.examples)
 }
 
 object `local-repo` extends Module {
   def allModules: Seq[PublishModule] = {
     val binaryModules = ScalaVersions.binaries.flatMap { sv =>
       Seq(
-        scala.`almond-scalapy`(sv),
         shared.kernel(sv),
-        api(sv),
-        scala.`json-api-jackson`(sv)
+        api(sv)
       )
     }
     val kernelModules = ScalaVersions.binaries.flatMap { sv =>
@@ -554,23 +559,44 @@ object `local-repo` extends Module {
       PathRef(Task.dest)
     }
   }
+
+  /** Whether the kernels resolved from [[localRepo]] need the Maven snapshot repository.
+    *
+    * That is, whether the build adds it to any of the modules published there.
+    */
+  private def repositoryModules = allModules.collect {
+    case mod: AlmondRepositories => mod
+  }
+  def useMavenSnapshots = Task {
+    Task.traverse(repositoryModules)(_.repositories)()
+      .exists(_.contains(AlmondRepositories.mavenSnapshots))
+  }
 }
 
-trait Examples extends SbtModule {
-  private def examplesScalaVersion = "2.12.20"
-  // The kernel is published for Scala 2.12 and built with the oldest Scala 2.12 version we
-  // support - this launcher runs it with the Scala version above, which is the one the
-  // example notebooks are run with, and record.
+trait Examples extends Cross.Module[String] with SbtModule {
+  private def examplesScalaVersion = crossValue
+  // The kernel is published per binary Scala version and built with the oldest Scala version we
+  // support for it - this launcher runs it with the Scala version above, which is the one the
+  // example notebooks are run with.
   private def examplesKernel =
     scala.`scala-kernel`(ScalaVersions.binary(examplesScalaVersion)).launchers(
       examplesScalaVersion
     )
   def scalaVersion = ScalaVersions.scala3Latest
   def examplesDir  = Task.Source(BuildCtx.workspaceRoot / "examples")
+
+  /** Whether the tests should update the notebooks from what they get, rather than just fail if
+    * they differ: set `ALMOND_UPDATE_EXAMPLES=1` for that.
+    */
+  def updateExamples = Task.Input {
+    Task.env.get("ALMOND_UPDATE_EXAMPLES").contains("1")
+  }
+
   object test extends SbtTests {
     def testFramework = "munit.Framework"
     def mvnDeps = Task {
       super.mvnDeps() ++ Seq(
+        Deps.coursierJvm,
         Deps.expecty,
         Deps.munit,
         Deps.osLib,
@@ -580,12 +606,16 @@ trait Examples extends SbtModule {
     }
     def forkArgs = Task {
       super.forkArgs() ++ Seq(
-        s"-Dalmond.examples.dir=${PathRef.toAbsString(examplesDir().path)}",
-        s"-Dalmond.examples.output-dir=${PathRef.toAbsString(Task.dest / "output")}",
-        s"-Dalmond.examples.jupyter-path=${PathRef.toAbsString(Task.dest / "jupyter")}",
-        s"-Dalmond.examples.launcher=${PathRef.toAbsString(examplesKernel.launcher().path)}",
-        s"-Dalmond.examples.repo-root=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
-        s"-Dalmond.examples.uv=${PathRef.toAbsString(UvLauncher.uv(Versions.uv))}"
+        s"-Dalmond.examples.dir=${examplesDir().path}",
+        s"-Dalmond.examples.output-dir=${Task.dest / "output"}",
+        s"-Dalmond.examples.jupyter-path=${Task.dest / "jupyter"}",
+        s"-Dalmond.examples.launcher=${examplesKernel.launcher().path}",
+        s"-Dalmond.examples.repo-root=${`local-repo`.localRepo().path}",
+        s"-Dalmond.examples.uv=${UvLauncher.uv(Versions.uv)}",
+        s"-Dalmond.examples.jvm=${ScalaVersions.oldestJvmFor(examplesScalaVersion)}",
+        s"-Dalmond.examples.scala-version=$examplesScalaVersion",
+        s"-Dalmond.examples.reference-scala-version=${ScalaVersions.examples.head}",
+        s"-Dalmond.examples.update=${updateExamples()}"
       )
     }
   }
@@ -595,6 +625,9 @@ trait TestKit extends Cross.Module[String] with AlmondCrossSbtModule {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
     shared.kernel()
+  )
+  def compileMvnDeps = Seq(
+    Deps.jsoniterScalaMacros
   )
   def mvnDeps = super.mvnDeps() ++ Seq(
     Deps.expecty,
@@ -628,6 +661,7 @@ trait Integration extends SbtModule {
     scala.`test-definitions`(scalaVersion0)
   )
   def mvnDeps = super.mvnDeps() ++ Seq(
+    Deps.coursierJvm,
     Deps.munit,
     Deps.osLib,
     Deps.pprint,
@@ -675,37 +709,38 @@ trait Integration extends SbtModule {
         scala.`scala-kernel`(ScalaVersions.binary(ScalaVersions.scala3Latest)).publishVersion()
       super.forkArgs() ++ Seq(
         "-Xmx768m", // let's not use too much memory here, Windows CI sometimes runs short on it
-        s"-Dalmond.test.local-repo=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
+        s"-Dalmond.test.local-repo=${`local-repo`.localRepo().path}",
         s"-Dalmond.test.version=$version",
         s"-Dalmond.test.cs-launcher=${CsLauncher.cs(Deps.csVersion)}",
+        s"-Dalmond.test.scala-cli-version=${Deps.scalaCliVersion}",
         s"-Dalmond.test.launcher-main-class=${scala.launcher.finalMainClass()}",
         s"-Dalmond.test.scala-version=${ScalaVersions.scala3Latest}",
         s"-Dalmond.test.scala212-version=${ScalaVersions.scala212}",
         s"-Dalmond.test.scala213-version=${ScalaVersions.scala213}",
         s"-Dalmond.test.library-properties-scala-version=${helper.libraryPropertiesScalaVersion()}",
         s"-Dalmond.test.shapeless-version-pulled-by-kernel=${shapelessVersion()}"
-      )
+      ) ++ kernelJvmArgs
+    }
+
+    /** The JVMs the kernels run on, as coursier JVM ids: the oldest one each Scala version under
+      * test supports. Two-step startup launchers can switch from their default Scala version to any
+      * of the others, so they get the most recent of these, that runs all of them.
+      */
+    private def kernelJvmArgs = {
+      val scalaVersions =
+        Seq(ScalaVersions.scala3Latest, ScalaVersions.scala212, ScalaVersions.scala213)
+      val jvms = scalaVersions.map(sv => sv -> ScalaVersions.oldestJvmFor(sv))
+      jvms.map((sv, jvm) => s"-Dalmond.test.jvm.$sv=$jvm") :+
+        s"-Dalmond.test.two-step-startup-jvm=${jvms.map(_._2).maxBy(_.toInt)}"
     }
     def tmpDirBase = Task(persistent = true) {
       PathRef(Task.dest / "working-dir")
     }
 
-    /** Whether the kernels we launch need the Maven snapshot repository.
-      *
-      * That is, whether the build adds it to any of the modules the launched kernels resolve from
-      * the local test repository.
-      */
-    private def localRepoRepositoryModules = `local-repo`.allModules.collect {
-      case mod: AlmondRepositories => mod
-    }
-    def useMavenSnapshots = Task {
-      Task.traverse(localRepoRepositoryModules)(_.repositories)()
-        .exists(_.contains(AlmondRepositories.mavenSnapshots))
-    }
     def forkEnv = Task {
       super.forkEnv() ++ Seq(
-        "ALMOND_INTEGRATION_TMP"             -> PathRef.toAbsString(tmpDirBase().path),
-        "ALMOND_INTEGRATION_MAVEN_SNAPSHOTS" -> useMavenSnapshots().toString
+        "ALMOND_INTEGRATION_TMP"             -> tmpDirBase().path.toString,
+        "ALMOND_INTEGRATION_MAVEN_SNAPSHOTS" -> `local-repo`.useMavenSnapshots().toString
       )
     }
   }
@@ -745,16 +780,16 @@ trait ProxyTests extends SbtModule {
       val version =
         scala.`scala-kernel`(ScalaVersions.binary(kernelScalaVersion)).publishVersion()
       super.forkArgs() ++ Seq(
-        s"-Dalmond.proxy-tests.local-repo=${PathRef.toAbsString(`local-repo`.localRepo().path)}",
+        s"-Dalmond.proxy-tests.local-repo=${`local-repo`.localRepo().path}",
         s"-Dalmond.proxy-tests.version=$version",
         s"-Dalmond.proxy-tests.launcher-main-class=${scala.launcher.finalMainClass()}",
         s"-Dalmond.proxy-tests.scala-version=$kernelScalaVersion",
         s"-Dalmond.proxy-tests.cs-version=${Deps.csVersion}",
         s"-Dalmond.proxy-tests.uv-version=${Versions.uv}",
-        s"-Dalmond.proxy-tests.examples-dir=${PathRef.toAbsString(examplesDir().path)}",
-        s"-Dalmond.proxy-tests.docker-dir=${PathRef.toAbsString(dockerDir().path)}",
-        s"-Dalmond.proxy-tests.tmp-dir=${PathRef.toAbsString(tmpDirBase().path)}",
-        s"-Dalmond.proxy-tests.maven-snapshots=${scala.integration.test.useMavenSnapshots()}"
+        s"-Dalmond.proxy-tests.examples-dir=${examplesDir().path}",
+        s"-Dalmond.proxy-tests.docker-dir=${dockerDir().path}",
+        s"-Dalmond.proxy-tests.tmp-dir=${tmpDirBase().path}",
+        s"-Dalmond.proxy-tests.maven-snapshots=${`local-repo`.useMavenSnapshots()}"
       )
     }
   }
@@ -838,8 +873,10 @@ object docs extends ScalaModule with AlmondRepositories {
 
     val websiteDir = BuildCtx.workspaceRoot / "docs" / "website"
 
+    // --ignore-scripts: some website dependencies download binaries from their install scripts.
+    // Without them, Docusaurus just doesn't optimize the website images.
     if (npmInstall)
-      Util.run(Seq("npm", "install"), dir = PathRef.toAbsFile(websiteDir))
+      Util.run(Seq("npm", "ci", "--ignore-scripts"), dir = websiteDir.toIO)
 
     def runMdoc(): Unit =
       // adapted from https://github.com/com-lihaoyi/mill/blob/c500ca986ab79af3ce59ba65a093146672092307/scalalib/src/JavaModule.scala#L488-L494
@@ -855,11 +892,11 @@ object docs extends ScalaModule with AlmondRepositories {
       if (yarnRunBuild)
         Util.withBgProcess(
           Seq("yarn", "run", "start"),
-          dir = PathRef.toAbsFile(websiteDir),
+          dir = websiteDir.toIO,
           waitFor =
             () =>
               Util.waitForDir(
-                PathRef.toAbsFile(BuildCtx.workspaceRoot / outputDir.split('/').toSeq)
+                (BuildCtx.workspaceRoot / outputDir.split('/').toSeq).toIO
               )
         ) {
           runMdoc()
@@ -869,9 +906,9 @@ object docs extends ScalaModule with AlmondRepositories {
     else {
       runMdoc()
       if (yarnRunBuild)
-        Util.run(Seq("yarn", "run", "build"), dir = PathRef.toAbsFile(websiteDir))
+        Util.run(Seq("yarn", "run", "build"), dir = websiteDir.toIO)
       if (relativize)
-        Relativize.relativize(PathRef.toAbsNioPath(websiteDir / "build"))
+        Relativize.relativize((websiteDir / "build").toNIO)
     }
   }
 }
@@ -888,12 +925,6 @@ object dev extends Module {
         (Some(sv), rem)
       case _ => (None, args)
     }
-
-  private def kernelLauncher(sv: String, fast: Boolean) = {
-    val launchers = scala.`scala-kernel`(ScalaVersions.binary(sv)).launchers(sv)
-    if (fast) launchers.fastLauncher
-    else launchers.launcher
-  }
 
   /** The JVM the Jupyter commands run kernels with: the configured one, unless one of the Scala
     * versions of the kernels needs an older one (then the oldest one needed, which all the kernels
@@ -933,17 +964,75 @@ object dev extends Module {
       .map(PathRef(_))
   }
 
-  private def specialLauncher(fast: Boolean) =
-    if (fast) scala.launcher.fastLauncher
-    else scala.launcher.launcher
+  /** The sources of the almond-scalafmt JupyterLab extension, if the `ALMOND_SCALAFMT_EXTENSION`
+    * environment variable points at them: their directory, and the source files in it. If the
+    * directory it points at doesn't exist, it's ignored, with a warning.
+    */
+  def scalafmtExtensionSources = Task.Input {
+    Task.env.get(LabExtension.scalafmtEnvVar)
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map(os.Path(_, BuildCtx.workspaceRoot))
+      .filter { dir =>
+        val exists = os.isDir(dir)
+        if (!exists)
+          System.err.println(
+            s"Warning: ${LabExtension.scalafmtEnvVar} points at " +
+              s"$dir, which doesn't exist, ignoring it"
+          )
+        exists
+      }
+      .map { dir =>
+        (dir.toString, LabExtension.sources(dir).map(PathRef(_)))
+      }
+  }
+
+  /** The almond-scalafmt JupyterLab extension, built from the sources `ALMOND_SCALAFMT_EXTENSION`
+    * points at, if it's set. The dev.jupyter* commands starting JupyterLab enable it.
+    *
+    * Persistent, so that the dependencies of the extension stay around across builds.
+    */
+  def scalafmtExtension = Task(persistent = true) {
+    scalafmtExtensionSources().map { case (dir, sources) =>
+      val output = LabExtension.build(
+        JupyterServer.uvRunCommand(
+          UvLauncher.uv(Versions.uv),
+          BuildCtx.workspaceRoot,
+          JupyterServer.labGroups
+        ),
+        os.Path(dir),
+        sources.map(_.path),
+        Task.dest
+      )
+      PathRef(output)
+    }
+  }
+
+  /** Where the kernels of the Jupyter commands are installed from: the almond modules built from
+    * sources, published to [[`local-repo`.localRepo]]
+    */
+  private def kernelSource = {
+    val launcher = scala.launcher
+    Task.Anon {
+      JupyterServer.KernelSource(
+        cs = CsLauncher.cs(Deps.csVersion),
+        appChannel = BuildCtx.workspaceRoot / "app",
+        localRepo = `local-repo`.localRepo().path,
+        useMavenSnapshots = `local-repo`.useMavenSnapshots(),
+        kernelVersion = launcher.publishVersion(),
+        launcherDependency = s"${launcher.pomSettings().organization}:" +
+          s"${launcher.artifactId()}:${launcher.publishVersion()}",
+        launcherMainClass = launcher.finalMainClass()
+      )
+    }
+  }
 
   /** The Scala versions the JupyterLab commands run kernels for: those of
     * [[defaultJupyterScalaVersions]], where a Scala version passed as first argument replaces the
     * default one of its binary Scala version, or is added to the defaults. Returns these along with
-    * the remaining arguments, a task building their kernel launchers, and one building the special
-    * launcher.
+    * the remaining arguments.
     */
-  private def jupyterLabSetup(args: Seq[String], fast: Boolean) = {
+  private def jupyterLabSetup(args: Seq[String]) = {
     val (svOpt, args0) = splitScalaVersion(args)
     val scalaVersions = svOpt match {
       case Some(sv) =>
@@ -952,16 +1041,15 @@ object dev extends Module {
         (Seq(sv) ++ others).sortBy(Version(_))
       case None => defaultJupyterScalaVersions
     }
-    val launchers = Task.sequence(scalaVersions.map(kernelLauncher(_, fast)))
-    (scalaVersions, args0, launchers, specialLauncher(fast))
+    (scalaVersions, args0)
   }
 
   /** Starts a JupyterLab server in the background, with one kernel per Scala version (see
     * [[jupyterLabSetup]]), and returns the log files to tail to follow its output (`./mill show
-    * dev.jupyterFast …` prints them as JSON)
+    * dev.jupyter …` prints them as JSON)
     */
-  def jupyterServer0(args: Seq[String], fast: Boolean) = {
-    val (scalaVersions, args0, launchers, specialLauncher) = jupyterLabSetup(args, fast)
+  def jupyterServer0(args: Seq[String]) = {
+    val (scalaVersions, args0) = jupyterLabSetup(args)
     // persistent, so that the kernel specs under Task.dest stay around for the background server
     Task.Command(persistent = true) {
       JupyterServer.jupyterServer(
@@ -969,14 +1057,13 @@ object dev extends Module {
         JavaHomes.javaHome(devJvm(scalaVersions*)),
         mill.javalib.JvmWorkerModule.backgroundWrapperClasspath().map(_.path),
         jupyterBackgroundDir(),
-        scalaVersions.zip(launchers().map(_.path)),
-        specialLauncher().path,
+        kernelSource(),
+        scalaVersions,
         Task.dest / "jupyter",
         args0,
         BuildCtx.workspaceRoot,
-        scala.`scala-kernel`(ScalaVersions.binary(scalaVersions.head)).publishVersion(),
-        `local-repo`.localRepo().path,
-        acpAgents().map(_.path)
+        acpAgents().map(_.path),
+        scalafmtExtension().map(_.path).toSeq
       )
     }
   }
@@ -986,50 +1073,45 @@ object dev extends Module {
     * variables to set, then the command itself. Use `./mill show` to get it as a JSON string, that
     * can be passed to `eval`.
     */
-  def jupyterCmd0(args: Seq[String], fast: Boolean) = {
-    val (scalaVersions, args0, launchers, specialLauncher) = jupyterLabSetup(args, fast)
+  def jupyterCmd0(args: Seq[String]) = {
+    val (scalaVersions, args0) = jupyterLabSetup(args)
     // persistent, so that the kernel specs under Task.dest stay around when the command is run
     Task.Command(persistent = true) {
       val cmd = JupyterServer.jupyterLabCommand(
         UvLauncher.uv(Versions.uv),
         JavaHomes.javaHome(devJvm(scalaVersions*)),
-        scalaVersions.zip(launchers().map(_.path)),
-        specialLauncher().path,
+        kernelSource(),
+        scalaVersions,
         Task.dest / "jupyter",
         args0,
         BuildCtx.workspaceRoot,
-        scala.`scala-kernel`(ScalaVersions.binary(scalaVersions.head)).publishVersion(),
-        `local-repo`.localRepo().path,
-        acpAgents().map(_.path)
+        acpAgents().map(_.path),
+        scalafmtExtension().map(_.path).toSeq
       )
       cmd.shellCommand
     }
   }
 
   /** Runs an interactive Jupyter console in the foreground (use with `./mill -i`), on a kernel
-    * running the Scala version passed as first argument, or Scala 2.13 by default.
+    * running the Scala version passed as first argument, or Scala 2.13 by default. Pass
+    * `--kernel=xpython` to run xeus-python instead.
     *
     * Exclusive, like `cli.run` in the coursier build: Mill runs it once every other task is done,
     * with its prompt / ticker disabled, so that only the console is writing to the terminal (the
     * console gets the raw terminal I/O via `os.InheritRaw`).
     */
-  def jupyterConsole0(args: Seq[String], fast: Boolean) = {
-    val (svOpt, args0)   = splitScalaVersion(args)
-    val sv               = svOpt.getOrElse(ScalaVersions.scala213)
-    val launcher         = kernelLauncher(sv, fast)
-    val specialLauncher0 = specialLauncher(fast)
+  def jupyterConsole0(args: Seq[String]) = {
+    val (svOpt, args0) = splitScalaVersion(args)
+    val sv             = svOpt.getOrElse(ScalaVersions.scala213)
     Task.Command(exclusive = true) {
       JupyterServer.jupyterConsole(
         UvLauncher.uv(Versions.uv),
         JavaHomes.javaHome(devJvm(sv)),
+        kernelSource(),
         sv,
-        launcher().path,
-        specialLauncher0().path,
         Task.dest / "jupyter",
         args0,
-        BuildCtx.workspaceRoot,
-        scala.`scala-kernel`(ScalaVersions.binary(sv)).publishVersion(),
-        `local-repo`.localRepo().path
+        BuildCtx.workspaceRoot
       )
     }
   }
@@ -1048,22 +1130,26 @@ object dev extends Module {
   }
 
   def jupyter(args: String*) =
-    jupyterServer0(args, fast = false)
-
-  def jupyterFast(args: String*) =
-    jupyterServer0(args, fast = true)
+    jupyterServer0(args)
 
   def jupyterCmd(args: String*) =
-    jupyterCmd0(args, fast = false)
-
-  def jupyterCmdFast(args: String*) =
-    jupyterCmd0(args, fast = true)
+    jupyterCmd0(args)
 
   def jupyterConsole(args: String*) =
-    jupyterConsole0(args, fast = false)
+    jupyterConsole0(args)
+
+  // The kernels are installed with cs from the local repository either way, the *Fast commands are
+  // the same as the ones above. They used to rely on launchers that are faster to generate, and
+  // are kept for compatibility.
+
+  def jupyterFast(args: String*) =
+    jupyterServer0(args)
+
+  def jupyterCmdFast(args: String*) =
+    jupyterCmd0(args)
 
   def jupyterConsoleFast(args: String*) =
-    jupyterConsole0(args, fast = true)
+    jupyterConsole0(args)
 
   def scala212() = Task.Command {
     println(ScalaVersions.scala212)
@@ -1101,30 +1187,67 @@ object dev extends Module {
     val launcher =
       scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launchers(scalaVersion)
         .launcher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 
   def specialLauncher(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher = scala.launcher.launcher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 
   def launcherFast(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher =
       scala.`scala-kernel`(ScalaVersions.binary(scalaVersion)).launchers(scalaVersion)
         .fastLauncher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 
   def specialLauncherFast(scalaVersion: String = ScalaVersions.scala213) = Task.Command {
     val launcher = scala.launcher.fastLauncher().path
-    println(PathRef.toAbsString(launcher))
+    println(launcher)
   }
 }
 
 def ghOrg  = "almond-sh"
 def ghName = "almond"
 object ci extends Module {
+  def sdkmanZipName(almondVersion: String) = s"almond-$almondVersion-sdkman.zip"
+
+  /** Fails if what we publish depends on snapshot versions, which releases shouldn't do
+    *
+    * Checks the dependencies of the modules we publish, along with the versions of the dependencies
+    * the kernel adds at runtime, that we write in property files.
+    */
+  def checkNoSnapshotDependencies() = Task.Command {
+    val fromDeps =
+      publishedModules.zip(Task.traverse(publishedModules)(_.snapshotDependencies)()).flatMap {
+        case (mod, deps) =>
+          deps.map(dep => s"$mod: $dep")
+      }
+    val fromProps =
+      propertyFileModules.zip(Task.traverse(propertyFileModules)(_.props)()).flatMap {
+        case (mod, content) =>
+          content.linesIterator.toSeq
+            .map(_.split("=", 2))
+            .collect {
+              case Array(key, value)
+                  if key != "version" && AlmondRepositories.isSnapshot(value) =>
+                s"$mod: $key=$value"
+            }
+      }
+    val found = fromDeps ++ fromProps
+    if (found.nonEmpty)
+      Task.fail(
+        s"Found ${found.length} snapshot dependencies:" + System.lineSeparator() +
+          found.mkString(System.lineSeparator())
+      )
+    System.err.println(s"No snapshot dependencies found in ${publishedModules.length} modules")
+  }
+  private def publishedModules =
+    `local-repo`.allModules.collect { case mod: AlmondPublishModule => mod }
+  private def propertyFileModules =
+    publishedModules.collect { case mod: PropertyFile => mod }
+
   def uploadLaunchers(almondVersion: String = AlmondPublishModule.computeBuildVersion()) =
     Task.Command {
       def ghToken() = Option(System.getenv("UPLOAD_GH_TOKEN")).getOrElse {
@@ -1133,37 +1256,144 @@ object ci extends Module {
       val scalaVersions = Seq(
         ScalaVersions.scala212,
         ScalaVersions.scala213,
+        ScalaVersions.scala3Compat,
         ScalaVersions.scala3Latest
       )
-      val launchers = scalaVersions.map { sv =>
+      val isSnapshot = almondVersion.endsWith("-SNAPSHOT")
+      // nightly launchers come from the snapshots published by the release job
+      val snapshotRepoArgs =
+        if (isSnapshot) Seq("-r", AlmondRepositories.mavenSnapshots)
+        else Nil
+      val launchers = scalaVersions.flatMap { sv =>
         val sbv    = sv.split('.').take(2).mkString(".")
         val suffix = ScalaVersions.binarySuffix(sv)
-        val output = Task.dest / s"launcher-$sv"
-        os.proc(
-          "cs",
-          "bootstrap",
-          "--no-default",
-          "-r",
-          "central",
-          "-r",
-          "jitpack",
-          s"sh.almond:scala-kernel_$suffix:$almondVersion",
-          "--shared",
-          s"sh.almond:scala-kernel-api_$suffix",
-          "--scala",
-          sv,
-          "-o",
-          PathRef.toAbsString(output)
-        ).call(stdin = os.Inherit, stdout = os.Inherit)
+        // We publish modules per binary Scala version, whose dependencies pull Scala JARs of
+        // various versions. Like our own launchers (see AlmondForcedScalaVersion), force
+        // them all to sv, which --scala alone does only for scala-library.
+        val forceScalaArgs = AlmondForcedScalaVersion.scalaModules(sv).flatMap { (org, name) =>
+          Seq("-V", s"$org:$name:$sv")
+        }
+        def bootstrap(output: os.Path, extraArgs: String*): Unit =
+          os.proc(
+            "cs",
+            "bootstrap",
+            "--no-default",
+            "-r",
+            "central",
+            snapshotRepoArgs,
+            s"sh.almond:scala-kernel_$suffix:$almondVersion",
+            "--shared",
+            s"sh.almond:scala-kernel-api_$suffix",
+            "--scala",
+            sv,
+            forceScalaArgs,
+            extraArgs,
+            "-o",
+            output
+          ).call(stdin = os.Inherit, stdout = os.Inherit)
 
-        (output, s"almond-scala-$sbv")
+        val output = Task.dest / s"launcher-$sv"
+        bootstrap(output)
+
+        // Same launcher, but with a Windows bat preamble rather than a sh one.
+        // cs bootstrap --bat only writes .bat files calling a separate launcher, so we
+        // prepend the preamble to a preamble-less launcher ourselves.
+        val jar = Task.dest / s"launcher-$sv.jar"
+        bootstrap(jar, "--preamble=false")
+        val batOutput = Task.dest / s"launcher-$sv.bat"
+        os.write.over(
+          batOutput,
+          coursier.launcher.Preamble().withKind(coursier.launcher.Preamble.Kind.Bat).value ++
+            os.read.bytes(jar)
+        )
+
+        Seq(
+          (output, s"almond-scala-$sbv"),
+          (batOutput, s"almond-scala-$sbv.bat")
+        )
       }
+
+      // Archive for SDKMAN, which expects a zip with a single almond-<version> directory,
+      // with executables under its bin directory
+      val sdkmanDirName = s"almond-$almondVersion"
+      val sdkmanBinDir  = Task.dest / "sdkman" / sdkmanDirName / "bin"
+      os.remove.all(sdkmanBinDir / os.up)
+      for ((launcher, name) <- launchers)
+        os.copy(launcher, sdkmanBinDir / name, createFolders = true)
+      val sdkmanZip = Task.dest / sdkmanZipName(almondVersion)
+      os.remove(sdkmanZip)
+      os.zip(
+        sdkmanZip,
+        Seq(sdkmanBinDir / os.up -> os.sub / sdkmanDirName),
+        preserveMtimes = true
+      )
+
       val (tag, overwriteAssets) =
-        if (almondVersion.endsWith("-SNAPSHOT")) ("nightly", true)
+        if (isSnapshot) ("nightly", true)
         else ("v" + almondVersion, false)
       Upload.upload(ghOrg, ghName, ghToken(), tag, dryRun = false, overwrite = overwriteAssets)(
-        launchers*
+        launchers :+ (sdkmanZip, sdkmanZip.last)*
       )
+    }
+
+  /** Publishes the SDKMAN archive uploaded by [[uploadLaunchers]] to SDKMAN, via its State API
+    * (https://github.com/sdkman/sdkman-state/wiki/Vendor-API-Integration-Guide).
+    *
+    * This creates or updates the version on SDKMAN, so this can be run again for the same version.
+    */
+  def publishSdkman(almondVersion: String = AlmondPublishModule.computeBuildVersion()) =
+    Task.Command {
+      def env(name: String) = Task.env.get(name).filter(_.nonEmpty).getOrElse {
+        sys.error(s"$name not set")
+      }
+      val email    = env("SDKMAN_VENDOR_EMAIL")
+      val password = env("SDKMAN_VENDOR_PASSWORD")
+      if (almondVersion.endsWith("-SNAPSHOT"))
+        sys.error(s"Not publishing snapshot version $almondVersion to SDKMAN")
+
+      val url =
+        s"https://github.com/$ghOrg/$ghName/releases/download/v$almondVersion/${sdkmanZipName(almondVersion)}"
+
+      // Also ensures the archive was actually uploaded, and is a valid zip
+      System.err.println(s"Downloading $url")
+      val zipContent = requests.get(url, readTimeout = 60000).bytes
+      val zip        = Task.dest / sdkmanZipName(almondVersion)
+      os.write.over(zip, zipContent)
+      val zf = new java.util.zip.ZipFile(zip.toIO)
+      try assert(zf.size() > 0, s"$url is an empty zip")
+      finally zf.close()
+      val sha256 = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(zipContent)
+        .map(b => f"$b%02x")
+        .mkString
+
+      // Tokens are valid for 10 minutes, plenty for us
+      val token = ujson.read(
+        requests.post(
+          "https://state.sdkman.io/login",
+          data = ujson.Obj("email" -> email, "password" -> password)
+        ).text()
+      )("token").str
+
+      // SDKMAN makes the version with the "lts" tag the default one - give it to stable
+      // versions only, release candidates and such are only listed
+      val isStable = almondVersion.matches("\\d+\\.\\d+\\.\\d+")
+      val sdkmanVersion = ujson.Obj(
+        "candidate" -> "almond",
+        "version"   -> almondVersion,
+        "platform"  -> "UNIVERSAL",
+        "url"       -> url,
+        "sha256sum" -> sha256
+      )
+      if (isStable)
+        sdkmanVersion("tags") = ujson.Arr("lts")
+      System.err.println(s"Publishing ${sdkmanVersion.render(indent = 2)}")
+      requests.post(
+        "https://state.sdkman.io/versions",
+        auth = requests.RequestAuth.Bearer(token),
+        data = requests.RequestBlob.ByteSourceRequestBlob(sdkmanVersion)
+      )
+      System.err.println(s"Published almond $almondVersion to SDKMAN")
     }
 }
 
@@ -1173,6 +1403,18 @@ object dummy extends Module {
     def scalaVersion = ScalaVersions.scala212
     def mvnDeps = super.mvnDeps() ++ Seq(
       Deps.ammoniteSpark
+    )
+  }
+  // dummy module to get Scala Steward updates for the modules living in their own repositories
+  object `helper-projects` extends ScalaModule {
+    def scalaVersion = ScalaVersions.scala213
+    // for jvm-repr, a dependency of almond-scalapy and json-api-jackson
+    def repositories = Task {
+      super.repositories() ++ Seq("jitpack")
+    }
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      Deps.almondJackson,
+      Deps.almondScalapy
     )
   }
 }

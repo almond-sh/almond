@@ -184,6 +184,19 @@ kernel.publish.updateHtml("Got all items", id)
 
 ![](/demo/updatable.gif)
 
+### Clearing output
+
+`clearOutput` clears the output of the current cell. Passing `waitForNewOutput = true` makes
+the front-end wait for new output before clearing the former one, which avoids flickering.
+
+```scala
+for (i <- 1 to 10) {
+  kernel.publish.clearOutput(waitForNewOutput = true)
+  kernel.publish.html(s"Got item <b>#$i</b>")
+  Thread.sleep(200L)
+}
+```
+
 ### After Interrupt Hooks
 
 After Interrupt Hooks allow clean-up code to be run after cell

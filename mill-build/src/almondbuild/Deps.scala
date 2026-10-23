@@ -29,6 +29,25 @@ object Deps {
       }
   }
 
+  // Lives in its own repository (https://github.com/almond-sh/almond-scalapy) since 0.15.0. The
+  // kernel adds it automatically, with this version by default, when ScalaPy is loaded.
+  def almondScalapy = mvn"sh.almond::almond-scalapy:0.15.0"
+  // Lives in its own repository (https://github.com/almond-sh/almond-jackson) since 0.15.0. The
+  // kernel picks this version for it by default, when users load it with the `_` version.
+  def almondJackson = mvn"sh.almond::json-api-jackson:0.15.0"
+
+  // All the modules of our Ammonite fork that we get, including those we only depend on
+  // transitively
+  def ammoniteModules =
+    Seq(
+      "ammonite-util",
+      "ammonite-terminal",
+      "ammonite-repl-api",
+      "ammonite-repl",
+      "ammonite-compiler"
+    )
+      .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}")
+
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
@@ -41,8 +60,9 @@ object Deps {
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
   // Version of the cs launcher the integration tests drive, on all platforms
   def csVersion           = Versions.coursier
-  def coursierApi         = mvn"io.get-coursier:interface:1.0.29"
+  def coursierApi         = mvn"io.get-coursier:interface:1.0.30"
   def coursierLauncher    = mvn"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
+  def coursierJvm         = mvn"io.get-coursier:coursier-jvm_2.13:${Versions.coursier}"
   def coursierPaths       = mvn"io.get-coursier:coursier-paths:${Versions.coursier}"
   def coursierVersions    = mvn"io.get-coursier::versions:0.6.1"
   def dependency          = mvn"io.get-coursier::dependency:0.3.3"
@@ -57,8 +77,7 @@ object Deps {
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
-  def jvmRepr = mvn"com.github.jupyter:jvm-repr:0.4.0"
-  def mdoc    = mvn"org.scalameta::mdoc:2.9.2"
+  def mdoc = mvn"org.scalameta::mdoc:2.9.2"
   // mtags is cross-published for full Scala versions, but only for the latest ones of each
   // binary version, while the modules we publish are built with the oldest full Scala version
   // we support (2.12.8, 2.13.3, …). For those, we depend on the mtags of the oldest full Scala
@@ -82,8 +101,9 @@ object Deps {
   def pprint                   = mvn"com.lihaoyi::pprint:0.9.6"
   def scalafmtDynamic          = mvn"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaparse               = mvn"com.lihaoyi::scalaparse:3.1.1"
-  def scalapy                  = mvn"me.shadaj::scalapy-core:0.5.2"
   def scalaReflect(sv: String) = mvn"org.scala-lang:scala-reflect:$sv"
+  // Version of the Scala CLI launcher some integration tests run
+  def scalaCliVersion = "1.0.1"
   // Ammonite modules are cross-published for binary Scala versions only, and pull the Scala
   // compiler of the oldest Scala version of their binary version. Depending on the compiler
   // explicitly ensures we get the one of the Scala version we're built with, both here and

@@ -49,6 +49,13 @@ Whether to install this kernel system-wide or not.
 System-wide kernels get installed under `/usr/local/share/jupyter/kernels` (Linux and OS X). User-wide ones
 (default) under `~/.local/share/jupyter/kernels` (Linux) or `~/Library/Jupyter/kernels` (Mac).
 
+On Windows, like Jupyter itself since jupyter_core 5.8, system-wide kernels get installed under
+the `share\jupyter\kernels` directory of the Python environment of Jupyter, like
+`C:\Python313\share\jupyter\kernels`. Almond infers that environment from `CONDA_PREFIX` or from
+the location of the `jupyter` command (see `--jupyter-command`). `%PROGRAMDATA%\jupyter\kernels`
+is only used if the `JUPYTER_USE_PROGRAMDATA` environment variable is set, as non-admin users
+can create directories under `%PROGRAMDATA%`.
+
 #### `--jupyter-path`
 Path to your Jupyter kernels directory, e.g. `/opt/conda/share/jupyter/kernels`
 
@@ -95,29 +102,49 @@ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --insta
 
 Add `--force` when replacing an existing kernel installation.
 
-To limit automatic output for values as well, use `--last-value-only`.
+To limit automatic output for values as well, use `--output-style`.
 
-#### `--last-value-only`
+#### `--output-style`
 
-Display only the last value defined or computed in each cell, reducing the output
+Change how the results of cells are displayed, for example to reduce the output
 chatter described in [issue #256](https://github.com/almond-sh/almond/issues/256).
-Disabled by default; pass `--last-value-only=false` to restore the usual output.
+Accepts:
+- `default`: display each value defined or computed in a cell, along with its name
+  and type (`a: Int = 1`)
+- `last`: only display the last value defined or computed in a cell, along with its
+  name and type. Expressions (not assigned to a `val`) with a rich display, such as
+  `Markdown("…")` or `Html("…")`, are still shown
+- `python`: display results like the Python kernel does, that is only display the
+  value of the last expression of a cell, without its name and type
 
 Enable it when installing the kernel:
 
 ```bash
-cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --last-value-only
+cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --output-style python
 ```
 
 The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
 also accepts this option directly:
 
 ```bash
-cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --install --last-value-only
+cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --install --output-style python
 ```
 
 Add `--force` when replacing an existing kernel installation, then start a new
 kernel session.
+
+The output style can also be changed at any point in a session, for the cells that
+follow, with a using directive:
+
+```scala
+//> using outputStyle python
+```
+
+With any output style, all statements still execute, and the variables they define
+remain available in subsequent cells. Explicit output, such as `println` and
+`display()` calls, is still shown.
+
+##### `last`
 
 For example, this cell displays only `second: Int = 2`:
 
@@ -126,14 +153,42 @@ val first = 1
 val second = first + 1
 ```
 
-All statements still execute, and both variables remain available in subsequent
-cells. Import statements and class, method, and type definitions are not echoed.
-Trailing imports or definitions do not replace the last value. If the last value
-has type `Unit`, no automatic result is displayed.
+Import statements and class, method, and type definitions are not echoed. Trailing
+imports or definitions do not replace the last value. If the last value has type
+`Unit`, no automatic result is displayed. Rich values such as `almond.display.Html`
+are displayed automatically only when they are the last value in the cell.
 
-Explicit output, such as `println` and `display()` calls, is still shown. Rich
-values such as `almond.display.Html` are displayed automatically only when they
-are the last value in the cell.
+##### `python`
+
+For example, this cell displays nothing:
+
+```scala
+val records = (0 until 10).map(i => (i, i * i))
+val evenRecords = records.filter(_._1 % 2 == 0)
+```
+
+and this one only displays `Vector((0, 0), (2, 4))`:
+
+```scala
+evenRecords.take(2)
+```
+
+Nothing is displayed for `val` definitions, imports, or class, method, and type
+definitions, nor for expressions that are not the last statement of a cell. Like
+in the Python kernel, the value of the last expression isn't displayed either if
+the cell ends with a semicolon:
+
+```scala
+evenRecords.take(2);
+```
+
+If the last expression has type `Unit`, nothing is displayed. Rich values such as
+`almond.display.Html` are displayed automatically when they are the last
+expression of the cell.
+
+#### `--last-value-only`
+
+Kept for compatibility, same as `--output-style last`.
 
 #### `--predef-code`
 
@@ -168,6 +223,18 @@ added by default.) Use like
 --extra-repository https://oss.sonatype.org/content/repositories/snapshots
 --extra-repository sonatype:staging
 ```
+
+#### `--dependency`
+
+Add dependencies to the class path of user code when a kernel starts, before predef code
+and cells are run. Accepts the same dependency syntax as `//> using dep` directives,
+can be repeated, and is also available as `--dep`. Use like
+```bash
+--dependency org.typelevel::cats-core:2.12.0
+--dep com.lihaoyi::os-lib:0.11.4
+```
+Dependencies are resolved with the repositories passed via `--extra-repository`.
+The kernel fails to start if they can't be resolved.
 
 #### `--auto-dependency`
 
@@ -220,6 +287,24 @@ Add entries to the Help menu (Jupyter classic). Use like
 ```
 
 #### `--connection-file`
+
+#### `--username`
+
+Set the user name in the headers of the messages sent by the kernel. Defaults to
+the name of the user running the kernel. Pass it along `--install` to write it in the kernel spec, like
+```bash
+--install --username jupyter
+```
+
+#### `--max-message-size`
+
+Maximum size of the ZeroMQ messages accepted by the kernel, `500m` by default. Peers sending
+larger messages get disconnected. Accepts sizes in bytes, optionally with a `k`, `m`, or `g` suffix
+(powers of 1024), or `none` to accept messages of any size. Pass it along `--install` to write it
+in the kernel spec, like
+```bash
+--install --max-message-size 2g
+```
 
 ## Other
 

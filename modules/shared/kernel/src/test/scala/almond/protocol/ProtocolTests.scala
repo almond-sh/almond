@@ -37,6 +37,17 @@ object ProtocolTests extends TestSuite {
       }
     }
 
+    test("is_complete_reply") {
+      test("indent for incomplete code") {
+        val json = writeToString(IsComplete.Reply("incomplete", Some("  ")))
+        assert(json == """{"status":"incomplete","indent":"  "}""")
+      }
+      test("no indent otherwise") {
+        val json = writeToString(IsComplete.Reply("complete"))
+        assert(json == """{"status":"complete"}""")
+      }
+    }
+
     test("complete_reply") {
       test("preserve matches field in json reply even if no match found") {
         val reply = Complete.Reply(
@@ -47,6 +58,101 @@ object ProtocolTests extends TestSuite {
         )
         val json = writeToString(reply)
         assert(json.contains(""""matches":[]"""))
+      }
+    }
+
+    test("replies have a status") {
+      val okStatus = """"status":"ok""""
+      test("shutdown_reply") {
+        val json = writeToString(Shutdown.Reply(restart = false))(Shutdown.replyCodec)
+        assert(json == """{"restart":false,"status":"ok"}""")
+      }
+      test("interrupt_reply") {
+        val json = writeToString(Interrupt.Reply())(Interrupt.replyCodec)
+        assert(json == """{"status":"ok"}""")
+      }
+      test("history_reply") {
+        val simple = writeToString[History.Reply](History.Reply.Simple(Nil))(History.replyCodec)
+        assert(simple == """{"history":[],"status":"ok"}""")
+        val withOutput = writeToString[History.Reply](
+          History.Reply.WithOutput(List((1, 2, ("in", "out"))))
+        )(History.replyCodec)
+        assert(withOutput.contains(okStatus))
+      }
+      test("comm_info_reply") {
+        val json = writeToString(CommInfo.Reply(Map.empty[String, CommInfo.Info]))(
+          CommInfo.replyCodec
+        )
+        assert(json == """{"comms":{},"status":"ok"}""")
+      }
+      test("connect_reply") {
+        val json = writeToString(Connect.Reply(1, 2, 3, 4, 5))(Connect.replyCodec)
+        assert(
+          json ==
+            """{"shell_port":1,"iopub_port":2,"stdin_port":3,"hb_port":4,"control_port":5,"status":"ok"}"""
+        )
+      }
+    }
+
+    test("execute_reply") {
+      test("preserve empty user_expressions field in json reply") {
+        val reply: Execute.Reply = Execute.Reply.Success(1, Map.empty, Nil)
+        val json                 = writeToString(reply)(Execute.replyCodec)
+        assert(json.contains(""""user_expressions":{}"""))
+        val decoded = readFromString(json)(Execute.replyCodec)
+        assert(decoded == reply)
+      }
+      test("preserve empty traceback field in errored json reply") {
+        val reply: Execute.Reply = Execute.Reply.Error("Error", "oops", Nil, 1)
+        val json                 = writeToString(reply)(Execute.replyCodec)
+        assert(json.contains(""""traceback":[]"""))
+        val decoded = readFromString(json)(Execute.replyCodec)
+        assert(decoded == reply)
+      }
+    }
+
+    test("error") {
+      test("preserve empty traceback field") {
+        val error = Execute.Error("Error", "oops", Nil)
+        val json  = writeToString(error)(Execute.errorCodec)
+        assert(json == """{"ename":"Error","evalue":"oops","traceback":[]}""")
+        val decoded = readFromString(json)(Execute.errorCodec)
+        assert(decoded == error)
+      }
+      test("read error without traceback") {
+        val decoded = readFromString("""{"ename":"Error","evalue":"oops"}""")(Execute.errorCodec)
+        assert(decoded == Execute.Error("Error", "oops", Nil))
+      }
+    }
+
+    test("kernel_info_reply") {
+      val info = KernelInfo(
+        implementation = "test",
+        implementation_version = "0.1",
+        language_info = KernelInfo.LanguageInfo(
+          name = "test",
+          version = "0.1",
+          mimetype = "text/x-test",
+          file_extension = ".test",
+          nbconvert_exporter = "script"
+        ),
+        banner = "Test kernel"
+      )
+      val json = writeToString(info)
+      test("protocol version") {
+        assert(json.contains(""""protocol_version":"5.5""""))
+      }
+      test("empty supported_features") {
+        assert(json.contains(""""supported_features":[]"""))
+      }
+      test("no help_links if empty") {
+        assert(!json.contains("help_links"))
+        assert(!json.contains("pygments_lexer"))
+      }
+      test("read reply without supported_features") {
+        val json0   = json.replace(""","supported_features":[]""", "")
+        val decoded = readFromString(json0)(KernelInfo.codec)
+        assert(decoded == info)
       }
     }
   }

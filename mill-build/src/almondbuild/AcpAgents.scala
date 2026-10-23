@@ -1,7 +1,5 @@
 package almondbuild
 
-import mill.api.PathRef
-
 import java.io.File
 
 import scala.util.Properties
@@ -61,7 +59,7 @@ object AcpAgents {
         os.copy.over(packageLock, dest / "package-lock.json", createFolders = true)
         System.err.println("Installing the ACP agents for Jupyter AI")
         os.proc(
-          PathRef.toResolvedPathString(npm0),
+          npm0,
           "ci",
           "--no-audit",
           "--no-fund",

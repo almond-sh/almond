@@ -11,8 +11,21 @@ object Connect {
     shell_port: Int,
     iopub_port: Int,
     stdin_port: Int,
-    hb_port: Int
+    hb_port: Int,
+    control_port: Int,
+    status: String // no default value here for the value not to be swallowed by the JSON encoder
   )
+
+  object Reply {
+    def apply(
+      shell_port: Int,
+      iopub_port: Int,
+      stdin_port: Int,
+      hb_port: Int,
+      control_port: Int
+    ): Reply =
+      Reply(shell_port, iopub_port, stdin_port, hb_port, control_port, "ok")
+  }
 
   def requestType = MessageType[Request.type]("connect_request")
   def replyType   = MessageType[Reply]("connect_reply")

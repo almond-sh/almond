@@ -55,6 +55,15 @@ object ScalaVersions {
     (scala3 ++ scala2Subset).sortBy(Version(_))(using Ordering[Version].reverse)
   }
 
+  /** The Scala versions the example notebooks of `examples` are run with.
+    *
+    * The notebooks there record the outputs of the first one, the reference version, that's not
+    * bumped along with [[scala212]] so that they don't need to be updated every time. The other
+    * ones get the same outputs, but for the notebooks that have a copy for their binary version in
+    * `examples/scala-2.13` or `examples/scala-3`, that are run and compared with instead.
+    */
+  val examples = Seq("2.12.20", scala213, scala3Latest)
+
   /** The [[binaries]] entry a full Scala version's modules are built under. */
   def binary(sv: String) =
     if (sv.startsWith("2.12.")) scala212Oldest
@@ -88,6 +97,22 @@ object ScalaVersions {
       (sv.startsWith("2.13.") && Version(sv) < Version("2.13.11"))
     if (needsJvm17) Some("17")
     else None
+  }
+
+  /** The oldest major Java version kernels running a full Scala version support, as a coursier JVM
+    * id (that gets the JVM of coursier's default vendor). The tests run their kernels on it, so
+    * that they check that version is actually supported.
+    *
+    * The modules we publish target Java 8 (see [[almondbuild.modules.AlmondJvmTarget]]), but some
+    * of the classes the kernels load need more recent JVMs: those of Scala 3.8 and later need Java
+    * 17, and so do the classes of our Ammonite fork specific to Scala 3.4.2 and later, while its
+    * other Scala 3 classes, and those specific to Scala 2.13.12 and later, need Java 11.
+    */
+  def oldestJvmFor(sv: String): String = {
+    val v = Version(sv)
+    if (sv.startsWith("3.") && v >= Version("3.4.2")) "17"
+    else if (sv.startsWith("3.") || (sv.startsWith("2.13.") && v >= Version("2.13.12"))) "11"
+    else "8"
   }
 
 }

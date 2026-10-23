@@ -11,12 +11,24 @@ dependencies = [
   "nbconvert>=7.17",
 ]
 
-# Only installed by the dev.jupyter* commands starting JupyterLab (via `uv run --group ai`),
-# not by the example tests. The Claude and Codex personas of Jupyter AI also need the
-# `claude-agent-acp` and `codex-acp` commands, installed by the build from `acp-agents/`.
+# Only installed by the dev.jupyter* commands (via `uv run --group lab --group ai --group xeus`
+# for JupyterLab, `uv run --group xeus` for the console), not by the example tests. The Claude
+# and Codex personas of Jupyter AI also need the `claude-agent-acp` and `codex-acp` commands,
+# installed by the build from `acp-agents/`.
 [dependency-groups]
+# JupyterLab extensions: the variable inspector, which supports almond kernels started with
+# --variable-inspector
+lab = [
+  "lckr-jupyterlab-variableinspector>=3.2",
+]
 ai = [
   "jupyter-ai>=3",
+]
+# The xeus-python kernel (built on xeus and xeus-zmq), to compare almond with. Its wheels ship
+# the "xpython" kernel spec, that Jupyter picks up from the environment. There are no wheels for
+# Linux ARM64.
+xeus = [
+  "xeus-python>=0.19; sys_platform != 'linux' or platform_machine != 'aarch64'",
 ]
 
 [tool.uv]

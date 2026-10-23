@@ -1,12 +1,13 @@
 package almond.kernel.install
 
-import java.io.{ByteArrayOutputStream, File, IOException, InputStream}
+import java.io.{ByteArrayOutputStream, File, InputStream}
 import java.net.{URI, URL}
-import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.file.{Files, LinkOption, Path, Paths, StandardCopyOption}
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
 
-import almond.kernel.util.JupyterPath
+import almond.kernel.util.{JupyterPath, OS}
 import almond.protocol.{ActualMap, KernelSpec}
 
 import scala.annotation.tailrec
@@ -16,8 +17,9 @@ object Install {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
 
+  // Doesn't follow symbolic links: these get deleted, not what they point to
   private def deleteRecursively(f: Path): Unit = {
-    if (Files.isDirectory(f))
+    if (Files.isDirectory(f, LinkOption.NOFOLLOW_LINKS))
       Files.list(f)
         .iterator()
         .asScala
@@ -25,6 +27,13 @@ object Install {
 
     Files.deleteIfExists(f)
   }
+
+  // Same rule as jupyter_client for kernel names, minus "." and "..", which would
+  // make us install the kernel in the kernels directory itself, or in its parent
+  private val kernelIdPattern = "^[a-zA-Z0-9._-]+$".r.pattern
+
+  def validKernelId(kernelId: String): Boolean =
+    kernelIdPattern.matcher(kernelId).matches() && kernelId != "." && kernelId != ".."
 
   private def readFully(is: => InputStream): Array[Byte] = {
 
@@ -62,6 +71,9 @@ object Install {
     copyLauncher: Boolean = false
   ): Path = {
 
+    if (!validKernelId(kernelId))
+      throw new InstallException.InvalidKernelId(kernelId)
+
     // About the logo, don't know if other formats / sizes are allowed.
 
     // Ensure we can read that one upfront
@@ -77,16 +89,19 @@ object Install {
 
     val dir = jupyterDir.resolve(kernelId)
 
-    if (Files.exists(dir))
-      if (force)
+    if (Files.exists(dir, LinkOption.NOFOLLOW_LINKS))
+      if (!force)
+        throw new InstallException.InstallDirAlreadyExists(dir)
+      else if (Files.isSymbolicLink(dir))
+        // only removing the link, not what it points to
+        Files.delete(dir)
+      else
         // not deleting dir itself - on Windows, sometimes running into java.nio.file.AccessDeniedException in
         // createDirectories below else
         Files.list(dir)
           .iterator()
           .asScala
           .foreach(deleteRecursively)
-      else
-        throw new InstallException.InstallDirAlreadyExists(dir)
 
     Files.createDirectories(dir)
 
@@ -109,16 +124,12 @@ object Install {
               throw new Exception(
                 s"Launcher $launcher0 in kernel spec command is not a regular file"
               )
-            try Files.copy(
-                Paths.get(launcher0),
-                dest,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.COPY_ATTRIBUTES
-              )
-            catch {
-              case _: IOException =>
-                Files.copy(Paths.get(launcher0), dest, StandardCopyOption.REPLACE_EXISTING)
-            }
+            // Not using COPY_ATTRIBUTES, as it would copy the owner of the source too. When
+            // installing as root a launcher bootstrapped by a regular user, that user would end up
+            // owning a launcher run by all users.
+            Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING)
+            if (dest.getFileSystem.supportedFileAttributeViews.contains("posix"))
+              Files.setPosixFilePermissions(dest, PosixFilePermissions.fromString("rwxr-xr-x"))
             spec.copy(
               argv = spec.argv.updated(pos, spec.argv(pos).replace(launcher0, dest.toString))
             )
@@ -147,6 +158,18 @@ object Install {
     }
   }
 
+  /** Normalizes the value of the `coursier.mainJar` property to a path.
+    *
+    * Paths.get throws if given paths like "/C:/foo" on Windows, hence the URI stuff for absolute
+    * paths. The multi-argument URI constructor escapes characters that are illegal in URIs, like
+    * spaces.
+    */
+  def mainJarPath(mainJar: String): String =
+    if (mainJar.startsWith("/"))
+      Paths.get(new URI("file", null, mainJar, null)).toString
+    else
+      mainJar
+
   /** Gets the command that launched the current application if possible.
     *
     * Works if the coursier launcher is involved.
@@ -160,13 +183,7 @@ object Install {
   ): Option[List[String]] =
     for {
       mainJar <- sys.props.get("coursier.mainJar")
-      mainJar0 =
-        if (mainJar.startsWith("/"))
-          // Paths.get throws if given paths like "C:\\foo" on Windows, without
-          // this URI stuff
-          Paths.get(new URI("file://" + mainJar)).toString
-        else
-          mainJar // that case shouldn't happen
+      mainJar0 = mainJarPath(mainJar)
       mainArgs = Iterator.from(0)
         .map(i => s"coursier.main.arg-$i")
         .map(sys.props.get)
@@ -261,16 +278,50 @@ object Install {
     extraStartupClassPath: Seq[String]
   ): Path = {
 
+    val jupyterCommand = options.jupyterCommand.getOrElse(JupyterDirectories.defaultCommand)
+    val jupyterDirsOpt =
+      if (jupyterCommand.trim.isEmpty)
+        if (options.requireJupyter)
+          throw new InstallException.CannotGetJupyterDirectories("empty jupyter command")
+        else
+          None
+      else
+        JupyterDirectories.get(jupyterCommand) match {
+          case Right(dirs) => Some(dirs)
+          case Left(err) if options.requireJupyter =>
+            throw new InstallException.CannotGetJupyterDirectories(
+              s"running '$jupyterCommand' failed: $err"
+            )
+          case Left(err) =>
+            warn(
+              s"Warning: could not get the Jupyter directories via '$jupyterCommand': $err" +
+                System.lineSeparator() +
+                "Using default Jupyter directories instead. Pass --jupyter-command with the path " +
+                "of the jupyter command of your Jupyter installation, or --jupyter-path, " +
+                "if Jupyter doesn't find the kernel."
+            )
+            None
+        }
+
     val path =
       options.jupyterPath match {
         case Some(p) => Left(Paths.get(p))
         case None =>
-          Right(
-            if (options.global)
-              JupyterPath.System
+          if (options.global)
+            if (OS.current == OS.Windows && JupyterPath.System.paths.isEmpty)
+              // No system-wide directory on Windows if we don't know the Python prefix of
+              // Jupyter (see JupyterPaths.systemPaths), so we try to infer it from jupyter.exe
+              jupyterDirsOpt.flatMap(_.envKernelsDir) match {
+                case Some(dir) => Left(dir)
+                case None      => throw new InstallException.CannotFindGlobalJupyterDirectory
+              }
             else
-              JupyterPath.User
-          )
+              Right(JupyterPath.System)
+          else
+            jupyterDirsOpt match {
+              case Some(dirs) => Left(dirs.userKernelsDir)
+              case None       => Right(JupyterPath.User)
+            }
       }
 
     val cmd =
@@ -283,7 +334,7 @@ object Install {
           if (options.arg.isEmpty)
             Install.currentAppCommand(
               extraStartupClassPath,
-              Set("--install", "--force", "--global").flatMap(s =>
+              Set("--install", "--force", "--global", "--require-jupyter").flatMap(s =>
                 Seq(s, s"$s=true")
               )
             ).getOrElse {
@@ -303,7 +354,7 @@ object Install {
           Some(Paths.get(f).toUri.toURL)
       }
 
-    Install.installIn(
+    val dir = Install.installIn(
       options.id.getOrElse(defaultId),
       KernelSpec(
         argv = (cmd ++ connectionFileArgs).toList,
@@ -317,6 +368,59 @@ object Install {
       force = options.force,
       copyLauncher = options.copyLauncher0
     )
+
+    for (dirs <- jupyterDirsOpt; message <- checkVisibility(dirs, dir))
+      warn(message)
+
+    dir
+  }
+
+  private def warn(message: String): Unit =
+    System.err.println(message)
+
+  private def samePath(a: Path, b: Path): Boolean =
+    a.toAbsolutePath.normalize == b.toAbsolutePath.normalize ||
+    Files.exists(a) && Files.exists(b) && Files.isSameFile(a, b)
+
+  /** Checks whether Jupyter is going to pick the kernel installed in `kernelDir`
+    *
+    * @return
+    *   a warning message, if Jupyter isn't going to pick it
+    */
+  def checkVisibility(dirs: JupyterDirectories, kernelDir: Path): Option[String] = {
+    val nl           = System.lineSeparator()
+    val kernelId     = kernelDir.getFileName.toString
+    val kernelsDir   = kernelDir.getParent
+    val kernelsDirs  = dirs.kernelsDirs
+    val kernelDirIdx = kernelsDirs.indexWhere(samePath(_, kernelsDir))
+    if (kernelDirIdx < 0) {
+      val hint = kernelsDirs.find(samePath(_, kernelsDir.resolve("kernels"))) match {
+        case Some(dir) =>
+          s"Did you mean to pass --jupyter-path $dir?"
+        case None =>
+          "Pass --jupyter-path with one of these directories to install the kernel there."
+      }
+      Some(
+        s"Warning: ${dirs.jupyter} doesn't look for kernels in $kernelsDir, so Jupyter might " +
+          s"not find this kernel. It looks for kernels in:" + nl +
+          kernelsDirs.map("  " + _ + nl).mkString +
+          hint
+      )
+    }
+    else {
+      // Jupyter picks the first kernel with a given id it finds
+      val shadowingKernelDirs = kernelsDirs
+        .take(kernelDirIdx)
+        .map(_.resolve(kernelId))
+        .filter(dir => Files.isRegularFile(dir.resolve("kernel.json")))
+      shadowingKernelDirs.headOption.map { shadowingKernelDir =>
+        s"Warning: another kernel with id $kernelId is installed in $shadowingKernelDir, which " +
+          s"${dirs.jupyter} looks at before $kernelsDir, so Jupyter is going to use that other " +
+          "kernel rather than this one. Remove that other kernel, pass --id to install this one " +
+          "under a different id, or pass " +
+          s"--jupyter-path ${shadowingKernelDir.getParent} --force to replace that other kernel."
+      }
+    }
   }
 
   def installOrError(

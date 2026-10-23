@@ -7,7 +7,6 @@ import ammonite.compiler.CompilerLifecycleManager
 import ammonite.compiler.iface
 
 class AlmondCompilerLifecycleManager(
-  rtCacheDir: Option[Path],
   headFrame: => ammonite.util.Frame,
   dependencyCompleteOpt: => Option[String => (Int, Seq[String])],
   classPathWhitelist: Set[Seq[String]],
@@ -16,12 +15,12 @@ class AlmondCompilerLifecycleManager(
   autoUpdateVars: Boolean,
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
+  outputStyle: () => almond.OutputStyle,
   outputDir: Option[Path],
   initialSettings: Seq[String],
   logCtx: LoggerContext,
   logCode: Boolean
 ) extends CompilerLifecycleManager(
-      rtCacheDir,
       headFrame,
       dependencyCompleteOpt,
       classPathWhitelist,
@@ -46,6 +45,7 @@ class AlmondCompilerLifecycleManager(
         autoUpdateVars,
         silentImports,
         variableInspectorEnabled,
+        outputStyle,
         logCtx,
         logCode
       )
@@ -53,6 +53,10 @@ class AlmondCompilerLifecycleManager(
 }
 
 object AlmondCompilerLifecycleManager {
+
+  /** The version of the compiler we run */
+  private[almond] def compilerVersion: String =
+    scala.util.Properties.versionNumberString
 
   private[almond] val isAtLeast_2_12_7 = {
     val v = scala.util.Properties.versionNumberString

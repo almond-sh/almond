@@ -64,6 +64,10 @@ abstract class Connection {
 
   /** [[Stream]] of [[Message]]s from the specified [[Channel]]s.
     *
+    * Each channel is read on its own, so that a channel that's slow to read from, or stuck, doesn't
+    * hold up the others. Messages of a given channel are emitted in order, but messages of
+    * different channels can be interleaved in any way.
+    *
     * @param channels:
     *   channels to get [[Message]]s from
     * @param pollingDelay:
@@ -75,9 +79,14 @@ abstract class Connection {
     pollingDelay: Duration = 1.second
   ): Stream[IO, (Channel, Message)] =
     Stream
-      .repeatEval(tryRead(channels, pollingDelay))
-      .takeWhile(_.forall(_.isRight))
-      .flatMap(t => Stream(t.toList.flatMap(_.toSeq): _*))
+      .emits(channels.distinct)
+      .map { channel =>
+        Stream
+          .repeatEval(tryRead(Seq(channel), pollingDelay))
+          .takeWhile(_.forall(_.isRight))
+          .flatMap(t => Stream(t.toList.flatMap(_.toSeq): _*))
+      }
+      .parJoinUnbounded
 
   /** Sink to send [[Message]]s to any [[Channel]].
     */

@@ -1,7 +1,7 @@
 package almond.protocol
 
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 
 final case class KernelInfo(
   status: String,           // "ok"
@@ -10,7 +10,8 @@ final case class KernelInfo(
   implementation_version: String, // X.Y.Z
   language_info: KernelInfo.LanguageInfo,
   banner: String,
-  help_links: Option[List[KernelInfo.Link]] = None
+  help_links: Option[List[KernelInfo.Link]] = None,
+  supported_features: List[String] = Nil // since protocol 5.5
 )
 
 object KernelInfo {
@@ -67,6 +68,11 @@ object KernelInfo {
   implicit val linkCodec: JsonValueCodec[Link] =
     JsonCodecMaker.make
   implicit val codec: JsonValueCodec[KernelInfo] =
-    JsonCodecMaker.make
+    // supported_features is required since protocol 5.5, even when empty
+    JsonCodecMaker.make(
+      CodecMakerConfig
+        .withTransientEmpty(false)
+        .withTransientDefault(false)
+    )
 
 }

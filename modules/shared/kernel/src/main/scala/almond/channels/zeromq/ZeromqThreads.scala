@@ -10,12 +10,43 @@ import org.zeromq.ZMQ
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.util.hashing.MurmurHash3
 
-final class ZeromqThreads(
+final class ZeromqThreads private (
   val channelEces: Channel => ExecutionContextExecutorService,
   val selectorOpenCloseEces: ExecutionContextExecutorService,
-  val pollingEces: ExecutionContextExecutorService,
-  val context: ZMQ.Context
+  private val pollingEcesOpt: Option[ExecutionContextExecutorService],
+  val context: ZMQ.Context,
+  val maxMessageSize: Option[Long]
 ) extends Product with Serializable with ZeromqThreadsCompat with AutoCloseable {
+
+  private def this(
+    channelEces: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEces: ExecutionContextExecutorService,
+    pollingEcesOpt: Option[ExecutionContextExecutorService],
+    context: ZMQ.Context
+  ) =
+    this(
+      channelEces,
+      selectorOpenCloseEces,
+      pollingEcesOpt,
+      context,
+      Some(ZeromqThreads.defaultMaxMessageSize)
+    )
+
+  def this(
+    channelEces: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEces: ExecutionContextExecutorService,
+    context: ZMQ.Context
+  ) =
+    this(channelEces, selectorOpenCloseEces, None, context)
+
+  @deprecated("pollingEces isn't used anymore, use the constructor not accepting it", "0.15.1")
+  def this(
+    channelEces: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEces: ExecutionContextExecutorService,
+    pollingEces: ExecutionContextExecutorService,
+    context: ZMQ.Context
+  ) =
+    this(channelEces, selectorOpenCloseEces, Some(pollingEces), context)
 
   @deprecated("Use the constructor accepting ExecutionContextExecutorService-s instead", "0.14.2")
   def this(
@@ -27,8 +58,32 @@ final class ZeromqThreads(
     this(
       c => ZeromqThreads.eces(ecs(c)),
       ZeromqThreads.eces(selectorOpenCloseEc),
-      ZeromqThreads.eces(pollingEc),
+      Some(ZeromqThreads.eces(pollingEc)),
       context
+    )
+
+  /** Not used by almond anymore
+    *
+    * If none was passed when creating this [[ZeromqThreads]], this is [[selectorOpenCloseEces]].
+    */
+  @deprecated("Not used anymore", "0.15.1")
+  def pollingEces: ExecutionContextExecutorService =
+    pollingEces0
+
+  private def pollingEces0: ExecutionContextExecutorService =
+    pollingEcesOpt.getOrElse(selectorOpenCloseEces)
+
+  /** Maximum size of the messages accepted by the sockets using this, [[scala.None]] for no limit
+    *
+    * Peers sending larger messages get disconnected.
+    */
+  def withMaxMessageSize(maxMessageSize: Option[Long]): ZeromqThreads =
+    new ZeromqThreads(
+      channelEces,
+      selectorOpenCloseEces,
+      pollingEcesOpt,
+      context,
+      maxMessageSize
     )
 
   override def canEqual(that: Any): Boolean =
@@ -38,7 +93,7 @@ final class ZeromqThreads(
     n match {
       case 0 => channelEces
       case 1 => selectorOpenCloseEces
-      case 2 => pollingEces
+      case 2 => pollingEces0
       case 3 => context
       case _ => throw new NoSuchElementException
     }
@@ -47,26 +102,28 @@ final class ZeromqThreads(
       val other = that.asInstanceOf[ZeromqThreads]
       channelEces == other.channelEces &&
       selectorOpenCloseEces == other.selectorOpenCloseEces &&
-      pollingEces == other.pollingEces &&
-      context == other.context
+      pollingEcesOpt == other.pollingEcesOpt &&
+      context == other.context &&
+      maxMessageSize == other.maxMessageSize
     }
   override def hashCode(): Int =
     MurmurHash3.productHash(this)
   override def toString(): String =
-    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces, $context)"
+    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces0, $context, $maxMessageSize)"
 
   @deprecated("Use with* methods instead", "0.14.2")
   def copy(
     ecs: Channel => ExecutionContext = c => channelEces(c),
     selectorOpenCloseEc: ExecutionContext = selectorOpenCloseEces,
-    pollingEc: ExecutionContext = pollingEces,
+    pollingEc: ExecutionContext = pollingEces0,
     context: ZMQ.Context = context
   ): ZeromqThreads =
     new ZeromqThreads(
       c => ZeromqThreads.eces(ecs(c)),
       ZeromqThreads.eces(selectorOpenCloseEc),
-      ZeromqThreads.eces(pollingEc),
-      context
+      Some(ZeromqThreads.eces(pollingEc)),
+      context,
+      maxMessageSize
     )
 
   def close(): Unit = {
@@ -78,7 +135,7 @@ final class ZeromqThreads(
     for (c <- Channel.channels)
       channelEces(c).shutdown()
     selectorOpenCloseEces.shutdown()
-    pollingEces.shutdown()
+    pollingEcesOpt.foreach(_.shutdown())
   }
 
   @deprecated("Use channelEces instead", "0.14.2")
@@ -88,11 +145,39 @@ final class ZeromqThreads(
   @deprecated("Use selectorOpenCloseEces instead", "0.14.2")
   def selectorOpenCloseEc: ExecutionContext = selectorOpenCloseEces
 
-  @deprecated("Use pollingEces instead", "0.14.2")
-  def pollingEc: ExecutionContext = pollingEces
+  @deprecated("Not used anymore", "0.14.2")
+  def pollingEc: ExecutionContext = pollingEces0
 }
 
 object ZeromqThreads extends ZeromqThreadsCompat.Companion {
+
+  /** Default maximum size of incoming messages (500 MiB) */
+  def defaultMaxMessageSize: Long = 500L * 1024L * 1024L
+
+  /** Parses a size, like "500m", "2g", "1048576", or "none" for no limit
+    *
+    * Suffixes (k, m, g, optionally followed by b or ib) are powers of 1024.
+    */
+  def parseMaxMessageSize(input: String): Either[String, Option[Long]] = {
+    val input0 = input.trim.toLowerCase(java.util.Locale.ROOT)
+    if (input0 == "none" || input0 == "unlimited" || input0 == "-1") Right(None)
+    else {
+      val (num, factor) = input0.stripSuffix("ib").stripSuffix("b") match {
+        case s if s.endsWith("k") => (s.dropRight(1), 1024L)
+        case s if s.endsWith("m") => (s.dropRight(1), 1024L * 1024L)
+        case s if s.endsWith("g") => (s.dropRight(1), 1024L * 1024L * 1024L)
+        case s                    => (s, 1L)
+      }
+      val sizeOpt =
+        if (num.nonEmpty && num.forall(_.isDigit))
+          scala.util.Try(Math.multiplyExact(num.toLong, factor)).toOption
+        else
+          None
+      sizeOpt.filter(_ > 0L).map(Some(_)).toRight(
+        s"Malformed size '$input' (expected something like 500m, 2g, 1048576, or none)"
+      )
+    }
+  }
 
   private def eces(ec: ExecutionContext): ExecutionContextExecutorService =
     ec match {
@@ -137,10 +222,11 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
     new ZeromqThreads(
       c => eces(ecs(c)),
       eces(selectorOpenCloseEc),
-      eces(pollingEc),
+      Some(eces(pollingEc)),
       context
     )
 
+  @deprecated("pollingEc isn't used anymore, use the override not accepting it", "0.15.1")
   def apply(
     ecs: Channel => ExecutionContextExecutorService,
     selectorOpenCloseEc: ExecutionContextExecutorService,
@@ -150,7 +236,18 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
     new ZeromqThreads(
       ecs,
       selectorOpenCloseEc,
-      pollingEc,
+      Some(pollingEc),
+      context
+    )
+
+  def apply(
+    ecs: Channel => ExecutionContextExecutorService,
+    selectorOpenCloseEc: ExecutionContextExecutorService,
+    context: ZMQ.Context
+  ): ZeromqThreads =
+    new ZeromqThreads(
+      ecs,
+      selectorOpenCloseEc,
       context
     )
 
@@ -161,9 +258,6 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
       2,
       daemonThreadFactory(s"$name-zeromq-open-close")
     ))
-    val zeromqPollingEc = ExecutionContext.fromExecutorService(
-      Executors.newSingleThreadExecutor(daemonThreadFactory(s"$name-zeromq-polling"))
-    )
     val zeromqChannelEcs = Channel.channels.map(c =>
       c -> ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor(daemonThreadFactory(s"$name-zeromq-$c"))
@@ -173,7 +267,6 @@ object ZeromqThreads extends ZeromqThreadsCompat.Companion {
     ZeromqThreads(
       zeromqChannelEcs,
       zeromqOpenCloseEc,
-      zeromqPollingEc,
       ctx
     )
   }

@@ -52,6 +52,18 @@ object Tests {
       )
     }
 
+  def clearOutput()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """kernel.publish.html("<b>foo</b>")
+          |kernel.publish.clearOutput()
+          |kernel.publish.clearOutput(waitForNewOutput = true)""".stripMargin,
+        "",
+        displaysHtml = Seq("<b>foo</b>"),
+        clearOutputs = Seq(false, true)
+      )
+    }
+
   def autoUpdateFutureUponCompletion(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
@@ -468,13 +480,21 @@ object Tests {
     new File(javaHome, "bin/java" + ext).toString
   }
 
+  lazy val scalaCliVersion: String = sys.props.getOrElse(
+    "almond.test.scala-cli-version",
+    sys.error("almond.test.scala-cli-version Java property not set")
+  )
+
   lazy val scalaCliLauncher: File =
     coursierapi.Cache.create()
       .get(coursierapi.Artifact.of(
-        "https://github.com/VirtusLab/scala-cli/releases/download/v1.0.1/scala-cli"
+        s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliVersion/scala-cli"
       ))
 
-  def toreeAddJarCustomProtocol(scalaVersion: String)(implicit
+  /** @param kernelJavaVersion
+    *   the major version of the JVM the kernel runs on, that has to load the classes we compile
+    */
+  def toreeAddJarCustomProtocol(scalaVersion: String, kernelJavaVersion: Int)(implicit
     sessionId: SessionId,
     runner: Runner
   ): Unit = {
@@ -519,6 +539,10 @@ object Tests {
       "compile",
       "--server=false",
       "--print-class-path",
+      // Scala CLI targets the JVM it runs on by default, while the kernel loads these classes, and
+      // older Scala CLI versions can't post-process the class files they get with recent JVMs
+      // (like Java 25)
+      s"--scalac-option=-release:$kernelJavaVersion",
       "."
     )
       .call(
@@ -578,7 +602,7 @@ object Tests {
   def toreeCustomCellMagic()(implicit sessionId: SessionId, runner: Runner): Unit = {
 
     val predef =
-      """almond.toree.CellMagicHook.addHandler("test") { (_, content) =>
+      """almond.toree.CellMagicHook.addHandler("Test") { (_, content) =>
         |  import almond.api.JupyterApi
         |  import almond.interpreter.api.DisplayData
         |
@@ -591,6 +615,10 @@ object Tests {
         |
         |  val nl = System.lineSeparator()
         |  Right(s"val thing = {" + nl + content + nl + "}" + nl)
+        |}
+        |
+        |almond.toree.LineMagicHook.addHandler("Greet") { (_, args) =>
+        |  Right("val greeting = \"Hello " + args.mkString(" ") + "\"")
         |}
         |""".stripMargin
 
@@ -618,7 +646,7 @@ object Tests {
         "",
         stdout =
           "Available line magics:" + ls +
-            "%adddeps %addjar %lsmagic %truncation" + ls +
+            "%adddeps %addjar %greet %lsmagic %truncation" + ls +
             ls +
             "Available cell magics:" + ls +
             "%%html %%javascript %%test %%thing" + ls +
@@ -634,6 +662,11 @@ object Tests {
         stdout =
           "Hello" + ls +
             "thing: Int = 2"
+      )
+
+      execute(
+        "%GREET Alice",
+        "greeting: String = \"Hello Alice\""
       )
     }
   }
@@ -912,7 +945,7 @@ object Tests {
 
       val isScala2 = scalaVersion.startsWith("2.")
 
-      // that repository should already have been added by Almond, so we don't test much here…
+      // jvm-repr ships with Almond, so this only checks that the directive is accepted
       execute(
         """//> using repository "jitpack"
           |//> using dep "com.github.jupyter:jvm-repr:0.4.0"
@@ -2564,7 +2597,7 @@ object Tests {
         else
           Seq(
             "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
-            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65434)"
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65440)"
           )
 
       execute(

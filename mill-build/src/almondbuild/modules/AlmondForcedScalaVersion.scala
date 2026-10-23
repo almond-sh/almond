@@ -13,16 +13,24 @@ import mill.scalalib.*
   */
 trait AlmondForcedScalaVersion extends ScalaModule {
   def resolutionParams = Task.Anon {
-    val sv       = scalaVersion()
-    val org      = coursier.Organization(JvmWorkerUtil.scalaOrganization(sv))
-    val suffixes = if (JvmWorkerUtil.isScala3(sv)) Seq("", "_3") else Seq("")
+    val sv = scalaVersion()
     super.resolutionParams().addForceVersion0(
-      Lib.scalaArtifacts(sv).toSeq.sorted.flatMap { name =>
-        suffixes.map { suffix =>
-          coursier.Module(org, coursier.ModuleName(name + suffix), Map.empty) ->
-            coursier.version.VersionConstraint(sv)
-        }
+      AlmondForcedScalaVersion.scalaModules(sv).map { (org, name) =>
+        coursier.Module(coursier.Organization(org), coursier.ModuleName(name), Map.empty) ->
+          coursier.version.VersionConstraint(sv)
       }*
     )
+  }
+}
+
+object AlmondForcedScalaVersion {
+
+  /** The organization and name of the Scala artifacts we force to a Scala version */
+  def scalaModules(sv: String): Seq[(String, String)] = {
+    val org      = JvmWorkerUtil.scalaOrganization(sv)
+    val suffixes = if (JvmWorkerUtil.isScala3(sv)) Seq("", "_3") else Seq("")
+    Lib.scalaArtifacts(sv).toSeq.sorted.flatMap { name =>
+      suffixes.map(suffix => (org, name + suffix))
+    }
   }
 }

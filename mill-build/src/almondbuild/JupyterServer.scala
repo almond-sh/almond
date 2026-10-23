@@ -1,7 +1,5 @@
 package almondbuild
 
-import mill.api.PathRef
-
 import java.io.File
 
 import scala.jdk.OptionConverters.*
@@ -36,7 +34,7 @@ object JupyterServer {
       * shell the command is run in.
       */
     def shellWords: Seq[String] =
-      Seq(s"cd ${Command.shellQuote(PathRef.toResolvedPathString(cwd))} &&") ++
+      Seq(s"cd ${Command.shellQuote(cwd.toString)} &&") ++
         env.toSeq.map { case (k, v) => s"$k=${Command.shellQuote(v)}" } ++
         command.map(Command.shellQuote)
 
@@ -68,15 +66,28 @@ object JupyterServer {
   ): Seq[String] =
     uvRunCommand(uv, workspace, groups) ++ Seq("jupyter") ++ jupyterArgs
 
-  private def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
+  def uvRunCommand(uv: os.Path, workspace: os.Path, groups: Seq[String]): Seq[String] =
     Seq(
-      PathRef.toResolvedPathString(uv),
+      uv.toString,
       "run",
       "--project",
-      PathRef.toResolvedPathString(workspace / "examples"),
+      (workspace / "examples").toString,
       "--frozen"
     ) ++
       groups.flatMap(group => Seq("--group", group))
+
+  /** The directory with the commands (`jupyter`, …) of the uv-managed environment of
+    * [[jupyterCommand]] (with the dependency groups `groups`)
+    */
+  private def jupyterScriptsDir(uv: os.Path, workspace: os.Path, groups: Seq[String]): os.Path = {
+    val scriptsDir = os.proc(
+      uvRunCommand(uv, workspace, groups),
+      "python",
+      "-c",
+      "import sysconfig; print(sysconfig.get_path('scripts'))"
+    ).call(cwd = workspace, stderr = os.Inherit).out.trim()
+    os.Path(scriptsDir)
+  }
 
   /** Makes the JupyterLab settings in `examples/jupyterlab-overrides.json` (theme following the
     * system one, 2-space indentation, …) the defaults of the uv-managed environment, for both
@@ -104,43 +115,161 @@ object JupyterServer {
     )
   }
 
-  /** Dependency group of `examples/pyproject.toml` with Jupyter AI, installed for JupyterLab */
-  private def aiGroup = "ai"
+  /** Makes the example notebooks of `examples` available from JupyterLab, under
+    * `notebooks/examples`: a symbolic link to `examples`, so that changes made from JupyterLab end
+    * up in the example notebooks themselves. Where symbolic links can't be created (Windows without
+    * developer mode, …), the notebooks get copied there instead.
+    *
+    * Nothing is done if `notebooks/examples` already exists, so that a copy edited from JupyterLab
+    * doesn't get overwritten.
+    */
+  private def linkExamples(workspace: os.Path): Unit = {
+    val examplesDir = workspace / "examples"
+    val dest        = workspace / "notebooks" / "examples"
+    if (!os.exists(dest, followLinks = false))
+      try os.symlink(dest, os.up / "examples")
+      catch {
+        case e @ (_: UnsupportedOperationException | _: java.io.IOException) =>
+          System.err.println(
+            s"Could not create a symbolic link to $examplesDir at $dest ($e), " +
+              "copying the example notebooks there instead"
+          )
+          os.makeDir.all(dest)
+          for (notebook <- os.list(examplesDir) if notebook.last.endsWith(".ipynb"))
+            os.copy(notebook, dest / notebook.last)
+      }
+  }
 
-  def writeKernelJson(
-    launcher: os.Path,
+  /** Dependency groups of `examples/pyproject.toml` with kernels other than almond, whose kernel
+    * specs Jupyter picks up from the uv-managed environment: xeus-python (kernel id `xpython`)
+    */
+  def kernelGroups = Seq("xeus")
+
+  /** Dependency groups of `examples/pyproject.toml` installed for JupyterLab: JupyterLab extensions
+    * (the variable inspector, …), Jupyter AI, and the kernels of [[kernelGroups]]
+    */
+  def labGroups = Seq("lab", "ai") ++ kernelGroups
+
+  /** Where the kernels are installed from: the almond modules built from sources, published to a
+    * local Maven repository
+    *
+    * @param cs
+    *   the `cs` launcher installing the kernels
+    * @param appChannel
+    *   directory with the almond app descriptor (`almond.json`), the only channel `cs` gets it from
+    * @param localRepo
+    *   local Maven repository with the almond modules, along with their dependencies on Maven
+    *   Central snapshots, if `useMavenSnapshots` is true
+    * @param kernelVersion
+    *   the version of the almond modules in `localRepo`
+    * @param launcherDependency
+    *   the dependency of the almond launcher in `localRepo` (like `org:name:version`), that the
+    *   special kernel runs
+    * @param launcherMainClass
+    *   the main class of the almond launcher: cs can't find it on its own, as some of its
+    *   dependencies have their own `Main-Class`
+    */
+  final case class KernelSource(
+    cs: String,
+    appChannel: os.Path,
+    localRepo: os.Path,
+    useMavenSnapshots: Boolean,
+    kernelVersion: String,
+    launcherDependency: String,
+    launcherMainClass: String
+  ) {
+    private def localRepoUri =
+      localRepo.toNIO.toUri.toASCIIString
+        .stripSuffix("/")
+    // Spelled as a URL rather than as the central:maven-snapshots alias, as the coursier the
+    // kernels embed predates that alias, and ignores COURSIER_REPOSITORIES altogether when it
+    // can't parse it
+    private def mavenSnapshots = "https://central.sonatype.com/repository/maven-snapshots"
+
+    /** Options making `cs launch` get the almond app descriptor from `appChannel`, and only from
+      * there
+      */
+    def csChannelArgs: Seq[String] =
+      Seq(
+        "--channel",
+        appChannel.toString,
+        "--default-channels=false",
+        "--file-channels=false"
+      )
+
+    /** Repositories passed to `cs launch`, on top of the default ones */
+    def csRepositoryArgs: Seq[String] =
+      Seq("-r", localRepoUri) ++
+        (if (useMavenSnapshots) Seq("-r", mavenSnapshots) else Nil)
+
+    /** Repositories the kernels resolve from at runtime, as a `COURSIER_REPOSITORIES` value: the
+      * special kernel fetches the actual kernel from them, and all the kernels the dependencies
+      * users add
+      */
+    def kernelRepositories: String =
+      (Seq(localRepoUri, "ivy2Local", "central") ++
+        (if (useMavenSnapshots) Seq(mavenSnapshots) else Nil)).mkString("|")
+  }
+
+  /** Options passed to all the kernels */
+  private def kernelOptions = Seq(
+    "--log",
+    "debug",
+    // for the variable inspector JupyterLab extension (installed with the lab dependency group)
+    "--variable-inspector",
+    "--toree-magics",
+    "--silent-imports",
+    "--use-notebook-coursier-logger"
+  )
+
+  /** Installs a kernel the way the installation pages of the documentation do, with a command like
+    * `cs launch --use-bootstrap almond:… -- --install`, letting the kernel ask the `jupyter`
+    * command in the `PATH` where to install itself. `JUPYTER_DATA_DIR` is set to `jupyterDir` for
+    * the installation, so that the kernel ends up in `jupyterDir/kernels` rather than in the
+    * Jupyter directory of the user.
+    *
+    * @param jupyterScriptsDir
+    *   directory with the `jupyter` command, put first in the `PATH` of the installation
+    * @param app
+    *   what `cs launch` runs, along with its options
+    */
+  private def installKernel(
+    source: KernelSource,
+    javaHome: os.Path,
+    jupyterScriptsDir: os.Path,
     jupyterDir: os.Path,
-    workspace: os.Path,
-    localRepoRoot: os.Path,
-    publishVersion: String,
+    app: Seq[String],
     kernelId: String,
     name: String,
-    extraArgs: String*
+    extraOptions: Seq[String]
   ): Unit = {
-    val dir = jupyterDir / "kernels" / kernelId
-    val baseArgs = Seq(
-      PathRef.toResolvedPathString(launcher),
-      "--log",
-      "debug",
-      "--connection-file",
-      "{connection_file}",
-      "--variable-inspector",
-      "--toree-magics",
-      "--use-notebook-coursier-logger",
-      "--silent-imports",
-      "--use-notebook-coursier-logger",
-      "--extra-repository",
-      java.nio.file.Paths.get(PathRef.toResolvedPathString(localRepoRoot)).toUri.toASCIIString
+    val command = Seq(source.cs, "launch", "--use-bootstrap") ++ app ++ source.csRepositoryArgs ++
+      Seq(
+        "--",
+        "--install",
+        // fail rather than install the kernel elsewhere if the jupyter command can't be run
+        "--require-jupyter",
+        "--id",
+        kernelId,
+        "--display-name",
+        name,
+        "--env",
+        s"COURSIER_REPOSITORIES=${source.kernelRepositories}"
+      ) ++
+      kernelOptions ++
+      extraOptions
+    System.err.println(s"Installing kernel $kernelId")
+    os.proc(command).call(
+      cwd = jupyterDir,
+      env = withPathPrefix(JavaHomes.environment(javaHome), Seq(jupyterScriptsDir)) +
+        ("JUPYTER_DATA_DIR" -> jupyterDir.toString),
+      stdin = "",
+      // kept off our stdout, that `show dev.jupyterCmd…` prints the command to
+      stdout = os.ProcessOutput.Readlines(System.err.println),
+      stderr = os.Inherit
     )
-    val kernelJson = ujson.Obj(
-      "language"     -> ujson.Str("scala"),
-      "display_name" -> ujson.Str(name),
-      "argv" -> ujson.Arr(
-        (baseArgs ++ extraArgs).map(ujson.Str(_))*
-      )
-    ).render()
-    os.write.over(dir / "kernel.json", kernelJson, createFolders = true)
-    System.err.println(s"JUPYTER_PATH=${PathRef.toResolvedPathString(jupyterDir)}")
+    if (!os.isFile(jupyterDir / "kernels" / kernelId / "kernel.json"))
+      sys.error(s"Kernel $kernelId wasn't installed under ${jupyterDir / "kernels"}")
   }
 
   /** Environment for Jupyter: the JVM at `javaHome` (for the kernels it starts), the kernel specs
@@ -151,18 +280,21 @@ object JupyterServer {
     jupyterDir: os.Path,
     extraPath: Seq[os.Path] = Nil
   ): Map[String, String] = {
-    val javaEnv = JavaHomes.environment(javaHome)
-    val javaEnv0 =
-      if (extraPath.isEmpty) javaEnv
-      else {
-        // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
-        val (pathKey, pathValue) = javaEnv.find(_._1.equalsIgnoreCase("PATH")).get
-        val newPathValue =
-          (extraPath.map(PathRef.toResolvedPathString(_)) :+ pathValue).mkString(File.pathSeparator)
-        javaEnv + (pathKey -> newPathValue)
-      }
-    javaEnv0 + ("JUPYTER_PATH" -> PathRef.toResolvedPathString(jupyterDir))
+    val javaEnv = withPathPrefix(JavaHomes.environment(javaHome), extraPath)
+    javaEnv + ("JUPYTER_PATH" -> jupyterDir.toString)
   }
+
+  /** Puts `dirs` first in the `PATH` of `env`, an environment coming from [[JavaHomes.environment]]
+    */
+  private def withPathPrefix(env: Map[String, String], dirs: Seq[os.Path]): Map[String, String] =
+    if (dirs.isEmpty) env
+    else {
+      // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
+      val (pathKey, pathValue) = env.find(_._1.equalsIgnoreCase("PATH")).get
+      val newPathValue =
+        (dirs.map(_.toString) :+ pathValue).mkString(File.pathSeparator)
+      env + (pathKey -> newPathValue)
+    }
 
   /** Extracts a `--classic` flag from the passed arguments, if any: whether the Jupyter Notebook UI
     * (the classic one, at `/tree`) should be the default UI rather than JupyterLab (at `/lab`).
@@ -233,7 +365,7 @@ object JupyterServer {
     jupyterDir: os.Path,
     javaHome: os.Path
   ): Unit = {
-    System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
+    System.err.println(s"JAVA_HOME=$javaHome")
     val proc = os.proc(command).spawn(
       cwd = workspace,
       env = jupyterEnvironment(javaHome, jupyterDir),
@@ -310,11 +442,11 @@ object JupyterServer {
       currentPidFile(backgroundDir),
       backgroundDir / "lock",
       backgroundDir / "log"
-    ).map(PathRef.toResolvedPathString(_))
+    )
     val proc = os.proc(
-      PathRef.toResolvedPathString(javaExe),
+      javaExe,
       "-cp",
-      wrapperClassPath.map(PathRef.toResolvedPathString(_)).mkString(File.pathSeparator),
+      wrapperClassPath.map(_.toString).mkString(File.pathSeparator),
       "mill.javalib.backgroundwrapper.MillBackgroundWrapper",
       wrapperArgs,
       "<subprocess>",
@@ -364,45 +496,51 @@ object JupyterServer {
     logFiles
   }
 
-  /** Writes the kernel specs of one kernel per element of `launchers`, plus the special launcher
-    * kernel.
-    *
-    * @param launchers
-    *   the kernel launchers to register, along with the full Scala version each of them runs
+  /** Installs one kernel per element of `scalaVersions`, plus the special kernel (the almond
+    * launcher, that fetches the kernel for the Scala version a notebook asks for at startup), in
+    * `jupyterDir/kernels`, with `cs launch` (see [[installKernel]]), relying on the `jupyter`
+    * command of the uv-managed environment with the dependency groups `groups`. Kernels installed
+    * there earlier are removed first.
     */
-  private def writeKernelJsons(
-    launchers: Seq[(String, os.Path)],
-    specialLauncher: os.Path,
-    jupyterDir: os.Path,
+  private def installKernels(
+    uv: os.Path,
     workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path,
-    specialExtraArgs: String*
+    groups: Seq[String],
+    source: KernelSource,
+    javaHome: os.Path,
+    scalaVersions: Seq[String],
+    jupyterDir: os.Path,
+    specialExtraOptions: String*
   ): Unit = {
-    for ((scalaVersion, launcher) <- launchers)
-      writeKernelJson(
-        launcher,
+    val scriptsDir = jupyterScriptsDir(uv, workspace, groups)
+    os.remove.all(jupyterDir / "kernels")
+    os.makeDir.all(jupyterDir / "kernels")
+    for (scalaVersion <- scalaVersions)
+      installKernel(
+        source,
+        javaHome,
+        scriptsDir,
         jupyterDir,
-        workspace,
-        localRepoRoot,
-        publishVersion,
+        Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion) ++ source.csChannelArgs,
         kernelId(scalaVersion),
-        s"Scala $scalaVersion (sources)"
+        s"Scala $scalaVersion (sources)",
+        Nil
       )
-    writeKernelJson(
-      specialLauncher,
+    installKernel(
+      source,
+      javaHome,
+      scriptsDir,
       jupyterDir,
-      workspace,
-      localRepoRoot,
-      publishVersion,
+      Seq(source.launcherDependency, "--main-class", source.launcherMainClass),
       specialKernelId,
       "Scala (special, sources)",
-      specialExtraArgs*
+      specialExtraOptions
     )
+    System.err.println(s"JUPYTER_PATH=$jupyterDir")
   }
 
-  /** Writes the kernel specs, with one kernel per element of `launchers` plus the special launcher
-    * kernel, and returns the command to run JupyterLab with them.
+  /** Installs the kernels, one per element of `scalaVersions` plus the special kernel, and returns
+    * the command to run JupyterLab with them.
     *
     * The server also serves the Jupyter Notebook UI (the classic one), under `/tree`. `args` may
     * contain `--base-address=…` and `--classic`, handled here, the rest is passed to JupyterLab.
@@ -411,39 +549,44 @@ object JupyterServer {
     * added to the `PATH` of JupyterLab, contains the `claude-agent-acp` and `codex-acp` commands
     * (see [[AcpAgents]]).
     *
-    * @param launchers
-    *   the kernel launchers to register, along with the full Scala version each of them runs
+    * @param scalaVersions
+    *   the full Scala versions to install a kernel for
+    * @param labExtensions
+    *   JupyterLab extensions built from sources to enable, on top of the ones of the Python
+    *   environment (see [[LabExtension]])
     */
   def jupyterLabCommand(
     uv: os.Path,
     javaHome: os.Path,
-    launchers: Seq[(String, os.Path)],
-    specialLauncher: os.Path,
+    source: KernelSource,
+    scalaVersions: Seq[String],
     jupyterDir: os.Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path,
-    acpAgentsBin: Option[os.Path]
+    acpAgentsBin: Option[os.Path],
+    labExtensions: Seq[os.Path]
   ): Command = {
 
-    writeKernelJsons(
-      launchers,
-      specialLauncher,
-      jupyterDir,
+    installKernels(
+      uv,
       workspace,
-      publishVersion,
-      localRepoRoot,
+      labGroups,
+      source,
+      javaHome,
+      scalaVersions,
+      jupyterDir,
       "--quiet=false"
     )
 
-    writeSettingsOverrides(uv, workspace, Seq(aiGroup))
+    writeSettingsOverrides(uv, workspace, labGroups)
+    LabExtension.install(labExtensions, jupyterDir)
 
     os.makeDir.all(workspace / "notebooks")
+    linkExamples(workspace)
     val (baseAddressOpt, args0) = extractBaseAddress(args)
     val (classic, args1)        = extractClassic(args0)
     val command =
-      jupyterCommand(uv, workspace, Seq(aiGroup), "lab", "--notebook-dir", "notebooks") ++
+      jupyterCommand(uv, workspace, labGroups, "lab", "--notebook-dir", "notebooks") ++
         baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
         (if (classic) classicOptions else Nil) ++
         args1
@@ -454,39 +597,39 @@ object JupyterServer {
     )
   }
 
-  /** Starts a JupyterLab server in the background, with one kernel per element of `launchers` plus
-    * the special launcher kernel, and returns the files its output goes to
+  /** Starts a JupyterLab server in the background, with one kernel per element of `scalaVersions`
+    * plus the special kernel, and returns the files its output goes to
     *
-    * @param launchers
-    *   the kernel launchers to register, along with the full Scala version each of them runs
+    * @param scalaVersions
+    *   the full Scala versions to install a kernel for
+    * @param labExtensions
+    *   JupyterLab extensions built from sources to enable (see [[LabExtension]])
     */
   def jupyterServer(
     uv: os.Path,
     javaHome: os.Path,
     wrapperClassPath: Seq[os.Path],
     backgroundDir: os.Path,
-    launchers: Seq[(String, os.Path)],
-    specialLauncher: os.Path,
+    source: KernelSource,
+    scalaVersions: Seq[String],
     jupyterDir: os.Path,
     args: Seq[String],
     workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path,
-    acpAgentsBin: Option[os.Path]
+    acpAgentsBin: Option[os.Path],
+    labExtensions: Seq[os.Path]
   ): Seq[os.Path] = {
     val cmd = jupyterLabCommand(
       uv,
       javaHome,
-      launchers,
-      specialLauncher,
+      source,
+      scalaVersions,
       jupyterDir,
       args,
       workspace,
-      publishVersion,
-      localRepoRoot,
-      acpAgentsBin
+      acpAgentsBin,
+      labExtensions
     )
-    System.err.println(s"JAVA_HOME=${PathRef.toResolvedPathString(javaHome)}")
+    System.err.println(s"JAVA_HOME=$javaHome")
     startBackground(
       javaHome,
       wrapperClassPath,
@@ -497,31 +640,27 @@ object JupyterServer {
     )
   }
 
-  /** Runs a Jupyter console on a kernel running Scala `scalaVersion`, started with `launcher` */
+  /** Runs a Jupyter console on a kernel running Scala `scalaVersion`. `args` are passed to `jupyter
+    * console`: a `--kernel=…` there replaces that kernel (`--kernel=xpython` runs xeus-python,
+    * say).
+    */
   def jupyterConsole(
     uv: os.Path,
     javaHome: os.Path,
+    source: KernelSource,
     scalaVersion: String,
-    launcher: os.Path,
-    specialLauncher: os.Path,
     jupyterDir: os.Path,
     args: Seq[String],
-    workspace: os.Path,
-    publishVersion: String,
-    localRepoRoot: os.Path
+    workspace: os.Path
   ): Unit = {
 
-    writeKernelJsons(
-      Seq(scalaVersion -> launcher),
-      specialLauncher,
-      jupyterDir,
-      workspace,
-      publishVersion,
-      localRepoRoot
-    )
+    installKernels(uv, workspace, kernelGroups, source, javaHome, Seq(scalaVersion), jupyterDir)
 
+    // jupyter console rejects several --kernel options, so only pass ours if args has none
+    val hasKernelArg = args.exists(arg => arg == "--kernel" || arg.startsWith("--kernel="))
+    val kernelArgs   = if (hasKernelArg) Nil else Seq(s"--kernel=${kernelId(scalaVersion)}")
     val command =
-      jupyterCommand(uv, workspace, Nil, "console", s"--kernel=${kernelId(scalaVersion)}") ++ args
+      jupyterCommand(uv, workspace, kernelGroups, Seq("console") ++ kernelArgs ++ args*)
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }

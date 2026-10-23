@@ -2,13 +2,27 @@ package almond.kernel
 
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 import almond.channels.Channel
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.interpreter.{Message, TestInterpreter}
+import almond.interpreter.{KernelSession, Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
 import almond.logger.LoggerContext
-import almond.protocol.{Complete, Execute, Header, History, Input, KernelInfo, RawJson, Shutdown}
+import almond.protocol.{
+  Comm,
+  Complete,
+  Execute,
+  Header,
+  History,
+  Input,
+  Inspect,
+  KernelInfo,
+  MessageType,
+  RawJson,
+  Shutdown,
+  Status
+}
 import almond.protocol.Codecs.unitCodec
 import almond.testkit.ClientStreams
 import almond.util.ThreadUtil.{
@@ -16,6 +30,7 @@ import almond.util.ThreadUtil.{
   singleThreadedExecutionContextExecutorService
 }
 import cats.effect.IO
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import fs2.Stream
 import utest._
 
@@ -35,6 +50,17 @@ object KernelTests extends TestSuite {
     if (!attemptShutdownExecutionContext(interpreterEc))
       println(s"Don't know how to shutdown $interpreterEc")
   }
+
+  /** Statuses published by the kernel while processing the request with id `parentMsgId` */
+  def statuses(streams: ClientStreams, parentMsgId: String): Seq[String] =
+    streams.generatedMessages.toVector.collect {
+      case Left((Channel.Publish, m))
+          if m.header.msg_type == Status.messageType.messageType &&
+          m.parent_header.exists(_.msg_id == parentMsgId) =>
+        com.github.plokhotnyuk.jsoniter_scala.core
+          .readFromArray(m.content.value)(Status.codec)
+          .execution_state
+    }
 
   val tests = Tests {
 
@@ -97,14 +123,16 @@ object KernelTests extends TestSuite {
 
     test("client comm") {
 
+      val sessionId  = UUID.randomUUID().toString
+      val exitHeader = Header.random("test", Execute.requestType, sessionId)
+
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, m) =>
-          IO.pure(m.header.msg_type == "execute_reply" && new String(
-            m.content.value,
-            StandardCharsets.UTF_8
-          ).contains("exit"))
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitHeader.msg_id)
+          )
 
-      val sessionId = UUID.randomUUID().toString
       val input = Stream(
         Message(
           Header.random("test", Execute.requestType, sessionId),
@@ -119,18 +147,49 @@ object KernelTests extends TestSuite {
           Execute.Request("comm-close:foo")
         ).on(Channel.Requests),
         Message(
-          Header.random("test", Execute.requestType, sessionId),
+          exitHeader,
           Execute.Request("echo:exit")
         ).on(Channel.Requests)
       )
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
-      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+      val kernelSession = KernelSession.create()
+
+      val t = Kernel
+        .create(
+          new TestInterpreter,
+          interpreterEc,
+          threads,
+          cancellablesEc,
+          logCtx,
+          MessageHandler.empty,
+          Set.empty,
+          kernelSession
+        )
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
       val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
+
+      // All kernel messages (startup statuses, replies, outputs, background comm messages)
+      // should carry the kernel session, not the client one
+      val kernelMessages = streams.generatedMessages.toList.collect {
+        case Left((_, m)) => m
+      }
+      val kernelSessions = kernelMessages.map(_.header.session).distinct
+      assert(kernelSessions == List(kernelSession.id))
+      val kernelUsernames = kernelMessages.map(_.header.username).distinct
+      assert(kernelUsernames == List(kernelSession.username))
+
+      val replies = kernelMessages.filter(_.header.msg_type == Execute.replyType.messageType)
+      assert(replies.nonEmpty)
+      assert(replies.forall(_.parent_header.exists(_.session == sessionId)))
+
+      // comm messages are sent in the background, they have no parent
+      val commMessages = kernelMessages.filter(_.header.msg_type.startsWith("comm_"))
+      assert(commMessages.nonEmpty)
+      assert(commMessages.forall(_.parent_header.isEmpty))
 
       val msgTypes = streams.generatedMessageTypes()
 
@@ -156,6 +215,265 @@ object KernelTests extends TestSuite {
 
       assert(commMsgTypes == expectedCommMsgTypes)
       assert(stdMsgTypes == expectedStdMsgTypes)
+    }
+
+    test("comm_open for unknown target gets comm_close on IOPub") {
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (channel, m) =>
+          IO.pure(
+            channel == Channel.Publish &&
+            m.header.msg_type == Status.messageType.messageType &&
+            m.parent_header.exists(_.msg_type == Comm.openType.messageType) &&
+            m.decodeAs[Status].toOption.exists(_.content == Status.idle)
+          )
+
+      val sessionId = UUID.randomUUID().toString
+      val commId    = UUID.randomUUID().toString
+      val input = Stream(
+        Message(
+          Header.random("test", Comm.openType, sessionId),
+          Comm.Open(commId, "unknown-target", RawJson.emptyObj)
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      assert(streams.generatedMessageTypes(channels = Set(Channel.Requests)).isEmpty)
+
+      val close = streams.singleReply(Channel.Publish, Comm.closeType)
+      assert(close.content.comm_id == commId)
+      assert(close.parent_header.exists(_.msg_type == Comm.openType.messageType))
+    }
+
+    test("stop on error") {
+
+      def replyStatuses(stopOnError: Option[Boolean]): Seq[String] = {
+
+        val replyCount = new AtomicInteger
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+          (_, m) =>
+            IO {
+              m.header.msg_type == "execute_reply" && replyCount.incrementAndGet() == 3
+            }
+
+        val sessionId = UUID.randomUUID().toString
+        val input = Stream("error-after:200", "echo:foo", "echo:bar").map { code =>
+          Message(
+            Header.random("test", Execute.requestType, sessionId),
+            Execute.Request(code, stop_on_error = stopOnError)
+          ).on(Channel.Requests)
+        }
+
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+        val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+          .flatMap(_.run(streams.source, streams.sink, Nil))
+
+        val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+        assert(res.nonEmpty)
+
+        streams.generatedMessages.toList.collect {
+          case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+            m.decodeAs[Execute.Reply] match {
+              case Left(err) => throw new Exception(s"Error decoding execute_reply: $err")
+              case Right(m0) =>
+                m0.content match {
+                  case _: Execute.Reply.Success => "ok"
+                  case _: Execute.Reply.Error   => "error"
+                  case _: Execute.Reply.Abort   => "abort"
+                }
+            }
+        }
+      }
+
+      test("default") {
+        // stop_on_error defaults to true when absent, per the Jupyter messaging spec
+        val statuses = replyStatuses(None)
+        assert(statuses == Seq("error", "abort", "abort"))
+      }
+
+      test("enabled") {
+        val statuses = replyStatuses(Some(true))
+        assert(statuses == Seq("error", "abort", "abort"))
+      }
+
+      test("disabled") {
+        val statuses = replyStatuses(Some(false))
+        assert(statuses == Seq("error", "ok", "ok"))
+      }
+
+      test("aborted replies") {
+        val sessionId = UUID.randomUUID().toString
+        def request(code: String) =
+          Message(
+            Header.random("test", Execute.requestType, sessionId),
+            Execute.Request(code, stop_on_error = Some(true))
+          )
+
+        val requests = Seq(
+          request("echo:a"),
+          // sleeping, so that the requests that follow are queued when this one fails
+          request("error-after:500"),
+          request("echo:b"),
+          request("echo:c")
+        )
+
+        // we stop the pseudo-client at the execute_reply of the last request
+
+        val lastMsgId = requests.last.header.msg_id
+        val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+          (_, m) =>
+            IO.pure(
+              m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+            )
+
+        val input = Stream(requests.map(_.on(Channel.Requests)): _*)
+
+        val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+        val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+          .flatMap(_.run(streams.source, streams.sink, Nil))
+
+        val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+        assert(res.nonEmpty)
+
+        val msgTypes = streams.generatedMessageTypes()
+
+        // no execute_input for the aborted cells
+        val expectedMsgTypes = Seq(
+          "execute_input",
+          "execute_result",
+          "execute_reply",
+          "execute_input",
+          "error",
+          "execute_reply",
+          "execute_reply",
+          "execute_reply"
+        )
+
+        assert(msgTypes == expectedMsgTypes)
+
+        val replies = streams.generatedMessages.toList.collect {
+          case Left((Channel.Requests, m)) if m.header.msg_type == "execute_reply" =>
+            new String(m.content.value, StandardCharsets.UTF_8)
+        }
+
+        val expectedAbortReply = """{"execution_count":1,"status":"aborted"}"""
+        assert(replies.drop(2) == Seq(expectedAbortReply, expectedAbortReply))
+      }
+    }
+
+    test("silent execute request") {
+
+      val sessionId  = UUID.randomUUID().toString
+      val exitHeader = Header.random("test", Execute.requestType, sessionId)
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitHeader.msg_id)
+          )
+
+      val input = Stream(
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:foo", silent = Some(true), store_history = Some(true))
+        ).on(Channel.Requests),
+        Message(
+          exitHeader,
+          Execute.Request("echo:exit")
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val msgTypes = streams.generatedMessageTypes()
+
+      // no execute_input nor execute_result for the silent request
+      val expectedMsgTypes = Seq(
+        "execute_reply",
+        "execute_input",
+        "execute_result",
+        "execute_reply"
+      )
+
+      assert(msgTypes == expectedMsgTypes)
+
+      // the silent request didn't increment the execution count
+      val executeInput  = streams.singleReply(Channel.Publish, Execute.inputType)
+      val executeResult = streams.singleReply(Channel.Publish, Execute.resultType)
+      assert(executeInput.content.code == "echo:exit")
+      assert(executeInput.content.execution_count == 1)
+      assert(executeResult.content.execution_count == 1)
+    }
+
+    test("execution count without store_history") {
+
+      val sessionId  = UUID.randomUUID().toString
+      val exitHeader = Header.random("test", Execute.requestType, sessionId)
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == exitHeader.msg_id)
+          )
+
+      val input = Stream(
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:a")
+        ).on(Channel.Requests),
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request("echo:b", store_history = Some(false))
+        ).on(Channel.Requests),
+        Message(
+          exitHeader,
+          Execute.Request("echo:exit")
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val inputCounts = streams.generatedMessages.toList.collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.inputType.messageType =>
+          val m0 = m.decodeAs[Execute.Input].fold(throw _, identity)
+          m0.content.code -> m0.content.execution_count
+      }
+      val replyCounts = streams.generatedMessages.toList.collect {
+        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+          m.decodeAs[Execute.Reply].fold(throw _, identity).content match {
+            case s: Execute.Reply.Success => s.execution_count
+            case other                    => throw new Exception(s"Unexpected reply: $other")
+          }
+      }
+
+      val expectedInputCounts = List("echo:a" -> 1, "echo:b" -> 1, "echo:exit" -> 2)
+      val expectedReplyCounts = List(1, 1, 2)
+
+      assert(inputCounts == expectedInputCounts)
+      assert(replyCounts == expectedReplyCounts)
     }
 
     test("history request") {
@@ -193,10 +511,11 @@ object KernelTests extends TestSuite {
         (channel, m) =>
           IO.pure(channel == Channel.Control && m.header.msg_type == "kernel_info_reply")
 
-      val input = Message(
+      val request = Message(
         Header.random("test", KernelInfo.requestType),
         ()
-      ).streamOn(Channel.Control)
+      )
+      val input = request.streamOn(Channel.Control)
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
@@ -208,21 +527,23 @@ object KernelTests extends TestSuite {
 
       val reply = streams.singleReply(Channel.Control, KernelInfo.replyType)
       assert(reply.content.implementation == "test")
+
+      val statuses0 = statuses(streams, request.header.msg_id)
+      assert(statuses0 == Seq("busy", "idle"))
     }
 
-    test("shutdown request") {
+    def shutdownRequestTest(channel: Channel): Unit = {
 
       val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
         (_, _) =>
           IO.pure(false)
 
       val sessionId = UUID.randomUUID().toString
-      val input = Stream(
-        Message(
-          Header.random("test", Shutdown.requestType, sessionId),
-          Shutdown.Request(restart = false)
-        ).on(Channel.Requests)
+      val request = Message(
+        Header.random("test", Shutdown.requestType, sessionId),
+        Shutdown.Request(restart = false)
       )
+      val input = request.streamOn(channel)
 
       val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
 
@@ -235,11 +556,25 @@ object KernelTests extends TestSuite {
 
       assert(interpreter.shutdownCalled())
 
-      val msgTypes = streams.generatedMessageTypes()
+      val msgTypes = streams.generatedMessageTypes(Set(Channel.Publish, channel))
 
       val expectedMsgTypes = Seq(Shutdown.replyType.messageType)
 
       assert(msgTypes == expectedMsgTypes)
+
+      val reply = streams.singleReply(channel, Shutdown.replyType)
+      assert(!reply.content.restart)
+
+      val statuses0 = statuses(streams, request.header.msg_id)
+      assert(statuses0 == Seq("busy", "idle"))
+    }
+
+    test("shutdown request") {
+      shutdownRequestTest(Channel.Requests)
+    }
+
+    test("shutdown request on control channel") {
+      shutdownRequestTest(Channel.Control)
     }
 
     test("completion metadata") {
@@ -294,6 +629,76 @@ object KernelTests extends TestSuite {
       val expectedMetadata = RawJson(rawMetadata.bytes)
 
       assert(metadata == expectedMetadata)
+    }
+
+    // Jupyter protocol >= 5.2: cursor positions are code point offsets, not UTF-16 indices
+
+    def singleRequestReply[Req, Rep](
+      reqType: MessageType[Req],
+      req: Req,
+      repType: MessageType[Rep]
+    )(implicit
+      reqCodec: JsonValueCodec[Req],
+      repCodec: JsonValueCodec[Rep]
+    ): Message[Rep] = {
+
+      val ignoreExpectedReplies = MessageHandler.discard {
+        case (Channel.Publish, _)                                              =>
+        case (Channel.Requests, m) if m.header.msg_type == repType.messageType =>
+      }
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(m.header.msg_type == repType.messageType)
+
+      val input = Stream(
+        Message(Header.random("test", reqType), req).on(Channel.Requests)
+      )
+
+      val streams =
+        ClientStreams.create(input, stopWhen, ignoreExpectedReplies, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      streams.singleReply(Channel.Requests, repType)
+    }
+
+    test("completion cursor positions as code points") {
+
+      // code points: "word:" is 0-4, 😀 5, ' ' 6, a 7, b 8, 😀 9, c 10
+      val code = "word:\ud83d\ude00 ab\ud83d\ude00c"
+
+      val reply = singleRequestReply(
+        Complete.requestType,
+        Complete.Request(code, 10),
+        Complete.replyType
+      )
+
+      assert(reply.content.matches == List("ab\ud83d\ude00!"))
+      assert(reply.content.cursor_start == 7)
+      assert(reply.content.cursor_end == 10)
+    }
+
+    test("inspection cursor position as code points") {
+
+      val prefix = "before-cursor:"
+      val code   = prefix + "\ud83d\ude00\ud83d\ude00x"
+
+      val reply = singleRequestReply(
+        Inspect.requestType,
+        Inspect.Request(code, prefix.length + 2, 0),
+        Inspect.replyType
+      )
+
+      val text = reply.content.data.get("text/plain")
+        .map(json => new String(json.value, StandardCharsets.UTF_8))
+      val expectedText = "\"" + prefix + "\ud83d\ude00\ud83d\ude00\""
+
+      assert(text == Some(expectedText))
     }
 
   }

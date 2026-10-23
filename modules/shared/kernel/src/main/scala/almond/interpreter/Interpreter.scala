@@ -81,15 +81,18 @@ trait Interpreter {
   def asyncIsComplete(code: String): Option[CancellableFuture[Option[IsCompleteResult]]] =
     None
 
-  // warning: in the 2 methods below, pos should correspond to a code point index
-  // (https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#cursor-pos-and-unicode-offsets)
+  // In the methods below, pos, as well as the positions in the returned Completion, are
+  // indices in code as a Java String (UTF-16 code unit indices). The Jupyter protocol uses
+  // code point offsets instead
+  // (https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#cursor-pos-and-unicode-offsets);
+  // conversions between the two are handled by the kernel message handlers.
 
   /** Tries to complete code.
     *
     * @param code:
     *   code to complete
     * @param pos:
-    *   cursor position (as a unicode code point index) in code
+    *   cursor position (as a UTF-16 code unit index) in code
     */
   def complete(code: String, pos: Int): Completion =
     Completion.empty(pos)
@@ -102,7 +105,7 @@ trait Interpreter {
     * @param code:
     *   code to complete
     * @param pos:
-    *   cursor position (as a unicode code point index) in code
+    *   cursor position (as a UTF-16 code unit index) in code
     */
   def asyncComplete(code: String, pos: Int): Option[CancellableFuture[Completion]] =
     None
@@ -118,7 +121,7 @@ trait Interpreter {
   /** @param code:
     *   code to inspect
     * @param pos:
-    *   cursor position (as a unicode code point index) in code
+    *   cursor position (as a UTF-16 code unit index) in code
     * @param detailLevel
     * @return
     */
@@ -133,7 +136,7 @@ trait Interpreter {
     * @param code:
     *   code to inspect
     * @param pos:
-    *   cursor position (as a unicode code point index)
+    *   cursor position (as a UTF-16 code unit index)
     * @param detailLevel
     */
   def asyncInspect(
@@ -146,7 +149,7 @@ trait Interpreter {
   /** @param code:
     *   code to inspect
     * @param pos:
-    *   cursor position (as a unicode code point index) in code
+    *   cursor position (as a UTF-16 code unit index) in code
     * @return
     */
   final def inspect(code: String, pos: Int): Option[Inspection] =

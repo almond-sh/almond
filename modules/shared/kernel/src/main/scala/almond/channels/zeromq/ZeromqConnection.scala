@@ -2,24 +2,30 @@ package almond.channels.zeromq
 
 import java.net.URI
 import java.nio.channels.{
+  CancelledKeyException,
   ClosedByInterruptException,
   ClosedChannelException,
   ClosedSelectorException,
+  SelectionKey,
   Selector
 }
+import java.nio.ByteBuffer
+import java.nio.charset.{CharacterCodingException, CodingErrorAction}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.UUID
 
 import almond.channels._
 import almond.logger.LoggerContext
+import almond.protocol.{Header, IopubWelcome, Protocol}
 import cats.Parallel
 import cats.effect.IO
 import cats.syntax.apply._
-import org.zeromq.{SocketType, ZMQ, ZMQException}
-import org.zeromq.ZMQ.{PollItem, Poller}
+import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
+import org.zeromq.{SocketType, ZMQException}
 import zmq.ZError
 
 import scala.concurrent.Promise
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 
 final class ZeromqConnection(
   params: ConnectionParameters,
@@ -56,11 +62,10 @@ final class ZeromqConnection(
   private def routerDealer =
     if (bind) SocketType.ROUTER
     else SocketType.DEALER
-  private def inverseRouterDealer =
-    if (bind) SocketType.DEALER
-    else SocketType.ROUTER
+  // XPUB rather than PUB since protocol 5.5, so that we get notified of subscriptions
+  // and can send iopub_welcome messages
   private def pubSub =
-    if (bind) SocketType.PUB
+    if (bind) SocketType.XPUB
     else SocketType.SUB
   private def repReq =
     if (bind) SocketType.REP
@@ -78,7 +83,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val control0 = ZeromqSocket(
@@ -93,7 +99,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val publish0 = ZeromqSocket(
@@ -108,12 +115,13 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val stdin0 = ZeromqSocket(
     threads.channelEces(Channel.Input),
-    inverseRouterDealer,
+    routerDealer,
     bind,
     params.uri(Channel.Input),
     identityOpt.map(_.getBytes(UTF_8)),
@@ -123,7 +131,8 @@ final class ZeromqConnection(
     params.signature_scheme.getOrElse(defaultSignatureScheme),
     lingerPeriod,
     logCtx,
-    bindToRandomPort = bindToRandomPorts
+    bindToRandomPort = bindToRandomPorts,
+    maxMessageSize = threads.maxMessageSize
   )
 
   private val heartBeatPortPromiseAndUri = {
@@ -149,6 +158,8 @@ final class ZeromqConnection(
             val heartbeat = threads.context.socket(repReq)
 
             heartbeat.setLinger(1000)
+            for (size <- threads.maxMessageSize)
+              heartbeat.setMaxMsgSize(size)
             heartBeatPortPromiseAndUri match {
               case Some((promise, uri0)) =>
                 val port = heartbeat.bindToRandomPort(uri0)
@@ -180,16 +191,87 @@ final class ZeromqConnection(
       case Channel.Input    => stdin0
     }
 
-  @volatile private var selectorOpt = Option.empty[Selector]
-  private var actualParams          = params
+  // session of the iopub_welcome messages we send
+  private lazy val welcomeSession = UUID.randomUUID().toString
 
-  private def withSelector[T](f: Selector => T): Option[T] =
-    selectorOpt match {
-      case Some(selector) =>
-        Some(f(selector))
-      case None =>
-        log.debug("Connection not opened")
-        None
+  private def welcomeMessage(subscription: Seq[Byte]): Option[Message] = {
+    val decoder = UTF_8
+      .newDecoder()
+      .onMalformedInput(CodingErrorAction.REPORT)
+      .onUnmappableCharacter(CodingErrorAction.REPORT)
+    val subscriptionStrOpt =
+      try Some(decoder.decode(ByteBuffer.wrap(subscription.toArray)).toString)
+      catch {
+        case _: CharacterCodingException =>
+          None
+      }
+    subscriptionStrOpt.map { subscriptionStr =>
+      val msgType = IopubWelcome.messageType.messageType
+      val header = Header(
+        msg_id = UUID.randomUUID().toString,
+        username = "kernel",
+        session = welcomeSession,
+        msg_type = msgType,
+        version = Some(Protocol.versionStr)
+      )
+      Message(
+        // the topic must match the subscription for the subscriber to get the message
+        idents = Seq(if (subscription.isEmpty) msgType.getBytes(UTF_8).toSeq else subscription),
+        header = writeToArray(header),
+        // no parent header for iopub_welcome
+        parentHeader = "{}".getBytes(UTF_8),
+        metadata = "{}".getBytes(UTF_8),
+        content = writeToArray(IopubWelcome(subscriptionStr))
+      )
+    }
+  }
+
+  private val handleSubscriptionEvent: IO[Unit] =
+    publish0.readSubscriptionEvent.flatMap {
+      case Some(event) if event.subscribe =>
+        welcomeMessage(event.topic) match {
+          case Some(msg) =>
+            IO(log.debug(s"Sending iopub_welcome on $actualParams")) *> publish0.send(msg)
+          case None =>
+            IO(log.warn("Ignoring subscription with non-UTF-8 topic"))
+        }
+      case _ =>
+        IO.unit
+    }
+
+  /** Selector for a set of channels that are polled together
+    *
+    * Each set of channels gets its own selector, so that polling some channels doesn't hold up
+    * polling the others (see [[Connection.stream]], that polls each channel on its own).
+    */
+  private final class Poller(val channels: Set[Channel]) {
+    val selector: Selector = Selector.open()
+    try
+      for (channel <- channels)
+        channelSocket0(channel).fd.register(selector, SelectionKey.OP_READ)
+    catch {
+      case e: Throwable =>
+        selector.close()
+        throw e
+    }
+  }
+
+  // None if the connection isn't opened, or got closed. Only updated while holding the lock of
+  // this connection.
+  @volatile private var pollersOpt = Option.empty[Map[Set[Channel], Poller]]
+  private var actualParams         = params
+
+  private def pollerFor(channels: Set[Channel]): Option[Poller] =
+    synchronized {
+      pollersOpt.map { pollers =>
+        pollers.getOrElse(
+          channels, {
+            val poller = new Poller(channels)
+            pollersOpt = Some(pollers + (channels -> poller))
+            poller
+          }
+        )
+      }
     }
 
   val open: IO[Map[Option[Channel], Int]] = {
@@ -215,8 +297,8 @@ final class ZeromqConnection(
       synchronized {
         for (thread <- heartBeatThreadOpt if thread.getState == Thread.State.NEW)
           thread.start()
-        if (selectorOpt.isEmpty)
-          selectorOpt = Some(Selector.open())
+        if (pollersOpt.isEmpty)
+          pollersOpt = Some(Map.empty)
       }
     }.evalOn(threads.selectorOpenCloseEces)
 
@@ -249,47 +331,109 @@ final class ZeromqConnection(
 
     val log0 = IO(log.debug(s"Sending message on $actualParams from $channel"))
 
-    log0 *> channelSocket0(channel).send(message)
+    // Sending processes the commands pending for the socket, possibly consuming the one that
+    // made its file descriptor readable, and that tryRead might be waiting for. So we wake
+    // tryRead up if input is pending after sending.
+    val sendAndMaybeWakeUpPolling = channelSocket0(channel).sendAndCheckInput(message).flatMap {
+      pendingInput =>
+        IO {
+          if (pendingInput)
+            for {
+              pollers <- pollersOpt
+              poller  <- pollers.valuesIterator
+              if poller.channels(channel)
+            }
+              poller.selector.wakeup()
+        }
+    }
+
+    log0 *> sendAndMaybeWakeUpPolling
   }
+
+  /** Waits for the file descriptors of the sockets of poller to be readable, for at most timeout */
+  private def waitForCommands(poller: Poller, timeout: Duration): Unit =
+    // selected-key sets aren't thread-safe
+    poller.synchronized {
+      val selector = poller.selector
+      timeout match {
+        case d: FiniteDuration if d <= Duration.Zero => selector.selectNow()
+        case d: FiniteDuration                       => selector.select(math.max(1L, d.toMillis))
+        case _                                       => selector.select()
+      }
+      selector.selectedKeys().clear()
+    }
 
   def tryRead(
     channels: Seq[Channel],
     pollingDelay: Duration
-  ): IO[Option[Either[Unit, (Channel, Message)]]] =
-    IO {
+  ): IO[Option[Either[Unit, (Channel, Message)]]] = {
 
-      // log.debug(s"Trying to read on $actualParams from $channels") // un-comment if you're, like, really debugging hard
+    // log.debug(s"Trying to read on $actualParams from $channels") // un-comment if you're, like, really debugging hard
 
-      val pollItems = channels
-        .map { channel =>
-          val socket = channelSocket0(channel)
-          (channel, new PollItem(socket.channel, Poller.POLLIN))
-        }
+    // We don't use ZMQ.poll here, as it makes the sockets process their pending commands, while
+    // JeroMQ sockets aren't thread-safe, and other threads use them to send messages (see
+    // https://github.com/almond-sh/almond/issues/549). Instead, we wait for the socket file
+    // descriptors to be readable on a blocking thread, and check for input on the thread of
+    // each socket.
 
-      val closedOpt = withSelector { selector =>
-        try {
-          ZMQ.poll(selector, pollItems.map(_._2).toArray, pollingDelay.toMillis)
-          false
-        }
-        catch {
-          case _: ClosedSelectorException                                               => true
-          case _: ClosedChannelException                                                => true
-          case e: ZError.IOException if e.getCause.isInstanceOf[ClosedChannelException] => true
-        }
+    val sockets = channels.toList.map(channel => (channel, channelSocket0(channel)))
+
+    // checking all sockets, so that they all process their pending commands, and their file
+    // descriptors don't stay readable
+    val readableChannel: IO[Option[Channel]] =
+      Parallel.parTraverse(sockets) {
+        case (channel, socket) =>
+          socket.hasPendingInput.map((channel, _))
+      }.map(_.collectFirst { case (channel, true) => channel })
+
+    // file descriptors can also become readable because of commands not related to input
+    // (new peers, …), so we keep waiting until the deadline if no input is pending
+    def waitForInput(poller: Poller, deadlineOpt: Option[Deadline]): IO[Option[Channel]] =
+      readableChannel.flatMap {
+        case None =>
+          val timeLeft = deadlineOpt.fold[Duration](Duration.Inf)(_.timeLeft)
+          if (timeLeft <= Duration.Zero) IO.pure(None)
+          else
+            IO.blocking(waitForCommands(poller, timeLeft)) *>
+              waitForInput(poller, deadlineOpt)
+        case readableOpt =>
+          IO.pure(readableOpt)
       }
 
-      if (closedOpt.getOrElse(true))
-        IO.pure(Some(Left(())))
-      else
-        pollItems
-          .collectFirst {
-            case (channel, pi) if pi.isReadable =>
-              channelSocket0(channel)
-                .read
-                .map(_.map(msg => Right((channel, msg))))
+    val closed: PartialFunction[Throwable, Either[Unit, Option[Channel]]] = {
+      case _: ClosedSelectorException                                               => Left(())
+      case _: ClosedChannelException                                                => Left(())
+      case e: ZError.IOException if e.getCause.isInstanceOf[ClosedChannelException] => Left(())
+      // keys get cancelled when sockets get closed
+      case _: CancelledKeyException => Left(())
+    }
+
+    IO(pollerFor(channels.toSet))
+      .flatMap {
+        case None =>
+          IO(log.debug("Connection not opened")).as(Left(()))
+        case Some(poller) =>
+          val deadlineOpt = pollingDelay match {
+            case d: FiniteDuration => Some(d.fromNow)
+            case _                 => None
           }
-          .getOrElse(IO.pure(None))
-    }.evalOn(threads.pollingEces).flatMap(identity)
+          waitForInput(poller, deadlineOpt).map(Right(_))
+      }
+      .recover(closed)
+      .flatMap {
+        case Left(()) =>
+          IO.pure(Some(Left(())))
+        case Right(None) =>
+          IO.pure(None)
+        case Right(Some(Channel.Publish)) if bind =>
+          // the only things we can read on our XPUB socket are subscription events
+          handleSubscriptionEvent.as(Option.empty[Either[Unit, (Channel, Message)]])
+        case Right(Some(channel)) =>
+          channelSocket0(channel)
+            .read
+            .map(_.map(msg => Right((channel, msg))))
+      }
+  }
 
   def close(partial: Boolean, lingerDuration: Duration): IO[Unit] = {
 
@@ -309,8 +453,11 @@ final class ZeromqConnection(
       if (!partial)
         heartBeatThreadOpt.foreach(_.interrupt())
 
-      selectorOpt.foreach(_.close())
-      selectorOpt = None
+      synchronized {
+        for (pollers <- pollersOpt; poller <- pollers.valuesIterator)
+          poller.selector.close()
+        pollersOpt = None
+      }
 
       log.debug(s"Closed channels for $actualParams" + (if (partial) " (partial)" else ""))
     }.evalOn(threads.selectorOpenCloseEces)

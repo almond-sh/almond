@@ -43,13 +43,14 @@ final class ProgressBar private (
       }
 
   private def html: String = {
-    val widthPart    = s"style='width:$htmlWidth'"
+    val widthPart    = s"style='width:${HtmlUtils.escape(htmlWidth)}'"
     val progressPart = progress.fold("")(v => s"value='$v'")
     val idPart       = finalLabelOpt.fold("")(_ => s"id='progress-$displayId'")
 
-    // FIXME Escape label?
-    val labelPart = finalLabelOpt.fold("")(l => s"<label for='progress-$displayId'>$l</label><br>")
-    val bar       = s"""<progress $idPart $widthPart max='$total' $progressPart></progress>"""
+    val labelPart = finalLabelOpt.fold("") { l =>
+      s"<label for='progress-$displayId'>${HtmlUtils.escape(l)}</label><br>"
+    }
+    val bar = s"""<progress $idPart $widthPart max='$total' $progressPart></progress>"""
 
     labelPart + bar
   }

@@ -29,16 +29,32 @@ We list below useful commands, to help get you started using mill to build almon
 ## Run a Jupyter notebook server without installing a kernel
 
 ```text
-$ ./mill -i dev.jupyterFast
+$ ./mill -i dev.jupyter
 ```
 
 This should
-- build almond launchers for Scala 2.13 and Scala 3, then
-- start JupyterLab in the current directory, in the background.
+- build almond, and publish its modules to a local Maven repository (`local-repo.localRepo`),
+- install kernels for Scala 2.13 and Scala 3 from it, with the same command as the
+  [installation instructions](quick-start-install.md), plus that repository, like
+  `cs launch --use-bootstrap almond:<version> --scala 2.13.18 --channel app -r file:///…/local-repo -- --install …`,
+  along with a "special" kernel, that runs the almond launcher, then
+- start JupyterLab in the `notebooks` directory, in the background.
+
+The [example notebooks](#validate-the-example-notebooks) are available from JupyterLab,
+under `examples`: `notebooks/examples` is a symbolic link to the `examples` directory,
+so that changes made to them from JupyterLab end up in the almond sources. Where
+symbolic links can't be created (Windows without developer mode, say), the notebooks
+get copied there instead. `notebooks/examples` is left as is if it already exists:
+remove it to have it re-created.
+
+The `almond` app descriptor these commands use is `app/almond.json`, rather than the one
+of the [coursier apps channel](https://github.com/coursier/apps), that the installation
+instructions use. The two are expected to be the same, which the release CI checks
+(see `scripts/check-app-descriptor.sh`). When changing one, change the other too.
 
 Like `runBackground` in Mill, this command returns once JupyterLab is started, and
 prints the URLs it can be reached at. JupyterLab keeps running in the background, so
-that you can keep using mill (to rebuild the kernel launchers for example). Running the
+that you can keep using mill (to rebuild the kernels for example). Running the
 command again restarts JupyterLab, and
 ```text
 $ ./mill dev.jupyterStop
@@ -47,7 +63,7 @@ stops it. Its output goes to log files printed by the command. The command also
 returns their paths, so that `./mill show` prints them as JSON, which allows to
 start JupyterLab and follow its output in one go:
 ```text
-$ ./mill show dev.jupyterFast | jq -r '.[]' | xargs tail -f
+$ ./mill show dev.jupyter | jq -r '.[]' | xargs tail -f
 ```
 
 Neither JupyterLab nor Python need to be installed: the command downloads
@@ -59,12 +75,31 @@ From the JupyterLab instance, select the kernel "Scala 2.13.18 (sources)" or
 "Scala 3.9.0 (sources)" (the exact Scala versions can differ, see the
 [Scala versions](#list-available-scala-versions) commands below).
 
+The [xeus-python](https://github.com/jupyter-xeus/xeus-python) kernel is also available,
+as "Python . (XPython)" (kernel id `xpython`, the display name comes as is from its
+package), along with its "raw" variant and the standard Python kernel (ipykernel). These
+come from the Python environment of JupyterLab, at the versions pinned in
+`examples/uv.lock`. As xeus-python is built on
+[xeus](https://github.com/jupyter-xeus/xeus) and
+[xeus-zmq](https://github.com/jupyter-xeus/xeus-zmq), this is handy to compare how
+almond and xeus kernels behave. `dev.jupyterConsole` can run it too, with
+`./mill -i dev.jupyterConsole --kernel=xpython`. (No xeus-python wheels exist for Linux
+ARM64, so it isn't installed there.)
+
 JupyterLab starts with a few settings changed from its defaults: its theme follows
-the system one (light or dark), and editors indent with 2 spaces. These are listed in
+the system one (light or dark), editors indent with 2 spaces, and
+[completions are shown while typing](usage-completion.md). These are listed in
 `examples/jupyterlab-overrides.json`. Anything you change in the settings still takes
 precedence.
 
-JupyterLab comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
+JupyterLab comes with the
+[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)
+extension, and the kernels are started with `--variable-inspector`, which enables almond's
+support for it. Open it with "Open Variable Inspector", from the context menu of a notebook
+or from the command palette: it lists the variables defined in the notebook, along with
+their types and values.
+
+JupyterLab also comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
 you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
 (speech bubbles icon), click "New chat", then pick an agent from the menu at the
 bottom left of the message box (it shows "No one" initially). Chats are saved as
@@ -85,14 +120,14 @@ Notebook File Browser" or "Open in Jupyter Notebook" in JupyterLab, "Open in
 JupyterLab" in the notebook UI), or change the URL by hand. To land on the classic
 UI by default, pass `--classic`:
 ```text
-$ ./mill -i dev.jupyterFast --classic
+$ ./mill -i dev.jupyter --classic
 ```
 
 Optionally, pass a Scala version and / or JupyterLab options, like
 ```text
-$ ./mill -i dev.jupyterFast 2.12.21
-$ ./mill -i dev.jupyterFast --ip=192.168.0.1
-$ ./mill -i dev.jupyterFast 2.12.21 --ip=192.168.0.1
+$ ./mill -i dev.jupyter 2.12.21
+$ ./mill -i dev.jupyter --ip=192.168.0.1
+$ ./mill -i dev.jupyter 2.12.21 --ip=192.168.0.1
 ```
 (If specified, the Scala version needs to be passed first.) A Scala version replaces the
 default one with the same binary version (`2.13.17` replaces the Scala 2.13 kernel, say), or
@@ -101,20 +136,44 @@ gets its own kernel next to the default ones (`2.12.21` adds a Scala 2.12 kernel
 If you reach JupyterLab through a reverse proxy that handles HTTPS (Tailscale
 serve for example), pass the address you use in your browser with `--base-address`:
 ```text
-$ ./mill -i dev.jupyterFast --base-address=https://pc-home.tail381281.ts.net:36227 --no-browser
+$ ./mill -i dev.jupyter --base-address=https://pc-home.tail381281.ts.net:36227 --no-browser
 ```
 JupyterLab then displays its URLs with that address, accepts requests and websocket
 connections coming through it, and trusts the `X-Forwarded-*` headers set by the
 proxy. Other options (like `--no-browser` above, or `--port=…` to pick the local
 port the proxy forwards to) are passed to JupyterLab as is.
 
+### Use the scalafmt extension from its sources
+
+To work on [almond-scalafmt](https://github.com/almond-sh/almond-scalafmt), the
+JupyterLab extension formatting cells with scalafmt, point the `ALMOND_SCALAFMT_EXTENSION`
+environment variable at its sources (an absolute path, or a path relative to the almond
+sources):
+```text
+$ git clone https://github.com/almond-sh/almond-scalafmt.git work/almond-scalafmt
+$ ALMOND_SCALAFMT_EXTENSION=work/almond-scalafmt ./mill -i dev.jupyter
+```
+`dev.jupyter` and `dev.jupyterCmd` then build
+the extension, and enable it in JupyterLab and in the Jupyter Notebook UI. The extension
+needs to be a JupyterLab 4 prebuilt extension (with a `jupyterlab.outputDir` field in its
+`package.json`), and building it requires Node.js on the `PATH`. Its sources are copied
+under `out/dev/scalafmtExtension.dest` and built there, with the `jlpm` command of the
+Python environment of JupyterLab (nothing gets written to the extension sources). If
+the directory `ALMOND_SCALAFMT_EXTENSION` points at doesn't exist, the commands print a
+warning and run without the extension.
+
+After changing the extension sources, run the command again: it rebuilds the extension
+(keeping its dependencies around, so that this only takes a few seconds), and
+`dev.jupyter` restarts JupyterLab with it. Reload JupyterLab from your
+browser to pick it up.
+
 ## Get the command to run JupyterLab yourself
 
 ```text
-$ ./mill show dev.jupyterCmdFast
+$ ./mill show dev.jupyterCmd
 ```
 
-This builds the launchers and writes the kernel specs like `dev.jupyterFast` does, but
+This installs the kernels like `dev.jupyter` does, but
 instead of starting JupyterLab, it prints the shell command line to do so, as a JSON
 string: a `cd` to the workspace, the environment variables to set, then the command
 itself, quoted as needed for POSIX shells:
@@ -124,11 +183,13 @@ itself, quoted as needed for POSIX shells:
 
 Pass it to `eval` to run JupyterLab, with jq for example:
 ```text
-$ ( eval "$(./mill show dev.jupyterCmdFast | jq -r .)" )
+$ ( eval "$(./mill show dev.jupyterCmd | jq -r .)" )
 ```
 (The subshell keeps the `cd` from changing the current directory of your shell.)
-Like `dev.jupyterFast`, it accepts a Scala version, `--classic`, `--base-address`, and
-JupyterLab options. `dev.jupyterCmd` does the same with standalone launchers.
+Like `dev.jupyter`, it accepts a Scala version, `--classic`, `--base-address`, and
+JupyterLab options.
+
+`dev.jupyterFast` and `dev.jupyterCmdFast` are the same as `dev.jupyter` and `dev.jupyterCmd`.
 
 ## Build a kernel launcher
 
@@ -160,8 +221,12 @@ $ ./mill -w dev.launcherFast
 ```
 
 If you [ran a JupyterLab server from the almond sources](#run-a-jupyter-notebook-server-without-installing-a-kernel),
-you can restart the kernel from a notebook via JupyterLab to pick a newly built launcher. Pass
-`./mill -w dev.launcher` the Scala version of the kernel you use in JupyterLab.
+its kernels load the almond JARs from the local repository. Re-publish them there upon source
+changes with
+```text
+$ ./mill -w local-repo.localRepo
+```
+then restart the kernel from a notebook via JupyterLab to pick them up.
 
 ## Useful commands
 
@@ -192,13 +257,13 @@ macros on JDK 15+ (see `mill-build/scalac-patches`).
 
 ### Print the latest supported Scala 2.13 version
 ```text
-$ ./mill dev.scala213
+$ ./mill --ticker false dev.scala213
 2.13.18
 ```
 
 ### Print the latest supported Scala 2.12 version
 ```text
-$ ./mill dev.scala212
+$ ./mill --ticker false dev.scala212
 2.12.21
 ```
 
@@ -289,13 +354,23 @@ in the examples job on the CI to fail.
 
 To validate the examples locally, run
 ```text
-$ ./mill -i scala.examples.test
+$ ./mill -i 'scala.examples[_].test'
+```
+
+This runs them with a Scala 2.12 version, whose outputs the notebooks record, and with
+Scala 2.13 and Scala 3 versions. Pass one of these to run them with it only:
+```text
+$ ./mill -i 'scala.examples[3.9.0].test'
 ```
 
 Optionally, you can pass a glob to filter notebook names:
 ```text
-$ ./mill -i scala.examples.test 'almond.examples.Examples.scalapy*'
+$ ./mill -i 'scala.examples[2.12.20].test' 'almond.examples.Examples.plotly*'
 ```
+
+Set `ALMOND_UPDATE_EXAMPLES=1` to update the notebooks from what the tests get. See
+[`examples/README.md`](https://github.com/almond-sh/almond/blob/master/examples/README.md) for
+how notebooks that differ on Scala 2.13 or Scala 3 are handled.
 
 ## Run the proxy and mirror tests
 

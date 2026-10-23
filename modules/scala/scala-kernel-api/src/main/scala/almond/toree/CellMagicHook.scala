@@ -12,7 +12,7 @@ object CellMagicHook {
   private val userHandlers0 = new mutable.HashMap[String, CellMagicHandler]
 
   def addHandler(name: String)(handler: CellMagicHandler): Unit =
-    userHandlers0 += name -> handler
+    userHandlers0 += name.toLowerCase(Locale.ROOT) -> handler
 
   def clearHandlers(): Unit =
     userHandlers0.clear()

@@ -10,6 +10,14 @@ jobs:
   release:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Never run two SonatypeCentralPublishModule uploads at the same time
+    concurrency:
+      group: sonatype-central-publish-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: actions/checkout@v7
       with:
@@ -18,6 +26,12 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
+    # Snapshots can depend on snapshots, releases can't. Every job publishing or uploading
+    # anything depends on this one, so failing here holds back the whole release.
+    - name: Check there are no snapshot dependencies
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: ./mill -i ci.checkNoSnapshotDependencies
+      shell: bash
     - run: |
         mv .mill-jvm-opts .mill-jvm-opts.bak
         cat .mill-jvm-opts.bak | grep -v Xmx > .mill-jvm-opts
@@ -42,10 +56,44 @@ jobs:
         MILL_PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
         MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
         MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+    # Same artifacts, snapshots included, to the GitHub Packages Maven repository of this repo.
+    # Best effort: Sonatype Central is the source of truth, so a failure here shouldn't hold
+    # back the jobs depending on this one.
+    - name: Publish to GitHub Packages
+      continue-on-error: true
+      run: |
+        ./mill -i mill.javalib.MavenPublishModule/publishAll \
+          --releaseUri "https://maven.pkg.github.com/$GITHUB_REPOSITORY" \
+          --snapshotUri "https://maven.pkg.github.com/$GITHUB_REPOSITORY"
+      shell: bash
+      env:
+        MILL_MAVEN_USERNAME: ${{ github.actor }}
+        MILL_MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
+  # Once the release is pushed to Sonatype, check that the almond app descriptor we test with is
+  # the one users get with "cs launch almond" / "cs install almond"
+  check-app-descriptor:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - uses: actions/checkout@v7
+    - run: scripts/check-app-descriptor.sh
+      shell: bash
+
+  # Launchers of tagged versions go to the release of their tag, those of snapshots
+  # pushed from main replace the ones of the "nightly" release
   upload-launcher:
     needs: release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Nightly uploads replace assets, never run two of them at the same time
+    concurrency:
+      group: upload-launcher-${{ github.repository }}-${{ startsWith(github.ref, 'refs/tags/') && github.ref || 'nightly' }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v7
       with:
@@ -54,15 +102,41 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
-    - run: ./mill -i ci.uploadLaunchers
-      if: startsWith(github.ref, 'refs/tags/v')
+    - run: |
+        if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+          # Same as in the release job, so that we pick the snapshot version it published
+          for tag in $(git tag --points-at HEAD); do
+            git tag -d "$tag"
+          done
+        fi
+        ./mill -i ci.uploadLaunchers
+      if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.repository == 'almond-sh/almond')
       shell: bash
       env:
-        UPLOAD_GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        UPLOAD_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  update-docker-images:
+  sdkman:
+    needs: upload-launcher
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'almond-sh/almond'
+    uses: ./.github/workflows/sdkman.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      SDKMAN_VENDOR_EMAIL: ${{ secrets.SDKMAN_VENDOR_EMAIL }}
+      SDKMAN_VENDOR_PASSWORD: ${{ secrets.SDKMAN_VENDOR_PASSWORD }}
+
+  # Builds the Docker images on a runner of each platform, then merges them in multi-platform images
+  build-docker-images:
     needs: release
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'almond-sh/almond'
     steps:
     - uses: actions/checkout@v7
@@ -72,20 +146,53 @@ jobs:
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
-    - run: scripts/update-docker-images.sh
+    - uses: docker/setup-buildx-action@v4
+    - run: scripts/update-docker-images.sh build docker-images
+      shell: bash
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_PLATFORM: linux/${{ matrix.arch }}
+    - uses: actions/upload-artifact@v7
+      with:
+        name: docker-images-${{ matrix.arch }}
+        path: docker-images
+        if-no-files-found: error
+        retention-days: 1
+
+  update-docker-images:
+    needs: build-docker-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'almond-sh/almond'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: docker-images-*
+        merge-multiple: true
+        path: docker-images
+    - uses: docker/setup-buildx-action@v4
+    - run: scripts/update-docker-images.sh merge docker-images
       shell: bash
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-  update-website:
+  build-website:
     needs: [upload-launcher, update-docker-images]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # This job runs npm packages, so it holds no secrets and gets a read-only token.
+    # The website is pushed by update-website, which runs none of them.
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: true
+        persist-credentials: false
     - uses: coursier/setup-action@v3.0
       with:
         jvm: 21
@@ -96,16 +203,51 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
         WEBSITE_DIR: docs/website
         VERSIONED_DOCS_REPO: almond-sh/versioned-docs
-    - run: |
-        scripts/website0/versioned-docs.sh
-        ./mill docs.generate --npm-install --yarn-run-build --relativize
-        scripts/website0/push-website.sh
+    - run: scripts/website0/versioned-docs.sh
+      if: "!startsWith(github.ref, 'refs/tags/v')"
+      shell: bash
+      env:
+        WEBSITE_DIR: docs/website
+        VERSIONED_DOCS_REPO: almond-sh/versioned-docs
+    - run: ./mill docs.generate --npm-install --yarn-run-build --relativize
+      shell: bash
+    - uses: actions/upload-artifact@v7
+      with:
+        name: website
+        path: |
+          docs/website/build
+          docs/website/versioned_docs
+          docs/website/versioned_sidebars
+          docs/website/versions.json
+        if-no-files-found: error
+        retention-days: 1
+
+  update-website:
+    needs: build-website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - uses: actions/download-artifact@v8
+      with:
+        name: website
+        path: website
+    - run: scripts/website0/versioned-docs.sh --push
+      if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        WEBSITE_DIR: docs/website
-        REPO: almond-sh/almond
+        WEBSITE_DIR: website
         VERSIONED_DOCS_REPO: almond-sh/versioned-docs
+    - run: scripts/website0/push-website.sh
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        WEBSITE_DIR: website
+        REPO: almond-sh/almond

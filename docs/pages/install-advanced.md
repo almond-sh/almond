@@ -57,6 +57,31 @@ and copies it alongside the `kernel.json` file it generates for Jupyter to be ab
 Almond. That way, the launcher used during the installation can be safely deleted right after
 the installation.
 
+### Where the kernel gets installed
+
+By default, Almond asks the `jupyter` command found in the `PATH` where Jupyter looks for kernels
+(via `jupyter --data-dir` and `jupyter --paths --json`), and installs the kernel in the user kernel
+directory, like `jupyter kernelspec install --user` would. If `jupyter` can't be run, Almond prints
+a warning and falls back to the default Jupyter directories (`~/.local/share/jupyter/kernels` on Linux,
+`~/Library/Jupyter/kernels` on macOS, `%APPDATA%\jupyter\kernels` on Windows, taking into account
+environment variables such as `JUPYTER_DATA_DIR`).
+Pass `--require-jupyter` to make the installation fail instead, if `jupyter` can't be run.
+
+If the `jupyter` command of your Jupyter installation isn't in the `PATH` (on Windows, if you
+don't install Almond from an Anaconda Prompt for example), pass it with `--jupyter-command`:
+```text
+$ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --install --jupyter-command 'D:\anaconda3\Scripts\jupyter.exe'
+```
+
+You can also pass a kernel directory explicitly with `--jupyter-path`, or install the kernel
+system-wide with `--global`. After installing the kernel, Almond warns if Jupyter doesn't look for
+kernels in the directory it was installed in, or if another kernel with the same id takes
+precedence over it.
+
+Note that the kernel is installed for the user running the installation. When running Jupyter as
+another user (like in Docker images, where the installation often runs as `root`), pass `--global`
+or `--jupyter-path` to install the kernel in a directory that Jupyter looks at.
+
 ## Creating an Almond launcher and installing it
 
 This section describes how to install Almond for a specific Scala version. Even
@@ -145,6 +170,21 @@ To list the options that can be passed this way, run
 $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --help
 ```
 
+### Memory
+
+The kernel spawned by the launcher gets a maximum heap size of 512 MB by default. To change it, either
+pass a Java option at install time, like
+```text
+$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ --install --java-opt -Xmx4g
+```
+use a `//> using javaOpt "-Xmx4g"` directive in the first cells of a notebook, or set it in the
+`JAVA_OPTS`, `JDK_JAVA_OPTIONS` or `JAVA_TOOL_OPTIONS` environment variables of the kernel, like
+`JAVA_OPTS=-Xmx4g`. The default doesn't apply as soon as any of these sets
+`-Xmx`, `-XX:MaxHeapSize`, `-XX:MaxRAM`, or `-XX:MaxRAMPercentage`.
+
+The launcher passes the content of `JAVA_OPTS` to the kernel it spawns, before the
+options passed via `--java-opt` or `//> using javaOpt`, which take precedence over it.
+
 ## Custom URL protocol support
 
 Custom protocol support for `java.net.URL` needs the JARs supporting it to be passed to the `-cp`
@@ -205,11 +245,61 @@ $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
   --predef predef.sc
 ```
 
+### Custom magics
+
+You can define your own line and cell magics, alongside the built-in ones, when `--toree-magics`
+or `--toree-compatibility` is enabled. Register them with `almond.toree.LineMagicHook.addHandler`
+and `almond.toree.CellMagicHook.addHandler`, typically from a predef script, so that they're available
+from the first cell on. They can also be registered from a notebook cell, in which case they're
+available in the cells that follow. Like the built-in magics, custom magic names are case-insensitive.
+A custom magic takes precedence over a built-in magic with the same name.
+
+A line magic handler receives the magic name, as written by users, and the whitespace-separated
+arguments that follow it. It returns either code that replaces the magic line, or an
+`almond.api.JupyterApi.ExecuteHookResult` that stops the cell execution and is reported to users
+as is. Line magics are only processed in the leading lines of a cell, possibly interleaved with
+empty lines or `//` comments.
+```scala
+almond.toree.LineMagicHook.addHandler("greet") { (_, args) =>
+  Right(s"""val greeting = "Hello ${args.mkString(" ")}"""")
+}
+```
+```scala
+%greet Alice
+// greeting: String = "Hello Alice"
+```
+
+A cell magic handler receives the magic name, and the content of the cell after its first
+`%%name` line. Like line magic handlers, it returns either code to run instead of the cell,
+or an `ExecuteHookResult`.
+```scala
+// cell magic that wraps a cell in a block, and assigns it to a 'thing' value
+almond.toree.CellMagicHook.addHandler("thing") { (_, content) =>
+  val nl = System.lineSeparator()
+  Right("val thing = {" + nl + content + nl + "}" + nl)
+}
+
+// cell magic that displays the cell content as is, rather than running it
+almond.toree.CellMagicHook.addHandler("echo") { (_, content) =>
+  import almond.api.JupyterApi
+  import almond.interpreter.api.DisplayData
+  Left(JupyterApi.ExecuteHookResult.Success(DisplayData.text(content)))
+}
+```
+```scala
+%%thing
+println("Hello")
+2
+// Hello
+// thing: Int = 2
+```
+
+Custom magics are listed by `%LsMagic`, along with the built-in ones. Remove all custom magics
+with `almond.toree.LineMagicHook.clearHandlers()` and `almond.toree.CellMagicHook.clearHandlers()`.
+
 ### Toree API
 
-Enable basic support for the Toree API with `--toree-api`.
-
-Enable it with the `--toree-magics` option, that both the former and the new Almond launcher accept:
+Enable basic support for the Toree API with `--toree-api`, that both the former and the new Almond launcher accept:
 ```text
 $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
   --install \

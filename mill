@@ -1,13 +1,13 @@
 #!/usr/bin/env sh
 
 # Mill Build Tool: https://github.com/com-lihaoyi/mill
-# Download: https://repo1.maven.org/maven2/com/lihaoyi/mill-dist/2.0.0-M2/mill-dist-2.0.0-M2-mill.sh
+# Download: https://repo1.maven.org/maven2/com/lihaoyi/mill-dist/1.3.0/mill-dist-1.3.0-mill.sh
 # Documentation: https://mill-build.org/mill/cli/installation-ide.html#_bootstrap_scripts
-# Script Version: 2.0.0-M2
+# Script Version: 1.3.0
 
 set -e
 
-if [ -z "${DEFAULT_MILL_VERSION}" ] ; then DEFAULT_MILL_VERSION="2.0.0-M2"; fi
+if [ -z "${DEFAULT_MILL_VERSION}" ] ; then DEFAULT_MILL_VERSION="1.3.0"; fi
 
 if [ -z "${GITHUB_RELEASE_CDN}" ] ; then GITHUB_RELEASE_CDN=""; fi
 
@@ -174,7 +174,7 @@ if [ ! -s "${MILL}" ] || [ "$MILL_TEST_DRY_RUN_LAUNCHER_SCRIPT" = "1" ] ; then
   fi
 
   echo "Downloading mill ${MILL_VERSION} from ${MILL_DOWNLOAD_URL} ..." 1>&2
-  curl -f -L -o "${MILL_TEMP_DOWNLOAD_FILE}" "${MILL_DOWNLOAD_URL}"
+  curl -f -L --retry 5 -o "${MILL_TEMP_DOWNLOAD_FILE}" "${MILL_DOWNLOAD_URL}"
 
   chmod +x "${MILL_TEMP_DOWNLOAD_FILE}"
 

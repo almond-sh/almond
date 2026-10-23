@@ -1,12 +1,16 @@
 package almond.kernel
 
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
-import java.util.UUID
 
-import almond.channels.zeromq.ZeromqThreads
+import almond.channels.zeromq.{ZeromqRegistration, ZeromqThreads}
 import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
-import almond.interpreter.{IOInterpreter, Interpreter, InterpreterToIOInterpreter, Message}
+import almond.interpreter.{
+  IOInterpreter,
+  Interpreter,
+  InterpreterToIOInterpreter,
+  KernelSession,
+  Message
+}
 import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{
@@ -16,7 +20,7 @@ import almond.interpreter.messagehandlers.{
   MessageHandler
 }
 import almond.logger.LoggerContext
-import almond.protocol.{Header, Protocol, Status, Connection => JsonConnection}
+import almond.protocol.{Registration, Status, Connection => JsonConnection}
 import cats.effect.IO
 import cats.effect.std.Queue
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
@@ -29,6 +33,7 @@ import scala.concurrent.duration.Duration
 
 final case class Kernel(
   interpreter: IOInterpreter,
+  session: KernelSession,
   backgroundMessagesQueue: Queue[IO, (Channel, RawMessage)],
   executeQueue: Queue[IO, Option[(
     Option[(Channel, RawMessage)],
@@ -53,6 +58,7 @@ final case class Kernel(
 
       val interpreterMessageHandler = InterpreterMessageHandlers(
         interpreter,
+        session,
         backgroundCommHandlerOpt,
         Some(inputHandler),
         kernelThreads.queueEc,
@@ -67,7 +73,12 @@ final case class Kernel(
         case None =>
           MessageHandler.empty
         case Some(commHandler) =>
-          CommMessageHandlers(commHandler.commTargetManager, kernelThreads.queueEc, logCtx)
+          CommMessageHandlers(
+            commHandler.commTargetManager,
+            session,
+            kernelThreads.queueEc,
+            logCtx
+          )
             .messageHandler
       }
 
@@ -79,22 +90,14 @@ final case class Kernel(
 
       // for w/e reason, these seem not to be processed on time by the Jupyter classic UI
       // (don't know about lab, nteract seems fine, unless it just marks kernels as starting by itself)
+      // These are likely published before any client subscribed to IOPub. Since protocol 5.5, clients
+      // can wait for an iopub_welcome message (sent by ZeromqConnection) to know that their subscription
+      // is effective, rather than relying on these.
       val initStream = {
 
         def sendStatus(status: Status) =
           Stream(
-            Message(
-              Header(
-                msg_id = UUID.randomUUID().toString,
-                username = "username",
-                session =
-                  UUID.randomUUID().toString, // Would there be a way to get the session id from the client?
-                msg_type = Status.messageType.messageType,
-                version = Some(Protocol.versionStr)
-              ),
-              status,
-              idents = List(Status.messageType.messageType.getBytes(UTF_8).toSeq)
-            ).on(Channel.Publish)
+            Message.publish(session, Status.messageType, status).on(Channel.Publish)
           )
 
         val attemptInit = interpreter.init.attempt.flatMap { a =>
@@ -214,33 +217,67 @@ final case class Kernel(
         leftoverMessages,
         autoClose = true,
         lingerDuration = lingerDuration,
-        bindToRandomPorts = bindToRandomPorts
+        bindToRandomPorts = bindToRandomPorts.nonEmpty,
+        onBound = onBound(zeromqThreads, bindToRandomPorts, None)
       )
       (run, _) = t
       _ <- run
     } yield ()
 
-  private def overwriteConnectionFile(
-    path: Path,
+  private def withPorts(
     params: ConnectionParameters,
     ports: Map[Option[Channel], Int]
-  ): Unit = {
-    val params0 = {
-      var p = params
-      for (port <- ports.get(Some(Channel.Requests)))
-        p = p.copy(shell_port = port)
-      for (port <- ports.get(Some(Channel.Control)))
-        p = p.copy(control_port = port)
-      for (port <- ports.get(Some(Channel.Publish)))
-        p = p.copy(iopub_port = port)
-      for (port <- ports.get(Some(Channel.Input)))
-        p = p.copy(stdin_port = port)
-      for (port <- ports.get(None))
-        p = p.copy(hb_port = port)
-      p
-    }
-    val b = writeToArray(JsonConnection.fromParams(params0))(JsonConnection.codec)
+  ): ConnectionParameters = {
+    var p = params
+    for (port <- ports.get(Some(Channel.Requests)))
+      p = p.copy(shell_port = port)
+    for (port <- ports.get(Some(Channel.Control)))
+      p = p.copy(control_port = port)
+    for (port <- ports.get(Some(Channel.Publish)))
+      p = p.copy(iopub_port = port)
+    for (port <- ports.get(Some(Channel.Input)))
+      p = p.copy(stdin_port = port)
+    for (port <- ports.get(None))
+      p = p.copy(hb_port = port)
+    p
+  }
+
+  private def overwriteConnectionFile(path: Path, params: ConnectionParameters): Unit = {
+    val b = writeToArray(JsonConnection.fromParams(params))(JsonConnection.codec)
     Files.write(path, b)
+  }
+
+  /** Actions to run once the kernel channels are bound
+    *
+    * @param overwriteConnectionFileOpt
+    *   connection file to overwrite, if random ports were picked
+    * @param registrationOpt
+    *   registration service to send the connection info to (kernel startup handshake)
+    */
+  private def onBound(
+    zeromqThreads: ZeromqThreads,
+    overwriteConnectionFileOpt: Option[Path],
+    registrationOpt: Option[Registration]
+  ): (ConnectionParameters, Boolean) => IO[Unit] = {
+    (params, pickedRandomPorts) =>
+      val overwrite = overwriteConnectionFileOpt match {
+        case Some(connectionFile) if pickedRandomPorts =>
+          IO(overwriteConnectionFile(connectionFile, params))
+        case _ =>
+          IO.unit
+      }
+      val register = registrationOpt match {
+        case Some(registration) =>
+          ZeromqRegistration.sendConnectionInfo(
+            zeromqThreads.context,
+            registration,
+            params,
+            logCtx
+          )
+        case None =>
+          IO.unit
+      }
+      overwrite.flatMap(_ => register)
   }
 
   private def runOnConnectionAllowClose0(
@@ -250,7 +287,8 @@ final case class Kernel(
     leftoverMessages: Seq[(Channel, RawMessage)],
     autoClose: Boolean,
     lingerDuration: Duration,
-    bindToRandomPorts: Option[Path]
+    bindToRandomPorts: Boolean,
+    onBound: (ConnectionParameters, Boolean) => IO[Unit]
   ): IO[(IO[Unit], Connection)] =
     for {
       c <- connection.channels(
@@ -259,20 +297,15 @@ final case class Kernel(
         lingerPeriod = Some(5.minutes),
         logCtx = logCtx,
         identityOpt = Some(kernelId),
-        bindToRandomPorts = bindToRandomPorts.nonEmpty
+        bindToRandomPorts = bindToRandomPorts
       )
     } yield {
       val run0 =
         for {
           ports <- c.open
           _ <- {
-            assert(bindToRandomPorts.nonEmpty || ports.isEmpty)
-            bindToRandomPorts match {
-              case Some(connectionFile) if ports.nonEmpty =>
-                IO(overwriteConnectionFile(connectionFile, connection, ports))
-              case _ =>
-                IO.unit
-            }
+            assert(bindToRandomPorts || ports.isEmpty)
+            onBound(withPorts(connection, ports), ports.nonEmpty)
           }
           _ <- run(
             c.stream(),
@@ -310,6 +343,52 @@ final case class Kernel(
     lingerDuration: Duration,
     bindToRandomPorts: Option[Path]
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
+    runOnConnectionAllowClose(
+      connection,
+      kernelId,
+      zeromqThreads,
+      leftoverMessages,
+      autoClose,
+      lingerDuration,
+      bindToRandomPorts,
+      None
+    )
+
+  /** @param registrationOpt
+    *   if non-empty, send the connection info (actual ports) to that registration service once the
+    *   channels are bound (kernel startup handshake)
+    */
+  def runOnConnectionAllowClose(
+    connection: ConnectionParameters,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean,
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path],
+    registrationOpt: Option[Registration]
+  ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
+    runOnConnectionAllowClose1(
+      connection,
+      kernelId,
+      zeromqThreads,
+      leftoverMessages,
+      autoClose,
+      lingerDuration,
+      bindToRandomPorts = bindToRandomPorts.nonEmpty,
+      onBound = onBound(zeromqThreads, bindToRandomPorts, registrationOpt)
+    )
+
+  private def runOnConnectionAllowClose1(
+    connection: ConnectionParameters,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean,
+    lingerDuration: Duration,
+    bindToRandomPorts: Boolean,
+    onBound: (ConnectionParameters, Boolean) => IO[Unit]
+  ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     runOnConnectionAllowClose0(
       connection,
       kernelId,
@@ -317,7 +396,8 @@ final case class Kernel(
       leftoverMessages,
       autoClose,
       lingerDuration,
-      bindToRandomPorts = bindToRandomPorts
+      bindToRandomPorts = bindToRandomPorts,
+      onBound = onBound
     ).map {
       case (run, conn) =>
         val run0 = run.attempt.flatMap {
@@ -353,6 +433,35 @@ final case class Kernel(
     lingerDuration: Duration,
     bindToRandomPorts: Option[Path]
   ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
+    runOnConnectionFileAllowClose(
+      connectionPath,
+      kernelId,
+      zeromqThreads,
+      leftoverMessages,
+      autoClose,
+      lingerDuration,
+      bindToRandomPorts,
+      None
+    )
+
+  /** @param connectionPath
+    *   path to a connection file, or to a registration file (kernel startup handshake). In the
+    *   latter case, channels are bound to random ports, that are then sent to the registration
+    *   service, and `bindToRandomPorts` is ignored.
+    * @param registrationOpt
+    *   if non-empty, `connectionPath` must be a connection file, and the connection info (actual
+    *   ports) is sent to that registration service once the channels are bound
+    */
+  def runOnConnectionFileAllowClose(
+    connectionPath: Path,
+    kernelId: String,
+    zeromqThreads: ZeromqThreads,
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    autoClose: Boolean,
+    lingerDuration: Duration,
+    bindToRandomPorts: Option[Path],
+    registrationOpt: Option[Registration]
+  ): IO[(IO[Seq[(Channel, RawMessage)]], Connection)] =
     for {
       _ <- {
         if (Files.exists(connectionPath))
@@ -366,16 +475,37 @@ final case class Kernel(
         else
           IO.raiseError(new Exception(s"Connection file $connectionPath not a regular file"))
       }
-      connection <- JsonConnection.fromPath(connectionPath)
-      value <- runOnConnectionAllowClose(
-        connection.connectionParameters,
-        kernelId,
-        zeromqThreads,
-        leftoverMessages,
-        autoClose,
-        lingerDuration,
-        bindToRandomPorts = bindToRandomPorts
-      )
+      registrationFromFileOpt <-
+        if (registrationOpt.isEmpty) Registration.fromPathIfRegistration(connectionPath)
+        else IO.pure(None)
+      value <- registrationFromFileOpt match {
+        case Some(registration) =>
+          // Not overwriting the registration file, the actual ports are sent to the registration
+          // service instead
+          runOnConnectionAllowClose1(
+            registration.connectionParameters,
+            kernelId,
+            zeromqThreads,
+            leftoverMessages,
+            autoClose,
+            lingerDuration,
+            bindToRandomPorts = true,
+            onBound = onBound(zeromqThreads, None, Some(registration))
+          )
+        case None =>
+          JsonConnection.fromPath(connectionPath).flatMap { connection =>
+            runOnConnectionAllowClose(
+              connection.connectionParameters,
+              kernelId,
+              zeromqThreads,
+              leftoverMessages,
+              autoClose,
+              lingerDuration,
+              bindToRandomPorts = bindToRandomPorts,
+              registrationOpt = registrationOpt
+            )
+          }
+      }
     } yield value
 
   /** @param connectionPath
@@ -487,7 +617,8 @@ object Kernel {
     cancellableEc: ExecutionContext,
     logCtx: LoggerContext,
     extraHandler: MessageHandler,
-    noExecuteInputFor: Set[String]
+    noExecuteInputFor: Set[String],
+    session: KernelSession
   ): IO[Kernel] =
     create(
       new InterpreterToIOInterpreter(
@@ -500,7 +631,8 @@ object Kernel {
       kernelThreads,
       logCtx,
       extraHandler,
-      noExecuteInputFor
+      noExecuteInputFor,
+      session
     )
 
   def create(
@@ -517,7 +649,8 @@ object Kernel {
       cancellableEc,
       logCtx,
       MessageHandler.empty,
-      Set.empty
+      Set.empty,
+      KernelSession.create()
     )
 
   def create(
@@ -525,7 +658,8 @@ object Kernel {
     kernelThreads: KernelThreads,
     logCtx: LoggerContext,
     extraHandler: MessageHandler,
-    noExecuteInputFor: Set[String]
+    noExecuteInputFor: Set[String],
+    session: KernelSession
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.unbounded[IO, (Channel, RawMessage)]
@@ -539,6 +673,7 @@ object Kernel {
           Some {
             val h = new DefaultCommHandler(
               backgroundMessagesQueue,
+              session,
               kernelThreads.commEc,
               kernelThreads.ioRuntime
             )
@@ -549,10 +684,11 @@ object Kernel {
           None
       }
       inputHandler <- IO {
-        new InputHandler(kernelThreads.futureEc, logCtx, kernelThreads.ioRuntime)
+        new InputHandler(session, kernelThreads.futureEc, logCtx, kernelThreads.ioRuntime)
       }
     } yield Kernel(
       interpreter,
+      session,
       backgroundMessagesQueue,
       executeQueue,
       otherQueue,

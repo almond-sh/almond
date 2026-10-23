@@ -8,7 +8,6 @@ import ammonite.compiler.iface
 import dotty.tools.dotc.util.SourceFile
 
 class AlmondCompilerLifecycleManager(
-  rtCacheDir: Option[Path],
   headFrame: => ammonite.util.Frame,
   dependencyCompleteOpt: => Option[String => (Int, Seq[String])],
   classPathWhitelist: Set[Seq[String]],
@@ -17,12 +16,12 @@ class AlmondCompilerLifecycleManager(
   autoUpdateVars: Boolean,
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
+  outputStyle: () => almond.OutputStyle,
   outputDir: Option[Path],
   initialSettings: Seq[String],
   logCtx: LoggerContext,
   logCode: Boolean
 ) extends CompilerLifecycleManager(
-      rtCacheDir,
       headFrame,
       dependencyCompleteOpt,
       classPathWhitelist,
@@ -39,6 +38,7 @@ class AlmondCompilerLifecycleManager(
       autoUpdateVars,
       silentImports,
       variableInspectorEnabled,
+      outputStyle,
       logCtx,
       logCode
     )
@@ -46,6 +46,10 @@ class AlmondCompilerLifecycleManager(
 }
 
 object AlmondCompilerLifecycleManager {
+
+  /** The version of the compiler we run (scala-library has a 2.13 version before Scala 3.8) */
+  private[almond] def compilerVersion: String =
+    dotty.tools.dotc.config.Properties.versionNumberString
 
   private[almond] def isAtLeast_2_12_7 = true
 

@@ -5,7 +5,7 @@ import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.Codecs.stringCodec
 import almond.protocol.Execute.DisplayData
-import almond.protocol.{Complete, Execute, Inspect, MessageType, RawJson}
+import almond.protocol.{Complete, Execute, Inspect, IopubWelcome, MessageType, RawJson}
 import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
@@ -74,7 +74,7 @@ final case class ClientStreams(
 
   def generatedMessageTypes(
     channels: Set[Channel] = Set(Channel.Publish, Channel.Requests),
-    filterOut: Set[String] = Set("status"),
+    filterOut: Set[String] = Set("status", IopubWelcome.messageType.messageType),
     collapse: Set[String] = Set("stream")
   ): Seq[String] = {
 
@@ -99,7 +99,25 @@ final case class ClientStreams(
     collapsing(s).toVector
   }
 
-  def executeReplies: Map[Int, String] =
+  def executeResults: Map[Int, String] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.resultType.messageType =>
+          m.decodeAs[Execute.Result] match {
+            case Left(_)  => Nil
+            case Right(m) => Seq(m.content)
+          }
+      }
+      .flatten
+      .map { r =>
+        r.execution_count -> r.data.get("text/plain").fold("")(_.stringOrEmpty)
+      }
+      .toMap
+
+  /** Text result of each successful execute request, empty if a request had no result */
+  def executeReplies: Map[Int, String] = {
+    val results = executeResults
     generatedMessages
       .iterator
       .collect {
@@ -112,9 +130,10 @@ final case class ClientStreams(
       .flatten
       .collect {
         case s: Execute.Reply.Success =>
-          s.execution_count -> s.user_expressions.get("text/plain").fold("")(_.stringOrEmpty)
+          s.execution_count -> results.getOrElse(s.execution_count, "")
       }
       .toMap
+  }
 
   def executeErrors: Map[Int, (String, String, List[String])] =
     generatedMessages
@@ -147,10 +166,22 @@ final case class ClientStreams(
       .collect {
         case s: Execute.Reply.Success if s.payload.nonEmpty =>
           s.execution_count -> s.payload
-        case err: Execute.Reply.Error if err.payload.nonEmpty =>
-          err.execution_count -> err.payload
       }
-      .toMap
+      .toMap ++
+      // Execute.Reply.Error has no payload field, so read those from the raw JSON,
+      // to catch error replies that include a payload (they shouldn't)
+      generatedMessages
+        .iterator
+        .collect {
+          case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
+            Try(readFromArray(m.content.value)(ClientStreams.replyPayloadProbeCodec)).toOption
+        }
+        .flatten
+        .collect {
+          case p if p.status == "error" && p.payload.nonEmpty =>
+            p.execution_count -> p.payload
+        }
+        .toMap
 
   def displayData: Seq[(DisplayData, Boolean)] =
     generatedMessages
@@ -162,6 +193,20 @@ final case class ClientStreams(
           m.decodeAs[Execute.DisplayData] match {
             case Left(_)   => Nil
             case Right(m0) => Seq(m0.content -> isUpdate)
+          }
+      }
+      .flatten
+      .toList
+
+  def clearOutputs: Seq[Boolean] =
+    generatedMessages
+      .iterator
+      .collect {
+        case Left((Channel.Publish, m))
+            if m.header.msg_type == Execute.clearOutputType.messageType =>
+          m.decodeAs[Execute.ClearOutput] match {
+            case Left(_)   => Nil
+            case Right(m0) => Seq(m0.content.waitForNewOutput)
           }
       }
       .flatten
@@ -185,15 +230,10 @@ final case class ClientStreams(
     generatedMessages
       .iterator
       .collect {
-        case Left((Channel.Requests, m)) if m.header.msg_type == Execute.replyType.messageType =>
-          m.decodeAs[Execute.Reply] match {
-            case Left(_) => Nil
-            case Right(m) =>
-              m.content match {
-                case s: Execute.Reply.Success =>
-                  s.user_expressions.get("text/plain").toSeq.map(_.stringOrEmpty)
-                case _ => Nil
-              }
+        case Left((Channel.Publish, m)) if m.header.msg_type == Execute.resultType.messageType =>
+          m.decodeAs[Execute.Result] match {
+            case Left(_)  => Nil
+            case Right(m) => m.content.data.get("text/plain").toSeq.map(_.stringOrEmpty)
           }
         case Left((Channel.Publish, m))
             if m.header.msg_type == "stream" =>
@@ -282,6 +322,16 @@ final case class ClientStreams(
 object ClientStreams {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
+  import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+
+  private final case class ReplyPayloadProbe(
+    status: String,
+    execution_count: Int = -1,
+    payload: List[RawJson] = Nil
+  )
+
+  private val replyPayloadProbeCodec: JsonValueCodec[ReplyPayloadProbe] =
+    JsonCodecMaker.make
 
   implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
     def stringOrEmpty: String =

@@ -57,6 +57,11 @@ final class ScalaInterpreter(
 
   private val silent0: Ref[Boolean] = Ref(false)
 
+  private val outputStyle0: Ref[OutputStyle] = Ref(
+    if (params.lastValueOnly && params.outputStyle == OutputStyle.Default) OutputStyle.Last
+    else params.outputStyle
+  )
+
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private val storage =
@@ -82,6 +87,7 @@ final class ScalaInterpreter(
     params.updateBackgroundVariablesEcOpt,
     commHandlerOpt,
     silent0,
+    outputStyle0,
     params.useThreadInterrupt,
     params.initialCellCount,
     enableExitHack = params.compileOnly,
@@ -102,7 +108,7 @@ final class ScalaInterpreter(
       colors0,
       ammInterp,
       sessApi,
-      lastValueOnly = params.lastValueOnly
+      outputStyle = () => outputStyle0()
     )
 
   val jupyterApi =
@@ -136,6 +142,7 @@ final class ScalaInterpreter(
       jupyterApi,
       params.predefCode,
       params.predefFiles,
+      params.dependencies,
       frames0,
       params.codeWrapper,
       params.extraRepos,
@@ -149,6 +156,7 @@ final class ScalaInterpreter(
       params.silentImports,
       logCtx,
       jupyterApi.VariableInspector.enabled,
+      () => outputStyle0(),
       outputDir = params.outputDir,
       compileOnly = params.compileOnly,
       addToreeApiCompatibilityImport = params.toreeApiCompatibility,
@@ -207,7 +215,7 @@ final class ScalaInterpreter(
   override def isComplete(code: String): Option[IsCompleteResult] = {
 
     val res = ammonite.compiler.Parsers.split(code, ignoreIncomplete = true, "(notebook)") match {
-      case None           => IsCompleteResult.Incomplete
+      case None           => IsCompleteResult.Incomplete(Indentation.nextLine(code))
       case Some(Right(_)) => IsCompleteResult.Complete
       case Some(Left(_))  => IsCompleteResult.Invalid
     }
@@ -233,20 +241,31 @@ final class ScalaInterpreter(
 
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, completions0, _, completionsWithTypes) = withCompilerLock {
+    val backquotedIdentOpt = BackquotedCompletion.find(code, pos)
+
+    val (newPos0, completions0, _, completionsWithTypes0) = withCompilerLock {
       ScalaInterpreterCompletions.complete(
         ammInterp.compilerManager,
         Some(ammInterp.dependencyComplete),
         pos,
         (ammInterp.predefImports ++ frames0().head.imports).toString(),
-        code,
+        backquotedIdentOpt.fold(code)(_.codeToComplete(code, pos)),
         logCtx
       )
     }
 
+    val (newPos, endPos, adjustCompletion) = backquotedIdentOpt
+      .flatMap(_.adjust(pos, newPos0))
+      .getOrElse((newPos0, pos, (s: String) => s))
+
     val completions = completions0
       .filter(!_.contains("$"))
       .filter(_.nonEmpty)
+      .map(adjustCompletion)
+    val completionsWithTypes = completionsWithTypes0.map {
+      case (compl, tpe) =>
+        (adjustCompletion(compl), tpe)
+    }
 
     val metadata =
       if (java.lang.Boolean.getBoolean("almond.completion.demo") && code.startsWith("// Demo"))
@@ -312,7 +331,7 @@ final class ScalaInterpreter(
 
     Completion(
       if (completions.isEmpty) pos else newPos,
-      pos,
+      if (completions.isEmpty) pos else endPos,
       completions.map(_.trim).distinct,
       None,
       metadata = metadata

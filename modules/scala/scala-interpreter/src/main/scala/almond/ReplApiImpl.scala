@@ -2,7 +2,7 @@ package almond
 
 import almond.api.JupyterApi
 import almond.interpreter.ExecuteError
-import almond.interpreter.api.DisplayData
+import almond.interpreter.api.{DisplayData, OutputHandler}
 import ammonite.repl.api.{FrontEnd, ReplLoad}
 import ammonite.repl.{FullReplAPI, SessionApiImpl}
 import ammonite.runtime.Storage
@@ -13,7 +13,7 @@ import jupyter.{Displayer, Displayers}
 import pprint.{TPrint, TPrintColors}
 
 import scala.collection.mutable
-import scala.reflect.ClassTag
+import scala.reflect.{ClassTag, classTag}
 
 /** Actual [[ammonite.repl.api.ReplAPI]] instance */
 final class ReplApiImpl(
@@ -22,7 +22,7 @@ final class ReplApiImpl(
   colors0: Ref[Colors],
   ammInterp: => ammonite.interp.Interpreter,
   sess0: SessionApiImpl,
-  lastValueOnly: Boolean = false
+  outputStyle: () => OutputStyle = () => OutputStyle.Default
 ) extends ammonite.repl.ReplApiImpl { self =>
 
   private val defaultDisplayer = Displayers.registration().find(classOf[almond.ReplApiImpl.Foo])
@@ -31,13 +31,24 @@ final class ReplApiImpl(
   // combinePrints selects the value to display. Earlier values still execute.
   private class ValuePrinter(render: () => Iterator[String]) extends Iterator[String] {
     private lazy val underlying = render()
+    def force(): this.type      = { underlying; this }
     def hasNext: Boolean        = underlying.hasNext
     def next(): String          = underlying.next()
   }
 
   private[almond] def printValue(render: => Iterator[String]): Iterator[String] =
-    if (lastValueOnly) new ValuePrinter(() => render)
+    if (outputStyle() == OutputStyle.Last) new ValuePrinter(() => render)
     else render
+
+  // Names Ammonite gives to the results of bare expressions, like "res2" or "res2_1"
+  private val expressionResultName = "res\\d+(_\\d+)?"
+
+  // Whether values of type T are rendered via rich displays (almond.display.Display, jvm-repr)
+  private def isRichDisplay[T](classTagT: ClassTag[T]): Boolean =
+    classTagT != null && (
+      classOf[almond.display.Display].isAssignableFrom(classTagT.runtimeClass) ||
+      (Displayers.registration().find(classTagT.runtimeClass) ne defaultDisplayer)
+    )
 
   def printSpecial[T](
     value: => T,
@@ -56,40 +67,7 @@ final class ReplApiImpl(
       case None =>
         None
       case Some(p) =>
-        val isUpdatableDisplay =
-          classTagT != null &&
-          classOf[almond.display.Display]
-            .isAssignableFrom(classTagT.runtimeClass)
-
-        val jvmReprDisplayer: Displayer[_] =
-          if (classTagT == null) defaultDisplayer
-          else Displayers.registration().find(classTagT.runtimeClass)
-
-        val useJvmReprDisplay =
-          jvmReprDisplayer ne defaultDisplayer
-
-        if (isUpdatableDisplay) {
-          val d = value.asInstanceOf[almond.display.Display]
-          d.display()(p)
-          Some(Iterator())
-        }
-        else if (useJvmReprDisplay) {
-          import scala.jdk.CollectionConverters._
-          val m = jvmReprDisplayer
-            .asInstanceOf[Displayer[T]]
-            .display(value)
-            .asScala
-          if (m == null) None
-          else {
-            p.display(
-              DisplayData().withDetailedData(
-                m.map { case (k, v) => (k, DisplayData.Value.String(v)) }.toMap
-              )
-            )
-            Some(Iterator())
-          }
-        }
-        else
+        displayRich(value, p)(classTagT).orElse {
           for (
             updatableResults <- updatableResultsOpt
             if (onChange.nonEmpty && custom.isEmpty) || (onChangeOrError.nonEmpty && custom.nonEmpty)
@@ -187,7 +165,70 @@ final class ReplApiImpl(
 
             output.iterator.map(_.render) ++ Iterator(rhs)
           }
+        }
     }
+
+  /** Displays values that have a rich representation ([[almond.display.Display]] instances, and
+    * values with a jvm-repr displayer) via `p`
+    *
+    * @return
+    *   an empty iterator if the value was displayed, `None` if it doesn't have a rich
+    *   representation
+    */
+  private def displayRich[T](value: => T, p: OutputHandler)(implicit
+    classTagT: ClassTag[T]
+  ): Option[Iterator[String]] = {
+    val isUpdatableDisplay =
+      classTagT != null &&
+      classOf[almond.display.Display]
+        .isAssignableFrom(classTagT.runtimeClass)
+
+    val jvmReprDisplayer: Displayer[_] =
+      if (classTagT == null) defaultDisplayer
+      else Displayers.registration().find(classTagT.runtimeClass)
+
+    val useJvmReprDisplay =
+      jvmReprDisplayer ne defaultDisplayer
+
+    if (isUpdatableDisplay) {
+      val d = value.asInstanceOf[almond.display.Display]
+      d.display()(p)
+      Some(Iterator())
+    }
+    else if (useJvmReprDisplay) {
+      import scala.jdk.CollectionConverters._
+      val m = jvmReprDisplayer
+        .asInstanceOf[Displayer[T]]
+        .display(value)
+        .asScala
+      if (m == null) None
+      else {
+        p.display(
+          DisplayData().withDetailedData(
+            m.map { case (k, v) => (k, DisplayData.Value.String(v)) }.toMap
+          )
+        )
+        Some(Iterator())
+      }
+    }
+    else
+      None
+  }
+
+  /** Prints a value alone, without a name or a type, like the Python kernel does for the last
+    * expression of a cell
+    */
+  private[almond] def printValueOnly[T](value: => T)(implicit
+    classTagT: ClassTag[T]
+  ): Iterator[String] =
+    // Like Ammonite, rely on the ClassTag rather than on the value to detect Unit
+    if (classTagT == classTag[Unit]) Iterator()
+    else
+      execute0.currentPublishOpt
+        .flatMap(displayRich(value, _))
+        .getOrElse {
+          pprinter().tokenize(value).map(_.render)
+        }
 
   def replArgs0 = Vector.empty[Bind[_]]
   def printer   = execute0.printer
@@ -220,7 +261,8 @@ final class ReplApiImpl(
           case _                   =>
         }
 
-      def exec(file: os.Path): Unit = {
+      def exec(path: java.nio.file.Path): Unit = {
+        val file = os.Path(path, os.pwd)
         ammInterp.watch(file)
         apply(normalizeNewlines(os.read(file)))
       }
@@ -238,7 +280,9 @@ final class ReplApiImpl(
       private val nl                  = System.lineSeparator()
       override def combinePrints(iters: Iterator[String]*): Iterator[String] = {
         val selected =
-          if (lastValueOnly) iters.collect { case p: ValuePrinter => p }.takeRight(1)
+          if (outputStyle() == OutputStyle.Last) iters.collect { case p: ValuePrinter =>
+            p
+          }.takeRight(1)
           else iters
         super.combinePrints((
           if (shouldUpdateLineSep)
@@ -265,15 +309,27 @@ final class ReplApiImpl(
         tprint: TPrint[T],
         tcolors: TPrintColors,
         classTagT: ClassTag[T]
-      ): Iterator[String] = printValue {
-        // Passing the implicits explicitly - without `using`, that the oldest Scala 2 compilers
-        // we're built with don't accept
-        printSpecial(value, ident, custom, None, None, pprinter, None)(
-          tprint,
-          tcolors,
-          classTagT
-        ).getOrElse {
-          super.print(value, ident, custom)(tprint, tcolors, classTagT)
+      ): Iterator[String] = {
+        val printer = printValue {
+          // Passing the implicits explicitly - without `using`, that the oldest Scala 2 compilers
+          // we're built with don't accept
+          printSpecial(value, ident, custom, None, None, pprinter, None)(
+            tprint,
+            tcolors,
+            classTagT
+          ).getOrElse {
+            super.print(value, ident, custom)(tprint, tcolors, classTagT)
+          }
+        }
+        printer match {
+          // With the "last" output style, bare expressions with a rich display, like
+          // Markdown("…") or Html("…"), are still displayed (they're typically
+          // written for their display), while still hiding earlier values
+          case p: ValuePrinter
+              if ident.matches(expressionResultName) && isRichDisplay(classTagT) =>
+            p.force()
+          case _ =>
+            printer
         }
       }
     }

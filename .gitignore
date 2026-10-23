@@ -17,3 +17,5 @@ notebooks/
 
 # uv virtual environment for the examples / dev.jupyter* Jupyter setup
 examples/.venv/
+# written by JupyterLab when editing the examples from the dev.jupyter* commands
+examples/.ipynb_checkpoints/

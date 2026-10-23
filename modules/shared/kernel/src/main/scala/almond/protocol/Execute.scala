@@ -1,7 +1,7 @@
 package almond.protocol
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
-import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker, named}
 
 import scala.collection.immutable.ListMap
 
@@ -56,9 +56,7 @@ object Execute {
       traceback: List[String],
       status: String, // no default value here for the value not to be swallowed by the JSON encoder
       execution_count: Int =
-        -1, // required in some context (e.g. errored execute_reply from jupyter console)
-      // having this one here doesn't follow the Jupyter messaging specification
-      payload: List[RawJson]
+        -1 // required in some context (e.g. errored execute_reply from jupyter console)
     ) extends Reply {
       assert(status == "error")
     }
@@ -67,43 +65,43 @@ object Execute {
       def apply(
         ename: String,
         evalue: String,
-        traceback: List[String],
-        payload: List[RawJson]
+        traceback: List[String]
       ): Error =
         Error(
           ename,
           evalue,
           traceback,
-          "error",
-          payload = payload
+          "error"
         )
 
       def apply(
         ename: String,
         evalue: String,
         traceback: List[String],
-        execution_count: Int,
-        payload: List[RawJson]
+        execution_count: Int
       ): Error =
         Error(
           ename,
           evalue,
           traceback,
           "error",
-          execution_count,
-          payload = payload
+          execution_count
         )
     }
 
+    // status='aborted' is deprecated since protocol 5.1 (kernels should send status='error'
+    // instead), but it's still what frontends expect for cells cancelled by stop_on_error.
+    // execute_reply messages have an execution_count field regardless of their status.
     final case class Abort private[protocol] (
+      execution_count: Int,
       status: String // no default value here for the value not to be swallowed by the JSON encoder
     ) extends Reply {
-      assert(status == "abort")
+      assert(status == "aborted")
     }
 
     object Abort {
-      def apply(): Abort =
-        Abort("abort")
+      def apply(execution_count: Int): Abort =
+        Abort(execution_count, "aborted")
     }
 
   }
@@ -146,6 +144,11 @@ object Execute {
     traceback: List[String]
   )
 
+  final case class ClearOutput(
+    // "wait" clashes with Object#wait
+    @named("wait") waitForNewOutput: Boolean
+  )
+
   def requestType = MessageType[Request]("execute_request")
   def inputType   = MessageType[Input]("execute_input")
   def resultType  = MessageType[Result]("execute_result")
@@ -155,6 +158,7 @@ object Execute {
   def displayDataType       = MessageType[DisplayData]("display_data")
   def streamType            = MessageType[Stream]("stream")
   def updateDisplayDataType = MessageType[DisplayData]("update_display_data")
+  def clearOutputType       = MessageType[ClearOutput]("clear_output")
 
   implicit val requestCodec: JsonValueCodec[Request] =
     JsonCodecMaker.make
@@ -166,10 +170,12 @@ object Execute {
     implicit val probeCodec: JsonValueCodec[Probe] =
       JsonCodecMaker.make
 
+    // user_expressions is required in execute_reply, even when empty
     implicit val successCodec: JsonValueCodec[Reply.Success] =
-      JsonCodecMaker.make[Reply.Success]
+      JsonCodecMaker.make[Reply.Success](CodecMakerConfig.withTransientEmpty(false))
+    // traceback is required in errored execute_reply, even when empty
     implicit val errorCodec: JsonValueCodec[Reply.Error] =
-      JsonCodecMaker.make[Reply.Error]
+      JsonCodecMaker.make[Reply.Error](CodecMakerConfig.withTransientEmpty(false))
     implicit val abortCodec: JsonValueCodec[Reply.Abort] =
       JsonCodecMaker.make[Reply.Abort]
 
@@ -183,7 +189,7 @@ object Execute {
             successCodec.decodeValue(in, successCodec.nullValue)
           case "error" =>
             errorCodec.decodeValue(in, errorCodec.nullValue)
-          case "abort" =>
+          case "aborted" =>
             abortCodec.decodeValue(in, abortCodec.nullValue)
           case _ =>
             ???
@@ -212,7 +218,11 @@ object Execute {
   implicit val displayDataCodec: JsonValueCodec[DisplayData] =
     JsonCodecMaker.makeWithRequiredCollectionFields[DisplayData]
 
+  // traceback is required in error messages, even when empty (nbconvert fails without it)
   implicit val errorCodec: JsonValueCodec[Error] =
+    JsonCodecMaker.make[Error](CodecMakerConfig.withTransientEmpty(false))
+
+  implicit val clearOutputCodec: JsonValueCodec[ClearOutput] =
     JsonCodecMaker.make
 
   implicit val askExitPayloadCodec: JsonValueCodec[Reply.Success.AskExitPayload] =

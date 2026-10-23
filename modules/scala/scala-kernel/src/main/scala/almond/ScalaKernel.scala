@@ -6,6 +6,7 @@ import almond.amm.AmmInterpreter
 import almond.api.JupyterApi
 import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
+import almond.interpreter.KernelSession
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.Install
@@ -109,6 +110,7 @@ object ScalaKernel extends CaseApp[Options] {
     val mavenProfiles    = options.mavenProfiles()
     val extraLinks       = options.extraLinks()
     val predefFiles      = options.predefFiles()
+    val dependencies     = options.dependencies()
 
     val initialColors =
       if (options.color) ammonite.util.Colors.Default
@@ -147,7 +149,12 @@ object ScalaKernel extends CaseApp[Options] {
         KernelOptions()
     }
 
-    val threads = ScalaKernelThreads.create("scala-kernel")
+    val threads = {
+      val threads0 = ScalaKernelThreads.create("scala-kernel")
+      threads0.copy(
+        zeromqThreads = threads0.zeromqThreads.withMaxMessageSize(options.maxMessageSize0())
+      )
+    }
 
     val interpreter = new ScalaInterpreter(
       params = ScalaInterpreterParams(
@@ -157,6 +164,7 @@ object ScalaKernel extends CaseApp[Options] {
         extraLinks = extraLinks,
         predefCode = options.predefCode,
         predefFiles = predefFiles,
+        dependencies = dependencies,
         automaticDependencies = autoDependencies,
         automaticVersions = autoVersions,
         forceMavenProperties = forceProperties,
@@ -175,7 +183,7 @@ object ScalaKernel extends CaseApp[Options] {
         autoUpdateVars = options.autoUpdateVars,
         useNotebookCoursierLogger = options.useNotebookCoursierLogger,
         silentImports = options.silentImports,
-        lastValueOnly = options.lastValueOnly,
+        outputStyle = options.outputStyle0(),
         allowVariableInspector = options.variableInspector,
         useThreadInterrupt = options.useThreadInterrupt,
         outputDir = options.outputDirectory
@@ -233,6 +241,11 @@ object ScalaKernel extends CaseApp[Options] {
 
     initThread.start()
 
+    val session = KernelSession.create(
+      options.kernelSessionId.map(_.trim).filter(_.nonEmpty),
+      options.username.map(_.trim).filter(_.nonEmpty)
+    )
+
     val fmtMessageHandler =
       if (options.scalafmt) {
         // thread shuts down after 1 minute of inactivity, automatically re-spawned
@@ -254,6 +267,7 @@ object ScalaKernel extends CaseApp[Options] {
           fmtPool,
           threads.kernelThreads.queueEc,
           logCtx,
+          session,
           Scalafmt.defaultDialectFor(interpreter.ammInterp.compilerBuilder.scalaVersion)
         )
         scalafmt.messageHandler
@@ -270,7 +284,8 @@ object ScalaKernel extends CaseApp[Options] {
         threads.cancellableEc,
         logCtx,
         fmtMessageHandler,
-        options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet
+        options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet,
+        session
       )
         .flatMap(_.runOnConnectionFile(
           connectionFile,

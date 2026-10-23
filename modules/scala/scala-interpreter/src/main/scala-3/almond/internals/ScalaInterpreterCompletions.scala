@@ -4,7 +4,6 @@ import almond.logger.LoggerContext
 import ammonite.compiler.Compiler
 import ammonite.compiler.internal.CompilerInternals
 import dotty.tools.dotc.{CompilationUnit, Compiler => DottyCompiler, Run, ScalacCommand}
-import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.{defn, Symbol}
 import dotty.tools.dotc.core.{Flags, MacroClassLoader, Mode}
@@ -14,6 +13,8 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{Property, SourceFile, SourcePosition}
 
 import java.nio.charset.StandardCharsets
+
+import scala.util.control.NonFatal
 
 object ScalaInterpreterCompletions {
 
@@ -117,6 +118,10 @@ object ScalaInterpreterCompletions {
         // only loses the completion of dependencies in `import $ivy`.
         case _: ClassCastException =>
           Completion.completions(srcPos)(using ctx1)
+        case NonFatal(ex) =>
+          // the compiler internals Ammonite relies on can change between Scala versions
+          logCtx(getClass).info("Ignoring exception during completion", ex)
+          (index, Nil)
       }
 
     val blacklistedPackages = Set("shaded")

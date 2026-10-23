@@ -8,13 +8,6 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   override def mightRetry = true
 
-  lazy val javaMajorVersion = {
-    val versionString =
-      sys.props.getOrElse("java.version", sys.error("java.version property not set"))
-        .stripPrefix("1.") // for Java 8 and below
-    versionString.takeWhile(_ != '.').toInt
-  }
-
   test0("jvm-repr") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
@@ -26,6 +19,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       almond.integration.Tests.updatableDisplay()
+    }
+  }
+
+  test0("clear output") { implicit forceVersion =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.clearOutput()
     }
   }
 
@@ -83,7 +83,10 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
   test0("toree AddJar custom protocol") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarCustomProtocol(kernelLauncher.defaultScalaVersion)
+      almond.integration.Tests.toreeAddJarCustomProtocol(
+        kernelLauncher.defaultScalaVersion,
+        kernelLauncher.kernelJavaMajorVersion
+      )
     }
   }
 
@@ -112,7 +115,11 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
       }
     }
 
-  if (kernelLauncher.defaultScalaVersion.startsWith("2.") && javaMajorVersion >= 11)
+  // Scala 2 inspections rely on mtags, whose recent versions need Java 17
+  if (
+    kernelLauncher.defaultScalaVersion.startsWith("2.") &&
+    kernelLauncher.kernelJavaMajorVersion >= 17
+  )
     test0("inspections") { implicit forceVersion =>
       kernelLauncher.withKernel { implicit runner =>
         implicit val sessionId: SessionId = SessionId()

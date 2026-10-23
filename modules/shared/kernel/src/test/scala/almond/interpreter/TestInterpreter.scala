@@ -29,7 +29,8 @@ final class TestInterpreter extends Interpreter {
             m.readInput(code.stripPrefix("input:")),
             Duration.Inf
           )
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success(DisplayData.text("> " + s))
       }
     else if (code.startsWith("comm-open:"))
@@ -39,7 +40,8 @@ final class TestInterpreter extends Interpreter {
         case Some(h) =>
           val target = code.stripPrefix("comm-open:")
           h.commOpen(target, target, "{}".bytes, "{}".bytes)
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
     else if (code.startsWith("comm-message:"))
@@ -49,7 +51,8 @@ final class TestInterpreter extends Interpreter {
         case Some(h) =>
           val target = code.stripPrefix("comm-message:")
           h.commMessage(target, """{"a": "b"}""".bytes, "{}".bytes)
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
     else if (code.startsWith("comm-close:"))
@@ -59,11 +62,18 @@ final class TestInterpreter extends Interpreter {
         case Some(h) =>
           val target = code.stripPrefix("comm-close:")
           h.commClose(target, "{}".bytes, "{}".bytes)
-          count += 1
+          if (storeHistory)
+            count += 1
           ExecuteResult.Success()
       }
+    else if (code.startsWith("error-after:")) {
+      // waiting a bit, so that the requests sent after this one get queued before it fails
+      Thread.sleep(code.stripPrefix("error-after:").toLong)
+      ExecuteResult.Error("error")
+    }
     else if (code.startsWith("echo:")) {
-      count += 1
+      if (storeHistory)
+        count += 1
       ExecuteResult.Success(DisplayData.text(code.stripPrefix("echo:")))
     }
     else
@@ -100,6 +110,12 @@ final class TestInterpreter extends Interpreter {
         val c = Completion(pos, pos, Seq("sent"), None, RawJson(code.drop("meta:".length).bytes))
         CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
       }
+      else if (code.startsWith("word:")) {
+        // completes the word before the cursor, by suffixing it with '!'
+        val from = code.lastIndexOf(' ', pos - 1) + 1
+        val c    = Completion(from, pos, Seq(code.substring(from, pos) + "!"))
+        CancellableFuture(Future.successful(c), () => sys.error("should not happen"))
+      }
       else
         CancellableFuture(
           Future.successful(Completion(pos, pos, Seq("?"))),
@@ -129,6 +145,15 @@ final class TestInterpreter extends Interpreter {
             )
         )
       }
+      else if (code.startsWith("before-cursor:"))
+        CancellableFuture(
+          Future.successful(
+            Some(
+              Inspection(Map("text/plain" -> RawJson(s""""${code.take(pos)}"""".bytes)))
+            )
+          ),
+          () => sys.error("should not happen")
+        )
       else
         CancellableFuture(
           Future.successful(

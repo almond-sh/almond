@@ -36,7 +36,8 @@ object HasKernelOptions {
     AddDependency.handler,
     Repository.handler,
     ScalacOptions.handler,
-    Script.handler
+    Script.handler,
+    OutputStyleDirective.handler
   ))
 
 }

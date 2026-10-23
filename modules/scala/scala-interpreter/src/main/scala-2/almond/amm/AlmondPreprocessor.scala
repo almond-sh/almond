@@ -36,6 +36,7 @@ class AlmondPreprocessor(
   autoUpdateVars: Boolean,
   silentImports: Boolean,
   variableInspectorEnabled: () => Boolean,
+  outputStyle: () => almond.OutputStyle,
   logCtx: almond.logger.LoggerContext,
   logCode: Boolean
 ) extends DefaultPreprocessor(parse) {
@@ -56,6 +57,18 @@ class AlmondPreprocessor(
     markScript: Boolean,
     codeWrapper: ammonite.compiler.iface.CodeWrapper
   ) = {
+    val printerTemplate0 =
+      if (outputStyle() == almond.OutputStyle.Python)
+        lastExpressionPrinter(stmts, resultIndex) match {
+          case Some(printer) =>
+            // the printers we get here only contain the variable inspector stuff
+            (printers: String) =>
+              printerTemplate(if (printers.isEmpty) printer else s"$printers, $printer")
+          case None =>
+            printerTemplate
+        }
+      else
+        printerTemplate
     val r = super.transform(
       stmts,
       resultIndex,
@@ -63,7 +76,7 @@ class AlmondPreprocessor(
       codeSource,
       indexedWrapperName,
       imports,
-      printerTemplate,
+      printerTemplate0,
       extraCode,
       skipEmpty,
       markScript,
@@ -76,6 +89,40 @@ class AlmondPreprocessor(
       }
     r
   }
+
+  /** In the Python output style, code printing the result of the last statement, if it's an
+    * expression and the cell doesn't end with a semicolon
+    */
+  private def lastExpressionPrinter(stmts: Seq[String], resultIndex: String): Option[String] =
+    if (PythonOutputStyle.endsWithSemicolon(stmts.mkString)) None
+    else
+      stmts
+        .iterator
+        .zipWithIndex
+        .map { case (stmt, idx) => (parse(stmt), idx) }
+        .collect { case (Right(trees), idx) if trees.nonEmpty => (trees, idx) }
+        .toVector
+        .lastOption
+        .collect {
+          case (Seq(tree), idx) if isExpression(tree) =>
+            PythonOutputStyle.printerCode(PythonOutputStyle.resultName(
+              resultIndex,
+              idx,
+              stmts.length
+            ))
+        }
+
+  /** Whether the Ammonite preprocessor handles a tree as an expression, whose result it puts in a
+    * `res…` variable
+    */
+  private def isExpression(tree: G#Tree): Boolean =
+    tree match {
+      case _: G#ModuleDef | _: G#ClassDef | _: G#DefDef | _: G#TypeDef | _: G#ValDef |
+          _: G#Import =>
+        false
+      case _ =>
+        true
+    }
 
   import AlmondPreprocessor._
 
@@ -203,7 +250,13 @@ class AlmondPreprocessor(
   )
 
   override val decls = baseDecls.map { f => (a: String, code: String, t: G#Tree) =>
-    val resOpt = f(a, code, t)
+    val resOpt =
+      if (outputStyle() == almond.OutputStyle.Python)
+        // nothing gets printed for individual statements - transform adds
+        // a printer for the last expression of the cell
+        f(a, code, t).map(_.copy(printer = Nil))
+      else
+        f(a, code, t)
     def withExtra = {
       val extraOpt = extraCode(a, code, t)
       (resOpt, extraOpt) match {
