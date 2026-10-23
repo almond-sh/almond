@@ -811,18 +811,16 @@ object docs extends ScalaModule with AlmondRepositories {
       npmInstall: Boolean,
       yarnRunBuild: Boolean,
       watch: Boolean,
-      relativize: Boolean,
       args: List[String]
-    ): (Boolean, Boolean, Boolean, Boolean, List[String]) =
+    ): (Boolean, Boolean, Boolean, List[String]) =
       args match {
-        case "--npm-install" :: rem    => processArgs(true, yarnRunBuild, watch, relativize, rem)
-        case "--yarn-run-build" :: rem => processArgs(npmInstall, true, watch, relativize, rem)
-        case "--watch" :: rem      => processArgs(npmInstall, yarnRunBuild, true, relativize, rem)
-        case "--relativize" :: rem => processArgs(npmInstall, yarnRunBuild, watch, true, rem)
-        case _                     => (npmInstall, yarnRunBuild, watch, relativize, args)
+        case "--npm-install" :: rem    => processArgs(true, yarnRunBuild, watch, rem)
+        case "--yarn-run-build" :: rem => processArgs(npmInstall, true, watch, rem)
+        case "--watch" :: rem          => processArgs(npmInstall, yarnRunBuild, true, rem)
+        case _                         => (npmInstall, yarnRunBuild, watch, args)
       }
-    val (npmInstall, yarnRunBuild, watch, relativize, args0) =
-      processArgs(false, false, false, false, args.toList)
+    val (npmInstall, yarnRunBuild, watch, args0) =
+      processArgs(false, false, false, args.toList)
 
     val ver = scala.`scala-kernel-api`(ScalaVersions.binary(scalaVersion0)).publishVersion()
     val latestRelease = AlmondPublishModule.latestTaggedVersion()
@@ -873,8 +871,7 @@ object docs extends ScalaModule with AlmondRepositories {
 
     val websiteDir = BuildCtx.workspaceRoot / "docs" / "website"
 
-    // --ignore-scripts: some website dependencies download binaries from their install scripts.
-    // Without them, Docusaurus just doesn't optimize the website images.
+    // --ignore-scripts: don't run the install scripts of the website dependencies
     if (npmInstall)
       Util.run(Seq("npm", "ci", "--ignore-scripts"), dir = websiteDir.toIO)
 
@@ -907,8 +904,6 @@ object docs extends ScalaModule with AlmondRepositories {
       runMdoc()
       if (yarnRunBuild)
         Util.run(Seq("yarn", "run", "build"), dir = websiteDir.toIO)
-      if (relativize)
-        Relativize.relativize((websiteDir / "build").toNIO)
     }
   }
 }
