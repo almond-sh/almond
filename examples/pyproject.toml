@@ -17,9 +17,12 @@ dependencies = [
 # installed by the build from `acp-agents/`.
 [dependency-groups]
 # JupyterLab extensions: the variable inspector, which supports almond kernels started with
-# --variable-inspector
+# --variable-inspector, the front-end of Jupyter widgets (see the almond.widgets package), and
+# the one of anywidget (for almond.widgets.AnyWidget)
 lab = [
   "lckr-jupyterlab-variableinspector>=3.2",
+  "jupyterlab-widgets>=3.0.15",
+  "anywidget>=0.9",
 ]
 ai = [
   "jupyter-ai>=3",

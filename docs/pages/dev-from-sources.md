@@ -99,6 +99,9 @@ support for it. Open it with "Open Variable Inspector", from the context menu of
 or from the command palette: it lists the variables defined in the notebook, along with
 their types and values.
 
+JupyterLab also comes with the front-ends of [Jupyter widgets](usage-widgets.md) and of
+[anywidget](https://anywidget.dev), so that widgets created from the kernels are rendered.
+
 JupyterLab also comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
 you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
 (speech bubbles icon), click "New chat", then pick an agent from the menu at the

@@ -150,6 +150,195 @@ object ScalaKernelTests extends TestSuite {
       assert(replies == expectedReplies)
     }
 
+    test("widgets") {
+
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams,
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      def request[T: com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec](
+        msgType: MessageType[T],
+        content: T,
+        buffers: Seq[Array[Byte]] = Nil
+      ) =
+        Message(Header.random("test", msgType, sessionId.sessionId), content, buffers = buffers)
+          .on(Channel.Requests)
+
+      def json(raw: RawJson) =
+        almond.widgets.JsonValue.parse(raw.value) match {
+          case obj: almond.widgets.JsonValue.Obj => obj
+          case other                             => sys.error(s"Unexpected JSON: $other")
+        }
+      def str(s: String) = almond.widgets.JsonValue.Str(s)
+
+      val lastMsgId = UUID.randomUUID().toString
+      val updates   = new scala.collection.mutable.ListBuffer[String]
+
+      // How the pseudo front-end behaves: when the kernel opens the slider and the upload widgets,
+      // it changes their values, then asks for the open comms. Once these are known, it checks the
+      // kernel got the new values.
+      val frontend = MessageHandler.blocking(
+        Channel.Publish,
+        Comm.openType,
+        almond.interpreter.KernelSession(UUID.randomUUID().toString, "test"),
+        threads.queueEc,
+        logCtx,
+        publishStatus = false
+      ) { (msg, queue) =>
+        val state = json(msg.content.data).get("state") match {
+          case Some(obj: almond.widgets.JsonValue.Obj) => obj
+          case _                                       => sys.error("No state in comm_open")
+        }
+        val id = msg.content.comm_id
+        def update(state: (String, almond.widgets.JsonValue)*)(paths: String*) =
+          RawJson(
+            almond.widgets.JsonValue.Obj(
+              "method" -> str("update"),
+              "state"  -> almond.widgets.JsonValue.Obj(state: _*),
+              "buffer_paths" -> almond.widgets.JsonValue.Arr(
+                paths.map(p =>
+                  almond.widgets.JsonValue.Arr(
+                    p.split('.').toVector.map { elem =>
+                      if (elem.forall(_.isDigit)) almond.widgets.JsonValue.Num(elem.toInt)
+                      else str(elem)
+                    }
+                  ): almond.widgets.JsonValue
+                ): _*
+              )
+            ).render.getBytes(StandardCharsets.UTF_8)
+          )
+        val responses = state.get("_model_name") match {
+          case Some(almond.widgets.JsonValue.Str("IntSliderModel")) =>
+            updates += id
+            Seq(request(
+              Comm.messageType,
+              Comm.Message(id, update("value" -> almond.widgets.JsonValue.Num(7))())
+            ))
+          case Some(almond.widgets.JsonValue.Str("FileUploadModel")) =>
+            val file = almond.widgets.JsonValue.Obj(
+              "name"          -> str("hello.txt"),
+              "type"          -> str("text/plain"),
+              "size"          -> almond.widgets.JsonValue.Num(5),
+              "last_modified" -> almond.widgets.JsonValue.Num(0)
+            )
+            updates += id
+            Seq(
+              request(
+                Comm.messageType,
+                Comm.Message(
+                  id,
+                  update("value" -> almond.widgets.JsonValue.Arr(file))("value.0.content")
+                ),
+                buffers = Seq("hello".getBytes(StandardCharsets.UTF_8))
+              )
+            )
+          case Some(almond.widgets.JsonValue.Str("HBoxModel")) =>
+            Seq(request(CommInfo.requestType, CommInfo.Request(Some("jupyter.widget"))))
+          case _ =>
+            Nil
+        }
+        responses.foldLeft(IO.unit)((acc, m) => acc.flatMap(_ => queue.offer(m)))
+      }
+
+      val checkValues = MessageHandler(Channel.Requests, CommInfo.replyType) { _ =>
+        Stream(
+          executeMessage(
+            """println(s.value())
+              |println(new String(u.value().head.content, "UTF-8"))""".stripMargin,
+            msgId = lastMsgId
+          )
+        )
+      }
+
+      val ignored = MessageHandler.discard {
+        case (Channel.Publish, _)                                          =>
+        case (Channel.Requests, m) if m.header.msg_type == "execute_reply" =>
+      }
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" &&
+            m.parent_header.exists(_.msg_id == lastMsgId)
+          )
+
+      val input = Stream(
+        executeMessage(
+          """import almond.widgets._
+            |val s = IntSlider(value = 3)
+            |val u = FileUpload()
+            |s.value.observe(_ => ())
+            |HBox(Seq(s, u))""".stripMargin
+        )
+      )
+
+      val streams = ClientStreams.create(
+        input,
+        stopWhen,
+        frontend.orElse(checkValues, ignored),
+        ioRuntime = threads.ioRuntime
+      )
+
+      kernel.run(streams.source, streams.sink, Nil)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      val fromKernel = streams.generatedMessages.toList.collect {
+        case Left((Channel.Publish, m)) => m
+      }
+
+      // widgets are opened before being displayed
+      val openIdx = fromKernel.zipWithIndex.collect {
+        case (m, idx) if m.header.msg_type == "comm_open" =>
+          m.decodeAs[Comm.Open].toOption.get.content.comm_id -> idx
+      }.toMap
+      // the slider, the upload widget, the box, their 3 layouts, and the styles of the first 2
+      assert(openIdx.size == 8)
+      val displayed = fromKernel.zipWithIndex.collect {
+        case (m, idx) if m.header.msg_type == "display_data" =>
+          val data  = m.decodeAs[ProtocolExecute.DisplayData].toOption.get.content.data
+          val view  = json(data(almond.widgets.Widget.viewMimeType))
+          val model = view.get("model_id").collect { case almond.widgets.JsonValue.Str(id) => id }
+          model.get -> idx
+      }
+      // only the box is displayed, like in ipywidgets, widgets assigned to vals aren't
+      assert(displayed.length == 1)
+      for ((id, idx) <- displayed)
+        assert(openIdx.get(id).exists(_ < idx))
+      val firstResult = streams.executeResults.getOrElse(1, "")
+      assert(firstResult.contains("s: IntSlider = IntSlider(value=3)"))
+      assert(firstResult.contains("u: FileUpload = FileUpload()"))
+      // the handle returned by observe isn't printed
+      assert(!firstResult.contains("Subscription"))
+
+      // changes from the front-end are echoed back, in response to the message they came in
+      val echoes = fromKernel.filter { m =>
+        m.header.msg_type == "comm_msg" &&
+        m.decodeAs[Comm.Message].toOption.exists { m0 =>
+          json(m0.content.data).get("method").contains(str("echo_update"))
+        }
+      }
+      // the uploaded file isn't echoed
+      assert(echoes.length == 1)
+      val sliderUpdate = streams.generatedMessages.toList.collect {
+        case Right((Channel.Requests, m)) if m.header.msg_type == "comm_msg" => m
+      }.head
+      assert(echoes.head.parent_header.map(_.msg_id) == Some(sliderUpdate.header.msg_id))
+
+      val commInfo = streams.singleReply(Channel.Requests, CommInfo.replyType)
+      assert(updates.forall(commInfo.content.comms.contains))
+      assert(commInfo.content.comms.values.forall(_.target_name == "jupyter.widget"))
+      assert(commInfo.content.comms.size == 8)
+
+      val ls = System.lineSeparator()
+      assert(streams.output.mkString.endsWith(s"7${ls}hello$ls"))
+    }
+
     test("stop on error") {
 
       // There's something non-deterministic in this test.

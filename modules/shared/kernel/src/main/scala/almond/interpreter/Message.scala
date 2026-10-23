@@ -18,7 +18,8 @@ final case class Message[T](
   content: T,
   parent_header: Option[Header] = None,
   idents: List[Seq[Byte]] = Nil,
-  metadata: RawJson = RawJson.emptyObj
+  metadata: RawJson = RawJson.emptyObj,
+  buffers: Seq[Array[Byte]] = Nil
 ) {
 
   import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -67,7 +68,8 @@ final case class Message[T](
       writeToArray(header),
       parent_header.fold("{}".getBytes(StandardCharsets.UTF_8))(h => writeToArray(h)),
       writeToArray(metadata),
-      writeToArray(content)
+      writeToArray(content),
+      buffers
     )
 
   // helpers
@@ -153,7 +155,8 @@ object Message {
         content,
         parentHeaderOpt,
         rawMessage.idents.toList,
-        RawJson(rawMessage.metadata)
+        RawJson(rawMessage.metadata),
+        rawMessage.buffers
       )
     }
 

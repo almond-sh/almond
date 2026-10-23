@@ -186,35 +186,32 @@ object KernelTests extends TestSuite {
       assert(replies.nonEmpty)
       assert(replies.forall(_.parent_header.exists(_.session == sessionId)))
 
-      // comm messages are sent in the background, they have no parent
+      // comm messages sent while cells run have their execute request as parent
       val commMessages = kernelMessages.filter(_.header.msg_type.startsWith("comm_"))
       assert(commMessages.nonEmpty)
-      assert(commMessages.forall(_.parent_header.isEmpty))
+      assert(
+        commMessages.forall(_.parent_header.exists(_.msg_type == Execute.requestType.messageType))
+      )
 
       val msgTypes = streams.generatedMessageTypes()
 
+      // comm messages are sent along with the other messages of the cells
       val expectedMsgTypes = Seq(
-        // FIXME The execute_input should be sent prior to the comm_* (that is before the code is actually run)
+        "execute_input",
         "comm_open",
-        "execute_input",
         "execute_reply",
+        "execute_input",
         "comm_msg",
-        "execute_input",
         "execute_reply",
-        "comm_close",
         "execute_input",
+        "comm_close",
         "execute_reply",
         "execute_input",
         "execute_result",
         "execute_reply"
       )
 
-      val (commMsgTypes, stdMsgTypes) = msgTypes.partition(_.startsWith("comm_"))
-      val (expectedCommMsgTypes, expectedStdMsgTypes) =
-        expectedMsgTypes.partition(_.startsWith("comm_"))
-
-      assert(commMsgTypes == expectedCommMsgTypes)
-      assert(stdMsgTypes == expectedStdMsgTypes)
+      assert(msgTypes == expectedMsgTypes)
     }
 
     test("comm_open for unknown target gets comm_close on IOPub") {

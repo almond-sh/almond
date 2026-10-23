@@ -135,11 +135,38 @@ trait Test extends SbtModule with AlmondRepositories with AlmondScalacOptions {
   )
 }
 
+/** Jupyter widgets, for the Scala kernel, that depends on us so that users get them by default.
+  *
+  * Most widget classes are generated from the model schema of ipywidgets, that we keep a copy of
+  * (see [[almondbuild.WidgetsGenerator]]).
+  */
+trait Widgets extends Cross.Module[String] with AlmondModule {
+  def crossScalaVersion = crossValue
+  def moduleDeps = Seq(
+    api()
+  )
+
+  /** The model schema of ipywidgets, `packages/schema/jupyterwidgetmodels.latest.json` in its
+    * repository
+    */
+  def widgetModelSchema = Task.Source(moduleDir / "jupyterwidgetmodels.json")
+
+  def generatedSources = Task {
+    val schema = ujson.read(os.read(widgetModelSchema().path))
+    for ((path, content) <- WidgetsGenerator.generate(schema))
+      os.write(Task.dest / path, content, createFolders = true)
+    Seq(PathRef(Task.dest)) ++ super.generatedSources()
+  }
+
+  object test extends CrossSbtModuleTests with AlmondTestModule
+}
+
 trait ScalaKernelApi extends Cross.Module[String] with AlmondModule with DependencyListResource
     with ExternalSources with PropertyFile with AlmondMima {
   def crossScalaVersion = crossValue
   def moduleDeps = Seq(
-    api()
+    api(),
+    scala.widgets()
   )
   def mvnDeps = Seq(
     Deps.ammoniteCompiler.exclude(("org.slf4j", "slf4j-api")),
@@ -514,6 +541,7 @@ object shared extends Module {
 }
 
 object scala extends Module {
+  object widgets             extends Cross[Widgets](ScalaVersions.binaries)
   object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.binaries)
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.binaries)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
@@ -540,7 +568,8 @@ object `local-repo` extends Module {
       Seq(
         scala.`scala-kernel`(sv),
         scala.`scala-kernel-api`(sv),
-        scala.`scala-interpreter`(sv)
+        scala.`scala-interpreter`(sv),
+        scala.widgets(sv)
       )
     }
     val simpleModules = Seq(
