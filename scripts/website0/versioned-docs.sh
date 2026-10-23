@@ -6,6 +6,7 @@ set -euv
 # No argument: copy the versioned docs of $VERSIONED_DOCS_REPO into $WEBSITE_DIR
 # --update: same, then add the docs of the version of the current git tag to $WEBSITE_DIR
 # --push: push the versioned docs of $WEBSITE_DIR to $VERSIONED_DOCS_REPO, using $GH_TOKEN
+#   (this also replaces docs still in the Docusaurus 1 format there by their converted version)
 #
 # --update runs the website npm packages, so it doesn't push anything itself, and
 # --push runs none of them, so that they never run alongside $GH_TOKEN.
@@ -66,6 +67,8 @@ else
   if [ -f target/versioned-docs/versions.json ]; then
     cp target/versioned-docs/versions.json "$WEBSITE_DIR/"
   fi
+  # $VERSIONED_DOCS_REPO might still have docs in the Docusaurus 1 format
+  node "$(dirname "$0")/convert-v1-versioned-docs.js" "$WEBSITE_DIR"
 
   if [ "$MODE" = update ]; then
     cd "$WEBSITE_DIR"

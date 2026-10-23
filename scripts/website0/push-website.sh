@@ -32,7 +32,7 @@ rmdir .tmp
 
 echo "Copying new website"
 cd -
-cp -pR "$WEBSITE_DIR/build/"*/* target/gh-pages/
+cp -pR "$WEBSITE_DIR/build/"* target/gh-pages/
 cd target/gh-pages
 git add .
 
