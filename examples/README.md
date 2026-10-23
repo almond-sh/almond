@@ -3,7 +3,24 @@ The examples in this directory are there mostly for test purposes.
 See the [examples repository](https://github.com/almond-sh/examples) for
 more detailed and user-friendly examples.
 
-The Jupyter setup used to run them (by `./mill scala.examples.test`, and by the
+`./mill 'scala.examples[_].test'` runs them with each of the Scala versions of
+`ScalaVersions.examples` (in `mill-build`), and checks that they give the outputs recorded in
+the notebooks. These are the outputs of the first of those versions, the reference one (a
+Scala 2.12 version). Notebooks that run differently with Scala 2.13 or Scala 3 (different
+outputs, or sources that need to be adapted, like the dependencies of `plotly-scala.ipynb` on
+Scala 3) have a copy in `scala-2.13` or `scala-3`, that's run and compared with on those versions
+instead. Only the Scala version recorded in the notebook metadata may differ from what the tests
+get.
+
+To update the notebooks from what the tests get, run them with `ALMOND_UPDATE_EXAMPLES=1`
+(`ALMOND_UPDATE_EXAMPLES=1 ./mill 'scala.examples[3.9.0].test'` for example). On Scala 2.13 or
+Scala 3, this writes a copy in `scala-2.13` or `scala-3` when the outputs differ from the
+reference notebook, and removes it when they don't anymore. To adapt the sources of a
+notebook for one of these, edit its copy there (copy the reference notebook first if needed),
+then update it like this. The tests fail if a copy isn't needed anymore, or has no reference
+notebook.
+
+The Jupyter setup used to run them (by `./mill 'scala.examples[_].test'`, and by the
 `./mill dev.jupyter*` commands) is described by `pyproject.toml`, with exact versions
 pinned in `uv.lock`. It is managed with [uv](https://docs.astral.sh/uv/): the build
 downloads uv itself (see `UvLauncher` in `mill-build`) and runs

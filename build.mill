@@ -525,7 +525,7 @@ object scala extends Module {
   object integration        extends Integration
   object `proxy-tests`      extends ProxyTests
 
-  object examples extends Examples
+  object examples extends Cross[Examples](ScalaVersions.examples)
 }
 
 object `local-repo` extends Module {
@@ -573,17 +573,25 @@ object `local-repo` extends Module {
   }
 }
 
-trait Examples extends SbtModule {
-  private def examplesScalaVersion = "2.12.20"
-  // The kernel is published for Scala 2.12 and built with the oldest Scala 2.12 version we
-  // support - this launcher runs it with the Scala version above, which is the one the
-  // example notebooks are run with, and record.
+trait Examples extends Cross.Module[String] with SbtModule {
+  private def examplesScalaVersion = crossValue
+  // The kernel is published per binary Scala version and built with the oldest Scala version we
+  // support for it - this launcher runs it with the Scala version above, which is the one the
+  // example notebooks are run with.
   private def examplesKernel =
     scala.`scala-kernel`(ScalaVersions.binary(examplesScalaVersion)).launchers(
       examplesScalaVersion
     )
   def scalaVersion = ScalaVersions.scala3Latest
   def examplesDir  = Task.Source(BuildCtx.workspaceRoot / "examples")
+
+  /** Whether the tests should update the notebooks from what they get, rather than just fail if
+    * they differ: set `ALMOND_UPDATE_EXAMPLES=1` for that.
+    */
+  def updateExamples = Task.Input {
+    Task.env.get("ALMOND_UPDATE_EXAMPLES").contains("1")
+  }
+
   object test extends SbtTests {
     def testFramework = "munit.Framework"
     def mvnDeps = Task {
@@ -604,7 +612,10 @@ trait Examples extends SbtModule {
         s"-Dalmond.examples.launcher=${examplesKernel.launcher().path}",
         s"-Dalmond.examples.repo-root=${`local-repo`.localRepo().path}",
         s"-Dalmond.examples.uv=${UvLauncher.uv(Versions.uv)}",
-        s"-Dalmond.examples.jvm=${ScalaVersions.oldestJvmFor(examplesScalaVersion)}"
+        s"-Dalmond.examples.jvm=${ScalaVersions.oldestJvmFor(examplesScalaVersion)}",
+        s"-Dalmond.examples.scala-version=$examplesScalaVersion",
+        s"-Dalmond.examples.reference-scala-version=${ScalaVersions.examples.head}",
+        s"-Dalmond.examples.update=${updateExamples()}"
       )
     }
   }

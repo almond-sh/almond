@@ -354,13 +354,23 @@ in the examples job on the CI to fail.
 
 To validate the examples locally, run
 ```text
-$ ./mill -i scala.examples.test
+$ ./mill -i 'scala.examples[_].test'
+```
+
+This runs them with a Scala 2.12 version, whose outputs the notebooks record, and with
+Scala 2.13 and Scala 3 versions. Pass one of these to run them with it only:
+```text
+$ ./mill -i 'scala.examples[3.9.0].test'
 ```
 
 Optionally, you can pass a glob to filter notebook names:
 ```text
-$ ./mill -i scala.examples.test 'almond.examples.Examples.plotly*'
+$ ./mill -i 'scala.examples[2.12.20].test' 'almond.examples.Examples.plotly*'
 ```
+
+Set `ALMOND_UPDATE_EXAMPLES=1` to update the notebooks from what the tests get. See
+[`examples/README.md`](https://github.com/almond-sh/almond/blob/master/examples/README.md) for
+how notebooks that differ on Scala 2.13 or Scala 3 are handled.
 
 ## Run the proxy and mirror tests
 
