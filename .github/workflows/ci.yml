@@ -184,8 +184,7 @@ jobs:
         job: ${{ runner.os }}
         ignoreMatrix: true
         cacheMode: read
-    # -j 1 like the integration tests: the localRepo tasks don't like being run in parallel
-    - run: ./mill -i -j 1 scala.proxy-tests.test
+    - run: ./mill -i scala.proxy-tests.test
       shell: bash
 
   bincompat:
