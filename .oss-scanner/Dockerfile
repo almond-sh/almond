@@ -6,6 +6,9 @@
 # else - its own JVM, the dependencies, and the JDK 17 that the oldest Scala 2 versions we support
 # are compiled and tested with - to the coursier and Mill caches under /root/.cache, while there is a
 # network.
+#
+# `./mill oss-scanner.dockerCheck` builds it like the scanner does, and checks that tests run in it
+# without network access (needs Docker). CI runs it when this file changes.
 FROM eclipse-temurin:21-jdk-noble
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
