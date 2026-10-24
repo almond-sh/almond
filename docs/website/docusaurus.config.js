@@ -3,14 +3,18 @@
 
 const {themes: prismThemes} = require('prism-react-renderer');
 
+// The address the website is served from. Can be overridden with ALMOND_WEBSITE_URL, like
+// 'https://host/some/path/', to serve it from elsewhere (behind a proxy, …)
+const siteUrl = new URL(process.env.ALMOND_WEBSITE_URL || 'https://almond.sh/');
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'almond',
   tagline: 'A Scala kernel for Jupyter',
   favicon: 'logos/impure-logos-almond-0.svg',
 
-  url: 'https://almond.sh',
-  baseUrl: '/',
+  url: siteUrl.origin,
+  baseUrl: siteUrl.pathname.endsWith('/') ? siteUrl.pathname : `${siteUrl.pathname}/`,
   trailingSlash: true,
 
   organizationName: 'almond-sh',
