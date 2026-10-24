@@ -30,7 +30,9 @@ that one instead of the downloaded one.
 
 The dev.jupyter* commands starting JupyterLab also install the `lab` dependency group,
 with JupyterLab extensions (the
-[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)),
+[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector), and the
+front-ends of [Jupyter widgets](https://ipywidgets.readthedocs.io) and of
+[anywidget](https://anywidget.dev)),
 and the `ai` one, with [Jupyter AI](https://jupyter-ai.readthedocs.io/). The ACP agents its Claude and
 Codex personas talk to are npm packages, described by `acp-agents/package.json`, with
 exact versions pinned in `acp-agents/package-lock.json`. The build installs them with
