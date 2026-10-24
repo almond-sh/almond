@@ -34,6 +34,9 @@ echo "Copying new website"
 cd -
 cp -pR "$WEBSITE_DIR/build/"* target/gh-pages/
 cd target/gh-pages
+# Prevents GitHub Pages from processing the website with Jekyll, that ignores files starting
+# with '_'
+touch .nojekyll
 git add .
 
 MSG="Update website"

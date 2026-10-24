@@ -62,16 +62,27 @@ const config = {
     ],
   ],
 
+  themes: [
+    [
+      // Search index computed at build time, and served along with the website. It only works on
+      // the built website, not with the development server.
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        // The index file names contain a hash of the docs sources, so that browsers don't use a
+        // cached index from a former build. Having the hash in the query rather than in the file
+        // name breaks `docusaurus serve` with a base URL other than '/': it doesn't recognize
+        // `search-index.json?_=…` as a file, and redirects it to `search-index.json/?_=…`.
+        hashed: 'filename',
+        // Only used to compute that hash
+        docsDir: ['../processed-pages', 'versioned_docs'],
+        highlightSearchTermsOnTargetPage: true,
+      },
+    ],
+  ],
+
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      algolia: {
-        appId: 'BH4D9OD16A',
-        apiKey: '2cf058a89a451066357a2eece168e7af',
-        indexName: 'almond',
-        // the index isn't tagged per version / language
-        contextualSearch: false,
-      },
       navbar: {
         title: 'almond',
         style: 'dark',

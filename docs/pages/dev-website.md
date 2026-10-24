@@ -19,6 +19,9 @@ $ yarn run serve
 
 This command should print the address to access the local website, like `http://localhost:3000/`.
 
+The search index is computed when building the website, so search only works on the built
+website, and not when watching sources (see below).
+
 The Markdown sources of the documentation are in `docs/pages`. They're processed by
 [mdoc](https://scalameta.org/mdoc), that writes its output in `docs/processed-pages`, which
 Docusaurus then reads.
