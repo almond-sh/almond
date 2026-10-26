@@ -3,11 +3,6 @@ set -eu
 
 trap "jps -mlv" EXIT
 
-# The -j 1 is temporary. When run in parallel, several localRepo tasks might try to publish
-# a module twice in parallel, which triggers FileAlreadyExistsException-s on Windows.
-# Refactoring localRepo with the newer Mill publishStage stuff should help address that, and
-# allow to drop the -j 1.
-
 # Optional first argument: a test group (212, 213 or 3) so that the integration tests can be
 # split across parallel CI jobs. When no group is passed, all tests are run (as before).
 # On Windows, only the "two step startup" tests are run, matching the previous behaviour.
@@ -95,4 +90,11 @@ case "$group" in
     ;;
 esac
 
+# Build what the tests need first (the test classes, and the kernels and launcher they publish to
+# the local test repository), with the default parallelism: under the -j 1 below, Mill would
+# compile all of that one module at a time.
+$mill -i scala.integration.test.compile + scala.integration.test.forkArgs + scala.integration.test.forkEnv
+
+# -j 1 has Mill run the test classes one after the other, in a single test JVM, rather than in
+# parallel test JVMs, whose kernels would compete for the CPUs of the runner.
 $mill -i -j 1 "scala.integration.test.testForked" $tests

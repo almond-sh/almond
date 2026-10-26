@@ -514,7 +514,11 @@ class KernelLauncher(
 
         val t = for {
           fib1 <- conn.sink(streams.source).compile.drain.start
-          fib2 <- streams.sink(conn.stream().interruptWhen(s)).compile.drain.start
+          // Interrupting that stream waits for the ongoing poll of each channel to time out, so we
+          // poll with a short delay - with the default one (1 second), each cell would take an extra
+          // second to run
+          fib2 <- streams.sink(conn.stream(pollingDelay = 10.millis).interruptWhen(s))
+            .compile.drain.start
           _ <- fib1.join.attempt.flatMap {
             case Left(e)  => IO.raiseError(new Exception(e))
             case Right(r) => IO.pure(r)
@@ -787,7 +791,7 @@ class KernelLauncher(
             if (kernelBindToRandomPorts) {
               retryPeriodicallyUntil(
                 System.currentTimeMillis() + 2.minutes.toMillis,
-                500.millis.toMillis
+                50.millis.toMillis
               ) {
                 val connFileLastModified = os.mtime(connFile)
                 if (connFileLastModified > initialConnFileLastModified) Some(())
