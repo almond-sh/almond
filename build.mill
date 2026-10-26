@@ -1374,6 +1374,134 @@ object dev extends Module {
   }
 }
 
+/** Commands that .oss-scanner/Dockerfile runs, to prepare the image that the OSS Scanner scans us
+  * in, without network access.
+  *
+  * Each runs the same selectors as CI does for some Scala versions, which they compute from
+  * [[ScalaVersions]], so that the Dockerfile doesn't need to be updated along with them.
+  */
+object `oss-scanner` extends Module {
+
+  /** The Scala versions the modules and tests are compiled for in the image */
+  private def compileScalaVersions =
+    Seq(ScalaVersions.scala213, ScalaVersions.scala3Latest, ScalaVersions.scala212)
+
+  /** The Scala versions the tests are run for, to get what they fetch at run time in the cache */
+  private def testScalaVersions = Seq(ScalaVersions.scala213, ScalaVersions.scala3Latest)
+
+  /** Evaluates `+`-separated selectors, like the Mill command line does, failing if any fails */
+  private def evaluate(evaluator: Evaluator, selectors: Seq[Seq[String]]): Unit = {
+    val args = selectors.flatMap(Seq("+") ++ _).drop(1)
+    System.err.println(s"Running ${args.mkString(" ")}")
+    evaluator.evaluate(args, SelectMode.Separated).get.values.get
+  }
+
+  /** The selectors [[compile]] runs: modules are built once per binary Scala version, and their
+    * tests once per full Scala version
+    */
+  def compileSelectors = Task {
+    val selectors = compileScalaVersions.flatMap { sv =>
+      Seq(
+        Seq(s"__[${ScalaVersions.binary(sv)}].test.compile"),
+        Seq(s"__.test[$sv].compile")
+      )
+    }
+    selectors :+ Seq("scala.launcher.compile")
+  }
+
+  /** The selectors [[test]] runs, the ones CI runs */
+  def testSelectors = Task {
+    testScalaVersions.flatMap { sv =>
+      Seq(
+        Seq(s"__[${ScalaVersions.binary(sv)}].test"),
+        Seq(s"__.test[$sv].testForked")
+      )
+    }
+  }
+
+  /** The selectors [[smokeTest]] runs: one quick test class */
+  def smokeTestSelectors = Task {
+    Seq(Seq(
+      s"shared.kernel[${ScalaVersions.binary(ScalaVersions.scala213)}].test.testOnly",
+      "almond.channels.zeromq.ZeromqSocketTests"
+    ))
+  }
+
+  /** Compiles the modules and their tests */
+  def compile(evaluator: Evaluator) = Task.Command(exclusive = true) {
+    evaluate(evaluator, compileSelectors())
+  }
+
+  /** Runs the tests the way CI does */
+  def test(evaluator: Evaluator) = Task.Command(exclusive = true) {
+    evaluate(evaluator, testSelectors())
+  }
+
+  /** Runs one quick test class, to check that tests run offline */
+  def smokeTest(evaluator: Evaluator) = Task.Command(exclusive = true) {
+    evaluate(evaluator, smokeTestSelectors())
+  }
+
+  def dockerfile = Task.Source(BuildCtx.workspaceRoot / ".oss-scanner" / "Dockerfile")
+
+  /** Builds the image the way the scanner does - from a clone of the current commit, so that
+    * uncommitted changes are left out - then checks that tests run in it without network access,
+    * like during the scan.
+    *
+    * Depends on the selectors of the commands the Dockerfile runs, so that selective execution
+    * picks it when these change too (like when the Scala versions are updated), not only when the
+    * Dockerfile does. It takes no arguments, so that selective execution also picks it when its own
+    * code changes: Mill only tracks the code of the commands that take none.
+    */
+  def dockerCheck() = Task.Command {
+    val image = "almond-oss-scanner"
+    dockerfile()
+    compileSelectors()
+    testSelectors()
+    smokeTestSelectors()
+
+    val head = os.proc("git", "rev-parse", "HEAD")
+      .call(cwd = BuildCtx.workspaceRoot)
+      .out.trim()
+    val checkout = Task.dest / "checkout"
+    os.proc("git", "clone", "--quiet", "--no-checkout", BuildCtx.workspaceRoot, checkout)
+      .call(stdout = os.Inherit)
+    os.proc("git", "checkout", "--quiet", "--detach", head)
+      .call(cwd = checkout, stdout = os.Inherit)
+
+    os.proc(
+      "docker",
+      "build",
+      "-f",
+      checkout / ".oss-scanner" / "Dockerfile",
+      "-t",
+      image,
+      checkout
+    ).call(stdout = os.Inherit)
+    os.proc(
+      "docker",
+      "run",
+      "--rm",
+      "--network=none",
+      image,
+      "./mill",
+      "-i",
+      "--ticker",
+      "false",
+      "oss-scanner.smokeTest"
+    ).call(stdout = os.Inherit)
+    ()
+  }
+
+  /** Prints the Scala versions the image is prepared for, one per line, each followed by its binary
+    * Scala version - the cross value of the modules built for it
+    */
+  def scalaVersions() = Task.Command {
+    for (sv <- compileScalaVersions)
+      mill.api.SystemStreams.original.out.println(s"$sv ${ScalaVersions.binary(sv)}")
+  }
+}
+
 def ghOrg  = "almond-sh"
 def ghName = "almond"
 object ci extends Module {
