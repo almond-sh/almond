@@ -3,7 +3,8 @@ set -euv
 
 # TODO Convert to mill tasks
 
-# No argument: copy the versioned docs of $VERSIONED_DOCS_REPO into $WEBSITE_DIR
+# No argument: copy the versioned docs of $VERSIONED_DOCS_DIR, a checkout of
+#   almond-sh/versioned-docs, into $WEBSITE_DIR
 # --update: same, then add the docs of the version of the current git tag to $WEBSITE_DIR
 # --push: push the versioned docs of $WEBSITE_DIR to $VERSIONED_DOCS_REPO, using $GH_TOKEN
 #
@@ -37,15 +38,11 @@ fi
 
 if [ "$MODE" = push ]; then
   REMOTE="https://x-access-token:${GH_TOKEN}@github.com/$VERSIONED_DOCS_REPO.git"
-else
-  REMOTE="https://github.com/$VERSIONED_DOCS_REPO.git"
-fi
 
-mkdir -p target
-rm -rf target/versioned-docs
-git clone "$REMOTE" -b master target/versioned-docs
+  mkdir -p target
+  rm -rf target/versioned-docs
+  git clone "$REMOTE" -b main target/versioned-docs
 
-if [ "$MODE" = push ]; then
   cp -R "$WEBSITE_DIR"/version* target/versioned-docs/
   cd target/versioned-docs
   git config user.name "GitHub Actions"
@@ -53,19 +50,13 @@ if [ "$MODE" = push ]; then
   git add version*
   git commit -m "Add doc for $VERSION"
 
-  git push origin master
+  git push origin main
 
   cd -
+  rm -rf target/versioned-docs
 else
-  if [ -d target/versioned-docs/versioned_docs ]; then
-    cp -R target/versioned-docs/versioned_docs "$WEBSITE_DIR/"
-  fi
-  if [ -d target/versioned-docs/versioned_sidebars ]; then
-    cp -R target/versioned-docs/versioned_sidebars "$WEBSITE_DIR/"
-  fi
-  if [ -f target/versioned-docs/versions.json ]; then
-    cp target/versioned-docs/versions.json "$WEBSITE_DIR/"
-  fi
+  cp -R "$VERSIONED_DOCS_DIR/versioned_docs" "$VERSIONED_DOCS_DIR/versioned_sidebars" \
+    "$VERSIONED_DOCS_DIR/versions.json" "$WEBSITE_DIR/"
 
   if [ "$MODE" = update ]; then
     cd "$WEBSITE_DIR"
@@ -73,5 +64,3 @@ else
     cd -
   fi
 fi
-
-rm -rf target/versioned-docs

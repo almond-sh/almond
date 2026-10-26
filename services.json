@@ -6,6 +6,14 @@
         "ALMOND_SCALAFMT_EXTENSION": "work/almond-scalafmt"
       },
       "proxy": true
+    },
+    "website": {
+      "command": "./mill -w docs.devServer --host=0.0.0.0 --port={bind_port} --base-address={external_https_proxy_url} & pid=$!; trap 'kill $pid 2>/dev/null; ./mill docs.devServerStop' EXIT; wait $pid",
+      "proxy": true
+    },
+    "website-static": {
+      "command": "set -o pipefail; eval \"$(./mill show docs.serveCmd --host=0.0.0.0 --port={bind_port} --base-address={external_https_proxy_url} | jq -r .)\"",
+      "proxy": true
     }
   }
 }
