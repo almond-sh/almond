@@ -1437,6 +1437,7 @@ object Tests {
             "++",
             "++:",
             "+:",
+            "->",
             "/:",
             ":+",
             ":++",
@@ -1477,6 +1478,7 @@ object Tests {
             "elementWise",
             "empty",
             "endsWith",
+            "ensuring",
             "equals",
             "exists",
             "filter",
@@ -1490,6 +1492,7 @@ object Tests {
             "foldRight",
             "forall",
             "foreach",
+            "formatted",
             "getClass",
             "groupBy",
             "groupMap",
@@ -1534,6 +1537,7 @@ object Tests {
             "minByOption",
             "minOption",
             "mkString",
+            "nn",
             "nonEmpty",
             "orElse",
             "padTo",
@@ -1557,6 +1561,7 @@ object Tests {
             "reverseMap",
             "reverse_:::",
             "runWith",
+            "runtimeChecked",
             "sameElements",
             "scan",
             "scanLeft",
@@ -1607,7 +1612,8 @@ object Tests {
             "withFilter",
             "zip",
             "zipAll",
-            "zipWithIndex"
+            "zipWithIndex",
+            "→"
           )
       val matches = res.flatMap(_.matches)
       if (matches != expectedMatches) {
@@ -1938,6 +1944,7 @@ object Tests {
             ("++", "Method"),
             ("++:", "Method"),
             ("+:", "Method"),
+            ("->", "Method"),
             ("/:", "Method"),
             (":+", "Method"),
             (":++", "Method"),
@@ -1985,6 +1992,10 @@ object Tests {
             ("elementWise", "Method"),
             ("empty", "Method"),
             ("endsWith", "Method"),
+            ("ensuring", "Method"),
+            ("ensuring", "Method"),
+            ("ensuring", "Method"),
+            ("ensuring", "Method"),
             ("equals", "Method"),
             ("exists", "Method"),
             ("filter", "Method"),
@@ -1998,6 +2009,7 @@ object Tests {
             ("foldRight", "Method"),
             ("forall", "Method"),
             ("foreach", "Method"),
+            ("formatted", "Method"),
             ("getClass", "Method"),
             ("groupBy", "Method"),
             ("groupMap", "Method"),
@@ -2050,6 +2062,7 @@ object Tests {
             ("mkString", "Method"),
             ("mkString", "Method"),
             ("mkString", "Method"),
+            ("nn", "Method"),
             ("nonEmpty", "Method"),
             ("orElse", "Method"),
             ("padTo", "Method"),
@@ -2073,6 +2086,7 @@ object Tests {
             ("reverseMap", "Method"),
             ("reverse_:::", "Method"),
             ("runWith", "Method"),
+            ("runtimeChecked", "Method"),
             ("sameElements", "Method"),
             ("scan", "Method"),
             ("scanLeft", "Method"),
@@ -2128,7 +2142,8 @@ object Tests {
             ("withFilter", "Method"),
             ("zip", "Method"),
             ("zipAll", "Method"),
-            ("zipWithIndex", "Method")
+            ("zipWithIndex", "Method"),
+            ("→", "Method")
           )
 
       val metadata = ujson.read(res.head.metadata.value)
