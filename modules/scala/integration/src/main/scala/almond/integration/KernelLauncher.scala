@@ -7,7 +7,7 @@ import almond.testkit.Dsl._
 import almond.testkit.{ClientStreams, TestLogging}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import com.github.plokhotnyuk.jsoniter_scala.core.{readFromArray, writeToArray}
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReaderException, readFromArray, writeToArray}
 import coursier.jvm.{JavaHome, JvmCache}
 import fs2.concurrent.SignallingRef
 import io.github.alexarchambault.testutil.{TestOutput, TestUtil}
@@ -788,18 +788,21 @@ class KernelLauncher(
 
         val conn = {
           def paramsFromConnectionFile: ConnectionParameters =
-            if (kernelBindToRandomPorts) {
+            if (kernelBindToRandomPorts)
               retryPeriodicallyUntil(
                 System.currentTimeMillis() + 2.minutes.toMillis,
                 50.millis.toMillis
               ) {
                 val connFileLastModified = os.mtime(connFile)
-                if (connFileLastModified > initialConnFileLastModified) Some(())
+                // The kernel might still be writing the file when its mtime changes, so we wait for
+                // it to be readable
+                if (connFileLastModified > initialConnFileLastModified)
+                  try Some(readFromArray(os.read.bytes(connFile))(ConnectionSpec.codec))
+                  catch {
+                    case _: JsonReaderException => None
+                  }
                 else None
-              }
-              val conn = readFromArray(os.read.bytes(connFile))(ConnectionSpec.codec)
-              conn.connectionParameters
-            }
+              }.connectionParameters
             else {
               if (System.getenv("CI") != null) {
                 val delay = 4.seconds
