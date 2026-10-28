@@ -97,7 +97,7 @@ object Deps {
     mvn"org.scalameta:mtags_$mtagsScalaVersion:$mtagsVersion"
   }
   def munit                    = mvn"org.scalameta::munit:1.3.6"
-  def osLib                    = mvn"com.lihaoyi::os-lib:0.11.8"
+  def osLib                    = mvn"com.lihaoyi::os-lib:0.11.10"
   def pprint                   = mvn"com.lihaoyi::pprint:0.9.6"
   def scalafmtDynamic          = mvn"org.scalameta::scalafmt-dynamic:${Versions.scalafmt}"
   def scalaparse               = mvn"com.lihaoyi::scalaparse:3.1.1"
