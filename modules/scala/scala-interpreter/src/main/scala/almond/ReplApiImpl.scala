@@ -50,6 +50,13 @@ final class ReplApiImpl(
       (Displayers.registration().find(classTagT.runtimeClass) ne defaultDisplayer)
     )
 
+  private def isWidget[T](classTagT: ClassTag[T]): Boolean =
+    classTagT != null &&
+    classOf[almond.widgets.Widget].isAssignableFrom(classTagT.runtimeClass)
+  private def isWidgetSubscription[T](classTagT: ClassTag[T]): Boolean =
+    classTagT != null &&
+    classOf[almond.widgets.Subscription].isAssignableFrom(classTagT.runtimeClass)
+
   def printSpecial[T](
     value: => T,
     ident: String,
@@ -66,6 +73,14 @@ final class ReplApiImpl(
     execute0.currentPublishOpt match {
       case None =>
         None
+      // Like in ipywidgets, widgets assigned to variables aren't displayed, only those of bare
+      // expressions are (widgets typically get assembled in containers, that get displayed)
+      case Some(_) if isWidget(classTagT) && !ident.matches(expressionResultName) =>
+        None
+      // Registering a widget callback returns a handle to cancel it, that we don't print unless
+      // it's assigned to a variable (registering callbacks returns nothing in ipywidgets)
+      case Some(_) if isWidgetSubscription(classTagT) && ident.matches(expressionResultName) =>
+        Some(Iterator())
       case Some(p) =>
         displayRich(value, p)(classTagT).orElse {
           for (

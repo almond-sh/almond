@@ -11,4 +11,9 @@ object Versions {
   def scalafmt      = "3.9.6"
   def scalafmtJava8 = "3.7.15"
   def uv            = "0.12.18"
+
+  // widget classes are generated from the model schema of that version (see WidgetModelSchema)
+  def ipywidgets = "8.1.7"
+  // checksum of the model schema of ipywidgets, to update along with its version
+  def ipywidgetsSchemaSha256 = "9b74e3760501675fab399e0c8f0339327296d2308482d5c739cc5c4b60abf104"
 }

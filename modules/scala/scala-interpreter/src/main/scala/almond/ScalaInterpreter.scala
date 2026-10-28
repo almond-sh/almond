@@ -182,8 +182,11 @@ final class ScalaInterpreter(
     execute0.interrupt(jupyterApi)
 
   override def supportComm: Boolean = true
-  override def setCommHandler(commHandler0: CommHandler): Unit =
+  override def setCommHandler(commHandler0: CommHandler): Unit = {
     commHandlerOpt = Some(commHandler0)
+    // widgets created by users go through it
+    almond.widgets.WidgetManager.install(commHandler0)
+  }
 
   def execute(
     code: String,

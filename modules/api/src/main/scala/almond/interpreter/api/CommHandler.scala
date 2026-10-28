@@ -36,6 +36,37 @@ abstract class CommHandler extends OutputHandler.UpdateHelpers {
   @throws(classOf[IllegalArgumentException])
   def commClose(id: String, data: Array[Byte], metadata: Array[Byte]): Unit
 
+  /** Opens a comm, sending binary buffers along with the message
+    *
+    * Implementations that don't support binary buffers throw an `UnsupportedOperationException`
+    * when some are passed.
+    */
+  @throws(classOf[IllegalArgumentException])
+  def commOpen(
+    targetName: String,
+    id: String,
+    data: Array[Byte],
+    metadata: Array[Byte],
+    buffers: Seq[Array[Byte]]
+  ): Unit =
+    if (buffers.isEmpty) commOpen(targetName, id, data, metadata)
+    else throw new UnsupportedOperationException("Binary buffers not supported")
+
+  /** Sends a comm message, along with binary buffers
+    *
+    * Implementations that don't support binary buffers throw an `UnsupportedOperationException`
+    * when some are passed.
+    */
+  @throws(classOf[IllegalArgumentException])
+  def commMessage(
+    id: String,
+    data: Array[Byte],
+    metadata: Array[Byte],
+    buffers: Seq[Array[Byte]]
+  ): Unit =
+    if (buffers.isEmpty) commMessage(id, data, metadata)
+    else throw new UnsupportedOperationException("Binary buffers not supported")
+
   final def receiver(
     name: String,
     onOpen: (String, Array[Byte]) => Unit = (_, _) => (),
