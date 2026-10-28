@@ -1,0 +1,29 @@
+/* Infima variables, see https://infima.dev */
+
+:root {
+  --ifm-color-primary: #39808a;
+  --ifm-color-primary-dark: #33737c;
+  --ifm-color-primary-darker: #306d75;
+  --ifm-color-primary-darkest: #285a61;
+  --ifm-color-primary-light: #3f8d98;
+  --ifm-color-primary-lighter: #42939f;
+  --ifm-color-primary-lightest: #4aa6b3;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #69b5c0;
+  --ifm-color-primary-dark: #54abb7;
+  --ifm-color-primary-darker: #4ba5b2;
+  --ifm-color-primary-darkest: #3d8892;
+  --ifm-color-primary-light: #7ebfc9;
+  --ifm-color-primary-lighter: #88c4cd;
+  --ifm-color-primary-lightest: #a8d4da;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* the former website had a black header */
+.navbar--dark {
+  --ifm-navbar-background-color: #000;
+}

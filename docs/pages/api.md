@@ -12,7 +12,7 @@ The API of almond is two-fold:
 Jupyter front-ends.
 
 Both of these APIs can be used:
-- [directly from notebook sessions](api-access-instances.md#from-the-repl),
+- [directly from notebook sessions](api-access-instances.md#from-the-jupyter-cells),
 - [as libraries](api-access-instances.md#from-a-library), that your own libraries can depend on.
 
 In the latter case, your libraries can be loaded during an almond session,

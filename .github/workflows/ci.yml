@@ -184,8 +184,46 @@ jobs:
         job: ${{ runner.os }}
         ignoreMatrix: true
         cacheMode: read
-    # -j 1 like the integration tests: the localRepo tasks don't like being run in parallel
-    - run: ./mill -i -j 1 scala.proxy-tests.test
+    - run: ./mill -i scala.proxy-tests.test
+      shell: bash
+
+  oss-scanner:
+    # Builds the image the OSS Scanner (https://github.com/anthropics/oss-scanner) scans us in, from
+    # .oss-scanner/Dockerfile, and checks that tests run in it without network access. On pull
+    # requests, only when that Dockerfile, the selectors of the commands it runs (like when the
+    # Scala versions are updated), or the code of the check itself change.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v8.2.0
+      with:
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
+    - run: .github/scripts/selective-prepare.sh
+      shell: bash
+    - id: selective
+      run: |
+        tasks="$(./mill -i --ticker false selective.resolve oss-scanner.dockerCheck)"
+        echo "Selected tasks: ${tasks:-none}"
+        if [ -n "$tasks" ]; then
+          echo "run=true" >> "$GITHUB_OUTPUT"
+        fi
+      shell: bash
+    # The image holds the dependencies of several Scala versions, and the compiled modules and
+    # tests for them
+    - name: Free disk space
+      if: steps.selective.outputs.run == 'true'
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        df -h /
+      shell: bash
+    - if: steps.selective.outputs.run == 'true'
+      run: ./mill -i oss-scanner.dockerCheck
       shell: bash
 
   bincompat:

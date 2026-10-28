@@ -7,7 +7,6 @@ object `package` extends MillBuildRootModule {
     mvn"com.github.lolgab:mill-mima_mill1_3:0.2.2",
     mvn"io.get-coursier.util:get-cs_2.13:0.1.1",
     mvn"io.github.alexarchambault.mill::mill-native-image-upload:0.2.0",
-    mvn"io.get-coursier:coursier-launcher_2.13:2.1.25-M13",
-    mvn"org.jsoup:jsoup:1.10.3"
+    mvn"io.get-coursier:coursier-launcher_2.13:2.1.25-M13"
   )
 }

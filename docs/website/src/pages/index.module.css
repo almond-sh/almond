@@ -1,0 +1,48 @@
+.splash {
+  padding: 4rem 0;
+  text-align: center;
+}
+
+.logo {
+  max-height: 250px;
+}
+
+.title {
+  font-size: 3rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.tagline {
+  font-size: 1.5rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.feature {
+  padding: 3rem 0;
+}
+
+.feature:nth-child(even) {
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+.featureRow {
+  align-items: center;
+  row-gap: 1.5rem;
+}
+
+.featureRowReverse {
+  flex-direction: row-reverse;
+}
+
+.featureImage {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
