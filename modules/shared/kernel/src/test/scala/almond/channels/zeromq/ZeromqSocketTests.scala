@@ -5,6 +5,7 @@ import java.util.concurrent.Executors
 import almond.channels.{ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.util.Secret
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import org.zeromq.{SocketType, ZMQ}
 import utest._
@@ -27,6 +28,13 @@ object ZeromqSocketTests extends TestSuite {
     s.close()
     port
   }
+
+  // Closing sockets even if the test fails, as ctx.term() in utestAfterAll waits for all
+  // the sockets of ctx to be closed
+  private def closeAll(sockets: ZeromqSocket*): IO[Unit] =
+    sockets.foldLeft(IO.unit) { (acc, socket) =>
+      acc *> socket.close(lingerDuration = 5.seconds).attempt.void
+    }
 
   val tests = Tests {
 
@@ -103,12 +111,9 @@ object ZeromqSocketTests extends TestSuite {
           _       <- req.send(msg)
           readOpt <- rep.read
           _ = assert(readOpt.contains(msg))
-          // FIXME Closing should be enforced via bracketing
-          _ <- req.close(lingerDuration = 5.seconds)
-          _ <- rep.close(lingerDuration = 5.seconds)
         } yield ()
 
-      t.unsafeRunSync()(ioRuntime)
+      t.guarantee(closeAll(req, rep)).unsafeRunSync()(ioRuntime)
     }
 
     test("simpleWithNoKey") {
@@ -172,12 +177,9 @@ object ZeromqSocketTests extends TestSuite {
           _       <- req.send(msg)
           readOpt <- rep.read
           _ = assert(readOpt.contains(msg))
-          // FIXME Closing should be enforced via bracketing
-          _ <- req.close(lingerDuration = 5.seconds)
-          _ <- rep.close(lingerDuration = 5.seconds)
         } yield ()
 
-      t.unsafeRunSync()(ioRuntime)
+      t.guarantee(closeAll(req, rep)).unsafeRunSync()(ioRuntime)
     }
 
     test("buffers") {
@@ -252,12 +254,9 @@ object ZeromqSocketTests extends TestSuite {
           _ = assert(firstOpt.contains(withBuffers.copy(idents = Seq(identity.toSeq))))
           // buffers of the first message must not end up as idents of the second one
           _ = assert(secondOpt.contains(withoutBuffers.copy(idents = Seq(identity.toSeq))))
-          // FIXME Closing should be enforced via bracketing
-          _ <- dealer.close(lingerDuration = 5.seconds)
-          _ <- router.close(lingerDuration = 5.seconds)
         } yield ()
 
-      t.unsafeRunSync()(ioRuntime)
+      t.guarantee(closeAll(dealer, router)).unsafeRunSync()(ioRuntime)
     }
 
     test("parse frames") {

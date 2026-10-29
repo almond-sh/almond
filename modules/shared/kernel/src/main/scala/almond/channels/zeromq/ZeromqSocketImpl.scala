@@ -395,7 +395,8 @@ final class ZeromqSocketImpl(
       }
     }
 
-    delayedCondition(opened, "Channel is not opened in close")(t.evalOn(ec))
+    // Not requiring the socket to be opened, so that a socket that failed to open can be closed
+    t.evalOn(ec)
   }
 
   private def ensureOnlyOpened(): Unit = {
