@@ -9,6 +9,8 @@ import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
 
+import java.util.IdentityHashMap
+
 import scala.concurrent.ExecutionContext
 
 final class DefaultCommHandler(
@@ -22,16 +24,39 @@ final class DefaultCommHandler(
 
   val commTargetManager = CommTargetManager.create()
 
+  // The IOCommTarget-s wrapping the targets registered by name, so that comm ids registered with
+  // one of these targets end up associated to that target name (see CommTargetManager.allInfos,
+  // used to answer comm_info requests)
+  private val namedTargets = new IdentityHashMap[CommTarget, IOCommTarget]
+
+  private def ioTarget(target: CommTarget): IOCommTarget =
+    namedTargets.synchronized {
+      Option(namedTargets.get(target))
+        .getOrElse(IOCommTarget.fromCommTarget(target, commEc))
+    }
+
   def registerCommTarget(name: String, target: CommTarget): Unit =
-    registerCommTarget(name, IOCommTarget.fromCommTarget(target, commEc))
+    namedTargets.synchronized {
+      val ioTarget0 = ioTarget(target)
+      registerCommTarget(name, ioTarget0)
+      namedTargets.put(target, ioTarget0)
+    }
   def unregisterCommTarget(name: String): Unit =
-    commTargetManager.removeTarget(name)
+    namedTargets.synchronized {
+      for (ioTarget0 <- commTargetManager.target(name)) {
+        val it = namedTargets.entrySet().iterator()
+        while (it.hasNext)
+          if (it.next().getValue eq ioTarget0)
+            it.remove()
+      }
+      commTargetManager.removeTarget(name)
+    }
 
   def registerCommTarget(name: String, target: IOCommTarget): Unit =
     commTargetManager.addTarget(name, target)
 
   def registerCommId(id: String, target: CommTarget): Unit =
-    commTargetManager.addId(IOCommTarget.fromCommTarget(target, commEc), id)
+    commTargetManager.addId(ioTarget(target), id)
   def unregisterCommId(id: String): Unit =
     commTargetManager.removeId(id)
 
