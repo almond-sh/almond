@@ -44,18 +44,14 @@ abstract class KernelTestsStandaloneDefinitions extends AlmondFunSuite {
     }
   }
 
-  // Scala 2 inspections rely on mtags, whose recent versions need Java 17
-  if (
-    !kernelLauncher.defaultScalaVersion.startsWith("2.") ||
-    kernelLauncher.kernelJavaMajorVersion >= 17
-  )
-    test0("inspections") { implicit forceVerbose =>
-      kernelLauncher.withKernel { implicit runner =>
-        implicit val sessionId: SessionId = SessionId()
-        // reads docs from the source JARs embedded in the launcher
-        almond.integration.Tests.inspections(kernelLauncher.defaultScalaVersion)
-      }
+  test0("inspections") { implicit forceVerbose =>
+    // Scala 2 inspections rely on mtags, whose recent versions need Java 17
+    kernelLauncher.withKernelOnJava(17) { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      // reads docs from the source JARs embedded in the launcher
+      almond.integration.Tests.inspections(kernelLauncher.defaultScalaVersion)
     }
+  }
 
   test0("add dependency") { implicit forceVerbose =>
     kernelLauncher.withKernel { implicit runner =>
