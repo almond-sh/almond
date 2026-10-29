@@ -267,7 +267,10 @@ final case class Options(
         Map(
           Module.of("sh.almond", s"almond-spark_$sbv")     -> Properties.ammoniteSparkVersion,
           Module.of("sh.almond", s"ammonite-spark_$sbv")   -> Properties.ammoniteSparkVersion,
-          Module.of("sh.almond", s"json-api-jackson_$sbv") -> Properties.jsonApiJacksonVersion
+          Module.of("sh.almond", s"json-api-jackson_$sbv") -> Properties.jsonApiJacksonVersion,
+          Module.of("sh.almond", s"almond-scalapy_$sbv")   -> almondScalapyVersion,
+          // the other almond modules, published along with us
+          Module.of("sh.almond", "*") -> Properties.version
         )
       else
         Map.empty[Module, String]
