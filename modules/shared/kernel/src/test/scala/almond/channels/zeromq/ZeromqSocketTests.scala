@@ -1,16 +1,18 @@
 package almond.channels.zeromq
 
-import java.util.concurrent.Executors
+import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 
 import almond.channels.{ConnectionParameters, Message}
 import almond.logger.LoggerContext
 import almond.util.Secret
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import org.zeromq.{SocketType, ZMQ}
 import utest._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
+import scala.jdk.CollectionConverters._
 import java.nio.charset.StandardCharsets
 
 object ZeromqSocketTests extends TestSuite {
@@ -18,15 +20,26 @@ object ZeromqSocketTests extends TestSuite {
   private val ctx       = ZMQ.context(4)
   private val ioRuntime = IORuntime.global
 
-  override def utestAfterAll() =
-    ctx.term()
+  private val sockets = new ConcurrentLinkedQueue[ZeromqSocket]
 
-  private def randomPort(): Int = {
-    val s    = new java.net.ServerSocket(0)
-    val port = s.getLocalPort
-    s.close()
-    port
+  private def tracked(socket: ZeromqSocket): ZeromqSocket = {
+    sockets.add(socket)
+    socket
   }
+
+  override def utestAfterAll() = {
+    // ctx.term() waits for all the sockets of ctx to be closed, so closing the ones tests
+    // may have left open, rather than having it hang
+    closeAll(sockets.asScala.toSeq: _*).unsafeRunSync()(ioRuntime)
+    ctx.term()
+  }
+
+  // Closing sockets even if the test fails, as ctx.term() in utestAfterAll waits for all
+  // the sockets of ctx to be closed
+  private def closeAll(sockets: ZeromqSocket*): IO[Unit] =
+    sockets.foldLeft(IO.unit) { (acc, socket) =>
+      acc *> socket.close(lingerDuration = 5.seconds).attempt.void
+    }
 
   val tests = Tests {
 
@@ -50,17 +63,15 @@ object ZeromqSocketTests extends TestSuite {
       val reqEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = randomPort()
-
       val key = Secret.randomUuid()
 
       val logCtx = LoggerContext.nop
 
-      val rep = ZeromqSocket(
+      val rep = tracked(ZeromqSocket(
         repEc,
         SocketType.REP,
         bind = true,
-        s"tcp://localhost:$port",
+        "tcp://localhost",
         None,
         None,
         ctx,
@@ -68,11 +79,11 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false,
+        bindToRandomPort = true,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
-      val req = ZeromqSocket(
+      def newReq(port: Int) = tracked(ZeromqSocket(
         reqEc,
         SocketType.REQ,
         bind = false,
@@ -86,7 +97,7 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = false,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
       val msg = Message(
         Nil,
@@ -97,18 +108,19 @@ object ZeromqSocketTests extends TestSuite {
       )
 
       val t =
-        for {
-          _       <- rep.open
-          _       <- req.open
-          _       <- req.send(msg)
-          readOpt <- rep.read
-          _ = assert(readOpt.contains(msg))
-          // FIXME Closing should be enforced via bracketing
-          _ <- req.close(lingerDuration = 5.seconds)
-          _ <- rep.close(lingerDuration = 5.seconds)
-        } yield ()
+        rep.open.map(_.getOrElse(sys.error("No port picked"))).flatMap { port =>
+          val req = newReq(port)
+          val t0 =
+            for {
+              _       <- req.open
+              _       <- req.send(msg)
+              readOpt <- rep.read
+              _ = assert(readOpt.contains(msg))
+            } yield ()
+          t0.guarantee(closeAll(req))
+        }
 
-      t.unsafeRunSync()(ioRuntime)
+      t.guarantee(closeAll(rep)).unsafeRunSync()(ioRuntime)
     }
 
     test("simpleWithNoKey") {
@@ -119,17 +131,15 @@ object ZeromqSocketTests extends TestSuite {
       val reqEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = randomPort()
-
       val key = Secret("") // having no key disables signature checking
 
       val logCtx = LoggerContext.nop
 
-      val rep = ZeromqSocket(
+      val rep = tracked(ZeromqSocket(
         repEc,
         SocketType.REP,
         bind = true,
-        s"tcp://localhost:$port",
+        "tcp://localhost",
         None,
         None,
         ctx,
@@ -137,11 +147,11 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false,
+        bindToRandomPort = true,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
-      val req = ZeromqSocket(
+      def newReq(port: Int) = tracked(ZeromqSocket(
         reqEc,
         SocketType.REQ,
         bind = false,
@@ -155,7 +165,7 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = false,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
       val msg = Message(
         Nil,
@@ -166,18 +176,19 @@ object ZeromqSocketTests extends TestSuite {
       )
 
       val t =
-        for {
-          _       <- rep.open
-          _       <- req.open
-          _       <- req.send(msg)
-          readOpt <- rep.read
-          _ = assert(readOpt.contains(msg))
-          // FIXME Closing should be enforced via bracketing
-          _ <- req.close(lingerDuration = 5.seconds)
-          _ <- rep.close(lingerDuration = 5.seconds)
-        } yield ()
+        rep.open.map(_.getOrElse(sys.error("No port picked"))).flatMap { port =>
+          val req = newReq(port)
+          val t0 =
+            for {
+              _       <- req.open
+              _       <- req.send(msg)
+              readOpt <- rep.read
+              _ = assert(readOpt.contains(msg))
+            } yield ()
+          t0.guarantee(closeAll(req))
+        }
 
-      t.unsafeRunSync()(ioRuntime)
+      t.guarantee(closeAll(rep)).unsafeRunSync()(ioRuntime)
     }
 
     test("buffers") {
@@ -188,19 +199,17 @@ object ZeromqSocketTests extends TestSuite {
       val dealerEc = ExecutionContext.fromExecutorService(
         Executors.newSingleThreadExecutor()
       )
-      val port = randomPort()
-
       val key = Secret.randomUuid()
 
       val logCtx = LoggerContext.nop
 
       val identity = "client".getBytes(StandardCharsets.UTF_8)
 
-      val router = ZeromqSocket(
+      val router = tracked(ZeromqSocket(
         routerEc,
         SocketType.ROUTER,
         bind = true,
-        s"tcp://localhost:$port",
+        "tcp://localhost",
         None,
         None,
         ctx,
@@ -208,11 +217,11 @@ object ZeromqSocketTests extends TestSuite {
         "hmac-sha256",
         None,
         logCtx,
-        bindToRandomPort = false,
+        bindToRandomPort = true,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
-      val dealer = ZeromqSocket(
+      def newDealer(port: Int) = tracked(ZeromqSocket(
         dealerEc,
         SocketType.DEALER,
         bind = false,
@@ -226,7 +235,7 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = false,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
       def msg(content: String, buffers: String*) =
         Message(
@@ -242,22 +251,23 @@ object ZeromqSocketTests extends TestSuite {
       val withoutBuffers = msg("second")
 
       val t =
-        for {
-          _         <- router.open
-          _         <- dealer.open
-          _         <- dealer.send(withBuffers)
-          _         <- dealer.send(withoutBuffers)
-          firstOpt  <- router.read
-          secondOpt <- router.read
-          _ = assert(firstOpt.contains(withBuffers.copy(idents = Seq(identity.toSeq))))
-          // buffers of the first message must not end up as idents of the second one
-          _ = assert(secondOpt.contains(withoutBuffers.copy(idents = Seq(identity.toSeq))))
-          // FIXME Closing should be enforced via bracketing
-          _ <- dealer.close(lingerDuration = 5.seconds)
-          _ <- router.close(lingerDuration = 5.seconds)
-        } yield ()
+        router.open.map(_.getOrElse(sys.error("No port picked"))).flatMap { port =>
+          val dealer = newDealer(port)
+          val t0 =
+            for {
+              _         <- dealer.open
+              _         <- dealer.send(withBuffers)
+              _         <- dealer.send(withoutBuffers)
+              firstOpt  <- router.read
+              secondOpt <- router.read
+              _ = assert(firstOpt.contains(withBuffers.copy(idents = Seq(identity.toSeq))))
+              // buffers of the first message must not end up as idents of the second one
+              _ = assert(secondOpt.contains(withoutBuffers.copy(idents = Seq(identity.toSeq))))
+            } yield ()
+          t0.guarantee(closeAll(dealer))
+        }
 
-      t.unsafeRunSync()(ioRuntime)
+      t.guarantee(closeAll(router)).unsafeRunSync()(ioRuntime)
     }
 
     test("parse frames") {
