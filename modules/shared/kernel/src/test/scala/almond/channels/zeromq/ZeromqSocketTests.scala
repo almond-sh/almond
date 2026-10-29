@@ -1,6 +1,6 @@
 package almond.channels.zeromq
 
-import java.util.concurrent.Executors
+import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 
 import almond.channels.{ConnectionParameters, Message}
 import almond.logger.LoggerContext
@@ -12,6 +12,7 @@ import utest._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
+import scala.jdk.CollectionConverters._
 import java.nio.charset.StandardCharsets
 
 object ZeromqSocketTests extends TestSuite {
@@ -19,8 +20,19 @@ object ZeromqSocketTests extends TestSuite {
   private val ctx       = ZMQ.context(4)
   private val ioRuntime = IORuntime.global
 
-  override def utestAfterAll() =
+  private val sockets = new ConcurrentLinkedQueue[ZeromqSocket]
+
+  private def tracked(socket: ZeromqSocket): ZeromqSocket = {
+    sockets.add(socket)
+    socket
+  }
+
+  override def utestAfterAll() = {
+    // ctx.term() waits for all the sockets of ctx to be closed, so closing the ones tests
+    // may have left open, rather than having it hang
+    closeAll(sockets.asScala.toSeq: _*).unsafeRunSync()(ioRuntime)
     ctx.term()
+  }
 
   // Closing sockets even if the test fails, as ctx.term() in utestAfterAll waits for all
   // the sockets of ctx to be closed
@@ -55,7 +67,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val logCtx = LoggerContext.nop
 
-      val rep = ZeromqSocket(
+      val rep = tracked(ZeromqSocket(
         repEc,
         SocketType.REP,
         bind = true,
@@ -69,9 +81,9 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = true,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
-      def newReq(port: Int) = ZeromqSocket(
+      def newReq(port: Int) = tracked(ZeromqSocket(
         reqEc,
         SocketType.REQ,
         bind = false,
@@ -85,7 +97,7 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = false,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
       val msg = Message(
         Nil,
@@ -123,7 +135,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val logCtx = LoggerContext.nop
 
-      val rep = ZeromqSocket(
+      val rep = tracked(ZeromqSocket(
         repEc,
         SocketType.REP,
         bind = true,
@@ -137,9 +149,9 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = true,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
-      def newReq(port: Int) = ZeromqSocket(
+      def newReq(port: Int) = tracked(ZeromqSocket(
         reqEc,
         SocketType.REQ,
         bind = false,
@@ -153,7 +165,7 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = false,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
       val msg = Message(
         Nil,
@@ -193,7 +205,7 @@ object ZeromqSocketTests extends TestSuite {
 
       val identity = "client".getBytes(StandardCharsets.UTF_8)
 
-      val router = ZeromqSocket(
+      val router = tracked(ZeromqSocket(
         routerEc,
         SocketType.ROUTER,
         bind = true,
@@ -207,9 +219,9 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = true,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
-      def newDealer(port: Int) = ZeromqSocket(
+      def newDealer(port: Int) = tracked(ZeromqSocket(
         dealerEc,
         SocketType.DEALER,
         bind = false,
@@ -223,7 +235,7 @@ object ZeromqSocketTests extends TestSuite {
         logCtx,
         bindToRandomPort = false,
         maxMessageSize = Some(ZeromqThreads.defaultMaxMessageSize)
-      )
+      ))
 
       def msg(content: String, buffers: String*) =
         Message(
