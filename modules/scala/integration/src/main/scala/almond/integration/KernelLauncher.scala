@@ -921,8 +921,8 @@ class KernelLauncher(
   def withKernel[T](f: Runner => T)(implicit forceVerbose: AlmondFunSuite.ForceVerbose): T =
     withKernel0(defaultKernelJvm)(f)
 
-  /** Like [[withKernel]], with kernels running on a JVM of major version `minJavaVersion` or
-    * later: the one they run on by default if it's recent enough, or one of that version otherwise
+  /** Like [[withKernel]], with kernels running on a JVM of major version `minJavaVersion` or later:
+    * the one they run on by default if it's recent enough, or one of that version otherwise
     */
   def withKernelOnJava[T](minJavaVersion: Int)(f: Runner => T)(implicit
     forceVerbose: AlmondFunSuite.ForceVerbose
