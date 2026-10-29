@@ -58,3 +58,26 @@ for users.
 A library defining this method, along with instructions to set up the library and
 a notebook using it, are available in
 [this repository](https://github.com/almond-sh/example-library-jupyter-api).
+
+## Showing results
+
+By default, almond shows both the results of bare expressions, like `res0: Int = 2`
+for `1 + 1`, and the values of named definitions, like `n: Int = 2` for
+`val n = 1 + 1`. Values with a rich representation ([displays](api-jupyter.md#display),
+values with a [jvm-repr](https://github.com/jupyter/jvm-repr) displayer) are displayed
+via it, rather than printed as text.
+
+Libraries can change that for their own types via `almond.display.ResultDisplay`, like
+```scala
+import almond.display.ResultDisplay
+
+// Handles, only printed when they're assigned to a variable
+ResultDisplay.register(classOf[Handle], expressions = ResultDisplay.Mode.Hidden)
+
+// Widgets, only displayed when they're the result of a bare expression,
+// and printed as text when they're assigned to a variable
+ResultDisplay.register(classOf[Widget], definitions = ResultDisplay.Mode.Text)
+```
+
+Like jvm-repr displayers, these settings apply to sub-classes too, and are looked up
+from the static type of values.
