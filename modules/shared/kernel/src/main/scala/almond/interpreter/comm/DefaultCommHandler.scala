@@ -63,18 +63,37 @@ final class DefaultCommHandler(
   private def publish[T: JsonValueCodec](
     messageType: MessageType[T],
     content: T,
-    metadata: Array[Byte]
+    metadata: Array[Byte],
+    buffers: Seq[Array[Byte]] = Nil
   ): Unit =
     Message
       .publish(session, messageType, content, RawJson(metadata))
+      .copy(buffers = buffers)
       .enqueueOn(Channel.Publish, queue)
       .unsafeRunSync()(ioRuntime)
 
   def commOpen(targetName: String, id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
-    publish(Comm.openType, Comm.Open(id, targetName, RawJson(data)), metadata)
+    commOpen(targetName, id, data, metadata, Nil)
 
   def commMessage(id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
-    publish(Comm.messageType, Comm.Message(id, RawJson(data)), metadata)
+    commMessage(id, data, metadata, Nil)
+
+  override def commOpen(
+    targetName: String,
+    id: String,
+    data: Array[Byte],
+    metadata: Array[Byte],
+    buffers: Seq[Array[Byte]]
+  ): Unit =
+    publish(Comm.openType, Comm.Open(id, targetName, RawJson(data)), metadata, buffers)
+
+  override def commMessage(
+    id: String,
+    data: Array[Byte],
+    metadata: Array[Byte],
+    buffers: Seq[Array[Byte]]
+  ): Unit =
+    publish(Comm.messageType, Comm.Message(id, RawJson(data)), metadata, buffers)
 
   def commClose(id: String, data: Array[Byte], metadata: Array[Byte]): Unit =
     publish(Comm.closeType, Comm.Close(id, RawJson(data)), metadata)
