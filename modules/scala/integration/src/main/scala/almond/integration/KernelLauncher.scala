@@ -298,7 +298,7 @@ class KernelLauncher(
       else s"almond.test.jvm.$defaultScalaVersion"
     sys.props.getOrElse(prop, sys.error(s"$prop Java property not set"))
   }
-  private lazy val kernelJvm = jvm(kernelJvmId)
+  private lazy val defaultKernelJvm = jvm(kernelJvmId)
 
   /** Major Java version the kernels run on: the build passes these as JVM ids. */
   def kernelJavaMajorVersion: Int = kernelJvmId.toInt
@@ -563,7 +563,7 @@ class KernelLauncher(
       }
     }
 
-  private def runner(output0: TestOutput): Runner with AutoCloseable =
+  private def runner(output0: TestOutput, kernelJvm: Jvm): Runner with AutoCloseable =
     new Runner with AutoCloseable {
 
       def output: Option[TestOutput] = Some(output0)
@@ -918,7 +918,24 @@ class KernelLauncher(
       }
     }
 
-  def withKernel[T](f: Runner => T)(implicit forceVerbose: AlmondFunSuite.ForceVerbose): T = {
+  def withKernel[T](f: Runner => T)(implicit forceVerbose: AlmondFunSuite.ForceVerbose): T =
+    withKernel0(defaultKernelJvm)(f)
+
+  /** Like [[withKernel]], with kernels running on a JVM of major version `minJavaVersion` or later:
+    * the one they run on by default if it's recent enough, or one of that version otherwise
+    */
+  def withKernelOnJava[T](minJavaVersion: Int)(f: Runner => T)(implicit
+    forceVerbose: AlmondFunSuite.ForceVerbose
+  ): T = {
+    val jvm0 =
+      if (kernelJavaMajorVersion >= minJavaVersion) defaultKernelJvm
+      else jvm(minJavaVersion.toString)
+    withKernel0(jvm0)(f)
+  }
+
+  private def withKernel0[T](kernelJvm: Jvm)(f: Runner => T)(implicit
+    forceVerbose: AlmondFunSuite.ForceVerbose
+  ): T = {
 
     var runner0: Runner with AutoCloseable = null
 
@@ -930,7 +947,7 @@ class KernelLauncher(
     var success = false
     try {
       output.start()
-      runner0 = runner(output)
+      runner0 = runner(output, kernelJvm)
       val res = f(runner0)
       success = true
       res

@@ -291,6 +291,9 @@ final case class ClientStreams(
       .toList
 
   def inspectRepliesHtml: Seq[String] =
+    inspectReplies("text/html")
+
+  def inspectReplies(mimeType: String): Seq[String] =
     generatedMessages
       .iterator
       .collect {
@@ -299,7 +302,7 @@ final case class ClientStreams(
             case Left(_) => Nil
             case Right(m) =>
               m.content.data
-                .get("text/html")
+                .get(mimeType)
                 .map(r => readFromArray(r.value)(stringCodec))
                 .toSeq
           }

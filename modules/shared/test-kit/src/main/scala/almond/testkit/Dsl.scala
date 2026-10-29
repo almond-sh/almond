@@ -393,7 +393,8 @@ object Dsl {
   def inspect(
     code: String,
     pos: Int,
-    detailed: Boolean
+    detailed: Boolean,
+    mimeType: String = "text/html"
   )(implicit
     sessionId: SessionId,
     session: Session
@@ -411,7 +412,7 @@ object Dsl {
 
     session.run(streams)
 
-    streams.inspectRepliesHtml
+    streams.inspectReplies(mimeType)
   }
 
   private def inspectMessage(

@@ -28,3 +28,8 @@ makes them use more memory. With Scala 3, these versions can't compile any cell 
 such a launcher. This should be fixed in almond 0.16.0 and later, whose kernels read
 these JARs about as fast as those of the file system. See
 [#1244](https://github.com/almond-sh/almond/issues/1244).
+
+Such launchers also embed the source JARs of the kernel dependencies, that
+[inspections](usage-completion.md#inspections) read documentation from. Kernels
+copy the ones they need to a temporary directory, deleted when they exit. Up to
+almond 0.15.0, inspections from such launchers show no documentation from these.

@@ -11,7 +11,6 @@ import dotty.tools.dotc.core.Symbols.{defn, Symbol}
 import dotty.tools.dotc.core.Types.{MethodType, PolyType, Type}
 
 import java.io.ByteArrayOutputStream
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.util.{LinkedHashMap => JLinkedHashMap, Map => JMap}
@@ -159,14 +158,10 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
         urlOpt.flatMap { url =>
           url.getProtocol match {
             case "jar" =>
-              val str = url.toString.stripPrefix("jar:")
-              val sep = str.indexOf("!/")
-              if (sep < 0) None
-              else
-                sourcesJar(Paths.get(new URI(str.take(sep)))).flatMap { src =>
-                  if (isJava) Some(Location(src, prefix + name + ".java", java = true))
-                  else scalaEntry(src, prefix, name).map(Location(src, _, java = false))
-                }
+              SourcePath.resourceJar(url, log).flatMap(sourcesJar).flatMap { src =>
+                if (isJava) Some(Location(src, prefix + name + ".java", java = true))
+                else scalaEntry(src, prefix, name).map(Location(src, _, java = false))
+              }
             case "jrt" =>
               // like jrt:/java.base/java/lang/String.class
               val module = url.getPath.stripPrefix("/").takeWhile(_ != '/')
@@ -197,7 +192,8 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
   private def zipFile(path: Path): Option[ZipFile] =
     zipFiles.getOrElseUpdate(
       path,
-      try Some(new ZipFile(path.toFile))
+      // source JARs embedded in standalone launchers are read from copies of them
+      try Some(new ZipFile(SourcePath.localFile(path).toFile))
       catch {
         case NonFatal(e) =>
           log.debug(s"Could not open $path", e)
