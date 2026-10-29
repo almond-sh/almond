@@ -34,7 +34,8 @@ object ScalaInterpreterTests extends TestSuite {
           )
         ),
         automaticVersions = Map(
-          Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0"
+          Module.of("org.scalacheck", s"scalacheck_$sbv") -> "1.14.0",
+          Module.of("com.lihaoyi", "source*")             -> "0.3.0"
         )
       ),
       logCtx = logCtx
@@ -656,6 +657,13 @@ object ScalaInterpreterTests extends TestSuite {
           val code =
             """import $ivy.`org.scalacheck::scalacheck:_ compat`
               |import org.scalacheck.Arbitrary
+              |""".stripMargin
+          val res = interpreter.execute(code)
+          assert(res.asSuccess.nonEmpty)
+        }
+        test("wildcard") {
+          val code =
+            """import $ivy.`com.lihaoyi::sourcecode:_`
               |""".stripMargin
           val res = interpreter.execute(code)
           assert(res.asSuccess.nonEmpty)

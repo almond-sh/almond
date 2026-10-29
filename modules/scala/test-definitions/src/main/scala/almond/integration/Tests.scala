@@ -37,6 +37,36 @@ object Tests {
       )
     }
 
+  def resultDisplay()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """class Handle { override def toString = "Handle" }""",
+        "defined class Handle"
+      )
+      execute(
+        """class Thing extends almond.display.Display {
+          |  def data() = Map("text/html" -> "<b>thing</b>")
+          |  override def toString = "Thing"
+          |}""".stripMargin,
+        "defined class Thing"
+      )
+      execute(
+        """almond.display.ResultDisplay.register(
+          |  classOf[Handle],
+          |  expressions = almond.display.ResultDisplay.Mode.Hidden
+          |)
+          |almond.display.ResultDisplay.register(
+          |  classOf[Thing],
+          |  definitions = almond.display.ResultDisplay.Mode.Text
+          |)""".stripMargin,
+        ""
+      )
+      execute("new Handle", "")
+      execute("val h = new Handle", "h: Handle = Handle")
+      execute("new Thing", "", displaysHtml = Seq("<b>thing</b>"))
+      execute("val t = new Thing", "t: Thing = Thing")
+    }
+
   def updatableDisplay()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(

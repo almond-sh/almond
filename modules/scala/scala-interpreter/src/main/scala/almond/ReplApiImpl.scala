@@ -1,6 +1,7 @@
 package almond
 
 import almond.api.JupyterApi
+import almond.display.ResultDisplay
 import almond.interpreter.ExecuteError
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import ammonite.repl.api.{FrontEnd, ReplLoad}
@@ -50,6 +51,14 @@ final class ReplApiImpl(
       (Displayers.registration().find(classTagT.runtimeClass) ne defaultDisplayer)
     )
 
+  // How values of type T are shown (see almond.display.ResultDisplay)
+  private def resultDisplayMode[T](
+    classTagT: ClassTag[T],
+    expression: Boolean
+  ): ResultDisplay.Mode =
+    if (classTagT == null) ResultDisplay.Mode.Default
+    else ResultDisplay.mode(classTagT.runtimeClass, expression)
+
   def printSpecial[T](
     value: => T,
     ident: String,
@@ -67,7 +76,13 @@ final class ReplApiImpl(
       case None =>
         None
       case Some(p) =>
-        displayRich(value, p)(classTagT).orElse {
+        val displayedOpt =
+          resultDisplayMode(classTagT, ident.matches(expressionResultName)) match {
+            case ResultDisplay.Mode.Hidden  => Some(Iterator())
+            case ResultDisplay.Mode.Text    => None
+            case ResultDisplay.Mode.Default => displayRich(value, p)(classTagT)
+          }
+        displayedOpt.orElse {
           for (
             updatableResults <- updatableResultsOpt
             if (onChange.nonEmpty && custom.isEmpty) || (onChangeOrError.nonEmpty && custom.nonEmpty)
@@ -224,11 +239,17 @@ final class ReplApiImpl(
     // Like Ammonite, rely on the ClassTag rather than on the value to detect Unit
     if (classTagT == classTag[Unit]) Iterator()
     else
-      execute0.currentPublishOpt
-        .flatMap(displayRich(value, _))
-        .getOrElse {
-          pprinter().tokenize(value).map(_.render)
-        }
+      resultDisplayMode(classTagT, expression = true) match {
+        case ResultDisplay.Mode.Hidden =>
+          Iterator()
+        case mode =>
+          execute0.currentPublishOpt
+            .filter(_ => mode == ResultDisplay.Mode.Default)
+            .flatMap(displayRich(value, _))
+            .getOrElse {
+              pprinter().tokenize(value).map(_.render)
+            }
+      }
 
   def replArgs0 = Vector.empty[Bind[_]]
   def printer   = execute0.printer
@@ -326,7 +347,8 @@ final class ReplApiImpl(
           // Markdown("…") or Html("…"), are still displayed (they're typically
           // written for their display), while still hiding earlier values
           case p: ValuePrinter
-              if ident.matches(expressionResultName) && isRichDisplay(classTagT) =>
+              if ident.matches(expressionResultName) && isRichDisplay(classTagT) &&
+              resultDisplayMode(classTagT, expression = true) == ResultDisplay.Mode.Default =>
             p.force()
           case _ =>
             printer

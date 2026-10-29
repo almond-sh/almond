@@ -33,7 +33,12 @@ final case class CommMessageHandlers(
 
           case Some(target) =>
             commManager.addId(target, message.content.comm_id)
-            target.open(message.content.comm_id, message.content.data.value)
+            target.open(
+              message.content.comm_id,
+              message.content.data.value,
+              message.buffers,
+              Some(message.header)
+            )
         }
     }
 
@@ -44,7 +49,12 @@ final case class CommMessageHandlers(
           case None => // FIXME Log error
             IO.unit
           case Some(target) =>
-            target.message(message.content.comm_id, message.content.data.value)
+            target.message(
+              message.content.comm_id,
+              message.content.data.value,
+              message.buffers,
+              Some(message.header)
+            )
         }
     }
 
