@@ -214,6 +214,12 @@ object AmmInterpreter {
         (almond.api.JupyterAPIHolder.getClass.getName.stripSuffix("$"), "kernel", jupyterApi)
       )
 
+      // Ammonite leaves the dependencies already on the user class path out of the dependencies
+      // users add, but the automatic dependencies get added after it did, so we do the same for them
+      val alreadyLoaded = interpParams.alreadyLoadedDependencies
+        .map(dep => (dep.getModule.getOrganization, dep.getModule.getName))
+        .toSet
+
       ammInterp0.resolutionHooks += { f =>
         val extraDependencies = f.getDependencies
           .asScala
@@ -230,6 +236,15 @@ object AmmInterpreter {
                 .map(_._2)
                 .getOrElse(Nil)
             )
+          }
+          .filter { dep =>
+            !alreadyLoaded((dep.getModule.getOrganization, dep.getModule.getName))
+          }
+          .map { dep =>
+            alreadyLoaded.foldLeft(Dependency.of(dep)) {
+              case (dep0, (org, name)) =>
+                dep0.addExclusion(org, name)
+            }
           }
         val f0 = f.addDependencies(extraDependencies: _*)
 

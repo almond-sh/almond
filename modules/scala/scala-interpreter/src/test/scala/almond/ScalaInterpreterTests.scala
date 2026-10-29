@@ -627,6 +627,28 @@ object ScalaInterpreterTests extends TestSuite {
             assert(res.asSuccess.nonEmpty)
           }
         }
+
+        // almond-scalapy depends on jvm-repr, that's only published on JitPack, and that we ship
+        // already: the automatic dependency has to leave it out, like the dependencies users add
+        test("already loaded dependencies left out") {
+          val interp = new ScalaInterpreter(
+            params = interpreterParams.copy(
+              automaticDependencies = Map(
+                Module.of("dev.scalapy", "*") -> Seq(
+                  Dependency.of("sh.almond", s"almond-scalapy_$sbv", "0.15.0")
+                )
+              )
+            ),
+            logCtx = logCtx
+          )
+          val code =
+            """import $ivy.`dev.scalapy::scalapy-core:0.5.3`
+              |// not initializing it, as that would start Python
+              |Class.forName("almond.scalapy.package$", false, Thread.currentThread().getContextClassLoader)
+              |""".stripMargin
+          val res = interp.execute(code)
+          assert(res.asSuccess.nonEmpty)
+        }
       }
 
       test("auto version") {
