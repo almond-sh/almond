@@ -68,7 +68,11 @@ final class DefaultCommHandler(
   ): Unit =
     Message
       .publish(session, messageType, content, RawJson(metadata))
-      .copy(buffers = buffers)
+      .copy(
+        buffers = buffers,
+        // messages sent from comm targets have the message they process as parent
+        parent_header = IOCommTarget.currentParent.get()
+      )
       .enqueueOn(Channel.Publish, queue)
       .unsafeRunSync()(ioRuntime)
 
