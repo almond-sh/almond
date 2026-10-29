@@ -259,7 +259,7 @@ object ScalaInterpreterInspections {
         // the whole type class reference, like `Codec.AsObject`, rather than only the part
         // under the cursor
         def isRefChar(c: Char) = Character.isJavaIdentifierPart(c) || c == '.'
-        val start = source.lastIndexWhere(c => !isRefChar(c), (index - 1) max 0) + 1
+        val start              = source.lastIndexWhere(c => !isRefChar(c), (index - 1) max 0) + 1
         val end = source.indexWhere(c => !isRefChar(c), index) match {
           case -1  => source.length
           case idx => idx

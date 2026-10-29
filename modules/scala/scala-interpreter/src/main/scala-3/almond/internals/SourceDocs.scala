@@ -42,7 +42,7 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
   // that contain their own sources, like some launchers, are there under their own name)
   private var sourceJarsByName = Map.empty[String, Seq[Path]]
   // the session class path sourceJarsByName was computed for
-  private var sessionClassPath = Option.empty[Seq[String]]
+  private var sessionClassPath    = Option.empty[Seq[String]]
   private lazy val baseSourceJars = SourcePath.base(frames, log)
 
   // small ones: paths
