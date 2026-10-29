@@ -34,7 +34,7 @@ final class ScalaInterpreterInspections(
   private var sourceDocsInitialized = false
   private lazy val sourceDocs = {
     sourceDocsInitialized = true
-    new SourceDocs(frames.head.classloader, log)
+    new SourceDocs(frames, log)
   }
 
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =

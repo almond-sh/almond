@@ -1,7 +1,7 @@
 package almond.internals
 
 import almond.logger.Logger
-import almond.util.ThreadUtil
+import ammonite.runtime.Frame
 import ammonite.util.Util.newLine
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
@@ -10,16 +10,14 @@ import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
 import dotty.tools.dotc.core.Symbols.{defn, Symbol}
 import dotty.tools.dotc.core.Types.{MethodType, PolyType, Type}
 
-import java.io.{ByteArrayOutputStream, File}
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
-import java.util.concurrent.Executors
 import java.util.{LinkedHashMap => JLinkedHashMap, Map => JMap}
 import java.util.zip.ZipFile
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -27,35 +25,31 @@ import scala.util.control.NonFatal
   * those of Java libraries (and of the JDK, from its src.zip), and those of Scala 2 libraries (like
   * the standard library before Scala 3.8).
   *
-  * Dependencies added with `import $ivy` come with their source JARs (Ammonite fetches them
-  * alongside the main JARs). Otherwise, for JARs in the coursier cache, source JARs are downloaded
-  * on demand, in the background: the docs they have are only shown by the inspections that follow
-  * the end of their download.
+  * The source JARs are those of the class path (see SourcePath): the kernel launcher puts those of
+  * the kernel dependencies there, Ammonite adds those of the dependencies of `import $ivy`, and
+  * users can add more via `--extra-class-path` or `interp.load.cp`. JARs whose source JAR isn't in
+  * the class path have no docs here.
   *
   * Not thread-safe: inspections are computed while holding the lock of the compiler (see
   * ScalaInterpreter), which also guards the caches here.
   */
-final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
+final class SourceDocs(frames: => List[Frame], log: Logger) {
   import SourceDocs._
+
+  private def classLoader = frames.head.classloader
+
+  // the source JARs of the class path, by the name of the JAR they have the sources of (JARs
+  // that contain their own sources, like some launchers, are there under their own name)
+  private var sourceJarsByName = Map.empty[String, Seq[Path]]
+  // the session class path sourceJarsByName was computed for
+  private var sessionClassPath = Option.empty[Seq[String]]
+  private lazy val baseSourceJars = SourcePath.base(frames, log)
 
   // small ones: paths
   private val sourceJars = mutable.HashMap.empty[Path, Option[Path]]
   private val locations  = mutable.HashMap.empty[String, Option[Location]]
   // the .scala files of the packages of source JARs, by the names of the classes they define
   private val packageIndices = mutable.HashMap.empty[(Path, String), Map[String, List[String]]]
-  // Inspections are computed while holding the lock of the compiler, that cells being run
-  // also need: source JARs are downloaded from another thread, so that cells don't wait
-  // for these downloads.
-  private val downloads = mutable.HashMap.empty[Path, Future[Option[Path]]]
-  private var downloadEcInitialized = false
-  private lazy val downloadEc: ExecutionContextExecutorService = {
-    downloadEcInitialized = true
-    ExecutionContext.fromExecutorService(
-      Executors.newSingleThreadExecutor(
-        ThreadUtil.daemonThreadFactory("almond-source-jars", exitJvmOnFatalError = false)
-      )
-    )
-  }
   // bigger ones: open files, parsed sources
   private val zipFiles =
     new Lru[Path, Option[ZipFile]](
@@ -70,8 +64,6 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
 
   /** Closes the source JARs opened so far */
   def close(): Unit = {
-    if (downloadEcInitialized)
-      downloadEc.shutdownNow()
     zipFiles.clear()
     javaFiles.clear()
     scalaFiles.clear()
@@ -85,6 +77,7 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
     *   the class whose scaladoc variables (`$coll`, …) should be substituted
     */
   def docstring(candidates: Seq[Symbol], site: Symbol)(using Context): Option[String] = {
+    refreshSourceJars()
     val raws = candidates.iterator.flatMap(sym => rawDoc(sym).map((sym, _)))
     raws.nextOption().map { (sym, raw) =>
       // for @inheritdoc and {@inheritDoc}: the doc of an overridden symbol
@@ -104,12 +97,38 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
   /** The names of the parameters of a Java method, which class files lack */
   def javaParamNames(sym: Symbol)(using Context): Option[List[String]] =
     if (!sym.exists || !sym.is(Flags.JavaDefined) || !sym.is(Flags.Method)) None
-    else
+    else {
+      refreshSourceJars()
       location(sym.owner)
         .filter(_.java)
         .flatMap(javaMember(_, sym))
         .map(_.paramNames)
         .filter(_.nonEmpty)
+    }
+
+  // Source JARs can be added to the session, along with dependencies in particular
+  private def refreshSourceJars(): Unit = {
+    val classPath = frames.flatMap(_.classpath).map(_.toString)
+    if (!sessionClassPath.contains(classPath)) {
+      sessionClassPath = Some(classPath)
+      val sourcePath =
+        try SourcePath.session(frames, log) ++ baseSourceJars
+        catch {
+          case NonFatal(e) =>
+            // the docs of the JDK and those from TASTy files don't need these
+            log.warn("Error computing the source JARs of the class path", e)
+            Nil
+        }
+      sourceJarsByName = sourcePath.groupBy { p =>
+        val name = p.getFileName.toString
+        if (name.endsWith("-sources.jar")) name.stripSuffix("-sources.jar") + ".jar"
+        else name
+      }
+      // the sources that couldn't be found so far may be there now
+      sourceJars.clear()
+      locations.clear()
+    }
+  }
 
   private def rawDoc(sym: Symbol)(using Context): Option[RawDoc] =
     if (!sym.exists || sym.is(Flags.Package)) None
@@ -132,39 +151,32 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
     val prefix =
       if (pkg.isEmpty || pkg == "<empty>" || pkg == "<root>") ""
       else pkg.replace('.', '/') + "/"
-    val key = prefix + name
-    locations.get(key) match {
-      case Some(loc) => loc
-      case None =>
+    locations.getOrElseUpdate(
+      prefix + name, {
         val urlOpt = Option(classLoader.getResource(prefix + name + ".class"))
           .orElse(Option(classLoader.getResource(prefix + name + "$.class")))
         val isJava = top.is(Flags.JavaDefined)
-        // None if the source JAR is still being downloaded, in which case nothing is cached
-        val res: Option[Option[Location]] = urlOpt match {
-          case None => Some(None)
-          case Some(url) =>
-            url.getProtocol match {
-              case "jar" =>
-                val str = url.toString.stripPrefix("jar:")
-                val sep = str.indexOf("!/")
-                if (sep < 0) Some(None)
-                else
-                  sourcesJar(Paths.get(new URI(str.take(sep)))).map(_.flatMap { src =>
-                    if (isJava) Some(Location(src, prefix + name + ".java", java = true))
-                    else scalaEntry(src, prefix, name).map(Location(src, _, java = false))
-                  })
-              case "jrt" =>
-                // like jrt:/java.base/java/lang/String.class
-                val module = url.getPath.stripPrefix("/").takeWhile(_ != '/')
-                Some(jdkSources.map(Location(_, s"$module/$prefix$name.java", java = true)))
-              case _ =>
-                Some(None)
-            }
+        urlOpt.flatMap { url =>
+          url.getProtocol match {
+            case "jar" =>
+              val str = url.toString.stripPrefix("jar:")
+              val sep = str.indexOf("!/")
+              if (sep < 0) None
+              else
+                sourcesJar(Paths.get(new URI(str.take(sep)))).flatMap { src =>
+                  if (isJava) Some(Location(src, prefix + name + ".java", java = true))
+                  else scalaEntry(src, prefix, name).map(Location(src, _, java = false))
+                }
+            case "jrt" =>
+              // like jrt:/java.base/java/lang/String.class
+              val module = url.getPath.stripPrefix("/").takeWhile(_ != '/')
+              jdkSources.map(Location(_, s"$module/$prefix$name.java", java = true))
+            case _ =>
+              None
+          }
         }
-        for (loc <- res)
-          locations(key) = loc
-        res.flatten
-    }
+      }
+    )
   }
 
   private lazy val jdkSources: Option[Path] =
@@ -172,50 +184,15 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
       .map(Paths.get(_, "lib", "src.zip"))
       .filter(Files.isRegularFile(_))
 
-  // The source JAR of jar, if it has one, or None while it's being downloaded
-  private def sourcesJar(jar: Path): Option[Option[Path]] =
-    sourceJars.get(jar) match {
-      case found @ Some(_) => found
-      case None =>
-        val name = jar.getFileName.toString
-        val res =
-          if (!name.endsWith(".jar") || name.endsWith("-sources.jar")) Some(None)
-          else {
-            val sibling = jar.resolveSibling(name.stripSuffix(".jar") + "-sources.jar")
-            if (Files.isRegularFile(sibling)) Some(Some(sibling))
-            else download(jar)
-          }
-        for (src <- res)
-          sourceJars(jar) = src
-        res
-    }
-
-  // JARs of the coursier cache have paths like …/v1/https/repo1.maven.org/maven2/org/…/foo.jar
-  private def download(jar: Path): Option[Option[Path]] = {
-    val path = jar.toString.replace(File.separatorChar, '/')
-    val idx  = path.indexOf("/v1/")
-    val rest = path.drop(idx + "/v1/".length)
-    val sep  = rest.indexOf('/')
-    if (idx < 0 || sep < 0) Some(None)
-    else {
-      val url = rest.take(sep) + "://" + rest.drop(sep + 1).stripSuffix(".jar") + "-sources.jar"
-      val f = downloads.getOrElseUpdate(
-        jar,
-        Future {
-          try Some(coursierapi.Cache.create().get(coursierapi.Artifact.of(url)).toPath)
-          catch {
-            case NonFatal(e) =>
-              log.debug(s"Could not download $url", e)
-              None
-          }
-        }(using downloadEc)
-      )
-      val res = f.value.map(_.toOption.flatten)
-      if (res.nonEmpty)
-        downloads.remove(jar)
-      res
-    }
-  }
+  private def sourcesJar(jar: Path): Option[Path] =
+    sourceJars.getOrElseUpdate(
+      jar, {
+        val name       = jar.getFileName.toString
+        val candidates = sourceJarsByName.getOrElse(name, Nil)
+        // if several JARs have the same name, the source JAR next to jar
+        candidates.find(_.getParent == jar.getParent).orElse(candidates.headOption)
+      }
+    )
 
   private def zipFile(path: Path): Option[ZipFile] =
     zipFiles.getOrElseUpdate(
@@ -319,6 +296,7 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
   def defaultArgs(sym: Symbol)(using Context): Map[String, String] =
     if (!sym.exists || !sym.is(Flags.Method) || sym.is(Flags.JavaDefined)) Map.empty
     else {
+      refreshSourceJars()
       val res = for {
         loc     <- location(sym.owner).filter(!_.java)
         content <- read(loc.zip, loc.entry)

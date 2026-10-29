@@ -34,3 +34,23 @@ To make these the defaults of a JupyterLab installation, write them to an
 ```
 
 The [almond Docker images](try-docker.md) ship with these defaults.
+
+## Inspections
+
+almond also answers the inspection requests of the Jupyter protocol. In JupyterLab,
+press Shift+Tab in a code cell to get the signature or the type of what is under the
+cursor, along with its documentation. With Scala 3, right after an opening parenthesis,
+like in `List(1, 2).map(`, the method being called is inspected.
+
+The documentation of a class is read from the source JAR of its library, or, for
+Scala 3 libraries, from their TASTy files. The source JARs of the dependencies of the
+kernel and of the dependencies added with `import $ivy` or `//> using dep` are
+available. Those of JARs added with `--extra-class-path`, `import $cp`, or
+`interp.load.cp` aren't: add their source JARs to the class path too to get their
+documentation, like
+```scala
+interp.load.cp(Seq(
+  java.nio.file.Paths.get("/path/to/lib.jar"),
+  java.nio.file.Paths.get("/path/to/lib-sources.jar")
+))
+```

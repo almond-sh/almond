@@ -12,8 +12,22 @@ import utest._
   */
 object ScalaInterpreterInspectionTests extends TestSuite {
 
-  private def newInterpreter(): Interpreter =
-    new ScalaInterpreter(params = interpreterParams, logCtx = logCtx)
+  // The source JARs of the dependencies of the tests (see testSourceJars in the build)
+  private lazy val testSourceJars: List[os.Path] =
+    sys.props.get("almond.test.source-jars")
+      .toList
+      .flatMap(f => os.read.lines(os.Path(f)))
+      .filter(_.nonEmpty)
+      .map(os.Path(_))
+
+  // Like the kernel launcher does, add the source JARs of the dependencies to the class path,
+  // which inspections read docs from
+  private def newInterpreter(withSourceJars: Boolean = true): Interpreter = {
+    val params =
+      if (withSourceJars) interpreterParams.copy(extraClassPath = testSourceJars)
+      else interpreterParams
+    new ScalaInterpreter(params = params, logCtx = logCtx)
+  }
 
   // Scala 3 inspections are only made of text/plain, with ANSI colors, that we remove here
   private def lines(interpreter: Interpreter, code: String, pos: Int): Vector[String] =
@@ -22,22 +36,6 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       .map(raw => readFromArray(raw.value)(stringCodec))
       .map(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.toVector)
       .getOrElse(sys.error(s"No text inspection result for '$code' at $pos"))
-
-  // Source JARs that aren't next to their JAR are downloaded in the background, so that the
-  // first inspections needing them may lack what they provide: retry until cond holds
-  private def eventually(
-    interpreter: Interpreter,
-    code: String,
-    pos: Int
-  )(cond: Vector[String] => Boolean): Vector[String] = {
-    val deadline = System.currentTimeMillis() + 60000L
-    var res      = lines(interpreter, code, pos)
-    while (!cond(res) && System.currentTimeMillis() < deadline) {
-      Thread.sleep(200L)
-      res = lines(interpreter, code, pos)
-    }
-    res
-  }
 
   // The docs of Java libraries and of Scala 2 libraries are read from source JARs
   // (from the src.zip of the JDK for the JDK classes), see SourceDocs
@@ -166,14 +164,14 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       else {
         val interpreter = newInterpreter()
         val code        = "List(1, 2).map("
-        val res         = eventually(interpreter, code, code.length)(_.contains("Docstring:"))
+        val res         = lines(interpreter, code, code.length)
         assert(res.exists(_.startsWith("Builds a new list")))
         assert(res.contains("  f: the function to apply to each element."))
 
         val inheritedCode = "List(1, 2).isEmpty"
         val inheritedPos  = inheritedCode.indexOf("isEmpty") + 1
         val inheritedRes =
-          eventually(interpreter, inheritedCode, inheritedPos)(_.contains("Docstring:"))
+          lines(interpreter, inheritedCode, inheritedPos)
         assert(inheritedRes.exists(_.startsWith("Tests whether the list is empty.")))
         // same indentation for the lines of the main doc, including the inherited ones
         assert(!inheritedRes.exists(_.startsWith(" Note")))
@@ -231,9 +229,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
 
         // from a source JAR
         val libCode = "List(1, 2).startsWith("
-        val libRes = eventually(interpreter, libCode, libCode.length)(
-          _.headOption.exists(_.contains("offset: Int = 0"))
-        )
+        val libRes  = lines(interpreter, libCode, libCode.length)
         assert(res.nonEmpty && libRes.head.contains("offset: Int = 0"))
       }
     }
@@ -290,6 +286,25 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         // apply that is
         assert(res.head.matches("Signature: +apply\\(name: String\\): String"))
         assert(res.last.matches("Defined in: +greeter"))
+      }
+    }
+
+    test("source JARs added to the session") {
+      if (TestUtil.isScala2) "disabled"
+      else {
+        val interpreter = newInterpreter(withSourceJars = false)
+        val code        = "org.fusesource.jansi.AnsiConsole.JANSI_MODE"
+        val pos         = code.indexOf("JANSI_MODE") + 1
+        // one-line docs are on the same line as "Docstring:"
+        assert(!lines(interpreter, code, pos).exists(_.startsWith("Docstring:")))
+
+        val jar = testSourceJars.find(_.last.startsWith("jansi-")).getOrElse {
+          sys.error(s"No jansi source JAR found in $testSourceJars")
+        }
+        val loadCode = "interp.load.cp(java.nio.file.Paths.get(\"\"\"" + jar + "\"\"\"))"
+        assert(interpreter.execute(loadCode).success)
+        val res = lines(interpreter, code, pos)
+        assert(res.exists(_.matches("Docstring: +The default mode which Jansi will use.*")))
       }
     }
 

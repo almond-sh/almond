@@ -108,6 +108,10 @@ interp.load.cp(
 As with `interp.load.ivy`, the classes of these JARs can then be used in the cell right
 _after_ the one calling `interp.load.cp`.
 
+Unlike `interp.load.ivy`, `interp.load.cp` doesn't add source JARs to the class path:
+pass these too for [inspections](usage-completion.md#inspections) to show the
+documentation of the classes of the JARs.
+
 Note that when directly entering code in a notebook, the following syntax is preferred,
 and allows to use the JAR in the current cell rather than the next one:
 ```scala
