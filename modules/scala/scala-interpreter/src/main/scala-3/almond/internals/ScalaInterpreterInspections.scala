@@ -247,7 +247,8 @@ object ScalaInterpreterInspections {
 
   // `derives` clauses don't have typed trees: the innermost tree around them is the class
   // template. Find the given instance they generate in the companion object instead, like
-  // `derived$AsObject` for `derives Codec.AsObject`, along with its type class.
+  // `derived$AsObject` for `derives Codec.AsObject` (wherever the cursor is in
+  // `Codec.AsObject`), along with its type class.
   private def derivedInstance(
     path: List[tpd.Tree],
     source: String,
@@ -255,13 +256,16 @@ object ScalaInterpreterInspections {
   )(using Context): Option[(Symbol, Symbol)] =
     path match {
       case (_: tpd.Template) :: (cls: tpd.TypeDef) :: _ if cls.symbol.isClass =>
-        def isIdentChar(c: Char) = Character.isJavaIdentifierPart(c)
-        val start = source.lastIndexWhere(c => !isIdentChar(c), (index - 1) max 0) + 1
-        val end = source.indexWhere(c => !isIdentChar(c), index) match {
+        // the whole type class reference, like `Codec.AsObject`, rather than only the part
+        // under the cursor
+        def isRefChar(c: Char) = Character.isJavaIdentifierPart(c) || c == '.'
+        val start = source.lastIndexWhere(c => !isRefChar(c), (index - 1) max 0) + 1
+        val end = source.indexWhere(c => !isRefChar(c), index) match {
           case -1  => source.length
           case idx => idx
         }
-        val name      = if (start < end) source.substring(start, end) else ""
+        val ref       = if (start < end) source.substring(start, end) else ""
+        val name      = ref.split('.').filter(_.nonEmpty).lastOption.getOrElse("")
         val companion = cls.symbol.companionModule
         if (name.isEmpty || !companion.exists) None
         else {

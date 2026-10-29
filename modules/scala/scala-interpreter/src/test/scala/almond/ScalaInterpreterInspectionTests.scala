@@ -159,6 +159,19 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         val res         = lines(interpreter, code, code.indexOf("CanEqual") + 2)
         assert(res.head.matches("Type: +CanEqual\\[P, P\\]"))
         assert(res.last.matches("Defined in: +scala"))
+
+        // qualified type classes, inspected from any of their parts
+        assert(interpreter.execute(
+          """object Outer {
+            |  trait Inner[T]
+            |  object Inner { def derived[T]: Inner[T] = new Inner[T] {} }
+            |}""".stripMargin
+        ).success)
+        val qualifiedCode = "case class R(x: Int) derives Outer.Inner"
+        for (part <- Seq("Outer", "Inner")) {
+          val qualifiedRes = lines(interpreter, qualifiedCode, qualifiedCode.indexOf(part) + 1)
+          assert(qualifiedRes.head.matches("Type: +Outer\\.Inner\\[R\\]"))
+        }
       }
     }
 
