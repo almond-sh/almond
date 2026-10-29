@@ -43,7 +43,9 @@ final class ScalaInterpreterInspections(
       // This module is compiled against a given Scala 3 compiler, but can run alongside
       // more recent ones, whose internals we rely on here may have changed. Such changes
       // should cost an inspection, not the whole kernel.
-      case e: LinkageError =>
+      // Other errors, from the compiler internals or from the source JARs we read (which
+      // may be closed by a concurrent shutdown), also only cost an inspection.
+      case e @ (NonFatal(_) | _: LinkageError) =>
         log.warn(s"Error inspecting '${code.take(pos)}|${code.drop(pos)}'", e)
         None
     }
