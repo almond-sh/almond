@@ -1,6 +1,7 @@
 package almond.internals
 
 import almond.logger.Logger
+import almond.util.ThreadUtil
 import ammonite.util.Util.newLine
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
@@ -13,10 +14,12 @@ import java.io.{ByteArrayOutputStream, File}
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import java.util.concurrent.Executors
 import java.util.{LinkedHashMap => JLinkedHashMap, Map => JMap}
 import java.util.zip.ZipFile
 
 import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -26,7 +29,8 @@ import scala.util.control.NonFatal
   *
   * Dependencies added with `import $ivy` come with their source JARs (Ammonite fetches them
   * alongside the main JARs). Otherwise, for JARs in the coursier cache, source JARs are downloaded
-  * on demand.
+  * on demand, in the background: the docs they have are only shown by the inspections that follow
+  * the end of their download.
   *
   * Not thread-safe: inspections are computed while holding the lock of the compiler (see
   * ScalaInterpreter), which also guards the caches here.
@@ -37,6 +41,21 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
   // small ones: paths
   private val sourceJars = mutable.HashMap.empty[Path, Option[Path]]
   private val locations  = mutable.HashMap.empty[String, Option[Location]]
+  // the .scala files of the packages of source JARs, by the names of the classes they define
+  private val packageIndices = mutable.HashMap.empty[(Path, String), Map[String, List[String]]]
+  // Inspections are computed while holding the lock of the compiler, that cells being run
+  // also need: source JARs are downloaded from another thread, so that cells don't wait
+  // for these downloads.
+  private val downloads = mutable.HashMap.empty[Path, Future[Option[Path]]]
+  private var downloadEcInitialized = false
+  private lazy val downloadEc: ExecutionContextExecutorService = {
+    downloadEcInitialized = true
+    ExecutionContext.fromExecutorService(
+      Executors.newSingleThreadExecutor(
+        ThreadUtil.daemonThreadFactory("almond-source-jars", exitJvmOnFatalError = false)
+      )
+    )
+  }
   // bigger ones: open files, parsed sources
   private val zipFiles =
     new Lru[Path, Option[ZipFile]](
@@ -51,6 +70,8 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
 
   /** Closes the source JARs opened so far */
   def close(): Unit = {
+    if (downloadEcInitialized)
+      downloadEc.shutdownNow()
     zipFiles.clear()
     javaFiles.clear()
     scalaFiles.clear()
@@ -111,32 +132,39 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
     val prefix =
       if (pkg.isEmpty || pkg == "<empty>" || pkg == "<root>") ""
       else pkg.replace('.', '/') + "/"
-    locations.getOrElseUpdate(
-      prefix + name, {
+    val key = prefix + name
+    locations.get(key) match {
+      case Some(loc) => loc
+      case None =>
         val urlOpt = Option(classLoader.getResource(prefix + name + ".class"))
           .orElse(Option(classLoader.getResource(prefix + name + "$.class")))
         val isJava = top.is(Flags.JavaDefined)
-        urlOpt.flatMap { url =>
-          url.getProtocol match {
-            case "jar" =>
-              val str = url.toString.stripPrefix("jar:")
-              val sep = str.indexOf("!/")
-              if (sep < 0) None
-              else
-                sourcesJar(Paths.get(new URI(str.take(sep)))).flatMap { src =>
-                  if (isJava) Some(Location(src, prefix + name + ".java", java = true))
-                  else scalaEntry(src, prefix, name).map(Location(src, _, java = false))
-                }
-            case "jrt" =>
-              // like jrt:/java.base/java/lang/String.class
-              val module = url.getPath.stripPrefix("/").takeWhile(_ != '/')
-              jdkSources.map(Location(_, s"$module/$prefix$name.java", java = true))
-            case _ =>
-              None
-          }
+        // None if the source JAR is still being downloaded, in which case nothing is cached
+        val res: Option[Option[Location]] = urlOpt match {
+          case None => Some(None)
+          case Some(url) =>
+            url.getProtocol match {
+              case "jar" =>
+                val str = url.toString.stripPrefix("jar:")
+                val sep = str.indexOf("!/")
+                if (sep < 0) Some(None)
+                else
+                  sourcesJar(Paths.get(new URI(str.take(sep)))).map(_.flatMap { src =>
+                    if (isJava) Some(Location(src, prefix + name + ".java", java = true))
+                    else scalaEntry(src, prefix, name).map(Location(src, _, java = false))
+                  })
+              case "jrt" =>
+                // like jrt:/java.base/java/lang/String.class
+                val module = url.getPath.stripPrefix("/").takeWhile(_ != '/')
+                Some(jdkSources.map(Location(_, s"$module/$prefix$name.java", java = true)))
+              case _ =>
+                Some(None)
+            }
         }
-      }
-    )
+        for (loc <- res)
+          locations(key) = loc
+        res.flatten
+    }
   }
 
   private lazy val jdkSources: Option[Path] =
@@ -144,34 +172,48 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
       .map(Paths.get(_, "lib", "src.zip"))
       .filter(Files.isRegularFile(_))
 
-  private def sourcesJar(jar: Path): Option[Path] =
-    sourceJars.getOrElseUpdate(
-      jar, {
+  // The source JAR of jar, if it has one, or None while it's being downloaded
+  private def sourcesJar(jar: Path): Option[Option[Path]] =
+    sourceJars.get(jar) match {
+      case found @ Some(_) => found
+      case None =>
         val name = jar.getFileName.toString
-        if (!name.endsWith(".jar") || name.endsWith("-sources.jar")) None
-        else {
-          val sibling = jar.resolveSibling(name.stripSuffix(".jar") + "-sources.jar")
-          if (Files.isRegularFile(sibling)) Some(sibling)
-          else download(jar)
-        }
-      }
-    )
+        val res =
+          if (!name.endsWith(".jar") || name.endsWith("-sources.jar")) Some(None)
+          else {
+            val sibling = jar.resolveSibling(name.stripSuffix(".jar") + "-sources.jar")
+            if (Files.isRegularFile(sibling)) Some(Some(sibling))
+            else download(jar)
+          }
+        for (src <- res)
+          sourceJars(jar) = src
+        res
+    }
 
   // JARs of the coursier cache have paths like …/v1/https/repo1.maven.org/maven2/org/…/foo.jar
-  private def download(jar: Path): Option[Path] = {
+  private def download(jar: Path): Option[Option[Path]] = {
     val path = jar.toString.replace(File.separatorChar, '/')
     val idx  = path.indexOf("/v1/")
     val rest = path.drop(idx + "/v1/".length)
     val sep  = rest.indexOf('/')
-    if (idx < 0 || sep < 0) None
+    if (idx < 0 || sep < 0) Some(None)
     else {
       val url = rest.take(sep) + "://" + rest.drop(sep + 1).stripSuffix(".jar") + "-sources.jar"
-      try Some(coursierapi.Cache.create().get(coursierapi.Artifact.of(url)).toPath)
-      catch {
-        case NonFatal(e) =>
-          log.debug(s"Could not download $url", e)
-          None
-      }
+      val f = downloads.getOrElseUpdate(
+        jar,
+        Future {
+          try Some(coursierapi.Cache.create().get(coursierapi.Artifact.of(url)).toPath)
+          catch {
+            case NonFatal(e) =>
+              log.debug(s"Could not download $url", e)
+              None
+          }
+        }(using downloadEc)
+      )
+      val res = f.value.map(_.toOption.flatten)
+      if (res.nonEmpty)
+        downloads.remove(jar)
+      res
     }
   }
 
@@ -211,20 +253,10 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
       val direct = prefix + name + ".scala"
       if (zf.getEntry(direct) != null) Some(direct)
       else {
-        // actual definitions, at the beginning of a line (not in comments, say)
-        val modifiers =
-          """(?:(?:private|protected|final|sealed|abstract|case|implicit|open|transparent)(?:\[[^\]]*\])?\s+)*"""
-        val definition =
-          ("""(?m)^\s*""" + modifiers + """(?:class|trait|object)\s+""" +
-            java.util.regex.Pattern.quote(name) + """\b""").r
-        val candidates = zf.entries()
-          .asScala
-          .map(_.getName)
-          .filter { n =>
-            n.startsWith(prefix) && n.endsWith(".scala") && !n.drop(prefix.length).contains('/')
-          }
-          .filter(n => read(zip, n).exists(definition.findFirstIn(_).nonEmpty))
-          .toList
+        // each package is scanned once, rather than once per class looked up in it
+        val index =
+          packageIndices.getOrElseUpdate((zip, prefix), packageIndex(zip, zf, prefix))
+        val candidates = index.getOrElse(name, Nil)
         // prefer files named like a prefix of the class name, like Seq.scala for SeqOps
         candidates.sortBy { n =>
           val stem = n.drop(prefix.length).stripSuffix(".scala")
@@ -232,6 +264,26 @@ final class SourceDocs(classLoader: => ClassLoader, log: Logger) {
         }.headOption
       }
     }
+
+  private def packageIndex(
+    zip: Path,
+    zf: ZipFile,
+    prefix: String
+  ): Map[String, List[String]] = {
+    val entries = zf.entries()
+      .asScala
+      .map(_.getName)
+      .filter { n =>
+        n.startsWith(prefix) && n.endsWith(".scala") && !n.drop(prefix.length).contains('/')
+      }
+      .toList
+    val definitions = for {
+      entry   <- entries
+      content <- read(zip, entry).toList
+      m       <- Definition.findAllMatchIn(content)
+    } yield (m.group(1), entry)
+    definitions.groupMap(_._1)(_._2).map((name, entries) => name -> entries.distinct)
+  }
 
   // The names of the classes enclosing sym (sym included if it's a class), outermost first
   private def classNames(cls: Symbol)(using Context): List[String] =
@@ -391,6 +443,14 @@ object SourceDocs {
 
   private final case class Location(zip: Path, entry: String, java: Boolean)
   private final case class RawDoc(doc: String, java: Boolean)
+
+  // Actual definitions, at the beginning of a line (not in comments, say), capturing the name
+  // of what's defined, alphanumeric or symbolic (like `::`)
+  private val Definition = {
+    val modifiers =
+      """(?:(?:private|protected|final|sealed|abstract|case|implicit|open|transparent)(?:\[[^\]]*\])?\s+)*"""
+    ("""(?m)^\s*""" + modifiers + """(?:class|trait|object)\s+(\w+|[^\w\s\[\](){}]+)""").r
+  }
 
   /** A map that keeps its most recently used entries only */
   private final class Lru[K, V](maxSize: Int, onEvict: V => Unit = (_: V) => ()) {

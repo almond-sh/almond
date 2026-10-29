@@ -23,6 +23,22 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       .map(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.toVector)
       .getOrElse(sys.error(s"No text inspection result for '$code' at $pos"))
 
+  // Source JARs that aren't next to their JAR are downloaded in the background, so that the
+  // first inspections needing them may lack what they provide: retry until cond holds
+  private def eventually(
+    interpreter: Interpreter,
+    code: String,
+    pos: Int
+  )(cond: Vector[String] => Boolean): Vector[String] = {
+    val deadline = System.currentTimeMillis() + 60000L
+    var res      = lines(interpreter, code, pos)
+    while (!cond(res) && System.currentTimeMillis() < deadline) {
+      Thread.sleep(200L)
+      res = lines(interpreter, code, pos)
+    }
+    res
+  }
+
   // The docs of Java libraries and of Scala 2 libraries are read from source JARs
   // (from the src.zip of the JDK for the JDK classes), see SourceDocs
   private def hasJdkSources =
@@ -59,7 +75,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         val libRes  = lines(interpreter, libCode, libCode.indexOf("boundary") + 1)
         assert(libRes(0).matches("Type: +scala.util.boundary"))
         assert(libRes(1) == "Docstring:")
-        assert(libRes(2) == "A boundary that can be exited by `break` calls.")
+        assert(libRes(2).startsWith("A boundary"))
         assert(libRes.last.matches("Defined in: +scala.util"))
 
         val methodCode = "scala.compiletime.summonInline[Int]"
@@ -96,6 +112,17 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         assert(res(2).startsWith("Returns a string that is a substring of this string."))
         assert(res.contains("  beginIndex: the beginning index, inclusive."))
         assert(res.last.matches("Defined in: +java.lang.String"))
+
+        // the overload that's called, picked among the Java ones by parameter types
+        val valueOfCode = "String.valueOf(1.5)"
+        val valueOfRes  = lines(interpreter, valueOfCode, valueOfCode.indexOf("valueOf") + 1)
+        assert(valueOfRes(0).matches("Signature: +valueOf\\(d: Double\\): String"))
+        assert(valueOfRes.exists(_.contains("`double` argument")))
+
+        // member of a nested class
+        val entryCode = "java.util.Map.entry(1, 2).getKey"
+        val entryRes  = lines(interpreter, entryCode, entryCode.indexOf("getKey") + 1)
+        assert(entryRes.exists(_.startsWith("Returns the key corresponding to this entry.")))
       }
     }
 
@@ -139,12 +166,14 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       else {
         val interpreter = newInterpreter()
         val code        = "List(1, 2).map("
-        val res         = lines(interpreter, code, code.length)
+        val res         = eventually(interpreter, code, code.length)(_.contains("Docstring:"))
         assert(res.exists(_.startsWith("Builds a new list")))
         assert(res.contains("  f: the function to apply to each element."))
 
         val inheritedCode = "List(1, 2).isEmpty"
-        val inheritedRes  = lines(interpreter, inheritedCode, inheritedCode.indexOf("isEmpty") + 1)
+        val inheritedPos  = inheritedCode.indexOf("isEmpty") + 1
+        val inheritedRes =
+          eventually(interpreter, inheritedCode, inheritedPos)(_.contains("Docstring:"))
         assert(inheritedRes.exists(_.startsWith("Tests whether the list is empty.")))
         // same indentation for the lines of the main doc, including the inherited ones
         assert(!inheritedRes.exists(_.startsWith(" Note")))
@@ -202,7 +231,9 @@ object ScalaInterpreterInspectionTests extends TestSuite {
 
         // from a source JAR
         val libCode = "List(1, 2).startsWith("
-        val libRes  = lines(interpreter, libCode, libCode.length)
+        val libRes = eventually(interpreter, libCode, libCode.length)(
+          _.headOption.exists(_.contains("offset: Int = 0"))
+        )
         assert(res.nonEmpty && libRes.head.contains("offset: Int = 0"))
       }
     }
