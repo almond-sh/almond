@@ -4,8 +4,9 @@ import almond.logger.Logger
 import ammonite.runtime.Frame
 
 import java.io.{File, IOException}
-import java.net.URI
-import java.nio.file.{Files, Path, Paths}
+import java.net.{URI, URL}
+import java.nio.file.{FileSystem, FileSystems, Files, Path, Paths, StandardCopyOption}
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.{ZipException, ZipFile}
 
 import scala.collection.mutable
@@ -16,6 +17,11 @@ import scala.jdk.CollectionConverters._
   * Those are the source JARs that the kernel launcher puts in its class path (alongside the JARs of
   * the kernel and of its dependencies), and those added to the session, like the ones Ammonite
   * fetches for `import $ivy`, or the ones passed via `--extra-class-path` or `interp.load.cp`.
+  *
+  * The JARs embedded in standalone launchers (see `cs bootstrap --standalone`), that are in the
+  * class path via URLs like
+  * `jar:file:/path/to/launcher!/coursier/bootstrap/launcher/jars/lib.jar!/`, are paths in a ZIP
+  * file system of their launcher here. Use [[localFile]] to read them as files.
   */
 object SourcePath {
 
@@ -26,11 +32,7 @@ object SourcePath {
   def session(frames: List[Frame], log: Logger): Seq[Path] = {
     val sessionJars = frames
       .flatMap(_.classpath)
-      .collect {
-        // FIXME We're ignoring jars-in-jars of standalone bootstraps of coursier in particular
-        case p if p.getProtocol == "file" =>
-          Paths.get(p.toURI)
-      }
+      .flatMap(classPathEntry(_, log))
     sourcePathFromJars(sessionJars, log)
   }
 
@@ -53,9 +55,9 @@ object SourcePath {
       l.map(_.stripSuffix("/") + "/")
     }
 
-    def isJdkJar(uri: URI): Boolean =
-      uri.getScheme == "file" && {
-        val path = new File(uri).getAbsolutePath
+    def isJdkJar(url: URL): Boolean =
+      url.getProtocol == "file" && {
+        val path = new File(url.toURI).getAbsolutePath
         javaDirs.exists(path.startsWith)
       }
 
@@ -76,15 +78,14 @@ object SourcePath {
       }
 
     val baseJars = classpath(loader)
-      .map(_.toURI)
       // assuming the JDK on the YARN machines already have those
       .filter(u => !isJdkJar(u))
-      .map(Paths.get)
+      .flatMap(classPathEntry(_, log))
 
     log.info {
       val nl = System.lineSeparator()
       "Found base JARs:" + nl +
-        baseJars.sortBy(_.toString).map("  " + _).mkString(nl) + nl
+        baseJars.map(_.toUri.toString).sorted.map("  " + _).mkString(nl) + nl
     }
 
     // When using a "hybrid" launcher, and users decided to end its name with ".jar",
@@ -126,7 +127,7 @@ object SourcePath {
   private def containsSources(jar: Path, log: Logger): Boolean = {
     var zf: ZipFile = null
     try {
-      zf = new ZipFile(jar.toFile)
+      zf = new ZipFile(localFile(jar).toFile)
       zf.entries().asScala.exists { ent =>
         val name = ent.getName
         name.endsWith(".scala") || name.endsWith(".java")
@@ -147,4 +148,101 @@ object SourcePath {
       if (zf != null)
         zf.close()
   }
+
+  /** The path of a class path entry
+    *
+    * @param url
+    *   either a `file:` URL, or a `jar:` URL of a JAR or of a JAR it embeds, like
+    *   `jar:file:/path/to/launcher!/coursier/bootstrap/launcher/jars/lib.jar!/`
+    */
+  def classPathEntry(url: URL, log: Logger): Option[Path] =
+    url.getProtocol match {
+      case "file" => Some(Paths.get(url.toURI))
+      case "jar"  => jarPath(url.toString.stripPrefix("jar:").stripSuffix("!/"), log)
+      case _      => None
+    }
+
+  /** The path of the JAR a resource is read from
+    *
+    * @param url
+    *   the URL of a resource read from a JAR, like `jar:file:/path/to/lib.jar!/foo/Bar.class` or,
+    *   for JARs embedded in standalone launchers,
+    *   `jar:file:/path/to/launcher!/coursier/bootstrap/launcher/jars/lib.jar!/foo/Bar.class`
+    */
+  def resourceJar(url: URL, log: Logger): Option[Path] =
+    if (url.getProtocol == "jar") {
+      val str = url.toString.stripPrefix("jar:")
+      val sep = str.lastIndexOf("!/")
+      if (sep < 0) None
+      else jarPath(str.take(sep), log)
+    }
+    else
+      None
+
+  // Like `file:/path/to/lib.jar`, or `file:/path/to/launcher!/path/to/lib.jar`
+  private def jarPath(spec: String, log: Logger): Option[Path] = {
+    val sep = spec.indexOf("!/")
+    val outerUri =
+      try Some(new URI(if (sep < 0) spec else spec.take(sep)))
+      catch {
+        case e: java.net.URISyntaxException =>
+          log.debug(s"Ignoring malformed class path entry $spec", e)
+          None
+      }
+    outerUri.filter(_.getScheme == "file").map(Paths.get).flatMap { outer =>
+      if (sep < 0) Some(outer)
+      else {
+        val entry = spec.drop(sep + 2)
+        // JARs nested more than once aren't supported
+        if (entry.isEmpty || entry.contains("!/")) None
+        else zipFileSystem(outer, log).map(_.getPath(entry))
+      }
+    }
+  }
+
+  // ZIP file systems of the standalone launchers, opened once for the whole JVM life, like the
+  // class loaders reading their JARs keep them open
+  private val zipFileSystems = new ConcurrentHashMap[Path, Option[FileSystem]]
+
+  private def zipFileSystem(path: Path, log: Logger): Option[FileSystem] =
+    zipFileSystems.computeIfAbsent(
+      path,
+      _ =>
+        try Some(FileSystems.newFileSystem(path, null: ClassLoader))
+        catch {
+          case e: IOException =>
+            log.warn(s"Could not open $path as a ZIP file", e)
+            None
+        }
+    )
+
+  // the files of localFile, of JARs that aren't in the default file system
+  private val localFiles = new ConcurrentHashMap[Path, Path]
+  private lazy val localFilesDir = {
+    val dir = Files.createTempDirectory("almond-sources")
+    dir.toFile.deleteOnExit()
+    dir
+  }
+
+  /** A file of the default file system with the content of `path`
+    *
+    * `path` itself if it's in the default file system already, or a copy of it in a temporary
+    * directory otherwise, like for JARs embedded in standalone launchers (see [[classPathEntry]]).
+    * These copies are made once, and deleted when the JVM exits.
+    */
+  def localFile(path: Path): Path =
+    if (path.getFileSystem == FileSystems.getDefault) path
+    else
+      localFiles.computeIfAbsent(
+        path,
+        { _ =>
+          // in a directory of its own, so that the copy keeps the name of the original
+          val dir = Files.createTempDirectory(localFilesDir, "jar")
+          dir.toFile.deleteOnExit()
+          val dest = dir.resolve(path.getFileName.toString)
+          dest.toFile.deleteOnExit()
+          Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING)
+          dest
+        }
+      )
 }

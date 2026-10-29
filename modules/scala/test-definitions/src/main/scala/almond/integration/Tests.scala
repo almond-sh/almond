@@ -799,21 +799,43 @@ object Tests {
           // In two step start up, we need the actual kernel to have started to get inspection results
           execute("val n = 2", "n: Int = 2")
 
-        val code   = "os.read"
-        val result = inspect(code, code.length - 3, detailed = true)
-        val expected = Seq(
-          """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
-            |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
-            |also select a different `charSet` to use, and provide an `offset`/`count` to
-            |read from if the source supports seeking.</pre></div>""".stripMargin
-        )
-        if (result != expected) {
-          pprint.err.log(expected)
-          pprint.err.log(result)
-          pprint.err.log(expected.map(_.length))
-          pprint.err.log(result.map(_.length))
+        if (scalaVersion.startsWith("2.")) {
+          val code   = "os.read"
+          val result = inspect(code, code.length - 3, detailed = true)
+          val expected = Seq(
+            """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
+              |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
+              |also select a different `charSet` to use, and provide an `offset`/`count` to
+              |read from if the source supports seeking.</pre></div>""".stripMargin
+          )
+          if (result != expected) {
+            pprint.err.log(expected)
+            pprint.err.log(result)
+            pprint.err.log(expected.map(_.length))
+            pprint.err.log(result.map(_.length))
+          }
+          expect(result == expected)
         }
-        expect(result == expected)
+        else {
+          // Scala 3 inspections are only made of text, with ANSI colors
+          def inspectText(code: String, pos: Int): Seq[String] =
+            inspect(code, pos, detailed = true, mimeType = "text/plain")
+              .flatMap(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator)
+
+          // the docs of Scala 3 libraries are read from their TASTy files
+          val code   = "os.read"
+          val result = inspectText(code, code.length - 3)
+          if (!result.exists(_.startsWith("Reads the contents of a")))
+            pprint.err.log(result)
+          expect(result.exists(_.startsWith("Reads the contents of a")))
+
+          // those of Java libraries from their source JARs
+          val javaCode   = "coursierapi.Fetch.create().withFetchCacheIKnowWhatImDoing"
+          val javaResult = inspectText(javaCode, javaCode.length - 3)
+          if (!javaResult.exists(_.contains("Cache the list of artifacts itself.")))
+            pprint.err.log(javaResult)
+          expect(javaResult.exists(_.contains("Cache the list of artifacts itself.")))
+        }
     }
   }
 

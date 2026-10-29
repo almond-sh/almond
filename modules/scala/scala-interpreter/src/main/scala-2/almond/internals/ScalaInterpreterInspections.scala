@@ -49,8 +49,11 @@ final class ScalaInterpreterInspections(
           dialects.Scala212
       val index = OnDemandSymbolIndex.empty()(new EmptyReportContext)
       for (p <- sourcePaths)
-        try index.addSourceJar(AbsolutePath(p), dialect)
+        // mtags only reads source JARs from the default file system, see SourcePath.localFile
+        try index.addSourceJar(AbsolutePath(SourcePath.localFile(p)), dialect)
         catch {
+          case e: java.io.IOException =>
+            log.warn(s"Ignoring exception while indexing $p", e)
           case e: IndexingExceptions.PathIndexingException =>
             log.warn(s"Ignoring exception while indexing $p", e)
           case e: IndexingExceptions.InvalidJarException =>

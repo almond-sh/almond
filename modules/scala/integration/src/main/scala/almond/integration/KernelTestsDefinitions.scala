@@ -117,7 +117,7 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   // Scala 2 inspections rely on mtags, whose recent versions need Java 17
   if (
-    kernelLauncher.defaultScalaVersion.startsWith("2.") &&
+    !kernelLauncher.defaultScalaVersion.startsWith("2.") ||
     kernelLauncher.kernelJavaMajorVersion >= 17
   )
     test0("inspections") { implicit forceVersion =>
