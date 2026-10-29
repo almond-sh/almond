@@ -270,6 +270,19 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
     def mvnDeps = super.mvnDeps() ++ Seq(
       Deps.caseApp
     )
+    // The source JARs of the dependencies of the tests, that inspection tests add to the
+    // class path of their sessions, like the kernel launcher does for the kernel dependencies
+    def testSourceJars = Task {
+      val jars = millResolver().classpath(Seq(coursierDependencyTask()), sources = true)
+      val file = Task.dest / "source-jars.txt"
+      os.write(file, jars.map(_.path.toString).mkString(System.lineSeparator()))
+      PathRef(file)
+    }
+    def forkArgs = Task {
+      super.forkArgs() ++ Seq(
+        s"-Dalmond.test.source-jars=${testSourceJars().path}"
+      )
+    }
     // Getting weird errors with test parallelism on CI when running all tests,
     // but getting weird ones locally with test parallelism disabled
     def testParallelism = System.getenv("CI") == null

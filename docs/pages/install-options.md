@@ -236,6 +236,19 @@ can be repeated, and is also available as `--dep`. Use like
 Dependencies are resolved with the repositories passed via `--extra-repository`.
 The kernel fails to start if they can't be resolved.
 
+#### `--extra-class-path`
+
+Add JARs or directories of class files to the class path of user code when a kernel starts.
+Accepts the same format as `java -cp`, and is also available as `--extra-cp`. Use like
+```bash
+--extra-class-path /path/to/lib.jar:/path/to/other-lib.jar
+```
+[Inspections](usage-completion.md#inspections) show the documentation of the classes
+of these JARs only if their source JARs are passed too, like
+```bash
+--extra-class-path /path/to/lib.jar:/path/to/lib-sources.jar
+```
+
 #### `--auto-dependency`
 
 #### `--force-property`

@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.{defn, Symbol}
 import dotty.tools.dotc.core.{Flags, MacroClassLoader, Mode}
 import dotty.tools.dotc.interactive.Completion
+import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{Property, SourceFile, SourcePosition}
 
@@ -84,13 +85,23 @@ object ScalaInterpreterCompletions {
     // https://github.com/lampepfl/dotty/blob/3.0.0-M1/
     //   compiler/src/dotty/tools/repl/ReplDriver.scala/#L179-L191
 
-    val (tree, ctx0) =
+    val (typeCheckedUnit, ctx0) =
       tryTypeCheck(compiler, initialCtx, allCode.getBytes("UTF-8"), "<completions>")
     val ctx  = ctx0.fresh
     val file = SourceFile.virtual("<completions>", allCode, maybeIncomplete = true)
     val unit = CompilationUnit(file)(using ctx)
-    unit.tpdTree = tree
-    val ctx1   = ctx.fresh.setCompilationUnit(unit)
+    // The whole tree, rather than only the `expr` definition wrapping the snippet, like the
+    // Scala 3 REPL does: the completion scope is computed from the trees enclosing the cursor,
+    // which need to include the imports that precede the wrapper (those of the previous
+    // cells, in particular)
+    unit.tpdTree = typeCheckedUnit.tpdTree
+    // Recent Scala versions also look at the untyped tree, to find the prefix to complete
+    // when the typed tree around the cursor is erroneous (like the `foo` of an incomplete
+    // `foo|`)
+    unit.untpdTree = typeCheckedUnit.untpdTree
+    // with the root imports (scala._, Predef._, …), like the Scala 3 IDE driver
+    // (dotty.tools.dotc.interactive.InteractiveDriver) does
+    val ctx1   = ctx.fresh.setCompilationUnit(unit).withRootImports
     val srcPos = SourcePosition(file, Span(index))
     val (start, completions) =
       try
@@ -100,6 +111,13 @@ object ScalaInterpreterCompletions {
           enableDeep = false
         )(using ctx1)
       catch {
+        // The Ammonite completion internals for Scala 3.7 and 3.8 are also used for more recent
+        // versions, but Completion.CompletionResult changed in Scala 3.9, so that these fail with
+        // a ClassCastException there. Call the dotty completion API ourselves then (this module
+        // is compiled against a Scala 3 version that has the same CompletionResult as 3.9). This
+        // only loses the completion of dependencies in `import $ivy`.
+        case _: ClassCastException =>
+          Completion.completions(srcPos)(using ctx1)
         case NonFatal(ex) =>
           // the compiler internals Ammonite relies on can change between Scala versions
           logCtx(getClass).info("Ignoring exception during completion", ex)
@@ -175,12 +193,12 @@ object ScalaInterpreterCompletions {
     )
   }
 
-  private def tryTypeCheck(
+  private[internals] def tryTypeCheck(
     compiler: DottyCompiler,
     initialCtx: Context,
     src: Array[Byte],
     fileName: String
-  ) =
+  ): (CompilationUnit, Context) =
     val sourceFile = SourceFile.virtual(fileName, new String(src, StandardCharsets.UTF_8))
 
     val reporter0 = Compiler.newStoreReporter()
@@ -198,5 +216,5 @@ object ScalaInterpreterCompletions {
       .run
       .compileUnits(unit :: Nil, ctx)
 
-    (unit.tpdTree, ctx)
+    (unit, ctx)
 }

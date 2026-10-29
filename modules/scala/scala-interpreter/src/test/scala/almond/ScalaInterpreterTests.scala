@@ -204,6 +204,18 @@ object ScalaInterpreterTests extends TestSuite {
     }
 
     test("completion") {
+      test("names from previous cells and root imports") {
+        val interpreter = newInterpreter()
+        assert(interpreter.execute("val googleHtml = 1").success)
+        assert(interpreter.execute("def helperFn(x: Int) = x").success)
+        assert(interpreter.complete("goog", 4).completions.contains("googleHtml"))
+        assert(interpreter.complete("helper", 6).completions.contains("helperFn"))
+        assert(interpreter.complete("Lis", 3).completions.contains("List"))
+        val sameCell = "val localVal = 2\nlocalV"
+        assert(interpreter.complete(sameCell, sameCell.length).completions.contains("localVal"))
+        val member = "googleHtml.toStr"
+        assert(interpreter.complete(member, member.length).completions.contains("toString"))
+      }
 
       // Completions are tested in more detail in Ammonite too.
       // Compared to it, we filter out stuff that contains '$', and pay
@@ -303,55 +315,72 @@ object ScalaInterpreterTests extends TestSuite {
 
     }
 
-    test("inspection") {
+    test("inspection results") {
       def html(interpreter: Interpreter, code: String, pos: Int): String =
         interpreter.inspect(code, pos, detailLevel = 1)
           .flatMap(_.data.get("text/html"))
           .map(raw => readFromArray(raw.value)(stringCodec))
           .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
 
-      // No source JAR gets indexed in these tests, so no scaladoc is ever found,
+      // Scala 3 inspections are only made of text/plain, with ANSI colors, that we remove here
+      def lines(interpreter: Interpreter, code: String, pos: Int): Vector[String] =
+        interpreter.inspect(code, pos, detailLevel = 1)
+          .flatMap(_.data.get("text/plain"))
+          .map(raw => readFromArray(raw.value)(stringCodec))
+          .map(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.toVector)
+          .getOrElse(sys.error(s"No text inspection result for '$code' at $pos"))
+
+      // No source JAR gets indexed in these tests, so no scaladoc is ever found for Scala 2,
       // and the inspection results are only made of the type of the tree.
       def expected(typeStr: String): String =
         s"<div><pre>$typeStr</pre></div>"
 
       test("tree shapes") {
-        if (TestUtil.isScala2) {
-          val interpreter = newInterpreter()
+        val interpreter = newInterpreter()
 
-          val defCode = "def increment(n: Int): Int = n + 1"
-          val defRes  = html(interpreter, defCode, defCode.indexOf("increment") + 1)
+        val defCode         = "def increment(n: Int): Int = n + 1"
+        val inferredValCode = "val message = List(1, 2, 3).mkString"
+        val typedValCode    = "val count: Long = 2L"
+
+        if (TestUtil.isScala2) {
+          val defRes = html(interpreter, defCode, defCode.indexOf("increment") + 1)
           val expectedDefRes =
             if (isScala212) expected("(n: Int)Int")
             else expected("(n: Int): Int")
           assert(defRes == expectedDefRes)
 
-          val inferredValCode = "val message = List(1, 2, 3).mkString"
           val inferredValRes =
             html(interpreter, inferredValCode, inferredValCode.indexOf("message") + 1)
           assert(inferredValRes == expected("String"))
 
-          val typedValCode = "val count: Long = 2L"
-          val typedValRes  = html(interpreter, typedValCode, typedValCode.indexOf("count") + 1)
+          val typedValRes = html(interpreter, typedValCode, typedValCode.indexOf("count") + 1)
           assert(typedValRes == expected("Long"))
         }
-        else
-          "disabled"
+        else {
+          val defRes = lines(interpreter, defCode, defCode.indexOf("increment") + 1)
+          assert(defRes == Vector("Signature: increment(n: Int): Int"))
+
+          val inferredValRes =
+            lines(interpreter, inferredValCode, inferredValCode.indexOf("message") + 1)
+          assert(inferredValRes == Vector("Type: String"))
+
+          val typedValRes = lines(interpreter, typedValCode, typedValCode.indexOf("count") + 1)
+          assert(typedValRes == Vector("Type: Long"))
+        }
       }
 
       test("import tree fallback") {
+        val interpreter = newInterpreter()
+        val code        = "import scala.collection.mutable.ArrayBuffer"
+        val pos         = code.indexOf("mutable") + 1
         if (TestUtil.isScala2) {
-          val interpreter = newInterpreter()
-          val code        = "import scala.collection.mutable.ArrayBuffer"
-          val pos         = code.indexOf("mutable") + 1
-
           // in particular, none of those should be "<unknown>"
           val expectedRes = expected("import scala.collection.mutable.ArrayBuffer")
           val results     = (1 to 25).map(_ => html(interpreter, code, pos))
           assert(results.forall(_ == expectedRes))
         }
         else
-          "disabled"
+          assert(lines(interpreter, code, pos) == Vector("Type: scala.collection.mutable"))
       }
 
       test("incomplete member selection") {
@@ -380,27 +409,25 @@ object ScalaInterpreterTests extends TestSuite {
       }
 
       test("constructor and inherited documentation") {
+        val interpreter = newInterpreter()
+
+        val constructorCode = "new java.lang.String(Array[Byte](65))"
+        val constructorPos  = constructorCode.indexOf("String") + 1
+        val inheritedCode   = "List(1, 2, 3).isEmpty"
+        val inheritedPos    = inheritedCode.indexOf("isEmpty") + 1
+
         if (TestUtil.isScala2) {
-          val interpreter = newInterpreter()
-
-          val constructorCode = "new java.lang.String(Array[Byte](65))"
-          val constructorHtml = html(
-            interpreter,
-            constructorCode,
-            constructorCode.indexOf("String") + 1
-          )
-          assert(constructorHtml == expected("String"))
-
-          val inheritedCode = "List(1, 2, 3).isEmpty"
-          val inheritedHtml = html(
-            interpreter,
-            inheritedCode,
-            inheritedCode.indexOf("isEmpty") + 1
-          )
-          assert(inheritedHtml == expected("Boolean"))
+          assert(html(interpreter, constructorCode, constructorPos) == expected("String"))
+          assert(html(interpreter, inheritedCode, inheritedPos) == expected("Boolean"))
         }
-        else
-          "disabled"
+        else {
+          // the scaladoc of the standard library can be read from its TASTy files since
+          // Scala 3.8, so only check the first line here
+          val constructorRes = lines(interpreter, constructorCode, constructorPos)
+          assert(constructorRes.head.matches("Type: +String"))
+          val inheritedRes = lines(interpreter, inheritedCode, inheritedPos)
+          assert(inheritedRes.head.matches("Signature: +isEmpty: Boolean"))
+        }
       }
     }
 
@@ -539,14 +566,13 @@ object ScalaInterpreterTests extends TestSuite {
     }
 
     test("inspection") {
-      if (TestUtil.isScala2) {
-        val code          = "List"
-        val inspectionOpt = interpreter.inspect(code, code.length, detailLevel = 0)
-        val data          = inspectionOpt.toSeq.flatMap(_.data)
+      val code          = "List"
+      val inspectionOpt = interpreter.inspect(code, code.length, detailLevel = 0)
+      val data          = inspectionOpt.toSeq.flatMap(_.data)
 
-        assert(data.exists(_._1 == "text/html"))
-        assert(data.exists(_._1 == "text/plain"))
-      }
+      // Scala 3 only sends text/plain, like IPython
+      if (TestUtil.isScala2) assert(data.exists(_._1 == "text/html"))
+      assert(data.exists(_._1 == "text/plain"))
     }
 
     test("is complete") {

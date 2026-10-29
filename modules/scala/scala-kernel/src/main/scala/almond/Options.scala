@@ -110,7 +110,7 @@ final case class Options(
   @HelpMessage("Enable compile-only mode")
     compileOnly: Boolean = false,
 
-  @HelpMessage("Extra class path to add upfront in the session - should accept the same format as 'java -cp', see https://github.com/coursier/class-path-util for more details")
+  @HelpMessage("Extra class path to add upfront in the session - should accept the same format as 'java -cp', see https://github.com/coursier/class-path-util for more details - add the source JARs of its JARs too, for inspections to show their documentation")
   @ExtraName("extraCp")
   @ExtraName("extraClasspath")
     extraClassPath: List[String] = Nil,
