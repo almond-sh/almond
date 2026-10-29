@@ -27,7 +27,7 @@ final class CommTargetManagerImpl extends CommTargetManager {
     val target = targets.remove(name)
     if (target != null)
       for ((id, t) <- commIdTargets.asScala.iterator if t == target)
-        targets.remove(id)
+        commIdTargets.remove(id)
   }
 
   def addId(target: IOCommTarget, id: String): Unit = {
