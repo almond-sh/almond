@@ -2,6 +2,7 @@ package almond.interpreter.messagehandlers
 
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
+import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0, blockingWithStatus}
 import almond.interpreter.util.DisplayDataOps._
@@ -127,14 +128,21 @@ final case class InterpreterMessageHandlers(
       res <- {
         if (aborted)
           IO.pure(ExecuteResult.Abort)
-        else
-          interpreter.execute(
+        else {
+          val run = interpreter.execute(
             message.content.code,
             storeHistory,
             if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
             Some(handler),
             Some(message)
           )
+          // comm messages sent while the cell is running go along with its outputs
+          commHandlerOpt match {
+            case Some(commHandler: DefaultCommHandler) =>
+              commHandler.sendingTo(queue, message.header)(run)
+            case _ => run
+          }
+        }
       }
       countAfter <- interpreter.executionCount
       _ <- res match {
