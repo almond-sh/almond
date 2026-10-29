@@ -98,6 +98,13 @@ object AmmInterpreter {
           ModuleMatcher(m.getOrganization, m.getName) -> l
       }
       .toVector
+    val automaticVersionsMatchers = automaticVersions
+      .iterator
+      .collect {
+        case (m, v) if m.getOrganization.contains("*") || m.getName.contains("*") =>
+          ModuleMatcher(m.getOrganization, m.getName) -> v
+      }
+      .toVector
 
     val predefFileInfos =
       predefFiles.zipWithIndex.map {
@@ -252,7 +259,13 @@ object AmmInterpreter {
         if (deps.exists(_.getVersion == "_")) {
           val dependencies0 = deps.map { dep =>
             if (dep.getVersion == "_")
-              automaticVersions.get(dep.getModule) match {
+              automaticVersions.get(dep.getModule).orElse {
+                val mod = dependency.Module(
+                  dep.getModule.getOrganization,
+                  dep.getModule.getName
+                )
+                automaticVersionsMatchers.find(_._1.matches(mod)).map(_._2)
+              } match {
                 case None =>
                   System.err.println(
                     s"Warning: version ${"\"_\""} specified for ${dep.getModule}, " +
