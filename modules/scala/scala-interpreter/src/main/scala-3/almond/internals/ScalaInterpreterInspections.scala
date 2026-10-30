@@ -32,7 +32,7 @@ final class ScalaInterpreterInspections(
   private val log = logCtx(getClass)
 
   private var sourceDocsInitialized = false
-  private lazy val sourceDocs = {
+  private lazy val sourceDocs       = {
     sourceDocsInitialized = true
     new SourceDocs(frames, log)
   }
@@ -79,7 +79,7 @@ final class ScalaInterpreterInspections(
     typeChecked.flatMap { (unit, ctx0) =>
       val tree = unit.tpdTree
       // no line breaks in the middle of long types
-      given Context = ctx0.fresh.setSetting(ctx0.settings.pageWidth, 100000)
+      given Context     = ctx0.fresh.setSetting(ctx0.settings.pageWidth, 100000)
       lazy val cellTree =
         try Some(ScalaSources.parse("<inspect>", allCode))
         catch { case NonFatal(_) => None }
@@ -96,7 +96,7 @@ final class ScalaInterpreterInspections(
           val typeStr               = instance.info.finalResultType.widen.show
           Some(inspection(code, pos, path, List(typeclass), None, typeStr))
         case Some(tpe) =>
-          val symbols = ScalaInterpreterInspections.symbols(path, index)
+          val symbols      = ScalaInterpreterInspections.symbols(path, index)
           val signatureOpt = symbols
             .headOption
             // not when the method is only related to the tree under the cursor, like the
@@ -178,7 +178,7 @@ final class ScalaInterpreterInspections(
 
     log.debug(s"Docstring for '${code.take(pos)}|${code.drop(pos)}' is $docstringOpt")
 
-    val clean = InspectionOutput.withoutWrappers
+    val clean  = InspectionOutput.withoutWrappers
     val fields =
       signatures.filter(_.nonEmpty).map { sigs =>
         // blank lines between multi-line signatures of overloaded methods
@@ -220,7 +220,7 @@ object ScalaInterpreterInspections {
       }
     // Like IPython, on something that has no name, like the literal in `f("abc")`, inspect
     // the method it's passed to rather than the literal itself
-    val literal = path.headOption.collect { case l: tpd.Literal => l }
+    val literal                    = path.headOption.collect { case l: tpd.Literal => l }
     def literalArg(app: tpd.Apply) =
       literal.exists(l => app.args.exists(a => a.span.exists && a.span.contains(l.span)))
     val appIdx = path.indexWhere {
@@ -260,7 +260,7 @@ object ScalaInterpreterInspections {
         // under the cursor
         def isRefChar(c: Char) = Character.isJavaIdentifierPart(c) || c == '.'
         val start              = source.lastIndexWhere(c => !isRefChar(c), (index - 1) max 0) + 1
-        val end = source.indexWhere(c => !isRefChar(c), index) match {
+        val end                = source.indexWhere(c => !isRefChar(c), index) match {
           case -1  => source.length
           case idx => idx
         }
@@ -282,7 +282,7 @@ object ScalaInterpreterInspections {
       // enclosingSourceSymbols would return the symbol of an enclosing tree, whose docs
       // have nothing to do with the literal
       case Some(_: tpd.Literal) => Nil
-      case _ =>
+      case _                    =>
         try
           Interactive.enclosingSourceSymbols(path, ctx.source.atSpan(Span(index)))
             .filter(_.exists)
@@ -347,7 +347,7 @@ object ScalaInterpreterInspections {
         Iterator.empty
     val fromTasty = for {
       docCtx <- ctx.docCtx
-      doc <- symbols
+      doc    <- symbols
         .iterator
         .flatMap(candidates)
         .flatMap(sym => docCtx.docstring(sym).map((sym, _)))

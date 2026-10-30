@@ -18,7 +18,7 @@ private[internals] object ScalaSources {
   /** Parses Scala source code, in Scala 2 or Scala 3 syntax, keeping doc comments */
   def parse(name: String, content: String)(using Context): untpd.Tree = {
     val source = SourceFile.virtual(name, content)
-    val ctx0 = ctx.fresh
+    val ctx0   = ctx.fresh
       .setReporter(Compiler.newStoreReporter())
       .setCompilationUnit(CompilationUnit(source, mustExist = false))
     // Scala 2 syntax

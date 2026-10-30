@@ -152,7 +152,7 @@ object ImportFileTests extends TestSuite {
         os.write(dir / "Foo.sc", "def foo() = \"foo\"\n")
         os.write(dir / "sub" / "Bar.sc", "def bar() = \"bar\"\n")
         val interp = newInterpreter()
-        val res0 = interp.execute(
+        val res0   = interp.execute(
           s"""//> using scripts ${dir.last}/Foo.sc ${dir.last}/sub/Bar
              |Foo.foo() + Bar.bar()
              |""".stripMargin
@@ -187,7 +187,7 @@ object ImportFileTests extends TestSuite {
       withScriptsDir { dir =>
         os.write(dir / "Foo.sc", "def foo() = \"bar\"\n")
         val interp = newInterpreter()
-        val res0 = interp.execute(
+        val res0   = interp.execute(
           s"""//> using script ${dir.last}/Foo.sc
              |Foo.foo()
              |""".stripMargin
@@ -208,7 +208,7 @@ object ImportFileTests extends TestSuite {
         os.write(dir / "Foo.sc", "def foo() = \"foo\"\n")
         os.write(dir / "Bar.sc", "import $file.Foo\ndef bar() = Foo.foo() + \"bar\"\n")
         val interp = newInterpreter()
-        val res0 = interp.execute(
+        val res0   = interp.execute(
           s"""//> using script ${dir.last}/Bar.sc
              |Bar.bar()
              |""".stripMargin

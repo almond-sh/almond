@@ -101,8 +101,8 @@ object ScalaInterpreterCompletions {
     unit.untpdTree = typeCheckedUnit.untpdTree
     // with the root imports (scala._, Predef._, …), like the Scala 3 IDE driver
     // (dotty.tools.dotc.interactive.InteractiveDriver) does
-    val ctx1   = ctx.fresh.setCompilationUnit(unit).withRootImports
-    val srcPos = SourcePosition(file, Span(index))
+    val ctx1                 = ctx.fresh.setCompilationUnit(unit).withRootImports
+    val srcPos               = SourcePosition(file, Span(index))
     val (start, completions) =
       try
         CompilerInternals.completionMaker.completions(
@@ -127,7 +127,7 @@ object ScalaInterpreterCompletions {
     val blacklistedPackages = Set("shaded")
 
     def deepCompletion(name: String): List[String] = {
-      given Context = ctx1
+      given Context                   = ctx1
       def rec(t: Symbol): Seq[Symbol] =
         if (blacklistedPackages(t.name.toString))
           Nil
@@ -202,7 +202,7 @@ object ScalaInterpreterCompletions {
     val sourceFile = SourceFile.virtual(fileName, new String(src, StandardCharsets.UTF_8))
 
     val reporter0 = Compiler.newStoreReporter()
-    val run = new Run(
+    val run       = new Run(
       compiler,
       initialCtx.fresh
         .addMode(Mode.ReadPositions | Mode.Interactive)

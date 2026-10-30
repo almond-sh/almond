@@ -82,7 +82,7 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
       // for @inheritdoc and {@inheritDoc}: the doc of an overridden symbol
       lazy val parentMain = raws.nextOption().map((_, raw0) => parse(raw0, "").main)
       val parsed          = parse(raw, parentMain.getOrElse(""))
-      val expanded =
+      val expanded        =
         if (raw.java) parsed
         else parsed.expand(variables(sym, site))
       expanded.render
@@ -144,9 +144,9 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
 
   // Where the source of cls is
   private def location(cls: Symbol)(using Context): Option[Location] = {
-    val top  = cls.topLevelClass
-    val pkg  = top.owner.fullName.toString
-    val name = top.name.stripModuleClassSuffix.toString
+    val top    = cls.topLevelClass
+    val pkg    = top.owner.fullName.toString
+    val name   = top.name.stripModuleClassSuffix.toString
     val prefix =
       if (pkg.isEmpty || pkg == "<empty>" || pkg == "<root>") ""
       else pkg.replace('.', '/') + "/"
@@ -325,7 +325,7 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
   private def scalaDoc(loc: Location, sym: Symbol)(using Context): Option[String] =
     for {
       found <- scalaDefinition(loc, sym)
-      doc <- found match {
+      doc   <- found match {
         case m: untpd.MemberDef => m.rawComment
         case _                  => None
       }
@@ -355,14 +355,14 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
     cls: Symbol
   )(using Context): Option[untpd.Tree] =
     names match {
-      case Nil => None
+      case Nil          => None
       case name :: rest =>
         val wantModule = rest.isEmpty && cls.isClass && cls.is(Flags.ModuleClass)
         val candidates = trees.flatMap {
           case p: untpd.PackageDef => templateBody(p)
           case other               => List(other)
         }
-        val nested = trees.collect { case p: untpd.PackageDef => p }
+        val nested                 = trees.collect { case p: untpd.PackageDef => p }
         def matches(t: untpd.Tree) = t match {
           case t: untpd.ModuleDef => t.name.toString == name && (rest.nonEmpty || wantModule)
           case t: untpd.TypeDef   => t.name.toString == name && (rest.nonEmpty || !wantModule)
@@ -377,7 +377,7 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
     }
 
   private def findMember(owner: untpd.Tree, sym: Symbol)(using Context): Option[untpd.Tree] = {
-    val name = sym.name.stripModuleClassSuffix.toString
+    val name     = sym.name.stripModuleClassSuffix.toString
     val sameName = templateBody(owner).filter {
       case t: untpd.DefDef    => t.name.toString == name
       case t: untpd.ValDef    => t.name.toString == name

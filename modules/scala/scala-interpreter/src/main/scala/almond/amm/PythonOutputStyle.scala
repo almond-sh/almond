@@ -35,9 +35,9 @@ private[almond] object PythonOutputStyle {
     * String and character literals are skipped, so that their content isn't mistaken for comments.
     */
   private def lastSignificantChar(code: String): Option[Char] = {
-    val len  = code.length
-    var idx  = 0
-    var last = Option.empty[Char]
+    val len                                  = code.length
+    var idx                                  = 0
+    var last                                 = Option.empty[Char]
     def skipQuotedLiteral(quote: Char): Unit = {
       idx += 1
       while (idx < len && code.charAt(idx) != quote && code.charAt(idx) != '\n') {

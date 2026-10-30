@@ -59,7 +59,7 @@ object LastValueOnlyTests extends TestSuite {
       assert(result == text("second: Int = 2"))
     }
     test("intermediate values are not rendered") {
-      val i = interpreter()
+      val i      = interpreter()
       val result = i.execute(
         """val first = new Object { override def toString = sys.error("must not render") }
           |val second = 2
@@ -77,7 +77,7 @@ object LastValueOnlyTests extends TestSuite {
     test("explicit output and rich displays") {
       val i              = interpreter()
       val capturedOutput = new StringBuilder
-      val output = new MockOutputHandler {
+      val output         = new MockOutputHandler {
         override def stdout(s: String): Unit = { capturedOutput.append(s); () }
       }
       val result = i.execute(

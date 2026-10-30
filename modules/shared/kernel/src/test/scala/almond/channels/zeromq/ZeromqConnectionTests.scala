@@ -55,9 +55,9 @@ object ZeromqConnectionTests extends TestSuite {
             bindToRandomPorts = false,
             identityOpt = None
           )
-          _ <- kernel.open
-          _ <- server.open
-          _ <- server.send(Channel.Requests, msg0)
+          _    <- kernel.open
+          _    <- server.open
+          _    <- server.send(Channel.Requests, msg0)
           resp <- kernel.tryRead(Seq(Channel.Requests), 1.second).flatMap {
             case Some(r) => IO.pure(r)
             case None    => IO.raiseError(new Exception("no message"))
@@ -109,7 +109,7 @@ object ZeromqConnectionTests extends TestSuite {
           _        <- kernel.open
           _        <- client.open
           received <- Deferred[IO, (Channel, Message)]
-          fiber <- kernel.stream()
+          fiber    <- kernel.stream()
             .evalMap(received.complete)
             .take(1)
             .compile
@@ -117,9 +117,9 @@ object ZeromqConnectionTests extends TestSuite {
             .start
           // blocks the thread of the shell socket, like a read stuck on it would
           shellLatch = new CountDownLatch(1)
-          _ <- IO(kernelThreads.channelEces(Channel.Requests).execute(() => shellLatch.await()))
-          _ <- IO.sleep(1.second)
-          _ <- client.send(Channel.Control, msg0)
+          _   <- IO(kernelThreads.channelEces(Channel.Requests).execute(() => shellLatch.await()))
+          _   <- IO.sleep(1.second)
+          _   <- client.send(Channel.Control, msg0)
           res <- received.get.timeoutTo(
             10.seconds,
             IO.raiseError(new Exception("Message on control held up by stuck shell channel"))
@@ -164,8 +164,8 @@ object ZeromqConnectionTests extends TestSuite {
 
       def readShell(kernel: ZeromqConnection, deadline: Deadline): IO[Message] =
         kernel.tryRead(Seq(Channel.Requests), 100.millis).flatMap {
-          case Some(Right((_, m))) => IO.pure(m)
-          case Some(Left(()))      => IO.raiseError(new Exception("connection closed"))
+          case Some(Right((_, m)))          => IO.pure(m)
+          case Some(Left(()))               => IO.raiseError(new Exception("connection closed"))
           case None if deadline.isOverdue() =>
             IO.raiseError(new Exception("No message on shell"))
           case None => readShell(kernel, deadline)
@@ -180,7 +180,7 @@ object ZeromqConnectionTests extends TestSuite {
       ): IO[Unit] =
         for {
           raw <- IO(rawShellSocket())
-          _ <- IO {
+          _   <- IO {
             for (frame <- malformedFrames.init)
               raw.sendMore(frame)
             raw.send(malformedFrames.last)
@@ -233,8 +233,8 @@ object ZeromqConnectionTests extends TestSuite {
 
     test("messages above max size are dropped") {
 
-      val logCtx = LoggerContext.nop
-      val params = ConnectionParameters.randomLocal()
+      val logCtx        = LoggerContext.nop
+      val params        = ConnectionParameters.randomLocal()
       val kernelThreads =
         ZeromqThreads.create("test-kernel").withMaxMessageSize(Some(64L * 1024L))
       val clientThreads = ZeromqThreads.create("test-client")
@@ -252,8 +252,8 @@ object ZeromqConnectionTests extends TestSuite {
 
       def readShell(kernel: ZeromqConnection, deadline: Deadline): IO[Message] =
         kernel.tryRead(Seq(Channel.Requests), 100.millis).flatMap {
-          case Some(Right((_, m))) => IO.pure(m)
-          case Some(Left(()))      => IO.raiseError(new Exception("connection closed"))
+          case Some(Right((_, m)))          => IO.pure(m)
+          case Some(Left(()))               => IO.raiseError(new Exception("connection closed"))
           case None if deadline.isOverdue() =>
             IO.raiseError(new Exception("No message on shell"))
           case None => readShell(kernel, deadline)
@@ -416,8 +416,8 @@ object ZeromqConnectionTests extends TestSuite {
         // kernel only handles subscriptions when reading from its channels
         kernel.tryRead(Channel.channels, 100.millis) *>
           server.tryRead(Seq(Channel.Publish), 100.millis).flatMap {
-            case Some(Right((_, msg))) => IO.pure(msg)
-            case Some(Left(()))        => IO.raiseError(new Exception("connection closed"))
+            case Some(Right((_, msg)))        => IO.pure(msg)
+            case Some(Left(()))               => IO.raiseError(new Exception("connection closed"))
             case None if deadline.isOverdue() =>
               IO.raiseError(new Exception("no iopub_welcome message"))
             case None => welcome(kernel, server, deadline)
@@ -565,8 +565,8 @@ object ZeromqConnectionTests extends TestSuite {
           // when the watchdog fails
           res <- IO.race(watchdog(0L, Deadline.now), sendLoop(kernel, duration.fromNow)).attempt
           _   <- IO { done = true }
-          _ <- res match {
-            case Left(e) => IO.raiseError(e)
+          _   <- res match {
+            case Left(e)  => IO.raiseError(e)
             case Right(_) =>
               IO.blocking(threads.foreach(_.join())) *>
                 polling.joinWithNever *>

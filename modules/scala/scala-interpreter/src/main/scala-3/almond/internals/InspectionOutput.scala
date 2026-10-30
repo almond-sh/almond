@@ -53,9 +53,9 @@ private[internals] object InspectionOutput {
     javaParamNames: Option[List[String]],
     default: String => Option[String]
   )(using Context): String = {
-    val tparams = new StringBuilder
-    val clauses = new mutable.ListBuffer[(String, List[String])]
-    var result  = ""
+    val tparams                             = new StringBuilder
+    val clauses                             = new mutable.ListBuffer[(String, List[String])]
+    var result                              = ""
     def loop(t: Type, first: Boolean): Unit =
       t match {
         case pt: PolyType =>
@@ -67,7 +67,7 @@ private[internals] object InspectionOutput {
             else if (mt.isImplicitMethod) "(implicit "
             else "("
           val names0 = mt.paramNames.map(_.toString)
-          val names = javaParamNames
+          val names  = javaParamNames
             .filter(n => first && n.length == names0.length && names0.exists(_.startsWith("x$")))
             .getOrElse(names0)
           val params = names.zip(mt.paramInfos).map { (n, info) =>
@@ -82,7 +82,7 @@ private[internals] object InspectionOutput {
       }
     loop(tpe, first = true)
     val resultPart = if (result.isEmpty) "" else ": " + result
-    val oneLine =
+    val oneLine    =
       name + tparams + clauses.map((open, ps) => open + ps.mkString(", ") + ")").mkString +
         resultPart
     if (oneLine.length <= maxSignatureLength) oneLine
@@ -98,7 +98,7 @@ private[internals] object InspectionOutput {
   private def typeParamClause(pt: PolyType)(using Context): String = {
     val str   = pt.show
     var depth = 0
-    val end = str.indexWhere { c =>
+    val end   = str.indexWhere { c =>
       if (c == '[') depth += 1
       else if (c == ']') depth -= 1
       depth == 0

@@ -110,7 +110,7 @@ object ZeromqSocketTests extends TestSuite {
       val t =
         rep.open.map(_.getOrElse(sys.error("No port picked"))).flatMap { port =>
           val req = newReq(port)
-          val t0 =
+          val t0  =
             for {
               _       <- req.open
               _       <- req.send(msg)
@@ -178,7 +178,7 @@ object ZeromqSocketTests extends TestSuite {
       val t =
         rep.open.map(_.getOrElse(sys.error("No port picked"))).flatMap { port =>
           val req = newReq(port)
-          val t0 =
+          val t0  =
             for {
               _       <- req.open
               _       <- req.send(msg)
@@ -253,7 +253,7 @@ object ZeromqSocketTests extends TestSuite {
       val t =
         router.open.map(_.getOrElse(sys.error("No port picked"))).flatMap { port =>
           val dealer = newDealer(port)
-          val t0 =
+          val t0     =
             for {
               _         <- dealer.open
               _         <- dealer.send(withBuffers)

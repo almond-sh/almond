@@ -43,7 +43,7 @@ object ScalaVersions {
   // one, that the modules published for that binary version are built with.
   val ci = {
     val (scala2, scala3) = all.partition(_.startsWith("2."))
-    val scala2Subset = scala2
+    val scala2Subset     = scala2
       .groupBy(binary)
       .values
       .flatMap { versions =>

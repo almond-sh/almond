@@ -18,7 +18,7 @@ final case class OutputStyleDirective(
 ) extends HasKernelOptions {
   def kernelOptions =
     outputStyle match {
-      case None => Right(KernelOptions())
+      case None        => Right(KernelOptions())
       case Some(input) =>
         OutputStyle.parse(input.value) match {
           case Left(err)    => Left(new MalformedDirectiveError(err, input.positions))

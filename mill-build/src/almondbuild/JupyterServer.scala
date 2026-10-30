@@ -291,7 +291,7 @@ object JupyterServer {
     else {
       // JavaHomes.environment always sets PATH, possibly spelled differently on Windows
       val (pathKey, pathValue) = env.find(_._1.equalsIgnoreCase("PATH")).get
-      val newPathValue =
+      val newPathValue         =
         (dirs.map(_.toString) :+ pathValue).mkString(File.pathSeparator)
       env + (pathKey -> newPathValue)
     }
@@ -320,7 +320,7 @@ object JupyterServer {
   private def extractBaseAddress(args: Seq[String]): (Option[String], Seq[String]) = {
     val opt = "--base-address"
     args.indexWhere(a => a == opt || a.startsWith(opt + "=")) match {
-      case -1 => (None, args)
+      case -1  => (None, args)
       case idx =>
         val arg = args(idx)
         if (arg == opt)
@@ -409,7 +409,7 @@ object JupyterServer {
     */
   def stopBackground(backgroundDir: os.Path): Boolean =
     runningProcess(backgroundDir) match {
-      case None => false
+      case None          => false
       case Some(wrapper) =>
         os.write.over(newestPidFile(backgroundDir), "stopped", createFolders = true)
         val deadline = System.currentTimeMillis() + 10000L
@@ -434,9 +434,9 @@ object JupyterServer {
     if (stopBackground(backgroundDir))
       System.err.println("Stopped the previous JupyterLab server")
     os.makeDir.all(backgroundDir)
-    val stdoutLog  = backgroundDir / "stdout.log"
-    val stderrLog0 = stderrLog(backgroundDir)
-    val javaExe    = javaHome / "bin" / (if (Properties.isWin) "java.exe" else "java")
+    val stdoutLog   = backgroundDir / "stdout.log"
+    val stderrLog0  = stderrLog(backgroundDir)
+    val javaExe     = javaHome / "bin" / (if (Properties.isWin) "java.exe" else "java")
     val wrapperArgs = Seq(
       newestPidFile(backgroundDir),
       currentPidFile(backgroundDir),
@@ -461,7 +461,7 @@ object JupyterServer {
     )
 
     // Wait for JupyterLab to print the URLs it can be reached at, and print them
-    val deadline = System.currentTimeMillis() + 120000L
+    val deadline                = System.currentTimeMillis() + 120000L
     def urlLines(): Seq[String] = {
       val lines = if (os.exists(stderrLog0)) os.read.lines(stderrLog0) else Nil
       lines.dropWhile(!_.contains("is running at")).drop(1).takeWhile(_.contains("://"))
@@ -585,7 +585,7 @@ object JupyterServer {
     linkExamples(workspace)
     val (baseAddressOpt, args0) = extractBaseAddress(args)
     val (classic, args1)        = extractClassic(args0)
-    val command =
+    val command                 =
       jupyterCommand(uv, workspace, labGroups, "lab", "--notebook-dir", "notebooks") ++
         baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
         (if (classic) classicOptions else Nil) ++
@@ -659,7 +659,7 @@ object JupyterServer {
     // jupyter console rejects several --kernel options, so only pass ours if args has none
     val hasKernelArg = args.exists(arg => arg == "--kernel" || arg.startsWith("--kernel="))
     val kernelArgs   = if (hasKernelArg) Nil else Seq(s"--kernel=${kernelId(scalaVersion)}")
-    val command =
+    val command      =
       jupyterCommand(uv, workspace, kernelGroups, Seq("console") ++ kernelArgs ++ args*)
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
