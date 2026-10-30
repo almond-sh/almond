@@ -179,7 +179,7 @@ class ProxyTests extends munit.FunSuite {
 
   /** An authenticated HTTP proxy, that the JVMs of Almond pick up from the Maven settings file */
   case object Proxy extends Setup("authenticated proxy") {
-    def image = proxyImage
+    def image                                          = proxyImage
     private def settings(ip: String, password: String) =
       s"""<settings>
          |  <proxies>
@@ -208,7 +208,7 @@ class ProxyTests extends munit.FunSuite {
 
   /** A repository mirror, that the coursier of Almond picks up from its configuration directory */
   case object Mirror extends Setup("mirror") {
-    def image = mirrorImage
+    def image               = mirrorImage
     override def serverArgs = Seq(
       "-v",
       s"${dockerDir / "mirror" / "nginx.conf"}:/etc/nginx/conf.d/default.conf:ro"

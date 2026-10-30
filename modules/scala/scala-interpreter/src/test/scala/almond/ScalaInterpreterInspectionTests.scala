@@ -57,7 +57,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
             |  *   to increment
             |  */
             |def inc(n: Int): Int = n + 1""".stripMargin
-        val localRes = lines(interpreter, localCode, localCode.indexOf("inc(") + 1)
+        val localRes         = lines(interpreter, localCode, localCode.indexOf("inc(") + 1)
         val expectedLocalRes = Vector(
           "Signature: inc(n: Int): Int",
           "Docstring:",
@@ -170,7 +170,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
 
         val inheritedCode = "List(1, 2).isEmpty"
         val inheritedPos  = inheritedCode.indexOf("isEmpty") + 1
-        val inheritedRes =
+        val inheritedRes  =
           lines(interpreter, inheritedCode, inheritedPos)
         assert(inheritedRes.exists(_.startsWith("Tests whether the list is empty.")))
         // same indentation for the lines of the main doc, including the inherited ones
@@ -238,7 +238,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       if (TestUtil.isScala2) "disabled"
       else {
         val interpreter = newInterpreter()
-        val code =
+        val code        =
           "def configure(host: String, port: Int = 8080, secure: Boolean = false, " +
             "timeoutSeconds: Long = 30L, retries: Int = 3): Unit = ()"
         val res = lines(interpreter, code, code.indexOf("configure") + 1)

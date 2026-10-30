@@ -104,7 +104,7 @@ private[internals] object DocText {
     for (line <- lines.drop(main.length))
       line.trim match {
         case BlockTag(tag, rest) => tags += ((tag, rest))
-        case _ if tags.nonEmpty =>
+        case _ if tags.nonEmpty  =>
           val (tag, content) = tags.last
           tags(tags.length - 1) = (tag, content + newLine + line)
         case _ =>
@@ -118,7 +118,7 @@ private[internals] object DocText {
     *   the main text of the doc of an overridden member, for `@inheritdoc`
     */
   def fromScaladoc(raw: String, inherited: => String = ""): DocText = {
-    val lines = scaladocLines(raw)
+    val lines  = scaladocLines(raw)
     val lines0 =
       if (lines.exists(_.contains("@inheritdoc")))
         lines.flatMap { l =>

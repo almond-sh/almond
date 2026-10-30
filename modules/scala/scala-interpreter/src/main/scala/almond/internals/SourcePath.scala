@@ -181,7 +181,7 @@ object SourcePath {
 
   // Like `file:/path/to/lib.jar`, or `file:/path/to/launcher!/path/to/lib.jar`
   private def jarPath(spec: String, log: Logger): Option[Path] = {
-    val sep = spec.indexOf("!/")
+    val sep      = spec.indexOf("!/")
     val outerUri =
       try Some(new URI(if (sep < 0) spec else spec.take(sep)))
       catch {
@@ -217,7 +217,7 @@ object SourcePath {
     )
 
   // the files of localFile, of JARs that aren't in the default file system
-  private val localFiles = new ConcurrentHashMap[Path, Path]
+  private val localFiles         = new ConcurrentHashMap[Path, Path]
   private lazy val localFilesDir = {
     val dir = Files.createTempDirectory("almond-sources")
     dir.toFile.deleteOnExit()

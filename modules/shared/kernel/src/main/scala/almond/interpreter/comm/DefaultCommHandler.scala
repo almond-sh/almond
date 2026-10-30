@@ -104,7 +104,7 @@ final class DefaultCommHandler(
     executeLock.synchronized {
       // messages sent from comm targets have the message they process as parent
       val callbackParent = IOCommTarget.currentParent.get()
-      val enqueue = executeOpt match {
+      val enqueue        = executeOpt match {
         case Some((executeQueue, executeParent)) =>
           msg
             .copy(parent_header = callbackParent.orElse(Some(executeParent)))

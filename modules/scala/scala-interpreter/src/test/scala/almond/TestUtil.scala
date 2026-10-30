@@ -67,7 +67,7 @@ object TestUtil {
   }
 
   final class KernelSession(kernel: Kernel) extends Dsl.Session {
-    def helperIORuntime = kernel.kernelThreads.ioRuntime
+    def helperIORuntime                   = kernel.kernelThreads.ioRuntime
     def run(streams: ClientStreams): Unit =
       kernel.run(streams.source, streams.sink, Nil)
         .unsafeRunTimedOrThrow(kernel.kernelThreads.ioRuntime)
@@ -127,7 +127,7 @@ object TestUtil {
     options =>
 
       val opt = optionsParser.parse(options) match {
-        case Left(e) => throw new Exception(e.toString)
+        case Left(e)             => throw new Exception(e.toString)
         case Right((opt, extra)) =>
           assert(extra.isEmpty, "Unexpected trailing values in kernel arguments")
           opt
@@ -188,7 +188,7 @@ object TestUtil {
         .unsafeRunTimedOrThrow(kernel.kernelThreads.ioRuntime)
 
       val requestsMessageTypes = streams.generatedMessageTypes(Set(Channel.Requests)).toVector
-      val publishMessageTypes = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
+      val publishMessageTypes  = streams.generatedMessageTypes(Set(Channel.Publish)).toVector
         .filter(if (ignoreStreams0) _ != "stream" else _ => true)
 
       val expectedRequestsMessageTypes =
@@ -366,7 +366,7 @@ object TestUtil {
 
       t.unsafeRunTimedOrThrow(threads.ioRuntime)
 
-      val replies0 = streams.executeReplies.filter(_._2.nonEmpty)
+      val replies0        = streams.executeReplies.filter(_._2.nonEmpty)
       val expectedReplies = replies
         .zipWithIndex
         .collect {

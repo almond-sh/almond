@@ -303,7 +303,7 @@ final case class Kernel(
       val run0 =
         for {
           ports <- c.open
-          _ <- {
+          _     <- {
             assert(bindToRandomPorts || ports.isEmpty)
             onBound(withPorts(connection, ports), ports.nonEmpty)
           }
@@ -663,11 +663,11 @@ object Kernel {
   ): IO[Kernel] =
     for {
       backgroundMessagesQueue <- Queue.unbounded[IO, (Channel, RawMessage)]
-      executeQueue <- Queue.unbounded[IO, Option[(
+      executeQueue            <- Queue.unbounded[IO, Option[(
         Option[(Channel, RawMessage)],
         Stream[IO, (Channel, RawMessage)]
       )]]
-      otherQueue <- Queue.unbounded[IO, Option[Stream[IO, (Channel, RawMessage)]]]
+      otherQueue               <- Queue.unbounded[IO, Option[Stream[IO, (Channel, RawMessage)]]]
       backgroundCommHandlerOpt <- IO {
         if (interpreter.supportComm)
           Some {

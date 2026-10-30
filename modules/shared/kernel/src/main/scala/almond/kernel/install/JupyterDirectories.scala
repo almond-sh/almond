@@ -136,7 +136,7 @@ object JupyterDirectories {
           Right(new String(Files.readAllBytes(stdout), StandardCharsets.UTF_8))
         else {
           val errOutput = new String(Files.readAllBytes(stderr), StandardCharsets.UTF_8).trim
-          val details =
+          val details   =
             if (errOutput.isEmpty) ""
             else System.lineSeparator() + errOutput
           Left(s"'$command' exited with code $exitCode$details")
@@ -177,11 +177,11 @@ object JupyterDirectories {
     for {
       jupyter    <- executable(command)
       dataDirOut <- run(jupyter, Seq("--data-dir"), timeoutSeconds)
-      dataDir <- Some(dataDirOut.trim).filter(_.nonEmpty).toRight(
+      dataDir    <- Some(dataDirOut.trim).filter(_.nonEmpty).toRight(
         s"Empty output from '$jupyter --data-dir'"
       )
       pathsOutput <- run(jupyter, Seq("--paths", "--json"), timeoutSeconds)
-      paths <- {
+      paths       <- {
         try Right(readFromString[PathsOutput](pathsOutput.trim))
         catch {
           case e: JsonReaderException =>

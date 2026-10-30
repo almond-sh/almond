@@ -19,7 +19,7 @@ object Indentation {
     */
   def nextLine(code: String): String =
     code.linesIterator.toVector.reverseIterator.find(_.trim.nonEmpty) match {
-      case None => ""
+      case None       => ""
       case Some(line) =>
         val baseIndent = line.takeWhile(c => c == ' ' || c == '\t')
         val content    = line.trim

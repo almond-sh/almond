@@ -136,7 +136,7 @@ class AlmondPreprocessor(
   /** Whether a definition should be listed in the variable inspector, and its name if it should */
   private def inspectedName(mods: untpd.Modifiers, name: Names.Name): Option[String] = {
     val decoded = name.decode.toString
-    val ignore = mods.is(Flags.Private) || mods.is(Flags.Given) ||
+    val ignore  = mods.is(Flags.Private) || mods.is(Flags.Given) ||
       name.isEmpty || decoded == "_" || decoded.contains("$")
     if (ignore) None
     else Some(Name.backtickWrap(decoded))
@@ -183,7 +183,7 @@ class AlmondPreprocessor(
         // same naming as the Ammonite preprocessor
         val suffix     = if (stmts.length > 1) "_" + idx else ""
         val resultName = "res" + resultIndex + suffix
-        val variables = parse(stmt).toSeq.flatMap {
+        val variables  = parse(stmt).toSeq.flatMap {
           case Seq(tree) => inspectedVariables(tree, resultName)
           // multi-imports
           case trees if trees.forall(_.isInstanceOf[untpd.Import]) => Nil

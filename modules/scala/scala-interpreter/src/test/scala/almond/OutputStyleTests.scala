@@ -62,7 +62,7 @@ object OutputStyleTests extends TestSuite {
     test("unit") {
       val i              = interpreter()
       val capturedOutput = new StringBuilder
-      val output = new MockOutputHandler {
+      val output         = new MockOutputHandler {
         override def stdout(s: String): Unit = { capturedOutput.append(s); () }
       }
       val result = i.execute("println(\"hello\")", outputHandler = Some(output))

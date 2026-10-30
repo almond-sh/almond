@@ -118,7 +118,7 @@ object Docker {
   }
 
   private def waitForPort(port: Int, what: String, timeout: Duration): Unit = {
-    val deadline = System.currentTimeMillis() + timeout.toMillis
+    val deadline             = System.currentTimeMillis() + timeout.toMillis
     def listening(): Boolean = {
       val socket = new Socket
       try {
@@ -162,8 +162,8 @@ object Docker {
     }
     for ((k, v) <- buildArgs.toSeq.sorted)
       md.update(s"$k=$v".getBytes("UTF-8"))
-    val hash = md.digest().map(b => f"$b%02x").mkString.take(12)
-    val tag  = s"$name:$hash"
+    val hash   = md.digest().map(b => f"$b%02x").mkString.take(12)
+    val tag    = s"$name:$hash"
     val exists = os.proc("docker", "image", "inspect", tag)
       .call(check = false, stdout = os.Pipe, stderr = os.Pipe)
       .exitCode == 0
@@ -192,7 +192,7 @@ object Docker {
     command: Seq[os.Shellable]
   ): (Int, String) = {
     val output = new StringBuilder
-    val res =
+    val res    =
       os.proc("docker", "run", "--rm", "--network", networks.internal, dockerArgs, image, command)
         .call(
           check = false,

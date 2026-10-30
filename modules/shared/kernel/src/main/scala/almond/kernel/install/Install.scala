@@ -85,7 +85,7 @@ object Install {
     val logoContentOpt = logo64PngOpt.map(url => readFully(url.openStream()))
 
     val jupyterDir = jupyterPath match {
-      case Left(p) => p
+      case Left(p)  => p
       case Right(j) =>
         j.paths.headOption.getOrElse(
           throw new InstallException.JupyterDirectoryTypeNotFound(j.name)
@@ -354,7 +354,7 @@ object Install {
           None
       else
         JupyterDirectories.get(jupyterCommand) match {
-          case Right(dirs) => Some(dirs)
+          case Right(dirs)                         => Some(dirs)
           case Left(err) if options.requireJupyter =>
             throw new InstallException.CannotGetJupyterDirectories(
               s"running '$jupyterCommand' failed: $err"
@@ -373,7 +373,7 @@ object Install {
     val path =
       options.jupyterPath match {
         case Some(p) => Left(Paths.get(p))
-        case None =>
+        case None    =>
           if (options.global)
             if (OS.current == OS.Windows && JupyterPath.System.paths.isEmpty)
               // No system-wide directory on Windows if we don't know the Python prefix of

@@ -16,7 +16,7 @@ private[internals] object Javadoc {
     val raw0 =
       if (raw.contains("{@inheritDoc}")) raw.replace("{@inheritDoc}", inherited) else raw
     val parsed = DocText.split(raw0.linesIterator.toVector)
-    val tags = parsed.tags.map {
+    val tags   = parsed.tags.map {
       // type parameters are documented with @param <T> in Javadoc
       case ("param", c) if c.trim.startsWith("<") =>
         ("tparam", c.trim.stripPrefix("<").replaceFirst(">", ""))
@@ -110,7 +110,7 @@ private[internals] object JavaScanner {
   private final case class Doc(value: String)   extends Token
 
   private val classKeywords = Set("class", "interface", "enum", "record")
-  private val modifiers = Set(
+  private val modifiers     = Set(
     "public",
     "protected",
     "private",
@@ -128,9 +128,9 @@ private[internals] object JavaScanner {
   )
 
   private def tokens(src: String): Vector[Token] = {
-    val b   = Vector.newBuilder[Token]
-    var i   = 0
-    val len = src.length
+    val b                             = Vector.newBuilder[Token]
+    var i                             = 0
+    val len                           = src.length
     def skipQuoted(quote: Char): Unit = {
       i += 1
       while (i < len && src(i) != quote) {
@@ -249,7 +249,7 @@ private[internals] object JavaScanner {
   }
 
   private def member(header: Vector[Token], classes: List[String], doc: String) = {
-    val toks = dropAnnotations(header)
+    val toks            = dropAnnotations(header)
     val classKeywordIdx = toks.indexWhere {
       case Ident(v) => classKeywords(v)
       case _        => false
@@ -272,11 +272,11 @@ private[internals] object JavaScanner {
             parenIdx
           )
           val paramToks = toks.slice(parenIdx + 1, if (close < 0) toks.length else close)
-          val params = splitParams(paramToks).map { p =>
+          val params    = splitParams(paramToks).map { p =>
             val p0 = p.filter(_ != Ident("final"))
             // the last identifier is the parameter name
             p0.lastIndexWhere(_.isInstanceOf[Ident]) match {
-              case -1 => (JavaTypeNames.simple(show(p0)), "")
+              case -1  => (JavaTypeNames.simple(show(p0)), "")
               case idx =>
                 (JavaTypeNames.simple(show(p0.take(idx))), show(p0.slice(idx, idx + 1)))
             }

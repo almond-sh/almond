@@ -131,7 +131,7 @@ final class Execute(
 
   private val resultVariables = new mutable.HashMap[String, String]
   private val resultOutput    = new StringBuilder
-  private val resultStream =
+  private val resultStream    =
     new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_)).printStream()
 
   private var currentLine0          = initialCellCount
@@ -140,7 +140,7 @@ final class Execute(
   private val printer0 = {
     def doPrint(s: String, toClientStdout: Boolean = false): Unit =
       currentPublishOpt0 match {
-        case None => Console.err.println(s)
+        case None                => Console.err.println(s)
         case Some(outputHandler) =>
           if (!quiet)
             capture0.originalErr.getOrElse(System.err).println(s)
@@ -190,7 +190,7 @@ final class Execute(
     for (value <- options.outputStyle)
       outputStyle() = value
 
-    val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
+    val deps        = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
     val loadDepsRes =
       if (deps.isEmpty) Right(Nil)
       else ammInterp.loadIvy(deps: _*)
@@ -207,7 +207,7 @@ final class Execute(
   def printer: Printer =
     printer0
 
-  def currentLine: Int = currentLine0
+  def currentLine: Int           = currentLine0
   def incrementLineCount(): Unit = {
     currentLine0 += 1
   }
@@ -376,7 +376,7 @@ final class Execute(
         }
         // The `$file` import hook of Ammonite expects a path relative to the working directory,
         // where `^` stands for `..`
-        rel = file.relativeTo(os.pwd)
+        rel  = file.relativeTo(os.pwd)
         tree = ImportTree(
           Seq("$file") ++
             Seq.fill(rel.ups)(Util.upPathSegment) ++
@@ -413,7 +413,7 @@ final class Execute(
       }
       // TODO Ignore comments before any package directive too
       val isStandaloneSource = code.startsWith("package ")
-      val scriptsRes =
+      val scriptsRes         =
         if (scripts.isEmpty) Res.Success(())
         else
           interruptible(jupyterApi) {
@@ -434,7 +434,7 @@ final class Execute(
         val count = standaloneSourceCount
         standaloneSourceCount = standaloneSourceCount + 1
         for {
-          _ <- scriptsRes
+          _      <- scriptsRes
           output <- interruptible(jupyterApi) {
             capturingOutput {
               Res(
@@ -458,7 +458,7 @@ final class Execute(
       }
       else
         for {
-          _ <- scriptsRes
+          _     <- scriptsRes
           stmts <- ammonite.compiler.Parsers.split(code0, ignoreIncomplete = false) match {
             case None =>
               // In Scala 2? cannot happen with ignoreIncomplete = false.
@@ -761,7 +761,7 @@ final class Execute(
 
       maybeRes match {
         case Success(res) => res
-        case Failure(ex) =>
+        case Failure(ex)  =>
           log.error(s"exception when running post run hooks (${ex.getMessage})", ex)
           Execute.error(colors0(), Some(ex), "")
       }
@@ -796,7 +796,7 @@ object Execute {
     scalaVersion: String,
     dependencies: Seq[dependency.AnyDependency]
   ): Seq[coursierapi.Dependency] = {
-    val params = ScalaParameters(scalaVersion)
+    val params       = ScalaParameters(scalaVersion)
     val compatParams = ScalaParameters(
       if (scala.util.Properties.versionNumberString.startsWith("2."))
         scala.util.Properties.versionNumberString
