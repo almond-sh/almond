@@ -110,7 +110,9 @@ object KernelTests extends TestSuite {
       val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
         .flatMap(_.run(streams.source, streams.sink, Nil))
 
-      val res = t.unsafeRunTimed(2.seconds)(threads.ioRuntime)
+      // as the first test of this suite, this one also waits for the kernel classes to load and
+      // warm up, which can take seconds on a loaded machine
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
       assert(res.nonEmpty)
 
       val inputReply   = streams.singleRequest(Channel.Input, Input.replyType)
