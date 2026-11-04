@@ -521,10 +521,7 @@ object Tests {
         s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliVersion/scala-cli"
       ))
 
-  /** @param kernelJavaVersion
-    *   the major version of the JVM the kernel runs on, that has to load the classes we compile
-    */
-  def toreeAddJarCustomProtocol(scalaVersion: String, kernelJavaVersion: Int)(implicit
+  def toreeAddJarCustomProtocol(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
   ): Unit = {
@@ -569,10 +566,6 @@ object Tests {
       "compile",
       "--server=false",
       "--print-class-path",
-      // Scala CLI targets the JVM it runs on by default, while the kernel loads these classes, and
-      // older Scala CLI versions can't post-process the class files they get with recent JVMs
-      // (like Java 25)
-      s"--scalac-option=-release:$kernelJavaVersion",
       "."
     )
       .call(

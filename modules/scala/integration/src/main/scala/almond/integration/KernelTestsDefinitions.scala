@@ -83,10 +83,7 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
   test0("toree AddJar custom protocol") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
-      almond.integration.Tests.toreeAddJarCustomProtocol(
-        kernelLauncher.defaultScalaVersion,
-        kernelLauncher.kernelJavaMajorVersion
-      )
+      almond.integration.Tests.toreeAddJarCustomProtocol(kernelLauncher.defaultScalaVersion)
     }
   }
 
