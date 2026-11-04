@@ -2723,4 +2723,100 @@ object Tests {
         )
       )
     }
+
+  /** The JARs on the class path of users, without their versions, with the Scala versions we test.
+    *
+    * These are scala-kernel-api and its dependencies, that users get without asking for them, and
+    * whose versions take precedence over the ones of the dependencies they add. Update these lists
+    * when a change of dependencies of scala-kernel-api, or a Scala version bump, changes them on
+    * purpose.
+    */
+  private def expectedUserJars(scalaVersion: String): Seq[String] = {
+    val isScala2 = scalaVersion.startsWith("2.")
+    val sbv =
+      if (isScala2) scalaVersion.split('.').take(2).mkString(".")
+      else "3"
+    val shared = Seq(
+      // almond
+      s"api_$sbv",
+      s"scala-kernel-api_$sbv",
+      // our Ammonite fork
+      s"ammonite-compiler_$sbv",
+      s"ammonite-repl-api_$sbv",
+      s"ammonite-util_$sbv",
+      // from ammonite-repl-api
+      s"geny_$sbv",
+      // the coursier API, from scala-kernel-api and ammonite-repl-api
+      "interface",
+      // from ammonite-util (pprint and scala-collection-compat also from scala-kernel-api)
+      s"pprint_$sbv",
+      s"fansi_$sbv",
+      s"sourcecode_$sbv",
+      s"scala-collection-compat_$sbv",
+      "scala-library"
+    )
+    val scala2 = Seq(
+      // from ammonite-compiler
+      s"scalaparse_$sbv",
+      s"fastparse_$sbv",
+      s"scala-xml_$sbv",
+      // the Scala 2 compiler
+      "scala-compiler",
+      "scala-reflect"
+    )
+    // from the Scala 2.13 compiler
+    val scala213 = Seq(
+      "jline",
+      "java-diff-utils"
+    )
+    val scala3 = Seq(
+      // from ammonite-compiler
+      "asm",
+      // the Scala 3 compiler
+      s"scala3-library_$sbv",
+      s"scala3-compiler_$sbv",
+      "scala3-interfaces",
+      s"tasty-core_$sbv",
+      "scala-asm",
+      "compiler-interface",
+      "util-interface"
+    )
+    val specific =
+      if (sbv == "2.12") scala2
+      else if (sbv == "2.13") scala2 ++ scala213
+      else scala3
+    shared ++ specific
+  }
+
+  def userClassPath(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      val expected = expectedUserJars(scalaVersion).map("\"" + _ + "\"").mkString(", ")
+      // Walks the class loaders of the cell up to the system one (excluded, it has the JARs of the
+      // launcher, and on Java 8 its parent has the ones of the JDK), and prints the JARs that
+      // differ from the expected ones, so that a failure lists only those
+      execute(
+        s"""locally {
+           |  def loaders(cl: ClassLoader): List[ClassLoader] =
+           |    if (cl == null || cl == ClassLoader.getSystemClassLoader) Nil
+           |    else cl :: loaders(cl.getParent)
+           |  val jars = loaders(Thread.currentThread().getContextClassLoader)
+           |    .flatMap {
+           |      case cl: java.net.URLClassLoader => cl.getURLs.toList
+           |      case _                           => Nil
+           |    }
+           |    // standalone launchers have URLs like jar:file:/…/launcher!/…/foo-1.0.jar!/
+           |    .map(_.getPath.stripSuffix("!/").split('/').last)
+           |    .filter(name => name.endsWith(".jar") && !name.endsWith("-sources.jar"))
+           |    .map(_.stripSuffix(".jar").replaceFirst("-[0-9].*$$", ""))
+           |    .distinct
+           |  val expected = Seq[String]($expected)
+           |  for (jar <- jars.diff(expected).sorted)
+           |    println(s"unexpected: $$jar")
+           |  for (jar <- expected.diff(jars).sorted)
+           |    println(s"missing: $$jar")
+           |}""".stripMargin,
+        "",
+        stdout = ""
+      )
+    }
 }

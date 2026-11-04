@@ -30,6 +30,13 @@ abstract class KernelTestsStandaloneDefinitions extends AlmondFunSuite {
     }
   }
 
+  test0("user class path") { implicit forceVerbose =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.userClassPath(kernelLauncher.defaultScalaVersion)
+    }
+  }
+
   test0("jvm-repr") { implicit forceVerbose =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
