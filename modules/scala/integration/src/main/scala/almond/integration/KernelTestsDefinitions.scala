@@ -8,6 +8,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
 
   override def mightRetry = true
 
+  test0("user class path") { implicit forceVersion =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.userClassPath(kernelLauncher.defaultScalaVersion)
+    }
+  }
+
   test0("jvm-repr") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()

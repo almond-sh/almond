@@ -800,21 +800,20 @@ object Tests {
 
   def inspections(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
 
-    def sbv = scalaVersion.split('.').take(2).mkString(".")
+    def sbv =
+      if (scalaVersion.startsWith("2.")) scalaVersion.split('.').take(2).mkString(".")
+      else "3"
 
-    val isJava8 = sys.props.get("java.version")
-      .exists(v => v == "1.8" || v.startsWith("1.8."))
-    val extraJars =
-      if (isJava8)
-        // Adding these to workaround issues indexing the kernel launcher in Java 8
-        coursierapi.Fetch.create()
-          .addDependencies(coursierapi.Dependency.of("com.lihaoyi", "os-lib_" + sbv, "0.9.0"))
-          .addClassifiers("_", "sources")
-          .fetch()
-          .asScala
-          .toList
-      else
-        Nil
+    // os-lib isn't on the class path of users, so we add it, along with its sources, to get
+    // the docs of its methods
+    val extraJars = Seq(Nil, Seq("sources")).flatMap { classifiers =>
+      coursierapi.Fetch.create()
+        .addDependencies(coursierapi.Dependency.of("com.lihaoyi", "os-lib_" + sbv, "0.9.0"))
+        .addClassifiers(classifiers: _*)
+        .fetch()
+        .asScala
+        .toList
+    }
 
     runner.withSession("--extra-class-path", extraJars.mkString(File.pathSeparator)) {
       implicit session =>
@@ -1009,9 +1008,10 @@ object Tests {
       val isScala2 = scalaVersion.startsWith("2.")
 
       // scripts are looked up relative to the working directory of the kernel, that we don't
-      // know from here, so we write them from the kernel itself
+      // know from here, so we write them from the kernel itself (with java.nio, as os-lib
+      // isn't on the class path of users)
       execute(
-        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"bar\"\n")""",
+        """java.nio.file.Files.write(java.nio.file.Paths.get("Foo.sc"), "def foo() = \"bar\"\n".getBytes("UTF-8")): Unit""",
         ""
       )
 
@@ -1030,7 +1030,7 @@ object Tests {
 
       // scripts that changed are loaded again
       execute(
-        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"baz\"\n")""",
+        """java.nio.file.Files.write(java.nio.file.Paths.get("Foo.sc"), "def foo() = \"baz\"\n".getBytes("UTF-8")): Unit""",
         ""
       )
 
@@ -1049,7 +1049,12 @@ object Tests {
 
       // via a directive
       execute(
-        """os.write.over(os.pwd / "sub" / "my-script.sc", "def value = 2\n", createFolders = true)""",
+        """locally {
+          |  val path = java.nio.file.Paths.get("sub", "my-script.sc")
+          |  java.nio.file.Files.createDirectories(path.getParent)
+          |  java.nio.file.Files.write(path, "def value = 2\n".getBytes("UTF-8"))
+          |  ()
+          |}""".stripMargin,
         ""
       )
 
@@ -2657,7 +2662,7 @@ object Tests {
         else
           Seq(
             "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
-            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65440)"
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65451)"
           )
 
       execute(
@@ -2714,6 +2719,102 @@ object Tests {
             "unclosed string literalunclosed string literal"
           )
         )
+      )
+    }
+
+  /** The JARs on the class path of users, without their versions, with the Scala versions we test.
+    *
+    * These are scala-kernel-api and its dependencies, that users get without asking for them, and
+    * whose versions take precedence over the ones of the dependencies they add. Update these lists
+    * when a change of dependencies of scala-kernel-api, or a Scala version bump, changes them on
+    * purpose.
+    */
+  private def expectedUserJars(scalaVersion: String): Seq[String] = {
+    val isScala2 = scalaVersion.startsWith("2.")
+    val sbv =
+      if (isScala2) scalaVersion.split('.').take(2).mkString(".")
+      else "3"
+    val shared = Seq(
+      // almond
+      s"api_$sbv",
+      s"scala-kernel-api_$sbv",
+      // our Ammonite fork
+      s"ammonite-compiler_$sbv",
+      s"ammonite-repl-api_$sbv",
+      s"ammonite-util_$sbv",
+      // from ammonite-repl-api
+      s"geny_$sbv",
+      // the coursier API, from scala-kernel-api and ammonite-repl-api
+      "interface",
+      // from ammonite-util (pprint and scala-collection-compat also from scala-kernel-api)
+      s"pprint_$sbv",
+      s"fansi_$sbv",
+      s"sourcecode_$sbv",
+      s"scala-collection-compat_$sbv",
+      "scala-library"
+    )
+    val scala2 = Seq(
+      // from ammonite-compiler
+      s"scalaparse_$sbv",
+      s"fastparse_$sbv",
+      s"scala-xml_$sbv",
+      // the Scala 2 compiler
+      "scala-compiler",
+      "scala-reflect"
+    )
+    // from the Scala 2.13 compiler
+    val scala213 = Seq(
+      "jline",
+      "java-diff-utils"
+    )
+    val scala3 = Seq(
+      // from ammonite-compiler
+      "asm",
+      // the Scala 3 compiler
+      s"scala3-library_$sbv",
+      s"scala3-compiler_$sbv",
+      "scala3-interfaces",
+      s"tasty-core_$sbv",
+      "scala-asm",
+      "compiler-interface",
+      "util-interface"
+    )
+    val specific =
+      if (sbv == "2.12") scala2
+      else if (sbv == "2.13") scala2 ++ scala213
+      else scala3
+    shared ++ specific
+  }
+
+  def userClassPath(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      val expected = expectedUserJars(scalaVersion).map("\"" + _ + "\"").mkString(", ")
+      // Walks the class loaders of the cell up to the system one (excluded, it has the JARs of the
+      // launcher, and on Java 8 its parent has the ones of the JDK), and prints the JARs that
+      // differ from the expected ones, so that a failure lists only those
+      execute(
+        s"""locally {
+           |  def loaders(cl: ClassLoader): List[ClassLoader] =
+           |    if (cl == null || cl == ClassLoader.getSystemClassLoader) Nil
+           |    else cl :: loaders(cl.getParent)
+           |  val jars = loaders(Thread.currentThread().getContextClassLoader)
+           |    .flatMap {
+           |      case cl: java.net.URLClassLoader => cl.getURLs.toList
+           |      case _                           => Nil
+           |    }
+           |    // standalone launchers have URLs like jar:file:/…/launcher!/…/foo-1.0.jar!/
+           |    .map(_.getPath.stripSuffix("!/").split('/').last)
+           |    .filter(name => name.endsWith(".jar") && !name.endsWith("-sources.jar"))
+           |    .map(_.stripSuffix(".jar").replaceFirst("-[0-9].*$$", ""))
+           |    .distinct
+           |  val expected = Seq[String]($expected)
+           |  for (jar <- jars.diff(expected).sorted)
+           |    println(s"unexpected: $$jar")
+           |  for (jar <- expected.diff(jars).sorted)
+           |    println(s"missing: $$jar")
+           |}""".stripMargin,
+        "",
+        stdout = ""
       )
     }
 }

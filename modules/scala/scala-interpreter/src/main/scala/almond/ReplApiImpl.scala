@@ -7,7 +7,7 @@ import almond.interpreter.api.{DisplayData, OutputHandler}
 import ammonite.repl.api.{FrontEnd, ReplLoad}
 import ammonite.repl.{FullReplAPI, SessionApiImpl}
 import ammonite.runtime.Storage
-import ammonite.util.{Bind, Colors, CompilationError, Ref, Res}
+import ammonite.util.{Colors, CompilationError, Ref, Res}
 import ammonite.util.Util.normalizeNewlines
 import fansi.Attr
 import jupyter.{Displayer, Displayers}
@@ -251,8 +251,7 @@ final class ReplApiImpl(
             }
       }
 
-  def replArgs0 = Vector.empty[Bind[_]]
-  def printer   = execute0.printer
+  def printer = execute0.printer
 
   def sess                     = sess0
   val prompt                   = Ref("nope")
@@ -291,9 +290,8 @@ final class ReplApiImpl(
 
   override protected[this] def internal0: FullReplAPI.Internal =
     new FullReplAPI.Internal {
-      def pprinter                      = self.pprinter
-      def colors                        = self.colors
-      def replArgs: IndexedSeq[Bind[_]] = replArgs0
+      def pprinter = self.pprinter
+      def colors   = self.colors
 
       val defaultDisplayer = Displayers.registration().find(classOf[ReplApiImpl.Foo])
 

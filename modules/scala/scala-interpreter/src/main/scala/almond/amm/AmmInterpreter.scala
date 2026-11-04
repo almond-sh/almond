@@ -16,6 +16,13 @@ import scala.language.reflectiveCalls
 
 object AmmInterpreter {
 
+  // Ammonite's predef imports, but the ones of mainargs, that our Ammonite fork doesn't put on the
+  // class path of users any more (these are only used by the @main methods of Ammonite scripts)
+  private def ammonitePredefImports = Imports(
+    ammonite.interp.Interpreter.predefImports.value
+      .filter(_.prefix.map(_.raw) != Seq("_root_", "mainargs"))
+  )
+
   private def almondImports = Imports(
     ImportData("""almond.api.JupyterAPIHolder.value.{
       publish,
@@ -332,7 +339,7 @@ object AmmInterpreter {
       log.debug("Initializing interpreter predef")
 
       val imports = ammonite.main.Defaults.replImports ++
-        ammonite.interp.Interpreter.predefImports ++
+        ammonitePredefImports ++
         almondImports ++
         (if (addToreeApiCompatibilityImport0) toreeApiCompatibilityImports else Imports())
       for ((e, _) <- ammInterp0.initializePredef(Nil, customPredefs, extraBridges, imports))
