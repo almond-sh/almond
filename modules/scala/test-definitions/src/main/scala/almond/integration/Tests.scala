@@ -807,21 +807,20 @@ object Tests {
 
   def inspections(scalaVersion: String)(implicit sessionId: SessionId, runner: Runner): Unit = {
 
-    def sbv = scalaVersion.split('.').take(2).mkString(".")
+    def sbv =
+      if (scalaVersion.startsWith("2.")) scalaVersion.split('.').take(2).mkString(".")
+      else "3"
 
-    val isJava8 = sys.props.get("java.version")
-      .exists(v => v == "1.8" || v.startsWith("1.8."))
-    val extraJars =
-      if (isJava8)
-        // Adding these to workaround issues indexing the kernel launcher in Java 8
-        coursierapi.Fetch.create()
-          .addDependencies(coursierapi.Dependency.of("com.lihaoyi", "os-lib_" + sbv, "0.9.0"))
-          .addClassifiers("_", "sources")
-          .fetch()
-          .asScala
-          .toList
-      else
-        Nil
+    // os-lib isn't on the class path of users, so we add it, along with its sources, to get
+    // the docs of its methods
+    val extraJars = Seq(Nil, Seq("sources")).flatMap { classifiers =>
+      coursierapi.Fetch.create()
+        .addDependencies(coursierapi.Dependency.of("com.lihaoyi", "os-lib_" + sbv, "0.9.0"))
+        .addClassifiers(classifiers: _*)
+        .fetch()
+        .asScala
+        .toList
+    }
 
     runner.withSession("--extra-class-path", extraJars.mkString(File.pathSeparator)) {
       implicit session =>
@@ -1016,9 +1015,10 @@ object Tests {
       val isScala2 = scalaVersion.startsWith("2.")
 
       // scripts are looked up relative to the working directory of the kernel, that we don't
-      // know from here, so we write them from the kernel itself
+      // know from here, so we write them from the kernel itself (with java.nio, as os-lib
+      // isn't on the class path of users)
       execute(
-        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"bar\"\n")""",
+        """java.nio.file.Files.write(java.nio.file.Paths.get("Foo.sc"), "def foo() = \"bar\"\n".getBytes("UTF-8")): Unit""",
         ""
       )
 
@@ -1037,7 +1037,7 @@ object Tests {
 
       // scripts that changed are loaded again
       execute(
-        """os.write.over(os.pwd / "Foo.sc", "def foo() = \"baz\"\n")""",
+        """java.nio.file.Files.write(java.nio.file.Paths.get("Foo.sc"), "def foo() = \"baz\"\n".getBytes("UTF-8")): Unit""",
         ""
       )
 
@@ -1056,7 +1056,12 @@ object Tests {
 
       // via a directive
       execute(
-        """os.write.over(os.pwd / "sub" / "my-script.sc", "def value = 2\n", createFolders = true)""",
+        """locally {
+          |  val path = java.nio.file.Paths.get("sub", "my-script.sc")
+          |  java.nio.file.Files.createDirectories(path.getParent)
+          |  java.nio.file.Files.write(path, "def value = 2\n".getBytes("UTF-8"))
+          |  ()
+          |}""".stripMargin,
         ""
       )
 
@@ -2664,7 +2669,7 @@ object Tests {
         else
           Seq(
             "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
-            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65440)"
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65451)"
           )
 
       execute(
