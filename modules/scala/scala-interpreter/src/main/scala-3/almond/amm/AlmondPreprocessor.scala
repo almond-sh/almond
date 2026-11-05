@@ -1,6 +1,7 @@
 package almond.amm
 
-import ammonite.compiler.{Compiler, DottyParser, Preprocessor}
+import ammonite.compiler.{Compiler, Preprocessor}
+import ammonite.compiler.internal.CompilerInternals
 import ammonite.util.Name
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts._
@@ -116,7 +117,8 @@ class AlmondPreprocessor(
     val reporter   = Compiler.newStoreReporter()
     val sourceFile = SourceFile.virtual("foo", stmt)
     val parseCtx   = ctx.fresh.setReporter(reporter).withSource(sourceFile)
-    val parser     = new DottyParser(sourceFile)(using parseCtx)
+    // the Parser constructor differs across Scala 3 versions, let Ammonite create it
+    val parser     = CompilerInternals.parserMaker.parser(sourceFile)(using parseCtx)
     val trees      = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     if (reporter.hasErrors) None
