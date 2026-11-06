@@ -16,7 +16,7 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
              |import scala.compiletime.ops.*
              |val sv = scala.util.Properties.versionNumberString
              |""".stripMargin,
-          "import scala.compiletime.ops.*" + ls + ls +
+          "import scala.compiletime.ops.*" + ls +
             s"""sv: String = "${KernelLauncher.testLibraryPropertiesScalaVersion}""""
         )
       }

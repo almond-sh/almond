@@ -118,8 +118,8 @@ class AlmondPreprocessor(
     val sourceFile = SourceFile.virtual("foo", stmt)
     val parseCtx   = ctx.fresh.setReporter(reporter).withSource(sourceFile)
     // the Parser constructor differs across Scala 3 versions, let Ammonite create it
-    val parser     = CompilerInternals.parserMaker.parser(sourceFile)(using parseCtx)
-    val trees      = parser.blockStatSeq()
+    val parser = CompilerInternals.parserMaker.parser(sourceFile)(using parseCtx)
+    val trees  = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     if (reporter.hasErrors) None
     else Some(trees)
