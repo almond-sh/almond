@@ -20,9 +20,6 @@ object Tests {
   private val sp = " "
   val ls         = System.lineSeparator()
 
-  private def maybePostImportNewLine(isScala2: Boolean) =
-    if (isScala2) "" else System.lineSeparator()
-
   def jvmRepr()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute("""class Bar(val value: String)""", "defined class Bar")
@@ -108,8 +105,9 @@ object Tests {
         "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
         // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
         // but not for the other ones using stripMargin…
-        s"import scala.concurrent.Future;$sp$ls" +
-          s"import scala.concurrent.ExecutionContext.Implicits.global${maybePostImportNewLine(isScala2)}"
+        // Scala 3 trims the code of imports, Scala 2 keeps the space after the semicolon
+        s"import scala.concurrent.Future;${if (isScala2) sp else ""}$ls" +
+          s"import scala.concurrent.ExecutionContext.Implicits.global"
       )
 
       execute(
@@ -146,8 +144,9 @@ object Tests {
         "import scala.concurrent.Future; import scala.concurrent.ExecutionContext.Implicits.global",
         // Multi-line with stripMargin seems to be a problem on our Windows CI for this test,
         // but not for the other ones using stripMargin…
-        s"import scala.concurrent.Future;$sp$ls" +
-          s"import scala.concurrent.ExecutionContext.Implicits.global${maybePostImportNewLine(isScala2)}"
+        // Scala 3 trims the code of imports, Scala 2 keeps the space after the semicolon
+        s"import scala.concurrent.Future;${if (isScala2) sp else ""}$ls" +
+          s"import scala.concurrent.ExecutionContext.Implicits.global"
       )
 
       execute(
@@ -383,8 +382,6 @@ object Tests {
   ): Unit =
     runner.withSession("--toree-magics") { implicit session =>
 
-      val isScala2 = scalaVersion.startsWith("2.")
-
       val jar = coursierapi.Fetch.create()
         .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
         .fetch()
@@ -404,22 +401,22 @@ object Tests {
         execute(
           s"%AddJar $jarUri" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$" + ls + maybePostImportNewLine(isScala2) +
-            "import picocli.CommandLine" + maybePostImportNewLine(isScala2),
+          "import $cp.$" + ls +
+            "import picocli.CommandLine",
           ignoreStreams = true,
           trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jarUri",
-          "import $cp.$" + maybePostImportNewLine(isScala2),
+          "import $cp.$",
           ignoreStreams = true,
           trimReplyLines = true
         )
 
         execute(
           "import picocli.CommandLine",
-          "import picocli.CommandLine" + maybePostImportNewLine(isScala2)
+          "import picocli.CommandLine"
         )
       }
     }
@@ -429,8 +426,6 @@ object Tests {
     runner: Runner
   ): Unit =
     runner.withSession("--toree-magics") { implicit session =>
-
-      val isScala2 = scalaVersion.startsWith("2.")
 
       val jar = coursierapi.Fetch.create()
         .addDependencies(coursierapi.Dependency.of("info.picocli", "picocli", "4.7.3"))
@@ -453,22 +448,22 @@ object Tests {
         execute(
           s"%AddJar $jar" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$" + maybePostImportNewLine(isScala2) + ls +
-            "import picocli.CommandLine" + maybePostImportNewLine(isScala2),
+          "import $cp.$" + ls +
+            "import picocli.CommandLine",
           ignoreStreams = true,
           trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jar",
-          "import $cp.$" + maybePostImportNewLine(isScala2),
+          "import $cp.$",
           ignoreStreams = true,
           trimReplyLines = true
         )
 
         execute(
           "import picocli.CommandLine",
-          "import picocli.CommandLine" + maybePostImportNewLine(isScala2)
+          "import picocli.CommandLine"
         )
       }
     }
@@ -599,8 +594,6 @@ object Tests {
     runner.withExtraClassPathSession(extraCp)("--toree-magics", "--predef", predefPath.toString) {
       implicit session =>
 
-        val isScala2 = scalaVersion.startsWith("2.")
-
         execute(
           "import picocli.CommandLine",
           errors = Seq(
@@ -611,13 +604,13 @@ object Tests {
 
         execute(
           "%AddJar foo://thing/a/b" + ls,
-          "import $cp.$" + maybePostImportNewLine(isScala2),
+          "import $cp.$",
           trimReplyLines = true
         )
 
         execute(
           "import picocli.CommandLine",
-          "import picocli.CommandLine" + maybePostImportNewLine(isScala2)
+          "import picocli.CommandLine"
         )
     }
   }
@@ -760,8 +753,7 @@ object Tests {
     runner: Runner
   ): Unit = {
 
-    val sbv      = scalaVersion.split('.').take(2).mkString(".")
-    val isScala2 = scalaVersion.startsWith("2.")
+    val sbv = scalaVersion.split('.').take(2).mkString(".")
 
     val testShapelessVersion = "2.3.3" // no need to bump that one
 
@@ -782,7 +774,7 @@ object Tests {
         execute(
           "import shapeless._" + ls +
             """val l = 1 :: "aa" :: true :: HNil""",
-          "import shapeless._" + maybePostImportNewLine(isScala2) + ls +
+          "import shapeless._" + ls +
             """l: Int :: String :: Boolean :: HNil = 1 :: "aa" :: true :: HNil"""
         )
 
@@ -921,7 +913,6 @@ object Tests {
     runner: Runner
   ): Unit =
     runner.withSession() { implicit session =>
-      val isScala2 = scalaVersion.startsWith("2.")
 
       execute(
         """//> using dep "org.typelevel::cats-kernel:2.6.1"
@@ -930,7 +921,7 @@ object Tests {
           |  Monoid.instance[String]("", (a, b) => a + b)
           |    .combineAll(List("Hello", "", ""))
           |""".stripMargin,
-        s"""import cats.kernel._${maybePostImportNewLine(isScala2)}
+        s"""import cats.kernel._
            |msg: String = "Hello"""".stripMargin
       )
     }
@@ -939,7 +930,6 @@ object Tests {
     sessionId: SessionId,
     runner: Runner
   ): Unit = {
-    val isScala2 = scalaVersion.startsWith("2.")
 
     // The natives-* artifacts of lwjgl only contain native libraries. Finding the one of the
     // requested classifier on the class path, but neither the one of the other classifier nor the
@@ -970,7 +960,7 @@ object Tests {
       execute(
         """import $ivy.`org.lwjgl:lwjgl:3.3.3,classifier=natives-macos`
           |""".stripMargin + checks,
-        s"""import $$ivy.$$${maybePostImportNewLine(isScala2)}
+        s"""import $$ivy.$$
            |defined function found
            |linuxNativeLibFound: Boolean = false
            |macOsNativeLibFound: Boolean = true
@@ -986,16 +976,13 @@ object Tests {
     runner: Runner
   ): Unit =
     runner.withSession() { implicit session =>
-
-      val isScala2 = scalaVersion.startsWith("2.")
-
       // jvm-repr ships with Almond, so this only checks that the directive is accepted
       execute(
         """//> using repository "jitpack"
           |//> using dep "com.github.jupyter:jvm-repr:0.4.0"
           |import jupyter._
           |""".stripMargin,
-        "import jupyter._" + maybePostImportNewLine(isScala2)
+        "import jupyter._"
       )
     }
 
@@ -1004,8 +991,6 @@ object Tests {
     runner: Runner
   ): Unit =
     runner.withSession() { implicit session =>
-
-      val isScala2 = scalaVersion.startsWith("2.")
 
       // scripts are looked up relative to the working directory of the kernel, that we don't
       // know from here, so we write them from the kernel itself (with java.nio, as os-lib
@@ -1018,7 +1003,7 @@ object Tests {
       // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
       execute(
         "import $file.Foo",
-        "import $file.$" + maybePostImportNewLine(isScala2),
+        "import $file.$",
         trimReplyLines = true,
         ignoreStreams = true
       )
@@ -1037,7 +1022,7 @@ object Tests {
       // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
       execute(
         "import $file.Foo",
-        "import $file.$" + maybePostImportNewLine(isScala2),
+        "import $file.$",
         trimReplyLines = true,
         ignoreStreams = true
       )
@@ -1164,6 +1149,10 @@ object Tests {
       val res = complete(
         "l.#"
       )
+
+      // Scala 3.10.0 and later don't offer the deprecated ArrowAssoc.→ in completions anymore
+      val offersUnicodeArrow =
+        scalaVersion.startsWith("2.") || Version(scalaVersion) < Version("3.10.0")
 
       val expectedMatches =
         if (scalaVersion.startsWith("2.12"))
@@ -1664,7 +1653,7 @@ object Tests {
             "zipAll",
             "zipWithIndex",
             "→"
-          )
+          ).filter(_ != "→" || offersUnicodeArrow)
       val matches = res.flatMap(_.matches)
       if (matches != expectedMatches) {
         pprint.err.log(expectedMatches)
@@ -2194,7 +2183,7 @@ object Tests {
             ("zipAll", "Method"),
             ("zipWithIndex", "Method"),
             ("→", "Method")
-          )
+          ).filter(_._1 != "→" || offersUnicodeArrow)
 
       val metadata = ujson.read(res.head.metadata.value)
       val types    = metadata.obj("_jupyter_types_experimental")
@@ -2484,8 +2473,6 @@ object Tests {
     runner: Runner
   ): Unit = {
 
-    val isScala2 = scalaVersion.startsWith("2.")
-
     runner.withSession() { implicit session =>
       execute(
         """package thing
@@ -2498,7 +2485,7 @@ object Tests {
       )
       execute(
         "import thing.Thing",
-        "import thing.Thing" + maybePostImportNewLine(isScala2)
+        "import thing.Thing"
       )
       execute(
         "val n = Thing.value + Thing.value",
@@ -2775,10 +2762,14 @@ object Tests {
       s"scala3-compiler_$sbv",
       "scala3-interfaces",
       s"tasty-core_$sbv",
-      "scala-asm",
       "compiler-interface",
       "util-interface"
-    )
+    ) ++ {
+      // the Scala 3 compiler depends on the ASM JARs themselves rather than on scala-asm since
+      // 3.10.0 (asm itself is already there, from ammonite-compiler)
+      if (isScala2 || Version(scalaVersion) < Version("3.10.0")) Seq("scala-asm")
+      else Seq("asm-analysis", "asm-commons", "asm-tree", "asm-util")
+    }
     val specific =
       if (sbv == "2.12") scala2
       else if (sbv == "2.13") scala2 ++ scala213

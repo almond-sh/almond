@@ -1,10 +1,10 @@
 package almond.internals
 
 import ammonite.compiler.Compiler
+import ammonite.compiler.internal.CompilerInternals
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
-import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.util.SourceFile
 
 import scala.collection.mutable
@@ -25,7 +25,9 @@ private[internals] object ScalaSources {
     val ctx1 =
       try ctx0.setSetting(ctx0.settings.source, "3.0-migration")
       catch { case NonFatal(_) => ctx0 }
-    new Parsers.Parser(source)(using ctx1).parse()
+    // The Parser constructor differs across Scala 3 versions (it takes an extra parameter
+    // since 3.10.0), so we let Ammonite create it for the compiler we run
+    CompilerInternals.parserMaker.parser(source)(using ctx1).parse()
   }
 
   /** The source code of the default arguments of a method definition, by parameter name */

@@ -3,7 +3,10 @@ package almondbuild
 import coursier.version.Version
 
 object ScalaVersions {
-  def scala3Latest = "3.9.0"
+  def scala3Latest = "3.10.0"
+  // The LTS series we support besides the latest Scala 3 version: 3.9.x and 3.3.x. Scala Steward
+  // would bump them to the latest version, so we update them by hand.
+  def scala3Lts    = "3.9.0" // scala-steward:off
   def scala3Compat = "3.3.8" // scala-steward:off
   def scala213     = "2.13.18"
   def scala212     = "2.12.21"
@@ -35,6 +38,7 @@ object ScalaVersions {
   // version - our Ammonite fork does too, and the kernel runs with the one users pick.
   val all = Seq(
     scala3Latest,
+    scala3Lts,
     scala3Compat
   ) ++ patchVersions(scala213Oldest, scala213) ++ patchVersions(scala212Oldest, scala212)
 

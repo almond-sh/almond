@@ -1564,6 +1564,7 @@ object ci extends Module {
         ScalaVersions.scala212,
         ScalaVersions.scala213,
         ScalaVersions.scala3Compat,
+        ScalaVersions.scala3Lts,
         ScalaVersions.scala3Latest
       )
       val isSnapshot = almondVersion.endsWith("-SNAPSHOT")

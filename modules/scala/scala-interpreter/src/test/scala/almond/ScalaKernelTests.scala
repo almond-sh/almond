@@ -42,8 +42,6 @@ object ScalaKernelTests extends TestSuite {
 
   implicit def runner: Dsl.Runner = TestUtil.kernelRunner(threads, interpreterEc, cancellablesEc)
 
-  val maybePostImportNewLine = if (TestUtil.isScala2) "" else System.lineSeparator()
-
   val sp = " "
   val ls = System.lineSeparator()
 
@@ -297,12 +295,9 @@ object ScalaKernelTests extends TestSuite {
 
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
 
-      val tpeName =
-        if (scalaVersion.startsWith("2.")) "java.net.URL"
-        else "URL"
       kernel.execute(
         """val url = Thread.currentThread().getContextClassLoader.getResource("foo")""",
-        s"url: $tpeName = https://google.fr"
+        "url: java.net.URL = https://google.fr"
       )
 
       kernel.execute(
@@ -828,20 +823,17 @@ object ScalaKernelTests extends TestSuite {
       val suffix = if (transitive) " --transitive" else ""
       kernel.execute(
         s"%AddDeps     com.github.alexarchambault scalacheck-shapeless_1.16_$sbv 1.3.1" + suffix,
-        if (TestUtil.isScala2)
-          "import $ivy.$"
-        else
-          "import $ivy.$                                                                " + maybePostImportNewLine,
+        "import $ivy.$",
         ignoreStreams = true // ignoring coursier messages (that it prints when downloading things)
       )
       kernel.execute(
         "import org.scalacheck.ScalacheckShapeless",
-        "import org.scalacheck.ScalacheckShapeless" + maybePostImportNewLine
+        "import org.scalacheck.ScalacheckShapeless"
       )
       if (transitive)
         kernel.execute(
           "import org.scalacheck.Arbitrary",
-          "import org.scalacheck.Arbitrary" + maybePostImportNewLine
+          "import org.scalacheck.Arbitrary"
         )
       else
         kernel.execute(
