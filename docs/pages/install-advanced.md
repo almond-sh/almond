@@ -125,12 +125,12 @@ The newer launcher allows users to configure Almond in the first cells of notebo
 (more precisely, before any actual code - that is, not comments or blank lines - needs to be compiled), with
 directives like
 ```scala
-//> using scala "2.12"
 //> using scala "@SCALA212_VERSION@"
 //> using jvm "17"
 //> using javaOpt "-Xmx10g"
 //> using javaOpt "-Dfoo=bar"
 ```
+(`//> using scala` also accepts short Scala versions, like `"2.12"` or `"3"`.)
 
 The newer launcher can be installed with
 ```text
@@ -139,10 +139,10 @@ $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_V
 (`sh.almond:launcher_3:@VERSION@` also works as a dependency in case `cs` is having issues finding out the
 `_3` suffix on its own)
 
-Just like above, you can also generate a launcher on your own first, then use it install Almond:
+Just like above, you can also generate a launcher on your own first, then use it to install Almond:
 ```text
-$ cs bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ -o almond --install
-$ ./almond --install
+$ cs bootstrap sh.almond::launcher:@VERSION@ -o almond
+$ ./almond --scala @SCALA213_VERSION@ --install
 $ rm -f almond
 ```
 
@@ -150,7 +150,7 @@ Important thing to note here: the Scala version must be passed as argument to Al
 to `cs`. The launcher uses its own Scala version (Scala 3), then, later on, spawns the same Almond kernel as above
 on its own, that takes over as a kernel. The argument passed via `--scala` corresponds to the default
 Scala version that will be used, if users don't specify a version of their own via a directive like
-`//> using scala "@SCALA213_VERSION@"`. Specify that option is optional: without it, Almond will default
+`//> using scala "@SCALA213_VERSION@"`. That option is optional: without it, Almond will default
 to the Scala 3 version that Almond uses at the time of its release (which should be the latest stable Scala 3
 version at the time of the release).
 
@@ -325,6 +325,7 @@ This can be achieved the following way, with the former launcher:
 ```text
 $ export COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
 $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- \
+    --install \
     --env "COURSIER_REPOSITORIES=$COURSIER_REPOSITORIES"
 ```
 
