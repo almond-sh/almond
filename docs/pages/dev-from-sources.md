@@ -243,7 +243,7 @@ oldest full Scala version we support for each of them - those are the cross valu
 to the modules themselves, while their tests are cross-built over the full Scala versions:
 ```text
 $ ./mill -i dev.binaryScalaVersions
-3.3.8
+3.3.9
 2.13.3
 2.12.8
 ```
