@@ -8,15 +8,15 @@ object UserDependenciesTests extends TestSuite {
 
     test("pick") {
       val known =
-        Seq("3.10.0", "3.9.0", "3.3.8", "2.13.18", "2.13.11", "2.13.3", "2.12.21", "2.12.8")
+        Seq("3.10.0", "3.9.0", "3.3.9", "2.13.18", "2.13.11", "2.13.3", "2.12.21", "2.12.8")
       test("known") {
         assert(UserDependencies.pick(known, "2.13.11") == Some("2.13.11"))
-        assert(UserDependencies.pick(known, "3.3.8") == Some("3.3.8"))
+        assert(UserDependencies.pick(known, "3.3.9") == Some("3.3.9"))
       }
       test("closest earlier one") {
         assert(UserDependencies.pick(known, "2.13.12") == Some("2.13.11"))
         assert(UserDependencies.pick(known, "2.13.19") == Some("2.13.18"))
-        assert(UserDependencies.pick(known, "3.5.2") == Some("3.3.8"))
+        assert(UserDependencies.pick(known, "3.5.2") == Some("3.3.9"))
         assert(UserDependencies.pick(known, "3.9.1") == Some("3.9.0"))
         assert(UserDependencies.pick(known, "3.11.0-RC1") == Some("3.10.0"))
       }
