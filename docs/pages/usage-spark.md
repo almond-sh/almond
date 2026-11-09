@@ -3,38 +3,65 @@ title: Spark
 ---
 
 Almond comes with a Spark integration module called *almond-spark*, which allows you to connect to a Spark cluster and
-to run Spark calculations interactively from a Jupyter notebook.
-
-It is based on [ammonite-spark](https://github.com/alexarchambault/ammonite-spark), adding Jupyter specific features
+to run Spark calculations interactively from a Jupyter notebook. It adds Jupyter specific features to Spark sessions,
 such as progress bars and cancellation for running Spark computations.
 
-*ammonite-spark* handles loading Spark in a clever way, and does not rely on a specific Spark distribution.
-Because of that, you can use it with any Spark 2.x version.
-The only limitation is that the Scala version of Spark and the running Almond kernel must match, so make sure your
-kernel uses the same Scala version as your Spark cluster.
-Spark 2.0.x - 2.3.x requires Scala 2.11. Spark 2.4.x supports both Scala 2.11 and 2.12.
+*almond-spark* lives in [its own repository](https://github.com/almond-sh/almond-spark) (formerly *ammonite-spark*).
+It handles loading Spark in a clever way, and does not rely on a specific Spark distribution: Spark is loaded in the
+notebook session like any other library, and *almond-spark* takes care of passing the right JARs to the executors.
+It is tested with Spark 3.x and 4.x.
 
-Note that as of almond 0.7.0, almond only supports Scala 2.12 and therefore requires Spark 2.4.x for Scala 2.12.
+The Scala version of Spark and the one of the Almond kernel must match: use a Scala 2.13 kernel for Spark 4.x
+and for the Scala 2.13 builds of Spark 3.x, and a Scala 2.12 kernel for the Scala 2.12 builds of Spark 3.x
+(see [Multiple kernels](install-multiple.md) to install both). Spark doesn't support Scala 3.
 
-For more information, see the [README](https://github.com/alexarchambault/ammonite-spark/blob/master/README.md) of ammonite-spark.
-
-To use it, import the *almond-spark* dependency as well as Spark 2.x itself.
+To use it, import Spark:
 
 ```scala
-import $ivy.`org.apache.spark::spark-sql:2.4.0` // Or use any other 2.x version here
-import $ivy.`sh.almond::almond-spark:_` // Not required since almond 0.7.0 (will be automatically added when importing spark)
+import $ivy.`org.apache.spark::spark-sql:3.5.8` // Or any other Spark 3.x or 4.x version
 ```
+
+This also adds *almond-spark* to the session (`sh.almond::almond-spark:@AMMONITE_SPARK_VERSION@` for almond `@VERSION@`).
+It can also be added explicitly, if needed, with
+```scala
+import $ivy.`sh.almond::almond-spark:_`
+```
+where the `_` version stands for the version almond was built with.
 
 Usually you want to disable logging in order to avoid polluting your cell outputs:
 
 ```scala
 import org.apache.log4j.{Level, Logger}
 Logger.getLogger("org").setLevel(Level.OFF)
-
 ```
 
-The `_` version of *almond-spark* above stands for the version almond was built with (`@AMMONITE_SPARK_VERSION@`
-for almond `@VERSION@`), which is also the one added automatically when Spark is imported.
+## Java options
+
+Spark accesses JDK internals, that need to be opened with `--add-opens` options on Java 17 and later.
+`spark-submit` and `spark-shell` pass these themselves, but in notebooks, Spark runs in the kernel JVM,
+that needs to be started with them. With the [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher),
+pass them in the first cell of a notebook, like
+```scala
+//> using javaOpt "--add-opens=java.base/java.lang=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.io=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.net=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.nio=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.util=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/sun.security.action=ALL-UNNAMED"
+//> using javaOpt "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED"
+```
+or pass them with `--java-opt` when installing the kernel. With the former launcher, pass them via the
+`JDK_JAVA_OPTIONS` environment variable of the kernel, that can be set with `--env` when installing it.
+
+For more information, see the [README](https://github.com/almond-sh/almond-spark/blob/main/README.md) of almond-spark.
+
+## Creating a session
 
 Then create a `SparkSession` using the `NotebookSparkSessionBuilder` provided by *almond-spark*:
 
@@ -87,8 +114,8 @@ the one `spark-shell` or `spark-submit` run from on the same machine, for a few 
 - the machine running the kernel may not have access to Maven Central at all.
 
 *almond-spark* supports that via the `SPARK_HOME` environment variable. This is how the
-[standalone and "Spark distribution" tests](https://github.com/alexarchambault/ammonite-spark/blob/main/TESTS.md)
-of ammonite-spark load Spark. It involves three steps.
+[standalone and "Spark distribution" tests](https://github.com/almond-sh/almond-spark/blob/main/TESTS.md)
+of almond-spark load Spark. It involves three steps.
 
 ### Make `SPARK_HOME` visible to the kernel
 
@@ -136,7 +163,7 @@ interp.load.cp {
 Two kinds of JARs are left out:
 - the Scala JARs (`scala-library`, `scala-reflect`, `scala-compiler`): the kernel already runs with its own,
   loading those of the distribution alongside would clash with them,
-- Spark's own REPL JAR (`spark-repl_*`), like the ammonite-spark tests do. Up to Spark 3.4, that JAR contains
+- Spark's own REPL JAR (`spark-repl_*`), like the almond-spark tests do. Up to Spark 3.4, that JAR contains
   the `ExecutorClassLoader` that fetches the classes compiled from notebook cells, and *almond-spark* only loads
   its own version of it when `spark-repl_*` isn't on the classpath. Since Spark 3.5, that class loader lives in
   `spark-core`, and leaving out `spark-repl_*` makes no difference.
