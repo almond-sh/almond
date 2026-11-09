@@ -303,7 +303,7 @@ $ .github/scripts/selective-prepare.sh "$(git merge-base master HEAD)"
 ```
 then run the tests affected by the changes since then with
 ```text
-$ ./mill selective.run '__[2.13.14].test'
+$ ./mill selective.run '__[2.13.3].test'
 $ ./mill selective.run '__.test[2.13.18].testForked'
 ```
 Use `selective.resolve` rather than `selective.run` to only print the tasks that would be run.
@@ -314,36 +314,20 @@ This is what CI does on pull requests.
 $ ./mill 'scala.scala-kernel[2.13.3].compile'
 ```
 
-### Generate Metals configuration files
+### Set up an IDE
 
-It is recommended to generate Metals configuration files manually, rather
-than letting Metals load the project itself. In order to do that, run
+Mill supports IDEs via [BSP](https://build-server-protocol.github.io), that both
+[Metals](https://scalameta.org/metals) and [IntelliJ IDEA](https://www.jetbrains.com/idea)
+rely on. Generate the BSP configuration files of the project with
 ```text
-$ ./mill mill.contrib.Bloop/install
+$ ./mill --bsp-install
 ```
+then open the project in your IDE, and choose to import it via BSP if asked. See the
+[Mill documentation](https://mill-build.org/mill/cli/installation-ide.html) for more details.
 
-If you're using Metals from VSCode, you can then run the
-"Metals: Connect to build server" command to take into account the newly
-generated files.
-
-If the command above takes too long to run, comment out Scala versions in
-`deps.sc`. If no 2.12 versions are left, also comment out the few 2.12-specific
-projects in `build.sc` (look for `212` to find them). Same if no 2.13 versions
-are left (look for `213` to spot 2.13-specific projects).
-
-### Generate IntelliJ IDEA configuration files
-
-It is recommended to [manually generate IntelliJ configuration files](https://com-lihaoyi.github.io/mill/mill/Installation_IDE_Support.html#_intellij_idea_support),
-rather than letting IntelliJ load the project itself. In order to do that, run
-```text
-$ ./mill mill.scalalib.GenIdea/idea
-```
-
-You can then open the project in IntelliJ.
-IntelliJ should also automatically pick those files when they are overwritten.
-
-Just like for Metals above, you may benefit from disabling all but one Scala
-version (see above for more details).
+The almond modules are cross-built for many Scala versions. Importing them all can take a
+while: to speed that up, you can temporarily trim the lists of Scala versions in
+`mill-build/src/almondbuild/ScalaVersions.scala`.
 
 ## Validate the example notebooks
 
@@ -365,7 +349,7 @@ $ ./mill -i 'scala.examples[3.10.0].test'
 
 Optionally, you can pass a glob to filter notebook names:
 ```text
-$ ./mill -i 'scala.examples[2.12.20].test' 'almond.examples.Examples.plotly*'
+$ ./mill -i 'scala.examples[@SCALA212_VERSION@].test' 'almond.examples.Examples.plotly*'
 ```
 
 Set `ALMOND_UPDATE_EXAMPLES=1` to update the notebooks from what the tests get. See
