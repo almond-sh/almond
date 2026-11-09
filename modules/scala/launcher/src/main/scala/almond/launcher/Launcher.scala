@@ -1,6 +1,7 @@
 package almond.launcher
 
 import almond.channels.{Channel, Connection, Message => RawMessage}
+import almond.channels.relay.RelayServer
 import almond.channels.zeromq.ZeromqThreads
 import almond.cslogger.NotebookCacheLogger
 import almond.directives.KernelOptions
@@ -16,6 +17,7 @@ import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import dependency.ScalaParameters
@@ -32,7 +34,7 @@ import scala.concurrent.duration.Duration
 object Launcher extends CaseApp[LauncherOptions] {
 
   private def actualKernelCommand(
-    connectionFile: String,
+    relayFile: os.Path,
     msgFileOpt: Option[os.Path],
     currentCellCount: Int,
     options: LauncherOptions,
@@ -189,8 +191,11 @@ object Launcher extends CaseApp[LauncherOptions] {
         .filter(_.nonEmpty)
         .mkString(File.pathSeparator),
       "coursier.bootstrap.launcher.Launcher",
-      "--connection-file",
-      connectionFile,
+      // We keep the sockets the frontend connects to bound, and relay messages between them and
+      // the actual kernel. Letting the actual kernel bind the same ports again after we
+      // release them would leave a window during which other processes could bind them.
+      "--relay-file",
+      relayFile,
       "--initial-cell-count",
       currentCellCount,
       msgFileArgs,
@@ -216,7 +221,14 @@ object Launcher extends CaseApp[LauncherOptions] {
     javaOption.startsWith("-XX:MaxRAM=") ||
     javaOption.startsWith("-XX:MaxRAMPercentage=")
 
-  private def launchActualKernel(proc: os.proc): Unit = {
+  private def launchActualKernel(
+    proc: os.proc,
+    relayServer: RelayServer,
+    relayFile: os.Path,
+    conn: Connection,
+    logCtx: LoggerContext,
+    ioRuntime: IORuntime
+  ): Int = {
 
     System.err.println(s"Launching ${proc.command.flatMap(_.value).mkString(" ")}")
     val p = proc.spawn(stdin = os.Inherit, stdout = os.Inherit)
@@ -238,6 +250,15 @@ object Launcher extends CaseApp[LauncherOptions] {
           }
       }
     Runtime.getRuntime.addShutdownHook(hook)
+    val socketOpt =
+      try relayServer.accept(() => p.isAlive())
+      finally os.remove(relayFile)
+    socketOpt match {
+      case Some(socket) =>
+        RelayServer.forward(conn, socket, logCtx).unsafeRunSync()(ioRuntime)
+      case None =>
+        System.err.println("Sub-kernel exited before connecting to the launcher")
+    }
     p.waitFor()
     try Runtime.getRuntime.removeShutdownHook(hook)
     catch {
@@ -247,8 +268,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     }
     val exitCode = p.exitCode()
     System.err.println(s"Sub-kernel exited with return code $exitCode")
-    if (exitCode != 0)
-      sys.exit(exitCode)
+    exitCode
   }
 
   def run(options: LauncherOptions, remainingArgs: RemainingArgs): Unit = {
@@ -353,8 +373,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       .unsafeRunSync()(kernelThreads.ioRuntime)
 
     // If we're passed a registration file (kernel startup handshake), we bind random ports and send
-    // them to the registration service ourselves, and pass a regular connection file with those
-    // ports to the actual kernel
+    // them to the registration service ourselves (the actual kernel then gets messages through us,
+    // see RelayServer)
     val kernelConnectionFile = registrationOpt match {
       case Some(registration) =>
         val content = writeToArray(JsonConnection.fromParams(registration.connectionParameters))
@@ -429,12 +449,20 @@ object Launcher extends CaseApp[LauncherOptions] {
       new LauncherOutputHandler(firstMessage, session, conn, kernelThreads.ioRuntime)
     }
 
+    val relayServer = RelayServer.create()
+    val relayFile = os.temp(
+      relayServer.relayFile.asJson,
+      prefix = "almond-relay-",
+      suffix = ".json",
+      perms = if (scala.util.Properties.isWin) null else "rw-------"
+    )
+
     val maybeActualKernelCommand =
       try {
         val (launcherParams, kernelParams) =
           interpreter.params.processCustomDirectives(interpreter.kernelOptions)
         val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
-          kernelConnectionFile,
+          relayFile,
           leftoverMessagesFileOpt,
           interpreter.lineCount,
           options,
@@ -483,25 +511,43 @@ object Launcher extends CaseApp[LauncherOptions] {
     for (outputHandler <- outputHandlerOpt)
       outputHandler.done()
 
-    try
-      conn.close(partial = false, lingerDuration = options.lingerDuration)
-        .unsafeRunSync()(kernelThreads.ioRuntime)
-    catch {
-      case NonFatal(e) =>
-        throw new Exception(e)
-    }
+    def closeConnection(): Unit = {
+      try
+        conn.close(partial = false, lingerDuration = options.lingerDuration)
+          .unsafeRunSync()(kernelThreads.ioRuntime)
+      catch {
+        case NonFatal(e) =>
+          throw new Exception(e)
+      }
 
-    log.debug("Closing ZeroMQ context")
-    IO(zeromqThreads.context.close())
-      .evalOn(zeromqThreads.selectorOpenCloseEces)
-      .unsafeRunSync()(kernelThreads.ioRuntime)
-    log.debug("ZeroMQ context closed")
+      log.debug("Closing ZeroMQ context")
+      IO(zeromqThreads.context.close())
+        .evalOn(zeromqThreads.selectorOpenCloseEces)
+        .unsafeRunSync()(kernelThreads.ioRuntime)
+      log.debug("ZeroMQ context closed")
+    }
 
     maybeActualKernelCommand match {
       case Right(actualKernelCommand0) =>
         val proc0 = os.proc(actualKernelCommand0.commandChunks, remainingArgs.unparsed)
-        launchActualKernel(proc0)
+        val exitCode =
+          try
+            launchActualKernel(
+              proc0,
+              relayServer,
+              relayFile,
+              conn,
+              logCtx,
+              kernelThreads.ioRuntime
+            )
+          finally
+            closeConnection()
+        if (exitCode != 0)
+          sys.exit(exitCode)
       case Left(e) =>
+        relayServer.close()
+        os.remove(relayFile)
+        closeConnection()
         throw new Exception(e)
     }
   }

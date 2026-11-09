@@ -123,6 +123,10 @@ final case class Options(
   @Hidden
     leftoverMessages: Option[String] = None,
 
+  @HelpMessage("JSON file telling how to connect to the launcher that started this kernel, used instead of a connection file")
+  @Hidden
+    relayFile: Option[String] = None,
+
   @HelpMessage("Number of cells run before starting this kernel")
   @Hidden
     initialCellCount: Option[Int] = None,
