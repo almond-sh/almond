@@ -2,6 +2,14 @@
 title: Options
 ---
 
+These are the options of the kernel launcher installed by the default
+[installation command](quick-start-install.md). Many of them are also accepted by the
+[newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher),
+either directly, or after an extra `--` (see [below](#newer-launcher-options)).
+
+Pass these options along `--install`, so that they get written in the kernel spec, and
+are passed to the kernel each time Jupyter starts it.
+
 Passing flags, like `--flag`, sets them to true. Use `--flag=false` (note the `=` sign)
 to set them to false.
 
@@ -57,7 +65,19 @@ is only used if the `JUPYTER_USE_PROGRAMDATA` environment variable is set, as no
 can create directories under `%PROGRAMDATA%`.
 
 #### `--jupyter-path`
+
 Path to your Jupyter kernels directory, e.g. `/opt/conda/share/jupyter/kernels`
+
+#### `--jupyter-command`
+
+The `jupyter` command that Almond runs to find the directories Jupyter looks for kernels in,
+either a name to look for in the `PATH` or a path (default: `jupyter`). Pass an empty value not
+to run it. See [Where the kernel gets installed](install-advanced.md#where-the-kernel-gets-installed).
+
+#### `--require-jupyter`
+
+Make the installation fail if the `jupyter` command can't be run, rather than falling back to
+the default Jupyter directories.
 
 #### `--logo`
 
@@ -81,6 +101,14 @@ To override that behavior, pass `--arg`s or `--command` options. `--arg` allows 
 --command "/path/to/executable first-arg second-arg"
 ```
 which is latter split at space chars.
+
+#### `--env`
+
+Set an environment variable in the kernel spec, that Jupyter sets when starting the kernel.
+Can be repeated. Use like
+```bash
+--env SPARK_HOME=/opt/spark --env COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
+```
 
 #### `--copy-launcher`
 
@@ -196,9 +224,32 @@ Run some code right before the session starts. Makes the kernel start fail if th
 doesn't compile or throws an exception. Use like
 ```bash
 --predef-code "
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
 "
 ```
+
+#### `--predef`
+
+Run the code of a file right before the session starts, like `--predef-code` does. Can be
+repeated. Use like
+```bash
+--predef /path/to/predef.sc
+```
+
+#### `--color`
+
+Whether to color the results of cells, like `n: Int = 2` (default: true). Disable with
+```bash
+--color=false
+```
+
+#### `--compile-only`
+
+Only compile the code of cells, without running it.
+
+#### `--disable-cache`
+
+Disable the compilation cache of Ammonite.
 
 #### `--auto-update-vars`
 
@@ -220,8 +271,8 @@ See [Auto-updated variables](api-jupyter.md#auto-updated-variables).
 Add some Maven repositories right when a kernel starts. (`~/.ivy2/local` and Maven Central are
 added by default.) Use like
 ```bash
---extra-repository https://oss.sonatype.org/content/repositories/snapshots
---extra-repository sonatype:staging
+--extra-repository https://central.sonatype.com/repository/maven-snapshots
+--extra-repository https://artifacts.company.com/maven
 ```
 
 #### `--dependency`
@@ -251,9 +302,23 @@ of these JARs only if their source JARs are passed too, like
 
 #### `--auto-dependency`
 
+Automatically add a dependency when a given module gets loaded, like
+```bash
+--auto-dependency "org.typelevel::cats-core=>org.typelevel::cats-effect:3.5.4"
+```
+Can be repeated. By default, `sh.almond::almond-spark` gets added when Spark is loaded (see
+[Spark](usage-spark.md)), and `sh.almond::almond-scalapy` when ScalaPy is loaded. Disable these
+defaults with `--default-auto-dependencies=false`.
+
 #### `--force-property`
 
+Force a Maven property during dependency resolution, like `--force-property key=value`. Can be
+repeated.
+
 #### `--profile`
+
+Enable a Maven profile during dependency resolution, like `--profile name`, or disable it, like
+`--profile '!name'`. Can be repeated.
 
 
 ## Internals
@@ -267,22 +332,48 @@ Sets the kernel log level. Can be any of
 - `info`,
 - `debug`.
 
-#### `--special-loader`
+#### `--log-to`
+
+Write the kernel logs to a file, rather than to the standard error, like
+```bash
+--log debug --log-to /tmp/almond.log
+```
+
+#### `--quiet`
+
+Whether not to copy what user code prints to the standard output and error of the kernel
+process (default: true). What user code prints is sent to the front-end either way.
+
+#### `--trap-output`
+
+Don't send what user code prints to the standard output and error to the front-end. It
+goes to the standard output and error of the kernel process instead.
+
+#### `--specific-loader`
+
+Whether to load user code from the class loader of the user-facing modules of Almond, rather
+than from the context class loader (default: true). See
+[Isolation of Almond internal dependencies](install-advanced.md#isolation-of-almond-internal-dependencies).
 
 #### `--use-thread-interrupt`
 
-Whether to use 'Thread.interrupt' method or deprecated 'Thread.stop' method (default) when interrupting kernel.
+Whether to stop running cells with `Thread.interrupt`, rather than with the deprecated
+`Thread.stop` (default) when interrupting the kernel. As `Thread.stop` isn't supported
+any more from JDK 20 on, interrupt messages (see [`--interrupt-via-message`](#--interrupt-via-message))
+always use `Thread.interrupt` on these JDKs. Note that `Thread.interrupt` only stops code
+that checks for interruptions, like `Thread.sleep` or blocking I/O calls.
 
 ## Jupyter-related
 
 #### `--interrupt-via-message`
 
-Whether to ask front-ends to send interrupt messages via SIGINT (default)
-or [a zeromq message](https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html#kernel-interrupt).
+Whether to ask front-ends to interrupt the kernel by sending it
+[an interrupt message](https://jupyter-client.readthedocs.io/en/stable/messaging.html#kernel-interrupt),
+rather than a SIGINT signal (default).
 
 #### `--banner`
 
-Add extra messages to the banner of this kernel (shown via Help > About in Jupyter classic).
+Add extra messages to the banner of this kernel (shown via Help > About the Scala Kernel in JupyterLab).
 Use like
 ```bash
 --banner "
@@ -293,13 +384,16 @@ Some more
 
 #### `--link`
 
-Add entries to the Help menu (Jupyter classic). Use like
+Add entries to the Help menu of front-ends. Use like
 ```bash
 --link "https://github.com|GitHub"
 --link "https://google.com|Google"
 ```
 
 #### `--connection-file`
+
+Path to the connection file that Jupyter passes to the kernel when starting it. This is
+written in the kernel spec upon installation, and doesn't need to be passed by hand.
 
 #### `--username`
 
@@ -319,6 +413,27 @@ in the kernel spec, like
 --install --max-message-size 2g
 ```
 
+#### `--variable-inspector`
+
+Whether to enable support for the
+[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)
+JupyterLab extension. By default, it gets enabled when the extension asks for it. Disable it with
+`--variable-inspector=false`.
+
+#### `--scalafmt`
+
+Whether to format cells with [scalafmt](https://scalameta.org/scalafmt) when front-ends ask for it,
+like the [almond-scalafmt](https://github.com/almond-sh/almond-scalafmt) JupyterLab extension does
+(default: true).
+
+#### `--use-notebook-coursier-logger`
+
+Show the progress of dependency downloads in the notebook, rather than in the kernel logs.
+
+#### `--metabrowse`
+
+Kept for compatibility, currently has no effect.
+
 ## Other
 
 #### `--toree-magics`
@@ -326,5 +441,33 @@ in the kernel spec, like
 Enable experimental support for [Toree](https://toree.apache.org) magics.
 
 Simple line magics such as `%AddDeps` (always assumed to be transitive as of writing this, `--transitive` is just ignored),
-`%AddJar`, and cell magics such as `%%html` or `%%javascript` are supported. Note that `%%javascript` only works from Jupyter
-classic, as JupyterLab doesn't allow for random javascript code execution.
+`%AddJar`, and cell magics such as `%%html` or `%%javascript` are supported.
+See [Enabling Toree compatibility](install-advanced.md#enabling-toree-compatibility) for more details.
+
+#### `--toree-api`
+
+Enable basic support for the Toree API. See [Toree API](install-advanced.md#toree-api).
+
+#### `--toree-compatibility`
+
+Same as `--toree-magics` and `--toree-api` together.
+
+## Newer launcher options
+
+The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
+accepts most of the options above directly, along with a few options of its own:
+
+- `--scala`: the default Scala version of the notebooks, that users can change with a
+  `//> using scala` directive,
+- `--java-opt`: a Java option to pass to the kernel, like `--java-opt -Xmx4g`
+  (see [Memory](install-advanced.md#memory)), can be repeated,
+- `--extra-startup-class-path`: JARs to add to the class path of `java` itself
+  (see [Custom URL protocol support](install-advanced.md#custom-url-protocol-support)),
+- `--shared-dependencies`: dependencies to add to the user-facing part of the Almond class path.
+
+The other options of the kernel can be passed after an extra `--`, like
+```text
+$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ --install -- --toree-api
+```
+
+Run the launchers with `--help` to list all the options they accept.
