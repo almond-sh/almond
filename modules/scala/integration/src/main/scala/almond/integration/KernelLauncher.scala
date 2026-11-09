@@ -650,15 +650,21 @@ class KernelLauncher(
         val specFile = dir / kernelId / "kernel.json"
         val spec     = readFromArray(os.read.bytes(specFile))(KernelSpec.codec)
 
-        // Kernel specs run "java", that a JVM looks up in its own PATH when starting a process,
-        // rather than in the PATH it passes to that process
-        val argv = spec.argv match {
-          case "java" :: args => kernelJvm.java :: args
-          case other          => other
-        }
+        // The kernel spec runs the JVM it was installed with, kernelJvm, and points JAVA_HOME
+        // at it
+        assert(
+          spec.argv.headOption.exists { cmd =>
+            cmd == kernelJvm.java ||
+            java.nio.file.Files.isSameFile(
+              java.nio.file.Paths.get(cmd),
+              java.nio.file.Paths.get(kernelJvm.java)
+            )
+          },
+          s"Unexpected kernel command: ${spec.argv.mkString(" ")}"
+        )
         val f: os.Path => os.Shellable =
           connFile =>
-            argv.map {
+            spec.argv.map {
               case "{connection_file}" => connFile: os.Shellable
               case arg                 => arg: os.Shellable
             }

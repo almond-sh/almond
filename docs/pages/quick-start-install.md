@@ -9,18 +9,7 @@ beforehand, like with `pip install jupyterlab` (see the
 [JupyterLab installation instructions](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html)
 for other ways to install it).
 
-A Java Virtual Machine (JVM) needs to be installed on your system. You
-can check if a JVM is installed by running
-```text
-$ java -version
-openjdk version "21.0.11" 2026-04-21 LTS
-OpenJDK Runtime Environment Temurin-21.0.11+10 (build 21.0.11+10-LTS)
-OpenJDK 64-Bit Server VM Temurin-21.0.11+10 (build 21.0.11+10-LTS, mixed mode, sharing)
-```
-If you don't have a JVM yet, we recommend installing [Eclipse Temurin](https://adoptium.net)
-version 17 or later. (Almond runs on Java 8 or later, but Scala 3.8 and later require Java 17.)
-
-Almond can then be fetched and installed with the
+Almond can be fetched and installed with the
 [coursier](https://get-coursier.io/docs/cli-installation) command-line, `cs`, like
 ```text
 $ curl -fL "https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-linux.gz" | gzip -d > cs
@@ -47,6 +36,25 @@ these Almond versions correctly.
 
 Note the `--` before `--install`, separating the arguments passed to Almond
 from the ones handled by coursier.
+
+Almond runs on a Java Virtual Machine (JVM), that you don't need to install yourself:
+`cs` uses the JVM of your system if it finds one, and downloads one otherwise.
+The kernel then runs on the JVM it was installed with, whether it's on your `PATH` or not,
+and gets it as `JAVA_HOME`. To install it with another JVM, pass `--jvm` to `cs`, like
+```text
+$ ./cs launch --use-bootstrap --jvm 21 almond -- --install
+```
+(Almond runs on Java 8 or later, but Scala 3.8 and later require Java 17.)
+
+JVMs that `cs` downloads land in the coursier cache, and are unpacked in the coursier
+archive cache, under
+- `~/.cache/coursier/v1` and `~/.cache/coursier/arc` on Linux,
+- `~/Library/Caches/Coursier/v1` and `~/Library/Caches/Coursier/arc` on macOS,
+- `%LOCALAPPDATA%\Coursier\Cache\v1` and `%LOCALAPPDATA%\Coursier\Cache\arc` on Windows.
+
+The `COURSIER_CACHE` and `COURSIER_ARCHIVE_CACHE` environment variables change these locations.
+As the kernel runs the JVM from the archive cache, don't remove that JVM from it, or
+re-install the kernel afterwards.
 
 You can specify explicit Almond and / or Scala versions, like
 ```text

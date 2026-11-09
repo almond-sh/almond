@@ -199,7 +199,8 @@ object Launcher extends CaseApp[LauncherOptions] {
         val ext      = if (scala.util.Properties.isWin) ".exe" else ""
         Seq((javaHome / "bin" / s"java$ext").toString)
       case None =>
-        params0.javaCmd.getOrElse(Seq("java"))
+        // Same JVM as ours by default, that might not be on PATH
+        params0.javaCmd.getOrElse(Seq(Install.currentJavaCommand()))
     }
 
     // JAVA_OPTS comes first, so that options from the command-line or from directives win

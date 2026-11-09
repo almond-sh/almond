@@ -110,7 +110,9 @@ Customize the command to spawn the kernel, argument per argument.
 
 By default, it is assumed coursier or a coursier launcher
 is involved during the installation. This allows to get the command that spawns the kernel for install. (Actual executable is located
-via the `coursier.mainJar` Java property, and its arguments via `coursier.main.arg-0`,  `coursier.main.arg-1`, ... Java properties.) This command is then used to later start actual kernels.
+via the `coursier.mainJar` Java property, and its arguments via `coursier.main.arg-0`,  `coursier.main.arg-1`, ... Java properties.) This command is then used to later start actual kernels. It runs the
+JVM the installation runs on, via the absolute path of its `java` command, and the kernel spec
+sets `JAVA_HOME` to that JVM too (unless `JAVA_HOME` is passed via [`--env`](#--env)).
 
 To override that behavior, pass `--arg`s or `--command` options. `--arg` allows to pass each argument individually, like
 ```bash
