@@ -4,6 +4,11 @@ title: Installation
 
 ## Install the almond kernel
 
+Almond is a kernel for [Jupyter](https://jupyter.org), that needs to be installed
+beforehand, like with `pip install jupyterlab` (see the
+[JupyterLab installation instructions](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html)
+for other ways to install it).
+
 A Java Virtual Machine (JVM) needs to be installed on your system. You
 can check if a JVM is installed by running
 ```text
@@ -36,8 +41,9 @@ $ ./cs install --setup && ./cs install cs
 ```
 (`.\cs install --setup` then `.\cs install cs` on Windows), then open a new terminal.
 
-Installing Almond versions older than 0.15.0 requires a coursier version newer than 2.1.26.
-Older versions don't set up the class loaders of these Almond versions correctly.
+To install Almond versions older than 0.15.0, use a coursier version newer than 2.1.26
+(`cs version` prints it): coursier 2.1.26 and earlier don't set up the class loaders of
+these Almond versions correctly.
 
 Note the `--` before `--install`, separating the arguments passed to Almond
 from the ones handled by coursier.
@@ -64,7 +70,14 @@ These work both from the Command Prompt and from PowerShell (Windows 10 or later
 ```
 </details>
 
-Once the kernel is installed, you can use it within Jupyter or nteract.
+Once the kernel is installed, you can use it from JupyterLab, Jupyter Notebook, or any other
+Jupyter front-end. Check that Jupyter finds it with
+```text
+$ jupyter kernelspec list
+Available kernels:
+  python3    /usr/local/share/jupyter/kernels/python3
+  scala      /home/user/.local/share/jupyter/kernels/scala
+```
 
 ## Getting help about the launcher
 

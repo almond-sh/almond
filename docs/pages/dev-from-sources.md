@@ -353,7 +353,7 @@ $ ./mill -i 'scala.examples[@SCALA212_VERSION@].test' 'almond.examples.Examples.
 ```
 
 Set `ALMOND_UPDATE_EXAMPLES=1` to update the notebooks from what the tests get. See
-[`examples/README.md`](https://github.com/almond-sh/almond/blob/master/examples/README.md) for
+[`examples/README.md`](https://github.com/almond-sh/almond/blob/main/examples/README.md) for
 how notebooks that differ on Scala 2.13 or Scala 3 are handled.
 
 ## Run the proxy and mirror tests

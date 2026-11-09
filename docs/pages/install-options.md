@@ -33,7 +33,7 @@ Erase a previously installed kernel with the same ID.
 #### `--id`
 
 Set the kernel id, like `--id custom-id`. This id is used to construct the
-[path where this kernel's spec is going to be installed](https://jupyter-client.readthedocs.io/en/5.2.3/kernels.html#kernel-specs). Use like
+[path where this kernel's spec is going to be installed](https://jupyter-client.readthedocs.io/en/stable/kernels.html#kernel-specs). Use like
 ```bash
 --id scala212
 ```

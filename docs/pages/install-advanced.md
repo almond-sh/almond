@@ -318,8 +318,8 @@ kernel.display.html("<b>foo</b>")
 ## Using custom Maven repositories
 
 If you want to use custom Maven repositories rather than Maven Central, you need to set
-[`COURSIER_REPOSITORIES`](https://github.com/coursier/coursier/blob/3e212b42d3bda5d80453b4e7804670ccf75d4197/doc/docs/other-repositories.md)
-at few places. It needs to be set when installing Almond, and when Jupyter starts Almond.
+[`COURSIER_REPOSITORIES`](https://get-coursier.io/docs/other-repositories)
+at a few places. It needs to be set when installing Almond, and when Jupyter starts Almond.
 
 This can be achieved the following way, with the former launcher:
 ```text
