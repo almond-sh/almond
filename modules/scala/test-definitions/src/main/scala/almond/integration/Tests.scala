@@ -321,9 +321,9 @@ object Tests {
               |                                                   ^
               |Compilation Failed""".stripMargin
           else if (scalaVersion.startsWith("3.3."))
-            """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
-              |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
-              |  |                                              ^^^^^^^^
+            """-- [E007] Type Mismatch Error: cmd1.sc:1:38 ------------------------------------
+              |1 |def thing(s: String) = ""; thing(Array(2))
+              |  |                                 ^^^^^^^^
               |  |Found:    Array[Int]
               |  |Required: String
               |  |
@@ -336,11 +336,11 @@ object Tests {
               |  | longer explanation available when compiling with `-explain`
               |Compilation Failed""".stripMargin
           else
-            """-- [E007] Type Mismatch Error: cmd1.sc:1:51 ------------------------------------
-              |1 |def thing(s: String) = ""; val res1_1 = thing(Array(2))
-              |  |                                              ^^^^^^^^
-              |  |                                              Found:    Array[Int]
-              |  |                                              Required: String
+            """-- [E007] Type Mismatch Error: cmd1.sc:1:38 ------------------------------------
+              |1 |def thing(s: String) = ""; thing(Array(2))
+              |  |                                 ^^^^^^^^
+              |  |                                 Found:    Array[Int]
+              |  |                                 Required: String
               |  |
               |  | longer explanation available when compiling with `-explain`
               |Compilation Failed""".stripMargin
