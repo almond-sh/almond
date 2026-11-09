@@ -61,13 +61,16 @@ See the possible combinations [here](install-versions.md).
 
 <details>
 <summary>Equivalent Windows commands</summary>
+
 These work both from the Command Prompt and from PowerShell (Windows 10 or later).
+
 ```bat
 > curl.exe -fLo cs-x86_64-pc-win32.zip https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-win32.zip
 > tar -xf cs-x86_64-pc-win32.zip
 > move cs-x86_64-pc-win32.exe cs.exe
 > .\cs launch --use-bootstrap almond -- --install
 ```
+
 </details>
 
 Once the kernel is installed, you can use it from JupyterLab, Jupyter Notebook, or any other
