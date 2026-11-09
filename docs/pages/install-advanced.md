@@ -130,7 +130,8 @@ directives like
 //> using javaOpt "-Xmx10g"
 //> using javaOpt "-Dfoo=bar"
 ```
-(`//> using scala` also accepts short Scala versions, like `"2.12"` or `"3"`.)
+(`//> using scala` also accepts short Scala versions, like `"2.12"` or `"3"`. See
+[Using directives](usage-directives.md#launcher-directives) for the full list.)
 
 The newer launcher can be installed with
 ```text
