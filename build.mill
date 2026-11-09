@@ -465,6 +465,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
   )
   def mvnDeps = Seq(
     Deps.caseApp,
+    Deps.coursierExec,
     Deps.coursierLauncher,
     Deps.fansi,
     Deps.scalaparse

@@ -59,6 +59,9 @@ final case class LauncherOptions(
     "and update the connection file with the actually used ports"
   )
     bindToRandomPorts: Option[Boolean] = None,
+  @HelpMessage("Run the actual kernel in the launcher process, via exec, when possible, rather than in a sub-process relaying messages through the launcher (default: true)")
+  @Hidden
+    exec: Option[Boolean] = None,
   @HelpMessage("Maximum size of the ZeroMQ messages accepted by the kernel, like 500m, 2g, or 1048576 (in bytes), or none for no limit (default: 500m). Peers sending larger messages get disconnected.")
   @ValueDescription("size|none")
     maxMessageSize: Option[String] = None,

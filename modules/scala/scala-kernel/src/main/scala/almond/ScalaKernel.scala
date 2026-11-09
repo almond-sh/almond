@@ -28,6 +28,10 @@ object ScalaKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
 
+    // temporary files of the launcher that exec-ed us
+    for (f <- options.deleteOnExit)
+      new File(f).deleteOnExit()
+
     // should make scalac manage opened JARs more carefully
     sys.props("scala.classpath.closeZip") = "true"
 
@@ -161,7 +165,9 @@ object ScalaKernel extends CaseApp[Options] {
     val threads = {
       val threads0 = ScalaKernelThreads.create("scala-kernel")
       threads0.copy(
-        zeromqThreads = threads0.zeromqThreads.withMaxMessageSize(options.maxMessageSize0())
+        zeromqThreads = threads0.zeromqThreads
+          .withMaxMessageSize(options.maxMessageSize0())
+          .withReusePort(options.reusePort)
       )
     }
 

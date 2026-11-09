@@ -161,7 +161,7 @@ final class ZeromqSocketImpl(
         lazy val parsedUri = new URI(uri)
         if (bindToRandomPort && parsedUri.getPort <= 0) {
           val uri0 = ZeromqSocketImpl.removePort(parsedUri).toASCIIString
-          val port = channel.bindToRandomPort(uri0)
+          val port = ZeromqSocketImpl.bindToRandomPort(channel, uri0)
           (true, Some(port))
         }
         else
@@ -475,6 +475,21 @@ object ZeromqSocketImpl {
       val suffix = if (signature.length > maxLoggedSignatureLength) "..." else ""
       s"'$prefix$suffix' (${signature.length} chars)"
     }
+
+  /** Binds `socket` to a random port, and returns that port
+    *
+    * When binding with SO_REUSEPORT, we let the OS pick a free port, rather than letting JeroMQ try
+    * random ones. The latter could bind a port that another process of the same user already bound
+    * with SO_REUSEPORT, and share it with that process.
+    */
+  private[zeromq] def bindToRandomPort(socket: ZMQ.Socket, uri: String): Int =
+    if (socket.getSelectorProviderChooser eq ReusePort.selectorChooser) {
+      if (!socket.bind(s"$uri:*"))
+        throw new Exception(s"Cannot bind $uri to a random port")
+      new URI(socket.getLastEndpoint).getPort
+    }
+    else
+      socket.bindToRandomPort(uri)
 
   private[zeromq] def removePort(uri: URI): URI =
     new URI(

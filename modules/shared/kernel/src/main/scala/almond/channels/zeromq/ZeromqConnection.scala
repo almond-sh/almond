@@ -135,6 +135,10 @@ final class ZeromqConnection(
     maxMessageSize = threads.maxMessageSize
   )
 
+  if (bind && threads.reusePort)
+    for (socket <- Seq(requests0, control0, publish0, stdin0))
+      socket.channel.setSelectorChooser(ReusePort.selectorChooser)
+
   private val heartBeatPortPromiseAndUri = {
     lazy val parsedUri = new URI(params.heartbeatUri)
     if (bind && bindToRandomPorts && parsedUri.getPort <= 0)
@@ -158,11 +162,13 @@ final class ZeromqConnection(
             val heartbeat = threads.context.socket(repReq)
 
             heartbeat.setLinger(1000)
+            if (threads.reusePort)
+              heartbeat.setSelectorChooser(ReusePort.selectorChooser)
             for (size <- threads.maxMessageSize)
               heartbeat.setMaxMsgSize(size)
             heartBeatPortPromiseAndUri match {
               case Some((promise, uri0)) =>
-                val port = heartbeat.bindToRandomPort(uri0)
+                val port = ZeromqSocketImpl.bindToRandomPort(heartbeat, uri0)
                 promise.success(port)
               case None =>
                 heartbeat.bind(params.heartbeatUri)

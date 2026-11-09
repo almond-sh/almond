@@ -1,8 +1,8 @@
 package almond.launcher
 
-import almond.channels.{Channel, Connection, Message => RawMessage}
+import almond.channels.{Channel, Connection, ConnectionParameters, Message => RawMessage}
 import almond.channels.relay.RelayServer
-import almond.channels.zeromq.ZeromqThreads
+import almond.channels.zeromq.{ReusePort, ZeromqThreads}
 import almond.cslogger.NotebookCacheLogger
 import almond.directives.KernelOptions
 import almond.interpreter.{ExecuteError, KernelSession}
@@ -11,7 +11,7 @@ import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.install.Install
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
-import almond.logger.{Level, LoggerContext}
+import almond.logger.{Level, Logger, LoggerContext}
 import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnection}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
@@ -19,13 +19,17 @@ import caseapp.core.app.CaseApp
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core._
+import coursier.exec.{ErrnoException, Execve}
 import coursier.launcher.{BootstrapGenerator, ClassLoaderContent, ClassPathEntry, Parameters}
 import dependency.ScalaParameters
 
 import java.io.{File, FileOutputStream, PrintStream}
-import java.nio.channels.ClosedSelectorException
-import java.nio.file.Paths
+import java.lang.ref.Reference
+import java.net.{InetSocketAddress, UnknownHostException}
+import java.nio.channels.{ClosedSelectorException, SocketChannel}
+import java.nio.file.{Files, Paths}
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
@@ -33,8 +37,25 @@ import scala.concurrent.duration.Duration
 
 object Launcher extends CaseApp[LauncherOptions] {
 
+  /** Command starting the actual kernel, short of the arguments telling it how to talk to the
+    * frontend
+    *
+    * @param javaArgs
+    *   JVM options, class path, and main class
+    * @param tempFiles
+    *   temporary files the kernel needs, to be deleted once it exits
+    */
+  private final case class KernelCommand(
+    javaCommand: Seq[String],
+    javaArgs: Seq[String],
+    kernelArgs: Seq[String],
+    tempFiles: Seq[os.Path]
+  ) {
+    def command(channelArgs: Seq[String]): Seq[String] =
+      javaCommand ++ javaArgs ++ channelArgs ++ kernelArgs
+  }
+
   private def actualKernelCommand(
-    relayFile: os.Path,
     msgFileOpt: Option[os.Path],
     currentCellCount: Int,
     options: LauncherOptions,
@@ -44,7 +65,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     kernelOptions: KernelOptions,
     outputHandler: OutputHandler,
     logCtx: LoggerContext
-  ): (os.proc, String, Option[String]) = {
+  ): (KernelCommand, String, Option[String]) = {
 
     val (scalaVersion, _) = LauncherInterpreter.computeScalaVersion(params0, options)
     // The kernel modules are published for binary Scala versions, and get the Scala version
@@ -136,7 +157,9 @@ object Launcher extends CaseApp[LauncherOptions] {
       }
     }
 
-    val launcher = os.temp(prefix = "almond", suffix = ".jar")
+    // Not deleting these temporary files on exit ourselves: when exec-ing the actual kernel,
+    // shutdown hooks are run before the exec, and would delete them before the kernel reads them
+    val launcher = os.temp(prefix = "almond", suffix = ".jar", deleteOnExit = false)
     val params = Parameters.Bootstrap(
       Seq(content(apiFiles), content(kernelFiles)),
       Properties.kernelMainClass
@@ -150,14 +173,16 @@ object Launcher extends CaseApp[LauncherOptions] {
       Seq("--no-execute-input-for", id, "--ignore-launcher-directives-in", id)
     }
 
-    val optionsArgs =
-      if (kernelOptions.isEmpty) Nil
+    val optionsFileOpt =
+      if (kernelOptions.isEmpty) None
       else {
-        val asJson      = KernelOptions.AsJson(kernelOptions)
-        val bytes       = writeToArray(asJson)(KernelOptions.AsJson.codec)
-        val optionsFile = os.temp(bytes, prefix = "almond-options-", suffix = ".json")
-        Seq[os.Shellable]("--kernel-options", optionsFile)
+        val asJson = KernelOptions.AsJson(kernelOptions)
+        val bytes  = writeToArray(asJson)(KernelOptions.AsJson.codec)
+        Some(os.temp(bytes, prefix = "almond-options-", suffix = ".json", deleteOnExit = false))
       }
+    val optionsArgs = optionsFileOpt.toSeq.flatMap { optionsFile =>
+      Seq[os.Shellable]("--kernel-options", optionsFile)
+    }
 
     val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
     val javaCommand = jvmIdOpt match {
@@ -182,20 +207,16 @@ object Launcher extends CaseApp[LauncherOptions] {
       if ((javaOptions ++ jvmEnvJavaOptions).exists(setsMaxHeap)) Nil
       else Seq("-Xmx512m")
 
-    val proc = os.proc(
-      javaCommand,
+    val javaArgs = os.proc(
       memOptions,
       javaOptions,
       "-cp",
       (options.extraStartupClassPath :+ launcher.toString)
         .filter(_.nonEmpty)
         .mkString(File.pathSeparator),
-      "coursier.bootstrap.launcher.Launcher",
-      // We keep the sockets the frontend connects to bound, and relay messages between them and
-      // the actual kernel. Letting the actual kernel bind the same ports again after we
-      // release them would leave a window during which other processes could bind them.
-      "--relay-file",
-      relayFile,
+      "coursier.bootstrap.launcher.Launcher"
+    )
+    val kernelArgs = os.proc(
       "--initial-cell-count",
       currentCellCount,
       msgFileArgs,
@@ -209,7 +230,13 @@ object Launcher extends CaseApp[LauncherOptions] {
       params0.kernelOptions
     )
 
-    (proc, scalaVersion, jvmIdOpt)
+    val command = KernelCommand(
+      javaCommand,
+      javaArgs.commandChunks,
+      kernelArgs.commandChunks,
+      launcher +: optionsFileOpt.toSeq
+    )
+    (command, scalaVersion, jvmIdOpt)
   }
 
   private def envOptions(name: String): Seq[String] =
@@ -220,6 +247,160 @@ object Launcher extends CaseApp[LauncherOptions] {
     javaOption.startsWith("-XX:MaxHeapSize=") ||
     javaOption.startsWith("-XX:MaxRAM=") ||
     javaOption.startsWith("-XX:MaxRAMPercentage=")
+
+  // Loads the native library execve relies on, so that we can fall back to a sub-process
+  // before closing anything if it can't be loaded
+  private lazy val execveAvailable: Boolean =
+    Execve.available() && {
+      try {
+        Class.forName("coursier.exec.Execve$LibC")
+        true
+      }
+      catch {
+        case _: Throwable =>
+          false
+      }
+    }
+
+  /** Whether we can bind the frontend sockets so that the actual kernel can take them over after an
+    * exec (see [[ReusePort]])
+    *
+    * On macOS, wildcard addresses aren't supported: incoming connections go to the oldest socket
+    * bound on wildcard addresses, which would be the placeholders rather than the kernel.
+    */
+  private def canReusePort(params: ConnectionParameters): Boolean =
+    !scala.util.Properties.isWin &&
+    params.transport == "tcp" &&
+    ReusePort.supported &&
+    execveAvailable && {
+      try !(scala.util.Properties.isMac && ReusePort.resolve(params.ip).isAnyLocalAddress)
+      catch {
+        case _: UnknownHostException =>
+          false
+      }
+    }
+
+  private def resolveExecutable(command: String): Option[os.Path] = {
+    def isExecutable(path: os.Path) = os.isFile(path) && Files.isExecutable(path.toNIO)
+    if (command.contains(File.separatorChar))
+      Some(os.Path(command, os.pwd)).filter(isExecutable)
+    else
+      Option(System.getenv("PATH"))
+        .toSeq
+        .flatMap(_.split(File.pathSeparator))
+        .filter(_.nonEmpty)
+        .iterator
+        .map(dir => os.Path(dir, os.pwd) / command)
+        .find(isExecutable)
+  }
+
+  // Major Java version, from the release file of its JVM if it has one, else by running it
+  private def javaMajorVersion(java: os.Path): Option[Int] = {
+    def parse(version: String): Option[Int] =
+      version.stripPrefix("1.").takeWhile(_.isDigit) match {
+        case ""  => None
+        case num => Some(num.toInt)
+      }
+    val releaseFile = os.Path(java.toNIO.toRealPath()) / os.up / os.up / "release"
+    val fromReleaseFile =
+      if (os.isFile(releaseFile))
+        os.read.lines(releaseFile).collectFirst {
+          case line if line.startsWith("JAVA_VERSION=") =>
+            line.stripPrefix("JAVA_VERSION=").stripPrefix("\"").stripSuffix("\"")
+        }
+      else
+        None
+    def fromSettings = {
+      val res = os.proc(java, "-XshowSettings:properties", "-version")
+        .call(stdin = os.Inherit, stdout = os.Pipe, stderr = os.Pipe, check = false)
+      (res.err.lines() ++ res.out.lines()).map(_.trim).collectFirst {
+        case line if line.startsWith("java.specification.version =") =>
+          line.stripPrefix("java.specification.version =").trim
+      }
+    }
+    fromReleaseFile.orElse(fromSettings).flatMap(parse)
+  }
+
+  /** The java executable to exec, if the actual kernel can be exec-ed
+    *
+    * The actual kernel needs Java >= 9 to bind ports with SO_REUSEPORT.
+    */
+  private def execJava(javaCommand: Seq[String]): Option[os.Path] =
+    javaCommand match {
+      case Seq(java) =>
+        resolveExecutable(java).filter { path =>
+          try javaMajorVersion(path).exists(_ >= 9)
+          catch {
+            case NonFatal(_) =>
+              false
+          }
+        }
+      case _ =>
+        None
+    }
+
+  /** Binds placeholders on the ports of the frontend sockets (see [[ReusePort]])
+    *
+    * @return
+    *   the placeholders, if all of them could be bound
+    */
+  private def bindPlaceholders(connectionFile: os.Path, log: Logger): Option[Seq[SocketChannel]] = {
+    val params  = readFromArray(os.read.bytes(connectionFile))(JsonConnection.codec)
+    val address = ReusePort.resolve(params.ip)
+    val ports = Seq(
+      params.shell_port,
+      params.control_port,
+      params.iopub_port,
+      params.stdin_port,
+      params.hb_port
+    )
+    val placeholders = new ListBuffer[SocketChannel]
+    try {
+      for (port <- ports)
+        placeholders += ReusePort.placeholder(new InetSocketAddress(address, port))
+      Some(placeholders.toList)
+    }
+    catch {
+      case NonFatal(e) =>
+        log.warn(
+          "Cannot bind placeholder sockets, relaying messages to the actual kernel instead",
+          e
+        )
+        placeholders.foreach(_.close())
+        None
+    }
+  }
+
+  /** Replaces the current process with the actual kernel
+    *
+    * `placeholders` keep the frontend ports bound during the exec, until the actual kernel binds
+    * them again. They're inherited by the actual kernel, that keeps them open until it exits.
+    */
+  private def execActualKernel(
+    java: os.Path,
+    command: Seq[String],
+    placeholders: Seq[SocketChannel],
+    closeConnection: () => Unit
+  ): Nothing = {
+    val argv = java.toString +: command.tail
+    System.err.println(s"Exec-ing ${argv.mkString(" ")}")
+    closeConnection()
+    val env = System.getenv().asScala.toVector.map { case (k, v) => s"$k=$v" }
+    System.out.flush()
+    System.err.flush()
+    Reference.reachabilityFence(placeholders)
+    try Execve.execve(java.toString, argv.toArray, env.toArray)
+    catch {
+      case e: ErrnoException =>
+        e.printStackTrace(System.err)
+    }
+    // execve only returns if it failed, after running the shutdown hooks, and the ports were
+    // released, so we can't fall back to starting the kernel in a sub-process
+    System.err.println(s"Could not exec $java")
+    System.err.flush()
+    Runtime.getRuntime.halt(1)
+    sys.error("Cannot happen")
+  }
 
   private def launchActualKernel(
     proc: os.proc,
@@ -365,12 +546,15 @@ object Launcher extends CaseApp[LauncherOptions] {
     val cancellablesEc =
       singleThreadedExecutionContextExecutorService("scala-launcher-cancellables")
 
-    val zeromqThreads =
+    val zeromqThreads0 =
       ZeromqThreads.create("scala-kernel-launcher").withMaxMessageSize(maxMessageSize)
     val kernelThreads = KernelThreads.create("scala-kernel-launcher")
 
     val registrationOpt = Registration.fromPathIfRegistration(Paths.get(connectionFile))
       .unsafeRunSync()(kernelThreads.ioRuntime)
+
+    // Temporary files the actual kernel needs, to be deleted once it exits
+    val tempFiles = new ListBuffer[os.Path]
 
     // If we're passed a registration file (kernel startup handshake), we bind random ports and send
     // them to the registration service ourselves (the actual kernel then gets messages through us,
@@ -378,15 +562,36 @@ object Launcher extends CaseApp[LauncherOptions] {
     val kernelConnectionFile = registrationOpt match {
       case Some(registration) =>
         val content = writeToArray(JsonConnection.fromParams(registration.connectionParameters))
-        os.temp(
+        val f = os.temp(
           content,
           prefix = "almond-kernel-connection-",
           suffix = ".json",
-          perms = if (scala.util.Properties.isWin) null else "rw-------"
-        ).toString
+          perms = if (scala.util.Properties.isWin) null else "rw-------",
+          deleteOnExit = false
+        )
+        tempFiles += f
+        f.toString
       case None =>
         connectionFile
     }
+
+    // If we can, we exec the actual kernel in our own process, and it binds the ports we bind
+    // again, alongside the placeholders we keep bound in the meantime (see ReusePort). Else, we
+    // keep the ports bound until the actual kernel exits, and relay messages to it (see
+    // RelayServer). Either way, the ports stay reserved, and other processes can't bind them
+    // while the frontend uses them.
+    val reusePort = options.exec.getOrElse(true) && {
+      val params = registrationOpt
+        .map(_.connectionParameters)
+        .getOrElse {
+          JsonConnection.fromPath(Paths.get(connectionFile))
+            .unsafeRunSync()(kernelThreads.ioRuntime)
+            .connectionParameters
+        }
+      canReusePort(params)
+    }
+    log.debug(s"Binding ports with SO_REUSEPORT: $reusePort")
+    val zeromqThreads = zeromqThreads0.withReusePort(reusePort)
 
     val interpreter = new LauncherInterpreter(
       kernelConnectionFile,
@@ -430,8 +635,10 @@ object Launcher extends CaseApp[LauncherOptions] {
         val leftoverMessagesFile = os.temp(
           msgFile.asJson.value,
           prefix = "almond-launcher-leftover-messages-",
-          suffix = ".json"
+          suffix = ".json",
+          deleteOnExit = false
         )
+        tempFiles += leftoverMessagesFile
         Some(leftoverMessagesFile)
       }
 
@@ -449,20 +656,11 @@ object Launcher extends CaseApp[LauncherOptions] {
       new LauncherOutputHandler(firstMessage, session, conn, kernelThreads.ioRuntime)
     }
 
-    val relayServer = RelayServer.create()
-    val relayFile = os.temp(
-      relayServer.relayFile.asJson,
-      prefix = "almond-relay-",
-      suffix = ".json",
-      perms = if (scala.util.Properties.isWin) null else "rw-------"
-    )
-
     val maybeActualKernelCommand =
       try {
         val (launcherParams, kernelParams) =
           interpreter.params.processCustomDirectives(interpreter.kernelOptions)
         val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
-          relayFile,
           leftoverMessagesFileOpt,
           interpreter.lineCount,
           options,
@@ -528,25 +726,57 @@ object Launcher extends CaseApp[LauncherOptions] {
     }
 
     maybeActualKernelCommand match {
-      case Right(actualKernelCommand0) =>
-        val proc0 = os.proc(actualKernelCommand0.commandChunks, remainingArgs.unparsed)
-        val exitCode =
-          try
-            launchActualKernel(
-              proc0,
-              relayServer,
-              relayFile,
-              conn,
-              logCtx,
-              kernelThreads.ioRuntime
+      case Right(kernelCommand) =>
+        val tempFiles0 = tempFiles.toList ++ kernelCommand.tempFiles
+        val execOpt =
+          if (reusePort)
+            execJava(kernelCommand.javaCommand).flatMap { java =>
+              bindPlaceholders(os.Path(kernelConnectionFile, os.pwd), log).map((java, _))
+            }
+          else
+            None
+        execOpt match {
+          case Some((java, placeholders)) =>
+            val channelArgs = Seq("--connection-file", kernelConnectionFile, "--reuse-port") ++
+              tempFiles0.flatMap(f => Seq("--delete-on-exit", f.toString))
+            execActualKernel(
+              java,
+              kernelCommand.command(channelArgs) ++ remainingArgs.unparsed,
+              placeholders,
+              () => closeConnection()
             )
-          finally
-            closeConnection()
-        if (exitCode != 0)
-          sys.exit(exitCode)
+          case None =>
+            for (f <- tempFiles0)
+              f.toIO.deleteOnExit()
+            val relayServer = RelayServer.create()
+            val relayFile = os.temp(
+              relayServer.relayFile.asJson,
+              prefix = "almond-relay-",
+              suffix = ".json",
+              perms = if (scala.util.Properties.isWin) null else "rw-------"
+            )
+            val proc = os.proc(
+              kernelCommand.command(Seq("--relay-file", relayFile.toString)),
+              remainingArgs.unparsed
+            )
+            val exitCode =
+              try
+                launchActualKernel(
+                  proc,
+                  relayServer,
+                  relayFile,
+                  conn,
+                  logCtx,
+                  kernelThreads.ioRuntime
+                )
+              finally
+                closeConnection()
+            if (exitCode != 0)
+              sys.exit(exitCode)
+        }
       case Left(e) =>
-        relayServer.close()
-        os.remove(relayFile)
+        for (f <- tempFiles)
+          f.toIO.deleteOnExit()
         closeConnection()
         throw new Exception(e)
     }

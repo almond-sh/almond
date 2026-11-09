@@ -62,6 +62,7 @@ object Deps {
   def csVersion           = Versions.coursier
   def coursierApi         = mvn"io.get-coursier:interface:1.0.30"
   def coursierLauncher    = mvn"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
+  def coursierExec        = mvn"io.get-coursier:coursier-exec:${Versions.coursier}"
   def coursierJvm         = mvn"io.get-coursier:coursier-jvm_2.13:${Versions.coursier}"
   def coursierPaths       = mvn"io.get-coursier:coursier-paths:${Versions.coursier}"
   def coursierVersions    = mvn"io.get-coursier::versions:0.7.0"

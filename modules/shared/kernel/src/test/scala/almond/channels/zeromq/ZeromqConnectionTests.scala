@@ -1,5 +1,6 @@
 package almond.channels.zeromq
 
+import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
@@ -133,6 +134,96 @@ object ZeromqConnectionTests extends TestSuite {
         } yield ()
 
       t.unsafeRunSync()(ioRuntime)
+    }
+
+    test("hand over ports with SO_REUSEPORT") {
+      if (!ReusePort.supported || scala.util.Properties.isWin)
+        "SO_REUSEPORT not supported"
+      else {
+
+        val logCtx          = LoggerContext.nop
+        val zeroPortsParams = ConnectionParameters.randomZeroPorts()
+        val launcherThreads =
+          ZeromqThreads.create("test-launcher").withReusePort(true)
+        val kernelThreads = ZeromqThreads.create("test-kernel").withReusePort(true)
+        val clientThreads = ZeromqThreads.create("test-client")
+        val ioRuntime     = IORuntime.global
+
+        val msg0 = Message(
+          Nil,
+          "header".getBytes(StandardCharsets.UTF_8),
+          "parent_header".getBytes(StandardCharsets.UTF_8),
+          "metadata".getBytes(StandardCharsets.UTF_8),
+          "content".getBytes(StandardCharsets.UTF_8)
+        )
+
+        val t =
+          for {
+            launcher <- zeroPortsParams.channels(
+              bind = true,
+              launcherThreads,
+              None,
+              logCtx,
+              bindToRandomPorts = true,
+              identityOpt = None
+            )
+            ports <- launcher.open
+            params = zeroPortsParams.copy(
+              shell_port = ports(Some(Channel.Requests)),
+              control_port = ports(Some(Channel.Control)),
+              iopub_port = ports(Some(Channel.Publish)),
+              stdin_port = ports(Some(Channel.Input)),
+              hb_port = ports(None)
+            )
+            allPorts = Seq(
+              params.shell_port,
+              params.control_port,
+              params.iopub_port,
+              params.stdin_port,
+              params.hb_port
+            )
+            _ = assert(allPorts.forall(_ > 0))
+            // like the launcher does before exec-ing the actual kernel
+            placeholders <- IO {
+              val address = ReusePort.resolve(params.ip)
+              allPorts.map(port => ReusePort.placeholder(new InetSocketAddress(address, port)))
+            }
+            _ <- launcher.close(partial = false, lingerDuration = 2.seconds)
+            _ <- IO.blocking(launcherThreads.context.close())
+            // the actual kernel can bind the same ports, alongside the placeholders
+            kernel <- params.channels(
+              bind = true,
+              kernelThreads,
+              None,
+              logCtx,
+              bindToRandomPorts = false,
+              identityOpt = None
+            )
+            _ <- kernel.open
+            client <- params.channels(
+              bind = false,
+              clientThreads,
+              None,
+              logCtx,
+              bindToRandomPorts = false,
+              identityOpt = None
+            )
+            _ <- client.open
+            _ <- client.send(Channel.Requests, msg0)
+            resp <- kernel.tryRead(Seq(Channel.Requests), 10.seconds).flatMap {
+              case Some(r) => IO.pure(r)
+              case None    => IO.raiseError(new Exception("no message"))
+            }
+            _ = assert(resp.exists(_._1 == Channel.Requests))
+            _ = assert(resp.exists(_._2.copy(idents = Nil) == msg0))
+            _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+            _ <- client.close(partial = false, lingerDuration = 2.seconds)
+            _ <- IO(placeholders.foreach(_.close()))
+          } yield ()
+
+        t.unsafeRunSync()(ioRuntime)
+        "done"
+      }
     }
 
     test("malformed messages are dropped") {
