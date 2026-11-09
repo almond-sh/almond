@@ -10,9 +10,9 @@ upon first launch.
 
 You may prefer to have the launcher embed all these JARs,
 so that nothing needs to be downloaded or picked from a cache upon launch. Passing
-`--standalone` to the `coursier bootstrap` command generates such a launcher,
+`--standalone` to the `cs bootstrap` command generates such a launcher,
 ```bash
-$ coursier bootstrap --standalone \
+$ cs bootstrap --standalone \
     almond:@VERSION@ --scala @SCALA_VERSION@ \
     -o almond
 $ ./almond --install

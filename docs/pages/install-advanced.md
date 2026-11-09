@@ -337,17 +337,4 @@ To keep using Maven Central through a proxy or a mirror of it, see [proxies and 
 
 ## Available options
 
-To list the options that the former launcher accepts, run
-```text
-$ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --help
-```
-
-To list the options that the newer launcher accepts, run
-```text
-$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --help
-```
-
-Note that the newer launcher also accepts the former launcher options after an extra `--`, like
-```text
-$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ --install -- --toree-api
-```
+See [Options](install-options.md) for the options that the former and the newer launchers accept.
