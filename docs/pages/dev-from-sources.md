@@ -22,9 +22,9 @@ $ git clone https://github.com/almond-sh/almond.git
 $ cd almond
 ```
 
-Almond is built with [mill](https://com-lihaoyi.github.io/mill). A mill
-launcher ships with almond, so that you don't need to install mill yourself.
-We list below useful commands, to help get you started using mill to build almond.
+Almond is built with [Mill](https://mill-build.org). A Mill
+launcher ships with almond, so that you don't need to install Mill yourself.
+We list below useful commands, to help get you started using Mill to build almond.
 
 ## Run a Jupyter notebook server without installing a kernel
 
@@ -54,7 +54,7 @@ instructions use. The two are expected to be the same, which the release CI chec
 
 Like `runBackground` in Mill, this command returns once JupyterLab is started, and
 prints the URLs it can be reached at. JupyterLab keeps running in the background, so
-that you can keep using mill (to rebuild the kernels for example). Running the
+that you can keep using Mill (to rebuild the kernels for example). Running the
 command again restarts JupyterLab, and
 ```text
 $ ./mill dev.jupyterStop
