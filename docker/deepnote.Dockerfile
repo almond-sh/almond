@@ -4,7 +4,8 @@
 # expects from images (https://deepnote.com/docs/custom-environment).
 #
 # Expects ALMOND_VERSION and SCALA_VERSIONS to be set as build args, like the main Dockerfile:
-# docker build -f deepnote.Dockerfile --build-arg ALMOND_VERSION=0.15.1 --build-arg SCALA_VERSIONS="2.13.18 3.9.0" .
+# docker build -f docker/deepnote.Dockerfile --build-arg ALMOND_VERSION=0.15.1 --build-arg SCALA_VERSIONS="2.13.18 3.9.0" .
+# (from the root of the repository, which is the build context)
 #
 # deepnote/python images are linux/amd64 only, so is this image.
 
