@@ -1,48 +1,138 @@
 package almond.kernel.install
 
-import caseapp.{HelpMessage, Name, ValueDescription}
+import caseapp.{Group, HelpMessage, Name, ValueDescription}
+
+// The second argument of @HelpMessage is the Markdown documentation of the options, in the
+// options page of the website (docs/pages/install-options.md, updated with
+// ./mill docs.updateOptionsPage), the first one being shown in the --help output
 
 // format: off
 final case class Options(
-  @HelpMessage("erase any previously existing kernel with the same id")
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "erase any previously existing kernel with the same id",
+    "Erase a previously installed kernel with the same ID."
+  )
   @Name("f")
     force: Boolean = false,
-  @HelpMessage("id for this kernel, instead of the default one")
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "id for this kernel, instead of the default one",
+    """Set the kernel id, like `--id custom-id`. This id is used to construct the
+      |[path where this kernel's spec is going to be installed](https://jupyter-client.readthedocs.io/en/stable/kernels.html#kernel-specs). Use like
+      |```bash
+      |--id scala212
+      |```
+      |
+      |Default: `scala`""".stripMargin
+  )
     id: Option[String] = None,
-  @HelpMessage("name for this kernel, instead of the default one")
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "name for this kernel, instead of the default one",
+    """Set the displayed name for this kernel. This is the name that appears in the Jupyter
+      |menus, etc. Use like
+      |```bash
+      |--display-name "Scala (2.12)"
+      |```
+      |
+      |Default: `Scala`""".stripMargin
+  )
   @Name("name")
   @Name("N")
     displayName: Option[String] = None,
-  @HelpMessage("whether to install this kernel globally")
-    global: Boolean = false,
-  @HelpMessage("Path to your Jupyter kernels directory, e.g. /opt/conda/share/jupyter/kernels")
-    jupyterPath: Option[String] = None,
+  @Group(OptionGroups.installation)
   @HelpMessage(
-    "jupyter command to ask for the directories Jupyter relies on, either a name to look for in PATH or a path (default: jupyter, pass an empty value not to run it)"
+    "whether to install this kernel globally",
+    """Whether to install this kernel system-wide or not.
+      |
+      |System-wide kernels get installed under `/usr/local/share/jupyter/kernels` (Linux and OS X). User-wide ones
+      |(default) under `~/.local/share/jupyter/kernels` (Linux) or `~/Library/Jupyter/kernels` (Mac).
+      |
+      |On Windows, like Jupyter itself since jupyter_core 5.8, system-wide kernels get installed under
+      |the `share\jupyter\kernels` directory of the Python environment of Jupyter, like
+      |`C:\Python313\share\jupyter\kernels`. Almond infers that environment from `CONDA_PREFIX` or from
+      |the location of the `jupyter` command (see `--jupyter-command`). `%PROGRAMDATA%\jupyter\kernels`
+      |is only used if the `JUPYTER_USE_PROGRAMDATA` environment variable is set, as non-admin users
+      |can create directories under `%PROGRAMDATA%`.""".stripMargin
+  )
+    global: Boolean = false,
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "Path to your Jupyter kernels directory, e.g. /opt/conda/share/jupyter/kernels",
+    "Path to your Jupyter kernels directory, like `/opt/conda/share/jupyter/kernels`."
+  )
+    jupyterPath: Option[String] = None,
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "jupyter command to ask for the directories Jupyter relies on, either a name to look for in PATH or a path (default: jupyter, pass an empty value not to run it)",
+    """The `jupyter` command that Almond runs to find the directories Jupyter looks for kernels in,
+      |either a name to look for in the `PATH` or a path (default: `jupyter`). Pass an empty value not
+      |to run it. See [Where the kernel gets installed](install-advanced.md#where-the-kernel-gets-installed).""".stripMargin
   )
     jupyterCommand: Option[String] = None,
+  @Group(OptionGroups.installation)
   @HelpMessage(
-    "Fail if the directories Jupyter relies on can't be obtained from the jupyter command, rather than falling back to default Jupyter directories"
+    "Fail if the directories Jupyter relies on can't be obtained from the jupyter command, rather than falling back to default Jupyter directories",
+    """Make the installation fail if the `jupyter` command can't be run, rather than falling back to
+      |the default Jupyter directories.""".stripMargin
   )
     requireJupyter: Boolean = false,
-  @HelpMessage("path to a 64x64 PNG logo for this kernel")
-    logo: Option[String] = None,
+  @Group(OptionGroups.installation)
   @HelpMessage(
-    "command to launch this kernel, specified argument per argument, like --arg /foo --arg some-arg"
+    "path to a 64x64 PNG logo for this kernel",
+    "Path to a 64 x 64 PNG file. Set to an empty string to remove the default logo, like `--logo \"\"`. (Defaults to a scala logo embedded with the kernel.)"
+  )
+    logo: Option[String] = None,
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "command to launch this kernel, specified argument per argument, like --arg /foo --arg some-arg",
+    """Customize the command to spawn the kernel, argument per argument.
+      |
+      |By default, it is assumed coursier or a coursier launcher
+      |is involved during the installation. This allows to get the command that spawns the kernel for install. (Actual executable is located
+      |via the `coursier.mainJar` Java property, and its arguments via `coursier.main.arg-0`,  `coursier.main.arg-1`, ... Java properties.) This command is then used to later start actual kernels.
+      |
+      |To override that behavior, pass `--arg`s or `--command` options. `--arg` allows to pass each argument individually, like
+      |```bash
+      |--arg "/path to/executable" --arg first-arg --arg second-arg
+      |```""".stripMargin
   )
     arg: List[String] = Nil,
+  @Group(OptionGroups.installation)
   @HelpMessage(
-    "command to launch this kernel, as one block (then split, takes precedence over --arg)"
+    "command to launch this kernel, as one block (then split, takes precedence over --arg)",
+    """Customize the command to spawn the kernel, like `--arg` does, but passing the command as a whole, like
+      |```bash
+      |--command "/path/to/executable first-arg second-arg"
+      |```
+      |which is latter split at space chars. Takes precedence over `--arg`.""".stripMargin
   )
     command: Option[String] = None,
-  @HelpMessage("whether to request frontends to interrupt this kernel via a message")
-    interruptViaMessage: Boolean = false,
+  @Group(OptionGroups.jupyter)
   @HelpMessage(
-    "Whether to copy the kernel launcher in the kernelspec directory (default: false if --arg or --command specified, true else)"
+    "whether to request frontends to interrupt this kernel via a message",
+    """Whether to ask front-ends to interrupt the kernel by sending it
+      |[an interrupt message](https://jupyter-client.readthedocs.io/en/stable/messaging.html#kernel-interrupt),
+      |rather than a SIGINT signal (default).""".stripMargin
+  )
+    interruptViaMessage: Boolean = false,
+  @Group(OptionGroups.installation)
+  @HelpMessage(
+    "Whether to copy the kernel launcher in the kernelspec directory (default: false if --arg or --command specified, true else)",
+    """Whether to copy the kernel launcher in the kernel installation directory.
+      |
+      |Default: true if `--arg` and `--command` aren't specified, false else.""".stripMargin
   )
     copyLauncher: Option[Boolean] = None,
+  @Group(OptionGroups.installation)
   @HelpMessage(
-    "Environment variables to set in the kernel spec, that Jupyter passes to the kernel when starting it"
+    "Environment variables to set in the kernel spec, that Jupyter passes to the kernel when starting it",
+    """Set an environment variable in the kernel spec, that Jupyter sets when starting the kernel.
+      |Can be repeated. Use like
+      |```bash
+      |--env SPARK_HOME=/opt/spark --env COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
+      |```""".stripMargin
   )
   @ValueDescription("name=value")
     env: List[String] = Nil

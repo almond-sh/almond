@@ -13,14 +13,31 @@ are passed to the kernel each time Jupyter starts it.
 Passing flags, like `--flag`, sets them to true. Use `--flag=false` (note the `=` sign)
 to set them to false.
 
+<!--
+  The option lists between the BEGIN / END GENERATED OPTIONS markers are generated from the
+  @HelpMessage annotations of the options, in almond.Options, almond.kernel.install.Options, and
+  almond.launcher.LauncherOptions. Edit these, then run ./mill docs.updateOptionsPage to update them.
+-->
+
 ## Help
+
+<!-- BEGIN GENERATED OPTIONS kernel Help -->
+
+#### `--usage`
+
+Print usage and exit.
 
 #### `--help`
 
-Prints the available options and exits.
+Print help message and exit.
 
+Aliases: `-h`, `-help`.
+
+<!-- END GENERATED OPTIONS -->
 
 ## Installation
+
+<!-- BEGIN GENERATED OPTIONS kernel Installation -->
 
 #### `--install`
 
@@ -29,6 +46,8 @@ Has to be passed to install the kernel.
 #### `--force`
 
 Erase a previously installed kernel with the same ID.
+
+Alias: `-f`.
 
 #### `--id`
 
@@ -50,6 +69,8 @@ menus, etc. Use like
 
 Default: `Scala`
 
+Aliases: `--name`, `-N`.
+
 #### `--global`
 
 Whether to install this kernel system-wide or not.
@@ -66,7 +87,7 @@ can create directories under `%PROGRAMDATA%`.
 
 #### `--jupyter-path`
 
-Path to your Jupyter kernels directory, e.g. `/opt/conda/share/jupyter/kernels`
+Path to your Jupyter kernels directory, like `/opt/conda/share/jupyter/kernels`.
 
 #### `--jupyter-command`
 
@@ -83,9 +104,9 @@ the default Jupyter directories.
 
 Path to a 64 x 64 PNG file. Set to an empty string to remove the default logo, like `--logo ""`. (Defaults to a scala logo embedded with the kernel.)
 
-#### `--arg` / `--command`
+#### `--arg`
 
-Customize the command to spawn the kernel.
+Customize the command to spawn the kernel, argument per argument.
 
 By default, it is assumed coursier or a coursier launcher
 is involved during the installation. This allows to get the command that spawns the kernel for install. (Actual executable is located
@@ -96,11 +117,19 @@ To override that behavior, pass `--arg`s or `--command` options. `--arg` allows 
 --arg "/path to/executable" --arg first-arg --arg second-arg
 ```
 
-`--command` allows to pass a command as a whole, like
+#### `--command`
+
+Customize the command to spawn the kernel, like `--arg` does, but passing the command as a whole, like
 ```bash
 --command "/path/to/executable first-arg second-arg"
 ```
-which is latter split at space chars.
+which is latter split at space chars. Takes precedence over `--arg`.
+
+#### `--copy-launcher`
+
+Whether to copy the kernel launcher in the kernel installation directory.
+
+Default: true if `--arg` and `--command` aren't specified, false else.
 
 #### `--env`
 
@@ -110,14 +139,58 @@ Can be repeated. Use like
 --env SPARK_HOME=/opt/spark --env COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
 ```
 
-#### `--copy-launcher`
+#### `--extra-startup-class-path`
 
-Whether to copy the kernel launcher in the kernel installation directory.
+JARs to add to the class path of `java` itself, alongside the kernel JARs, when installing
+the kernel (see [Custom URL protocol support](install-advanced.md#custom-url-protocol-support)).
+Accepts the same format as `java -cp`. Only taken into account along with `--install`.
 
-Default: true if `--arg` and `--command` aren't specified, false else.
+Alias: `--extra-startup-classpath`.
 
+<!-- END GENERATED OPTIONS -->
 
 ## Scala-related
+
+<!-- BEGIN GENERATED OPTIONS kernel Scala -->
+
+#### `--predef-code`
+
+Run some code right before the session starts. Makes the kernel start fail if the predef
+doesn't compile or throws an exception. Use like
+```bash
+--predef-code "
+  import scala.jdk.CollectionConverters._
+"
+```
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--predef`
+
+Run the code of a file right before the session starts, like `--predef-code` does. Can be
+repeated. Use like
+```bash
+--predef /path/to/predef.sc
+```
+
+#### `--disable-cache`
+
+Disable the compilation cache of Ammonite.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--auto-update-lazy-vals`
+
+Whether the output of top-level `lazy val`s should be updated when they're computed (default: true).
+See [Auto-updated variables](api-jupyter.md#auto-updated-variables).
+
+#### `--auto-update-vars`
+
+Whether the output of top-level `var`s should be updated when they change later on (default: true).
+See [Auto-updated variables](api-jupyter.md#auto-updated-variables). Disable with
+```bash
+--auto-update-vars=false
+```
 
 #### `--silent-imports`
 
@@ -172,6 +245,8 @@ With any output style, all statements still execute, and the variables they defi
 remain available in subsequent cells. Explicit output, such as `println` and
 `display()` calls, is still shown.
 
+`--last-value-only`, kept for compatibility, is the same as `--output-style last`.
+
 ##### `last`
 
 For example, this cell displays only `second: Int = 2`:
@@ -214,28 +289,6 @@ If the last expression has type `Unit`, nothing is displayed. Rich values such a
 `almond.display.Html` are displayed automatically when they are the last
 expression of the cell.
 
-#### `--last-value-only`
-
-Kept for compatibility, same as `--output-style last`.
-
-#### `--predef-code`
-
-Run some code right before the session starts. Makes the kernel start fail if the predef
-doesn't compile or throws an exception. Use like
-```bash
---predef-code "
-  import scala.jdk.CollectionConverters._
-"
-```
-
-#### `--predef`
-
-Run the code of a file right before the session starts, like `--predef-code` does. Can be
-repeated. Use like
-```bash
---predef /path/to/predef.sc
-```
-
 #### `--color`
 
 Whether to color the results of cells, like `n: Int = 2` (default: true). Disable with
@@ -247,24 +300,11 @@ Whether to color the results of cells, like `n: Int = 2` (default: true). Disabl
 
 Only compile the code of cells, without running it.
 
-#### `--disable-cache`
-
-Disable the compilation cache of Ammonite.
-
-#### `--auto-update-vars`
-
-Whether the output of top-level `var`s should be updated when they change later on (default: true).
-See [Auto-updated variables](api-jupyter.md#auto-updated-variables). Disable with
-```bash
---auto-update-vars=false
-```
-
-#### `--auto-update-lazy-vals`
-
-Whether the output of top-level `lazy val`s should be updated when they're computed (default: true).
-See [Auto-updated variables](api-jupyter.md#auto-updated-variables).
+<!-- END GENERATED OPTIONS -->
 
 ## Dependency-related
+
+<!-- BEGIN GENERATED OPTIONS kernel Dependency -->
 
 #### `--extra-repository`
 
@@ -275,11 +315,13 @@ added by default.) Use like
 --extra-repository https://artifacts.company.com/maven
 ```
 
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
 #### `--dependency`
 
 Add dependencies to the class path of user code when a kernel starts, before predef code
 and cells are run. Accepts the same dependency syntax as `//> using dep` directives,
-can be repeated, and is also available as `--dep`. Use like
+and can be repeated. Use like
 ```bash
 --dependency org.typelevel::cats-core:2.12.0
 --dep com.lihaoyi::os-lib:0.11.4
@@ -287,18 +329,7 @@ can be repeated, and is also available as `--dep`. Use like
 Dependencies are resolved with the repositories passed via `--extra-repository`.
 The kernel fails to start if they can't be resolved.
 
-#### `--extra-class-path`
-
-Add JARs or directories of class files to the class path of user code when a kernel starts.
-Accepts the same format as `java -cp`, and is also available as `--extra-cp`. Use like
-```bash
---extra-class-path /path/to/lib.jar:/path/to/other-lib.jar
-```
-[Inspections](usage-completion.md#inspections) show the documentation of the classes
-of these JARs only if their source JARs are passed too, like
-```bash
---extra-class-path /path/to/lib.jar:/path/to/lib-sources.jar
-```
+Alias: `--dep`.
 
 #### `--auto-dependency`
 
@@ -310,18 +341,80 @@ Can be repeated. By default, `sh.almond::almond-spark` gets added when Spark is 
 [Spark](usage-spark.md)), and `sh.almond::almond-scalapy` when ScalaPy is loaded. Disable these
 defaults with `--default-auto-dependencies=false`.
 
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--auto-version`
+
+Set the version picked for a module when users load it with `_` as version, like
+`//> using dep org.typelevel::cats-core:_`. Use like
+```bash
+--auto-version org.typelevel::cats-core:2.12.0
+```
+Can be repeated. By default, the Almond modules, like `sh.almond::almond-spark`, get the
+version that goes along the kernel. Disable these defaults with `--default-auto-versions=false`.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--default-auto-dependencies`
+
+Whether to automatically add `sh.almond::almond-spark` when Spark is loaded, and
+`sh.almond::almond-scalapy` when ScalaPy is loaded (default: true). See `--auto-dependency`.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--default-auto-versions`
+
+Whether to pick the version of the Almond modules, like `sh.almond::almond-spark`,
+when users load them with `_` as version (default: true). See `--auto-version`.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--default-almond-spark-version`
+
+Version of `sh.almond::almond-spark` to add when Spark is loaded (see `--default-auto-dependencies`). Defaults to the one that goes along the kernel.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--default-almond-scalapy-version`
+
+Version of `sh.almond::almond-scalapy` to add when ScalaPy is loaded (see `--default-auto-dependencies`). Defaults to the one that goes along the kernel.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
 #### `--force-property`
 
 Force a Maven property during dependency resolution, like `--force-property key=value`. Can be
 repeated.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
 
 #### `--profile`
 
 Enable a Maven profile during dependency resolution, like `--profile name`, or disable it, like
 `--profile '!name'`. Can be repeated.
 
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--extra-class-path`
+
+Add JARs or directories of class files to the class path of user code when a kernel starts.
+Accepts the same format as `java -cp`. Use like
+```bash
+--extra-class-path /path/to/lib.jar:/path/to/other-lib.jar
+```
+[Inspections](usage-completion.md#inspections) show the documentation of the classes
+of these JARs only if their source JARs are passed too, like
+```bash
+--extra-class-path /path/to/lib.jar:/path/to/lib-sources.jar
+```
+
+Aliases: `--extra-cp`, `--extra-classpath`.
+
+<!-- END GENERATED OPTIONS -->
 
 ## Internals
+
+<!-- BEGIN GENERATED OPTIONS kernel Internal -->
 
 #### `--log`
 
@@ -339,21 +432,25 @@ Write the kernel logs to a file, rather than to the standard error, like
 --log debug --log-to /tmp/almond.log
 ```
 
-#### `--quiet`
+#### `--specific-loader`
 
-Whether not to copy what user code prints to the standard output and error of the kernel
-process (default: true). What user code prints is sent to the front-end either way.
+Whether to load user code from the class loader of the user-facing modules of Almond, rather
+than from the context class loader (default: true). See
+[Isolation of Almond internal dependencies](install-advanced.md#isolation-of-almond-internal-dependencies).
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
 
 #### `--trap-output`
 
 Don't send what user code prints to the standard output and error to the front-end. It
 goes to the standard output and error of the kernel process instead.
 
-#### `--specific-loader`
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
 
-Whether to load user code from the class loader of the user-facing modules of Almond, rather
-than from the context class loader (default: true). See
-[Isolation of Almond internal dependencies](install-advanced.md#isolation-of-almond-internal-dependencies).
+#### `--quiet`
+
+Whether not to copy what user code prints to the standard output and error of the kernel
+process (default: true). What user code prints is sent to the front-end either way.
 
 #### `--use-thread-interrupt`
 
@@ -363,7 +460,26 @@ any more from JDK 20 on, interrupt messages (see [`--interrupt-via-message`](#--
 always use `Thread.interrupt` on these JDKs. Note that `Thread.interrupt` only stops code
 that checks for interruptions, like `Thread.sleep` or blocking I/O calls.
 
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
+#### `--output-directory`
+
+Directory to write the class files compiled from cells to, rather than to a temporary directory. See `--tmp-output-directory`.
+
+Alias: `--output-dir`.
+
+#### `--tmp-output-directory`
+
+Whether to write the class files compiled from cells to a temporary directory, rather than
+keeping them in memory only (default: true). Ignored if `--output-directory` is passed.
+
+Alias: `--tmp-output-dir`.
+
+<!-- END GENERATED OPTIONS -->
+
 ## Jupyter-related
+
+<!-- BEGIN GENERATED OPTIONS kernel Jupyter -->
 
 #### `--interrupt-via-message`
 
@@ -382,6 +498,8 @@ Some more
 "
 ```
 
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
 #### `--link`
 
 Add entries to the Help menu of front-ends. Use like
@@ -390,28 +508,22 @@ Add entries to the Help menu of front-ends. Use like
 --link "https://google.com|Google"
 ```
 
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
 #### `--connection-file`
 
 Path to the connection file that Jupyter passes to the kernel when starting it. This is
 written in the kernel spec upon installation, and doesn't need to be passed by hand.
 
-#### `--username`
+#### `--metabrowse`
 
-Set the user name in the headers of the messages sent by the kernel. Defaults to
-the name of the user running the kernel. Pass it along `--install` to write it in the kernel spec, like
-```bash
---install --username jupyter
-```
+Kept for compatibility, currently has no effect.
 
-#### `--max-message-size`
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
 
-Maximum size of the ZeroMQ messages accepted by the kernel, `500m` by default. Peers sending
-larger messages get disconnected. Accepts sizes in bytes, optionally with a `k`, `m`, or `g` suffix
-(powers of 1024), or `none` to accept messages of any size. Pass it along `--install` to write it
-in the kernel spec, like
-```bash
---install --max-message-size 2g
-```
+#### `--use-notebook-coursier-logger`
+
+Show the progress of dependency downloads in the notebook, rather than in the kernel logs.
 
 #### `--variable-inspector`
 
@@ -426,15 +538,36 @@ Whether to format cells with [scalafmt](https://scalameta.org/scalafmt) when fro
 like the [almond-scalafmt](https://github.com/almond-sh/almond-scalafmt) JupyterLab extension does
 (default: true).
 
-#### `--use-notebook-coursier-logger`
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
 
-Show the progress of dependency downloads in the notebook, rather than in the kernel logs.
+#### `--username`
 
-#### `--metabrowse`
+Set the user name in the headers of the messages sent by the kernel. Defaults to
+the name of the user running the kernel. Pass it along `--install` to write it in the kernel spec, like
+```bash
+--install --username jupyter
+```
 
-Kept for compatibility, currently has no effect.
+#### `--bind-to-random-ports`
 
-## Other
+Whether to bind to random available ports, and write them back in the connection file, if
+Jupyter passes zero ports in it (default: true).
+
+#### `--max-message-size`
+
+Maximum size of the ZeroMQ messages accepted by the kernel, `500m` by default. Peers sending
+larger messages get disconnected. Accepts sizes in bytes, optionally with a `k`, `m`, or `g` suffix
+(powers of 1024), or `none` to accept messages of any size. Pass it along `--install` to write it
+in the kernel spec, like
+```bash
+--install --max-message-size 2g
+```
+
+<!-- END GENERATED OPTIONS -->
+
+## Toree compatibility
+
+<!-- BEGIN GENERATED OPTIONS kernel Toree -->
 
 #### `--toree-magics`
 
@@ -452,22 +585,48 @@ Enable basic support for the Toree API. See [Toree API](install-advanced.md#tore
 
 Same as `--toree-magics` and `--toree-api` together.
 
+<!-- END GENERATED OPTIONS -->
+
 ## Newer launcher options
 
 The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
-accepts most of the options above directly, along with a few options of its own:
+accepts most of the options above directly, along with a few options of its own, listed below.
 
-- `--scala`: the default Scala version of the notebooks, that users can change with a
-  `//> using scala` directive,
-- `--java-opt`: a Java option to pass to the kernel, like `--java-opt -Xmx4g`
-  (see [Memory](install-advanced.md#memory)), can be repeated,
-- `--extra-startup-class-path`: JARs to add to the class path of `java` itself
-  (see [Custom URL protocol support](install-advanced.md#custom-url-protocol-support)),
-- `--shared-dependencies`: dependencies to add to the user-facing part of the Almond class path.
-
-The other options of the kernel can be passed after an extra `--`, like
+It accepts the other options of the kernel, marked as such above, after an extra `--`, like
 ```text
 $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ --install -- --toree-api
 ```
 
 Run the launchers with `--help` to list all the options they accept.
+
+<!-- BEGIN GENERATED OPTIONS launcher Launcher -->
+
+#### `--scala`
+
+The default Scala version of the notebooks, that users can change with a `//> using scala` directive.
+
+#### `--shared-dependencies`
+
+Dependencies to add to the user-facing part of the Almond class path. Can be repeated.
+
+#### `--java-opt`
+
+A Java option to pass to the kernel, like `--java-opt -Xmx4g` (see [Memory](install-advanced.md#memory)).
+Can be repeated. Notebooks can pass more of them with `//> using javaOpt` directives.
+
+#### `--custom-directive-group`
+
+Have a command handle the directives whose key starts with a prefix, like `spark` for
+`//> using spark.version "3.5.8"`. Use like
+```bash
+--custom-directive-group spark:/path/to/handle-spark-directives
+```
+Can be repeated. See [Custom directives](usage-directives.md#custom-directives).
+
+#### `--version`
+
+Print the Almond version and exit.
+
+Alias: `-v`.
+
+<!-- END GENERATED OPTIONS -->

@@ -41,6 +41,25 @@ passed to `eval`:
 $ ( eval "$(./mill show docs.serveCmd | jq -r .)" )
 ```
 
+## Kernel options page
+
+The option lists of the [Options](install-options.md) page are generated from the case-app
+annotations of the options of the kernel (`almond.Options` and `almond.kernel.install.Options`)
+and of the newer launcher (`almond.launcher.LauncherOptions`):
+- `@Group` sets the section of the page an option goes in (as well as its section in the
+  `--help` output), see `almond.kernel.install.OptionGroups`,
+- the second argument of `@HelpMessage` is its documentation, in Markdown (the first one is
+  shown in the `--help` output, and is used if there is no Markdown documentation),
+- options with `@Hidden` are left out.
+
+After changing these, update the page with
+```text
+$ ./mill docs.updateOptionsPage
+```
+This only changes the parts of the page between the `BEGIN GENERATED OPTIONS` and
+`END GENERATED OPTIONS` comments. The CI checks that the page is up-to-date, with
+`./mill docs.checkOptionsPage`.
+
 ## Options
 
 `docs.devServer` and `docs.serveCmd` accept

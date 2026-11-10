@@ -36,7 +36,7 @@ command-line arguments differently, or add extra command-line options to pass to
 For the kernel installation to work out-of-the-box, the kernel should be launched via
 [coursier](https://get-coursier.io) in one way or another, like the almond kernel is. (It is
 possible nonetheless to rely on e.g. uber JARs, by tweaking the `arg` or `command` fields of
-the installation options, see [`--arg` / `--command`](install-options.md#--arg----command).)
+the installation options, see [`--arg`](install-options.md#--arg) and [`--command`](install-options.md#--command).)
 To test your kernel locally, publish it locally (with `publishLocal` with sbt, or Mill, or
 `scala-cli publish local`), note its organization, module name, and version, then install it with
 ```text
