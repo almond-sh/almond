@@ -68,6 +68,17 @@ object NotebookCacheLoggerTests extends TestSuite {
       assert(html(current.head).isEmpty)
     }
 
+    test("failed downloads are cleared") {
+      // like files missing from the first repository, found in the next one
+      val handler = withLogger { logger =>
+        logger.downloadingArtifact(url, coursierapi.Artifact.of(url))
+        logger.downloadedArtifact(url, false)
+      }
+      val current = handler.current
+      assert(current.length == 1)
+      assert(html(current.head).isEmpty)
+    }
+
     test("progress is shown") {
       val handler = withLogger { logger =>
         logger.downloadingArtifact(url, coursierapi.Artifact.of(url))

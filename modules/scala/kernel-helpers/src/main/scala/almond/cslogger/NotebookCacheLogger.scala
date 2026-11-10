@@ -84,8 +84,10 @@ class NotebookCacheLogger(
     val idOpt = Option(ids.get(url))
     idOpt match {
       case Some(id) =>
-        val msg = if (success) "" else div("Failed to download ", a(href := url, url)).render
-        updates.put(id, msg)
+        // Failed downloads are cleared too: most of them are files missing from a repository,
+        // that coursier then looks for in the next one. If a dependency can't be fetched at all,
+        // the resolution or fetch error that follows says so.
+        updates.put(id, "")
       case None =>
         if (publish.canOutput()) {
           val msg  = if (success) "Downloaded" else "Failed to download"
