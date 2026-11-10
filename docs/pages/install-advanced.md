@@ -56,6 +56,8 @@ When passed the `--install` option, Almond tries to determine the path of its ow
 and copies it alongside the `kernel.json` file it generates for Jupyter to be able to launch
 Almond. That way, the launcher used during the installation can be safely deleted right after
 the installation.
+See [What happens during installation](quick-start-install.md#what-happens-during-installation)
+for the files that the installation and the kernel startup download or write.
 
 ### Where the kernel gets installed
 
