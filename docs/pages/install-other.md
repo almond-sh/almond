@@ -31,5 +31,9 @@ these JARs about as fast as those of the file system. See
 
 Such launchers also embed the source JARs of the kernel dependencies, that
 [inspections](usage-completion.md#inspections) read documentation from. Kernels
-copy the ones they need to a temporary directory, deleted when they exit. Up to
-almond 0.15.0, inspections from such launchers show no documentation from these.
+copy these to a temporary directory, named `almond-sources...` in the temporary
+directory of the system: Scala 2 kernels copy all of them on the first inspection,
+Scala 3 ones only those they read documentation from. These copies are deleted when
+kernels exit, unless they are forcibly killed (like with `kill -9`, or when Jupyter
+gives up waiting for them to shut down) or crash. Up to almond 0.15.0, inspections
+from such launchers show no documentation from these.
