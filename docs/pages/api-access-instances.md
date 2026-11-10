@@ -27,7 +27,24 @@ To access API instances from libraries, depend on either
 You can depend on those libraries as "provided" dependencies, as these libraries
 are guaranteed to be already loaded by almond itself.
 
-In practice, you can add something along those lines in `build.sbt`,
+In practice, with [Mill](https://mill-build.org), you can add something along those
+lines to your module in `build.mill`,
+```scala
+def compileMvnDeps = Seq(
+  mvn"sh.almond.ammonite::ammonite-repl-api:@AMMONITE_VERSION@", // for ammonite.interp.api.InterpAPI and ammonite.repl.api.ReplAPI
+  mvn"sh.almond::scala-kernel-api:@VERSION@" // for almond.api.JupyterApi
+)
+```
+
+With [Scala CLI](https://scala-cli.virtuslab.org), you can add directives like
+```scala
+// for ammonite.interp.api.InterpAPI and ammonite.repl.api.ReplAPI
+//> using compileOnly.dep sh.almond.ammonite::ammonite-repl-api:@AMMONITE_VERSION@
+// for almond.api.JupyterApi
+//> using compileOnly.dep sh.almond::scala-kernel-api:@VERSION@
+```
+
+With [sbt](https://www.scala-sbt.org), you can add something along those lines in `build.sbt`,
 ```scala
 libraryDependencies ++= Seq(
   "sh.almond.ammonite" %% "ammonite-repl-api" % "@AMMONITE_VERSION@" % Provided, // for ammonite.interp.api.InterpAPI and ammonite.repl.api.ReplAPI
