@@ -15,11 +15,12 @@ class NotebookCacheLogger(
 ) extends coursierapi.CacheLogger {
   private val log = logCtx(getClass)
   import scalatags.Text.all._
-  private var ids         = new ConcurrentHashMap[String, String]
-  private var totalLength = new ConcurrentHashMap[String, JLong]
-  private var downloaded  = new ConcurrentHashMap[String, JLong]
+  private val ids         = new ConcurrentHashMap[String, String]
+  private val totalLength = new ConcurrentHashMap[String, JLong]
   private var threadOpt   = Option.empty[Thread]
-  private val updates     = new ConcurrentHashMap[String, String]
+  // display id -> latest HTML for it, not sent yet
+  private val updates           = new ConcurrentHashMap[String, String]
+  @volatile private var running = false
   private def newThread(): Thread =
     new Thread("cs-logger") {
       setDaemon(true)
@@ -31,29 +32,36 @@ class NotebookCacheLogger(
             updates.remove(k, v)
           }
         }
-      override def run(): Unit =
+      override def run(): Unit = {
         try
-          while (true) {
+          while (running) {
             proceed()
             Thread.sleep(25L)
           }
         catch {
           case _: InterruptedException =>
-            proceed()
         }
+        // sends the updates that came in since the last round
+        proceed()
+      }
     }
   override def init(sizeHint: Integer): Unit = {
+    stop()
     ids.clear()
     updates.clear()
     totalLength.clear()
-    downloaded.clear()
+    running = true
     val t = newThread()
     t.start()
     threadOpt = Some(t)
   }
+
+  /** Stops the thread sending updates, once it sent the pending ones */
   override def stop(): Unit =
     for (t <- threadOpt) {
-      t.interrupt()
+      // not interrupting the thread, which might be sending messages at that moment
+      running = false
+      t.join()
       threadOpt = None
     }
   override def downloadingArtifact(url: String, artifact: coursierapi.Artifact): Unit =
@@ -64,11 +72,10 @@ class NotebookCacheLogger(
       val html        = div("Downloading ", a(href := url, url))
       publish.html(html.render, id)
     }
-  override def downloadProgress(url: String, downloaded0: Long): Unit = {
-    downloaded.putIfAbsent(url, downloaded0: JLong)
+  override def downloadProgress(url: String, downloaded: Long): Unit = {
     val idOpt = Option(ids.get(url))
     for (id <- idOpt; len <- Option(totalLength.get(url))) {
-      val pct  = math.floor(100 * (downloaded0.toDouble / len)).toInt
+      val pct  = math.floor(100 * (downloaded.toDouble / len)).toInt
       val html = div("Downloading ", a(href := url, url), s" ($pct %)")
       updates.put(id, html.render)
     }
@@ -94,6 +101,5 @@ class NotebookCacheLogger(
     watching: Boolean
   ): Unit = {
     totalLength.put(url, totalLength0: JLong)
-    downloaded.putIfAbsent(url, alreadyDownloaded: JLong)
   }
 }
