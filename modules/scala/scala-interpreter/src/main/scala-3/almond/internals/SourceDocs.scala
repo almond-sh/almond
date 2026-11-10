@@ -54,7 +54,7 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
     new Lru[Path, Option[ZipFile]](
       32,
       _.foreach(zf =>
-        try zf.close()
+        try SourcePath.closeZipFile(zf)
         catch { case NonFatal(_) => }
       )
     )
@@ -193,7 +193,7 @@ final class SourceDocs(frames: => List[Frame], log: Logger) {
     zipFiles.getOrElseUpdate(
       path,
       // source JARs embedded in standalone launchers are read from copies of them
-      try Some(new ZipFile(SourcePath.localFile(path).toFile))
+      try Some(SourcePath.openZipFile(path))
       catch {
         case NonFatal(e) =>
           log.debug(s"Could not open $path", e)
