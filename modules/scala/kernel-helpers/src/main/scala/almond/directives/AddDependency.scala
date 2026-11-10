@@ -1,7 +1,7 @@
 package almond.directives
 
-import scala.cli.directivehandler._
-import scala.cli.directivehandler.EitherSequence._
+import almond.directivehandler._
+import almond.directivehandler.EitherSequence._
 
 @DirectiveGroupName("Dependency options")
 @DirectiveExamples("//> using dep \"com.lihaoyi::os-lib:0.9.1\"")

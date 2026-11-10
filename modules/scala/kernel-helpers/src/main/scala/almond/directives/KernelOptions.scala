@@ -5,8 +5,8 @@ import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import dependency.parser.DependencyParser
 
-import scala.cli.directivehandler._
-import scala.cli.directivehandler.EitherSequence._
+import almond.directivehandler._
+import almond.directivehandler.EitherSequence._
 
 // other directives that could be imported from Scala CLI:
 // - exclude

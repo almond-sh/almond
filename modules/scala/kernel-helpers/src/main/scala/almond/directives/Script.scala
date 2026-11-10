@@ -1,6 +1,6 @@
 package almond.directives
 
-import scala.cli.directivehandler._
+import almond.directivehandler._
 
 @DirectiveGroupName("Scripts")
 @DirectiveExamples("//> using script path/to/script.sc")

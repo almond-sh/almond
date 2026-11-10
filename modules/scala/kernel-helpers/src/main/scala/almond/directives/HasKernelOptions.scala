@@ -1,6 +1,6 @@
 package almond.directives
 
-import scala.cli.directivehandler.{
+import almond.directivehandler.{
   DirectiveException,
   DirectiveHandler,
   DirectiveHandlers,

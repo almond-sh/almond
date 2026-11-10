@@ -1,0 +1,13 @@
+// Based on https://github.com/scala-cli/directive-handler/blob/9e6bb77cf83581bfde42fd75d515a210995d058e/directive-handler/src/main/scala/scala/cli/directivehandler/DependencyFormatError.scala
+
+package almond.directivehandler
+
+final class DependencyFormatError(
+  val dependencyString: String,
+  val error: String,
+  val originOpt: Option[String] = None,
+  positionOpt: Option[Position] = None
+) extends DirectiveException(
+      s"Error parsing ${originOpt.getOrElse("")}dependency '$dependencyString': $error",
+      positions = positionOpt.toSeq
+    )

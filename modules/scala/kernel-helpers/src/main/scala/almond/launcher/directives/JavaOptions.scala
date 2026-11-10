@@ -1,6 +1,6 @@
 package almond.launcher.directives
 
-import scala.cli.directivehandler._
+import almond.directivehandler._
 
 @DirectiveGroupName("Java options")
 @DirectiveExamples("//> using javaOpt -Xmx2g, -Dsomething=a")

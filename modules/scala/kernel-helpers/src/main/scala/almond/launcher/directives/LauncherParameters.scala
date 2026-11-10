@@ -4,7 +4,7 @@ import almond.directives.KernelOptions
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 
-import scala.cli.directivehandler.{DirectiveHandler, DirectiveHandlers}
+import almond.directivehandler.{DirectiveHandler, DirectiveHandlers}
 
 final case class LauncherParameters(
   jvm: Option[String] = None,

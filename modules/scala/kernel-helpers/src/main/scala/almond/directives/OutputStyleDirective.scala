@@ -2,7 +2,7 @@ package almond.directives
 
 import almond.OutputStyle
 
-import scala.cli.directivehandler._
+import almond.directivehandler._
 
 @DirectiveGroupName("Output style")
 @DirectiveExamples("//> using outputStyle python")

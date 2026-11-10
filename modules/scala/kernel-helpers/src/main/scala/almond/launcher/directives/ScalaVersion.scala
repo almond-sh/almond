@@ -1,6 +1,6 @@
 package almond.launcher.directives
 
-import scala.cli.directivehandler._
+import almond.directivehandler._
 
 @DirectiveGroupName("Scala version")
 @DirectiveExamples("//> using scala 3.0.2")

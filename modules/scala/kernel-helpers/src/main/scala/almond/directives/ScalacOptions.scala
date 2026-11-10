@@ -1,6 +1,6 @@
 package almond.directives
 
-import scala.cli.directivehandler._
+import almond.directivehandler._
 
 @DirectiveGroupName("Compiler options")
 @DirectiveExamples("//> using option -Xasync")
