@@ -1,6 +1,6 @@
 package almond.kernel
 
-import almond.kernel.install.Install
+import almond.kernel.install.{Install, Options}
 import utest._
 
 object InstallArgsTests extends TestSuite {
@@ -46,6 +46,26 @@ object InstallArgsTests extends TestSuite {
       val args = List("--environment", "foo", "--ids=a", "--install-dir", "d")
       val res  = Install.withoutInstallArgs(args)
       assert(res == args)
+    }
+
+    test("env values") {
+      val options     = Options(env = List("A=a=1", "B=", "C", "D"))
+      val res         = options.envMap(Map("C" -> "from env", "D" -> "", "E" -> "unused"))
+      val expectedRes = Map("A" -> "a=1", "B" -> "", "C" -> "from env", "D" -> "")
+      assert(res == expectedRes)
+    }
+
+    test("env name not in the environment") {
+      val options = Options(env = List("A"))
+      val ex      = assertThrows[RuntimeException](options.envMap(Map.empty))
+      assert(ex.getMessage.contains("A"))
+    }
+
+    test("malformed env values") {
+      for (input <- Seq("", "=a")) {
+        val options = Options(env = List(input))
+        assertThrows[RuntimeException](options.envMap(Map.empty))
+      }
     }
 
   }

@@ -127,14 +127,22 @@ final case class Options(
     copyLauncher: Option[Boolean] = None,
   @Group(OptionGroups.installation)
   @HelpMessage(
-    "Environment variables to set in the kernel spec, that Jupyter passes to the kernel when starting it",
+    "Environment variables to set in the kernel spec, that Jupyter passes to the kernel when starting it, as name=value, or just name to use the value of that variable at install time",
     """Set an environment variable in the kernel spec, that Jupyter sets when starting the kernel.
       |Can be repeated. Use like
       |```bash
       |--env SPARK_HOME=/opt/spark --env COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
+      |```
+      |
+      |Pass just a name, without `=value`, to use the value that variable has in the environment of the
+      |installation command. This writes its current value in the kernel spec, the kernel doesn't read it later on.
+      |Installation fails if that variable isn't set.
+      |```bash
+      |export COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
+      |--env COURSIER_REPOSITORIES
       |```""".stripMargin
   )
-  @ValueDescription("name=value")
+  @ValueDescription("name=value|name")
     env: List[String] = Nil
 ) {
   // format: on
@@ -143,11 +151,22 @@ final case class Options(
       arg.isEmpty && command.isEmpty
     }
   def envMap(): Map[String, String] =
+    envMap(sys.env)
+  def envMap(currentEnv: Map[String, String]): Map[String, String] =
     env
       .map { input =>
         input.split("=", 2) match {
-          case Array(k, v) => (k, v)
-          case _           => sys.error(s"Malformed --env value '$input' (expected 'name=value')")
+          case Array(k, v) if k.nonEmpty => (k, v)
+          case Array(k) if k.nonEmpty =>
+            val v = currentEnv.getOrElse(
+              k,
+              sys.error(
+                s"Environment variable $k passed via --env isn't set (pass '$k=value' to specify its value)"
+              )
+            )
+            (k, v)
+          case _ =>
+            sys.error(s"Malformed --env value '$input' (expected 'name=value' or 'name')")
         }
       }
       .toMap

@@ -329,11 +329,12 @@ This can be achieved the following way, with the former launcher:
 $ export COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
 $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- \
     --install \
-    --env "COURSIER_REPOSITORIES=$COURSIER_REPOSITORIES"
+    --env COURSIER_REPOSITORIES
 ```
 
 `--env` sets environment variables in the kernel spec that gets written when installing Almond. Jupyter
-sets those prior to launching Almond when users open notebooks.
+sets those prior to launching Almond when users open notebooks. Passed just a name, like here, `--env`
+writes the value that variable has during installation. Pass `--env name=value` to set a different value.
 
 To keep using Maven Central through a proxy or a mirror of it, see [proxies and mirrors](install-proxies.md).
 

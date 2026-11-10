@@ -139,6 +139,14 @@ Can be repeated. Use like
 --env SPARK_HOME=/opt/spark --env COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
 ```
 
+Pass just a name, without `=value`, to use the value that variable has in the environment of the
+installation command. This writes its current value in the kernel spec, the kernel doesn't read it later on.
+Installation fails if that variable isn't set.
+```bash
+export COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
+--env COURSIER_REPOSITORIES
+```
+
 #### `--extra-startup-class-path`
 
 JARs to add to the class path of `java` itself, alongside the kernel JARs, when installing
