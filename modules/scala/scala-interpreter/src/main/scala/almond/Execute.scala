@@ -655,7 +655,9 @@ final class Execute(
                 // FIXME This discards all errors but the first
                 Execute.error(colors0(), Some(err.head), "")
               case Right(options) =>
-                val optionsRes = useOptions(ammInterp, options)
+                // with the output handler set, so that the notebook coursier logger can show the
+                // downloads of the dependencies of '//> using dep' directives
+                val optionsRes = withOutputHandler(outputHandler)(useOptions(ammInterp, options))
 
                 if (
                   options.ignoredDirectives.nonEmpty &&
