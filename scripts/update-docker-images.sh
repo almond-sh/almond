@@ -81,6 +81,12 @@ build() {
     build_image "$SCALA212_VERSION" ${IMAGE_NAME}-scala-${SCALA212_VERSION}
     build_image "$SCALA3_VERSION $SCALA213_VERSION $SCALA212_VERSION" \
       ${IMAGE_NAME} ${DOCKER_REPO}:latest
+    # Image for Deepnote, whose base images only exist for linux/amd64
+    if [[ $DOCKER_PLATFORM == linux/amd64 ]]; then
+      build_image "$SCALA3_VERSION $SCALA213_VERSION $SCALA212_VERSION" \
+        ${IMAGE_NAME}-deepnote ${DOCKER_REPO}:latest-deepnote \
+        -- -f deepnote.Dockerfile
+    fi
   fi
 }
 
