@@ -34,8 +34,8 @@ import dependency.ScalaParameters
 import dependency.api.ops._
 import fastparse.Parsed
 
-import scala.cli.directivehandler._
-import scala.cli.directivehandler.EitherSequence._
+import almond.directivehandler._
+import almond.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration

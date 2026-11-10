@@ -2696,16 +2696,20 @@ object Tests {
       )
     }
 
+  /** Using directives are only looked for in comments at the top of cells, so this is reported as a
+    * parsing error of the cell code (its exact message depending on the Scala version). It used to
+    * be reported as a malformed directive.
+    */
   def unclosedStringLitteral()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(
         """"aaa""",
-        partialErrors = Seq(
-          (
-            "scala.cli.directivehandler.MalformedDirectiveError",
-            "unclosed string literalunclosed string literal"
-          )
-        )
+        expectError = true,
+        ignoreStreams = true
+      )
+      execute(
+        "val n = 1 + 1",
+        "n: Int = 2"
       )
     }
 

@@ -6,7 +6,7 @@ import almond.kernel.install.{Options => InstallOptions}
 import almond.launcher.directives.CustomGroup
 import caseapp._
 
-import scala.cli.directivehandler.EitherSequence._
+import almond.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationInt}
 

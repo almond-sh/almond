@@ -56,6 +56,7 @@ object Deps {
   def ammoniteSpark      = mvn"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = mvn"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = mvn"com.github.alexarchambault::case-app:${Versions.caseApp}"
+  def caseAppUtil        = mvn"com.github.alexarchambault::case-app-util:${Versions.caseApp}"
   def classPathUtil      = mvn"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
   // Version of the cs launcher the integration tests drive, on all platforms
@@ -67,12 +68,12 @@ object Deps {
   def coursierVersions    = mvn"io.get-coursier::versions:0.7.0"
   def dependency          = mvn"io.get-coursier::dependency:0.3.4"
   def dependencyInterface = mvn"io.get-coursier::dependency-interface:0.3.4"
-  def directiveHandler    = mvn"io.github.alexarchambault.scala-cli::directive-handler:0.1.4"
   def expecty             = mvn"com.eed3si9n.expecty::expecty:0.17.1"
   def fansi               = mvn"com.lihaoyi::fansi:0.5.1"
   def fs2                 = mvn"co.fs2::fs2-core:3.14.0"
   def jansi               = mvn"org.fusesource.jansi:jansi:2.4.3"
   def jeromq              = mvn"org.zeromq:jeromq:0.5.4"
+  def junitInterface      = mvn"com.github.sbt:junit-interface:0.13.3"
   def jsoniterScalaCore =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =

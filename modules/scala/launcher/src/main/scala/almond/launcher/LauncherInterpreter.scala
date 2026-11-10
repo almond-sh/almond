@@ -11,9 +11,9 @@ import almond.protocol.{Execute, KernelInfo}
 
 import java.io.File
 
-import scala.cli.directivehandler._
-import scala.cli.directivehandler.DirectiveValueParser.DirectiveValueParserValueOps
-import scala.cli.directivehandler.EitherSequence._
+import almond.directivehandler._
+import almond.directivehandler.DirectiveValueParser.DirectiveValueParserValueOps
+import almond.directivehandler.EitherSequence._
 
 class LauncherInterpreter(
   connectionFile: String,
@@ -63,7 +63,7 @@ class LauncherInterpreter(
               .map { value =>
                 value.asString.toRight {
                   new MalformedDirectiveError(
-                    s"Expected a string, got '${value.getRelatedASTNode.toString}'",
+                    s"Expected a string, got '${value.rawText}'",
                     Seq(value.position(scopedDirective.maybePath))
                   )
                 }

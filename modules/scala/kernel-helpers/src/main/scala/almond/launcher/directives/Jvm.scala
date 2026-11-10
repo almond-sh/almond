@@ -1,6 +1,6 @@
 package almond.launcher.directives
 
-import scala.cli.directivehandler._
+import almond.directivehandler._
 
 @DirectiveGroupName("JVM version")
 @DirectiveExamples("//> using jvm 11")

@@ -208,6 +208,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
     scala.`scala-kernel-api`()
   )
   def foldedModules = Seq(
+    scala.`directive-handler`(),
     scala.`kernel-helpers`()
   )
   def mvnDeps = Task {
@@ -225,7 +226,6 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
       // for dependency.ModuleMatcher, to match automatic dependencies with globs
       Deps.dependency,
       Deps.dependencyInterface,
-      Deps.directiveHandler,
       Deps.jansi,
       Deps.ammoniteCompiler.exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna")),
@@ -429,6 +429,43 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
   }
 }
 
+/** Parsing and handling of using directives (`//> using ...`), shared by the Scala kernel and its
+  * launcher.
+  *
+  * Originally the [directive-handler](https://github.com/scala-cli/directive-handler) library
+  * (0.1.4), whose sources now live here. Its parser (in `almond.directivehandler.parser`) is a port
+  * of the one of Scala CLI and of the Scala 3 compiler (the `scala3-directives-parser` module of
+  * the latter, only published for recent Scala 3 versions), rather than the former
+  * `org.virtuslab:using_directives` Java library.
+  *
+  * Not published on its own - [[ScalaInterpreter]] and [[Launcher]] ship its classes and sources
+  * alongside their own. It's a module distinct from [[KernelHelpers]], as the latter derives
+  * directive handlers with the macros / implicit derivation defined here.
+  */
+trait DirectiveHandler extends Cross.Module[String] with AlmondUnpublishedModule
+    with AlmondJvmTarget {
+  def crossScalaVersion = crossValue
+  def mvnDeps = Task {
+    // case-app-util (and shapeless, that it pulls) are only used by the Scala 2 derivation
+    val scala2Deps =
+      if (isScala3(crossScalaVersion)) Nil
+      else Seq(Deps.caseAppUtil)
+    scala2Deps ++ Seq(
+      Deps.collectionCompat,
+      Deps.dependency,
+      Deps.osLib
+    )
+  }
+  object test extends CrossSbtModuleTests with AlmondTestModule {
+    def testFramework = "com.novocode.junit.JUnitFramework"
+    def mvnDeps = Seq(
+      Deps.expecty,
+      Deps.junitInterface,
+      Deps.pprint
+    )
+  }
+}
+
 /** Helpers that both the Scala kernel and its launcher build upon, but that the kernel framework
   * itself doesn't need.
   *
@@ -439,12 +476,12 @@ trait KernelHelpers extends Cross.Module[String] with AlmondUnpublishedModule
     with AlmondJvmTarget {
   def crossScalaVersion = crossValue
   def moduleDeps = super.moduleDeps ++ Seq(
-    shared.kernel()
+    shared.kernel(),
+    scala.`directive-handler`()
   )
   def mvnDeps = super.mvnDeps() ++ Seq(
     Deps.collectionCompat,
     Deps.coursierApi,
-    Deps.directiveHandler,
     Deps.jsoniterScalaCore,
     Deps.scalatags
   )
@@ -461,6 +498,7 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     shared.kernel(ScalaVersions.scala3Compat)
   )
   def foldedModules = Seq(
+    scala.`directive-handler`(ScalaVersions.scala3Compat),
     scala.`kernel-helpers`(ScalaVersions.scala3Compat)
   )
   def mvnDeps = Seq(
@@ -532,6 +570,7 @@ object scala extends Module {
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.binaries)
   object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
   object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
+  object `directive-handler` extends Cross[DirectiveHandler](ScalaVersions.binaries)
   object launcher            extends Launcher
   object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
 
