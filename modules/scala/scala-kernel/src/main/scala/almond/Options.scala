@@ -369,8 +369,9 @@ final case class Options(
     "Whether to enable variable inspector",
     """Whether to enable support for the
       |[variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)
-      |JupyterLab extension. By default, it gets enabled when the extension asks for it. Disable it with
-      |`--variable-inspector=false`.""".stripMargin
+      |JupyterLab extension. By default, it gets enabled when the extension asks for it, and only lists
+      |the variables of the cells run after that. Pass `--variable-inspector=true` to keep track of
+      |variables from the start, or `--variable-inspector=false` to disable it.""".stripMargin
   )
     variableInspector: Option[Boolean] = None,
   @Group(OptionGroups.jupyter)
