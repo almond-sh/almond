@@ -31,6 +31,11 @@ $ pip install lckr-jupyterlab-variableinspector
 then open it with "Open Variable Inspector", from the context menu of a notebook or from the
 command palette.
 
-almond keeps track of variables for the inspector once it's opened. Pass
-[`--variable-inspector=false`](install-options.md#--variable-inspector) when installing the kernel
-to disable that.
+almond starts keeping track of variables when the inspector is first opened, so the variables
+of cells run before that aren't listed. Lazy vals and parameterless methods are listed as `[lazy]`
+and `[def]`, without evaluating them. The matrix view of the inspector and deleting variables
+from it aren't supported with almond.
+
+Pass [`--variable-inspector=true`](install-options.md#--variable-inspector) when installing the
+kernel to keep track of variables from the start, or `--variable-inspector=false` to disable
+variable tracking altogether.
