@@ -15,7 +15,8 @@ final class ZeromqThreads private (
   val selectorOpenCloseEces: ExecutionContextExecutorService,
   private val pollingEcesOpt: Option[ExecutionContextExecutorService],
   val context: ZMQ.Context,
-  val maxMessageSize: Option[Long]
+  val maxMessageSize: Option[Long],
+  val reusePort: Boolean
 ) extends Product with Serializable with ZeromqThreadsCompat with AutoCloseable {
 
   private def this(
@@ -29,7 +30,8 @@ final class ZeromqThreads private (
       selectorOpenCloseEces,
       pollingEcesOpt,
       context,
-      Some(ZeromqThreads.defaultMaxMessageSize)
+      Some(ZeromqThreads.defaultMaxMessageSize),
+      reusePort = false
     )
 
   def this(
@@ -83,7 +85,19 @@ final class ZeromqThreads private (
       selectorOpenCloseEces,
       pollingEcesOpt,
       context,
-      maxMessageSize
+      maxMessageSize,
+      reusePort
+    )
+
+  /** Whether the sockets using this bind their ports with SO_REUSEPORT (see [[ReusePort]]) */
+  def withReusePort(reusePort: Boolean): ZeromqThreads =
+    new ZeromqThreads(
+      channelEces,
+      selectorOpenCloseEces,
+      pollingEcesOpt,
+      context,
+      maxMessageSize,
+      reusePort
     )
 
   override def canEqual(that: Any): Boolean =
@@ -104,12 +118,13 @@ final class ZeromqThreads private (
       selectorOpenCloseEces == other.selectorOpenCloseEces &&
       pollingEcesOpt == other.pollingEcesOpt &&
       context == other.context &&
-      maxMessageSize == other.maxMessageSize
+      maxMessageSize == other.maxMessageSize &&
+      reusePort == other.reusePort
     }
   override def hashCode(): Int =
     MurmurHash3.productHash(this)
   override def toString(): String =
-    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces0, $context, $maxMessageSize)"
+    s"ZeromqThreads($channelEces, $selectorOpenCloseEces, $pollingEces0, $context, $maxMessageSize, $reusePort)"
 
   @deprecated("Use with* methods instead", "0.14.2")
   def copy(
@@ -123,7 +138,8 @@ final class ZeromqThreads private (
       ZeromqThreads.eces(selectorOpenCloseEc),
       Some(ZeromqThreads.eces(pollingEc)),
       context,
-      maxMessageSize
+      maxMessageSize,
+      reusePort
     )
 
   def close(): Unit = {

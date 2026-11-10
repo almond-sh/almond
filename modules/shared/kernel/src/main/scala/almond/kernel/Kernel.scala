@@ -191,6 +191,23 @@ final case class Kernel(
   ): IO[Unit] =
     sink(replies(Stream(leftoverMessages: _*) ++ stream)).compile.drain
 
+  /** Runs the kernel on an already created connection, such as a
+    * [[almond.channels.relay.RelayConnection]], and closes it once done
+    */
+  def runOnConnection(
+    connection: Connection,
+    leftoverMessages: Seq[(Channel, RawMessage)],
+    lingerDuration: Duration
+  ): IO[Unit] =
+    for {
+      _ <- connection.open
+      _ <- run(
+        connection.stream(),
+        connection.autoCloseSink(partial = false, lingerDuration = lingerDuration),
+        leftoverMessages
+      )
+    } yield ()
+
   /** @param connection
     * @param kernelId
     * @param zeromqThreads
@@ -307,14 +324,46 @@ final case class Kernel(
             assert(bindToRandomPorts || ports.isEmpty)
             onBound(withPorts(connection, ports), ports.nonEmpty)
           }
+          // When taking over ports from a launcher, clients have to re-connect to us. We wait for
+          // them before replying to the messages the launcher left us, else replies could get lost.
+          // This can take a while on macOS, where clients get no response to their connection
+          // attempts in the meantime, and retry with exponential backoff.
+          _ <- {
+            if (zeromqThreads.reusePort && leftoverMessages.nonEmpty)
+              IO {
+                log.debug("Waiting for clients to re-connect")
+                System.nanoTime()
+              }.flatMap { start =>
+                c.awaitClients(clientsReconnectionTimeout).flatMap { connected =>
+                  IO {
+                    if (connected)
+                      log.debug(
+                        s"Clients re-connected after ${(System.nanoTime() - start) / 1000000L} ms"
+                      )
+                    else
+                      log.warn(
+                        s"Clients didn't re-connect within $clientsReconnectionTimeout, " +
+                          "replies to their pending messages may get lost"
+                      )
+                  }
+                }
+              }
+            else
+              IO.unit
+          }
           _ <- run(
             c.stream(),
-            c.autoCloseSink(partial = !autoClose, lingerDuration = lingerDuration),
+            // If not closing automatically, the caller closes the connection itself, once
+            // done with it (the launcher keeps using it to relay messages to the actual kernel)
+            if (autoClose) c.autoCloseSink(partial = false, lingerDuration = lingerDuration)
+            else c.sink,
             leftoverMessages
           )
         } yield ()
       (run0, c)
     }
+
+  private def clientsReconnectionTimeout = 30.seconds
 
   private def drainExecuteMessages: IO[Seq[(Channel, RawMessage)]] =
     Stream.repeatEval(executeQueue.take)
@@ -328,6 +377,7 @@ final case class Kernel(
     * @param zeromqThreads
     * @param leftoverMessages
     * @param autoClose
+    *   whether to close the connection once the kernel is done, else the caller needs to close it
     * @param lingerDuration
     * @param bindToRandomPorts
     *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
@@ -418,6 +468,7 @@ final case class Kernel(
     * @param zeromqThreads
     * @param leftoverMessages
     * @param autoClose
+    *   whether to close the connection once the kernel is done, else the caller needs to close it
     * @param lingerDuration
     * @param bindToRandomPorts
     *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
@@ -513,6 +564,7 @@ final case class Kernel(
     * @param zeromqThreads
     * @param leftoverMessages
     * @param autoClose
+    *   whether to close the connection once the kernel is done, else the caller needs to close it
     * @param lingerDuration
     * @param bindToRandomPorts
     *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
@@ -547,6 +599,7 @@ final case class Kernel(
     * @param zeromqThreads
     * @param leftoverMessages
     * @param autoClose
+    *   whether to close the connection once the kernel is done, else the caller needs to close it
     * @param lingerDuration
     * @param bindToRandomPorts
     *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.
@@ -581,6 +634,7 @@ final case class Kernel(
     * @param zeromqThreads
     * @param leftoverMessages
     * @param autoClose
+    *   whether to close the connection once the kernel is done, else the caller needs to close it
     * @param lingerDuration
     * @param bindToRandomPorts
     *   if non-empty, bind to random ports for channels where no port is specified or the port is 0.

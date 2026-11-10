@@ -4,6 +4,7 @@ import java.io.{File, FileOutputStream, PrintStream}
 
 import almond.amm.AmmInterpreter
 import almond.api.JupyterApi
+import almond.channels.relay.{RelayConnection, RelayFile}
 import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
 import almond.interpreter.KernelSession
@@ -26,6 +27,10 @@ import scala.util.Properties
 object ScalaKernel extends CaseApp[Options] {
 
   def run(options: Options, args: RemainingArgs): Unit = {
+
+    // temporary files of the launcher that exec-ed us
+    for (f <- options.deleteOnExit)
+      new File(f).deleteOnExit()
 
     // should make scalac manage opened JARs more carefully
     sys.props("scala.classpath.closeZip") = "true"
@@ -96,13 +101,21 @@ object ScalaKernel extends CaseApp[Options] {
           sys.exit(0)
       }
 
-    val connectionFile = options.connectionFile.getOrElse {
-      Console.err.println(
-        "No connection file passed, and installation not asked. Run with --install to install the kernel, " +
-          "or pass a connection file via --connection-file to run the kernel."
-      )
-      sys.exit(1)
-    }
+    // Either we're started by the launcher, and connect to it, or we bind the sockets of the
+    // connection file ourselves
+    val connectionOrRelayFile: Either[String, String] =
+      options.relayFile match {
+        case Some(relayFile) => Right(relayFile)
+        case None =>
+          val connectionFile = options.connectionFile.getOrElse {
+            Console.err.println(
+              "No connection file passed, and installation not asked. Run with --install to install the kernel, " +
+                "or pass a connection file via --connection-file to run the kernel."
+            )
+            sys.exit(1)
+          }
+          Left(connectionFile)
+      }
 
     val autoDependencies = options.autoDependencyMap()
     val autoVersions     = options.autoVersionsMap()
@@ -152,7 +165,9 @@ object ScalaKernel extends CaseApp[Options] {
     val threads = {
       val threads0 = ScalaKernelThreads.create("scala-kernel")
       threads0.copy(
-        zeromqThreads = threads0.zeromqThreads.withMaxMessageSize(options.maxMessageSize0())
+        zeromqThreads = threads0.zeromqThreads
+          .withMaxMessageSize(options.maxMessageSize0())
+          .withReusePort(options.reusePort)
       )
     }
 
@@ -287,17 +302,26 @@ object ScalaKernel extends CaseApp[Options] {
         options.noExecuteInputFor.map(_.trim).filter(_.nonEmpty).toSet,
         session
       )
-        .flatMap(_.runOnConnectionFile(
-          connectionFile,
-          "scala",
-          threads.zeromqThreads,
-          options.leftoverMessages0(),
-          autoClose = true,
-          lingerDuration = options.lingerDuration,
-          bindToRandomPorts =
-            if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
-            else None
-        ))
+        .flatMap { kernel =>
+          connectionOrRelayFile match {
+            case Left(connectionFile) =>
+              kernel.runOnConnectionFile(
+                connectionFile,
+                "scala",
+                threads.zeromqThreads,
+                options.leftoverMessages0(),
+                autoClose = true,
+                lingerDuration = options.lingerDuration,
+                bindToRandomPorts =
+                  if (options.bindToRandomPorts.getOrElse(true)) Some(Paths.get(connectionFile))
+                  else None
+              )
+            case Right(relayFile) =>
+              RelayConnection.connect(RelayFile.read(Paths.get(relayFile))).flatMap { conn =>
+                kernel.runOnConnection(conn, options.leftoverMessages0(), options.lingerDuration)
+              }
+          }
+        }
         .unsafeRunSync()(threads.kernelThreads.ioRuntime)
     finally
       interpreter.shutdown()

@@ -123,6 +123,18 @@ final case class Options(
   @Hidden
     leftoverMessages: Option[String] = None,
 
+  @HelpMessage("JSON file telling how to connect to the launcher that started this kernel, used instead of a connection file")
+  @Hidden
+    relayFile: Option[String] = None,
+
+  @HelpMessage("Bind the ports of the connection file with SO_REUSEPORT, along the placeholder sockets of the launcher that exec-ed this kernel")
+  @Hidden
+    reusePort: Boolean = false,
+
+  @HelpMessage("Delete these files when exiting")
+  @Hidden
+    deleteOnExit: List[String] = Nil,
+
   @HelpMessage("Number of cells run before starting this kernel")
   @Hidden
     initialCellCount: Option[Int] = None,
