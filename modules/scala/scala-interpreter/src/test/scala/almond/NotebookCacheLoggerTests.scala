@@ -79,6 +79,14 @@ object NotebookCacheLoggerTests extends TestSuite {
       assert(html(current.head).isEmpty)
     }
 
+    test("nothing shown for downloads without a line") {
+      val handler = withLogger { logger =>
+        logger.downloadedArtifact(url, true)
+        logger.downloadedArtifact(url + ".sha1", false)
+      }
+      assert(handler.events.isEmpty)
+    }
+
     test("progress is shown") {
       val handler = withLogger { logger =>
         logger.downloadingArtifact(url, coursierapi.Artifact.of(url))

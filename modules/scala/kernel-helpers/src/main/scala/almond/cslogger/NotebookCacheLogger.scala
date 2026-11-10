@@ -80,22 +80,14 @@ class NotebookCacheLogger(
       updates.put(id, html.render)
     }
   }
-  override def downloadedArtifact(url: String, success: Boolean): Unit = {
-    val idOpt = Option(ids.get(url))
-    idOpt match {
-      case Some(id) =>
-        // Failed downloads are cleared too: most of them are files missing from a repository,
-        // that coursier then looks for in the next one. If a dependency can't be fetched at all,
-        // the resolution or fetch error that follows says so.
-        updates.put(id, "")
-      case None =>
-        if (publish.canOutput()) {
-          val msg  = if (success) "Downloaded" else "Failed to download"
-          val html = div(s"$msg ", a(href := url, url))
-          publish.html(html.render)
-        }
-    }
-  }
+  override def downloadedArtifact(url: String, success: Boolean): Unit =
+    // Nothing to do for downloads that have no line, as they started while nothing could be
+    // shown, or weren't announced
+    for (id <- Option(ids.get(url)))
+      // Failed downloads are cleared too: most of them are files missing from a repository,
+      // that coursier then looks for in the next one. If a dependency can't be fetched at all,
+      // the resolution or fetch error that follows says so.
+      updates.put(id, "")
   override def downloadLength(
     url: String,
     totalLength0: Long,
