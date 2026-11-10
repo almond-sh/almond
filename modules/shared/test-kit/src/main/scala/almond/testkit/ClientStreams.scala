@@ -336,6 +336,60 @@ object ClientStreams {
   private val replyPayloadProbeCodec: JsonValueCodec[ReplyPayloadProbe] =
     JsonCodecMaker.make
 
+  private final case class StatusProbe(status: Option[String] = None)
+
+  private val statusProbeCodec: JsonValueCodec[StatusProbe] =
+    JsonCodecMaker.make
+
+  /** Checks that the messages sent by a kernel follow the Jupyter protocol
+    *
+    * This checks things frontends rely on: a session id that stays the same in all kernel messages
+    * (frontends use it to detect kernel restarts), a date and protocol version in all headers, and
+    * a status and parent header in all replies.
+    */
+  final class SpecLint {
+
+    private var sessionOpt = Option.empty[String]
+
+    /** Issues found in a message sent by the kernel, empty if there's none */
+    def issues(message: Message[RawJson]): Seq[String] = synchronized {
+      val header  = message.header
+      val msgType = header.msg_type
+      val issues  = new mutable.ListBuffer[String]
+
+      if (header.msg_id.isEmpty)
+        issues += "empty msg_id in header"
+      if (header.date.forall(_.isEmpty))
+        issues += "no date in header"
+      if (header.version.forall(_.isEmpty))
+        issues += "no version in header"
+
+      if (header.session.isEmpty)
+        issues += "empty session in header"
+      else
+        sessionOpt match {
+          case None =>
+            sessionOpt = Some(header.session)
+          case Some(session) if session != header.session =>
+            issues += s"session ${header.session} differs from the one of former kernel " +
+              s"messages ($session)"
+          case Some(_) =>
+        }
+
+      if (msgType.endsWith("_reply")) {
+        if (message.parent_header.isEmpty)
+          issues += "no parent header in reply"
+        val hasStatus = Try(readFromArray(message.content.value)(statusProbeCodec))
+          .toOption
+          .exists(_.status.exists(_.nonEmpty))
+        if (!hasStatus)
+          issues += "no status in reply content"
+      }
+
+      issues.toList
+    }
+  }
+
   implicit class RawJsonOps(private val rawJson: RawJson) extends AnyVal {
     def stringOrEmpty: String =
       Try(readFromArray[String](rawJson.value)).toOption.getOrElse("")
@@ -345,8 +399,11 @@ object ClientStreams {
     initialMessages: Stream[IO, (Channel, RawMessage)],
     stopWhen: (Channel, Message[RawJson]) => IO[Boolean] = (_, _) => IO.pure(false),
     handler: MessageHandler = MessageHandler.discard { case _ => },
-    ioRuntime: IORuntime
+    ioRuntime: IORuntime,
+    checkSpec: Boolean = true
   ): ClientStreams = {
+
+    val specLintOpt = if (checkSpec) Some(new SpecLint) else None
 
     val b = new mutable.ListBuffer[Either[(Channel, Message[RawJson]), (Channel, Message[RawJson])]]
 
@@ -366,6 +423,17 @@ object ClientStreams {
               IO.raiseError(new Exception(s"Error decoding message: $e"))
             case Right(m0) =>
               b += Left(c -> m0)
+
+              val specIssues = specLintOpt.toSeq.flatMap(_.issues(m0))
+              val checkSpec0 =
+                if (specIssues.isEmpty) IO.unit
+                else
+                  IO.raiseError(
+                    new Exception(
+                      s"Message of type ${m0.header.msg_type} on $c doesn't follow the Jupyter " +
+                        s"protocol: ${specIssues.mkString(", ")}${System.lineSeparator()}$m"
+                    )
+                  )
 
               val extra = stopWhen(c, m0).flatMap {
                 case true =>
@@ -387,6 +455,7 @@ object ClientStreams {
 
               // bracket?
               for {
+                _ <- checkSpec0
                 a <- resp.attempt
                 _ <- extra
                 r <- IO.fromEither(a)
