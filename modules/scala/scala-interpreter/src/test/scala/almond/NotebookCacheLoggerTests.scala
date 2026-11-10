@@ -36,8 +36,10 @@ object NotebookCacheLoggerTests extends TestSuite {
     def addPayload(payload: String): Unit             = ()
   }
 
+  private def content(d: DisplayData, mimeType: String): Option[String] =
+    d.detailedData.get(mimeType).flatMap(_.asString)
   private def html(d: DisplayData): String =
-    d.detailedData.get("text/html").flatMap(_.asString).getOrElse("")
+    content(d, "text/html").getOrElse("")
 
   private val url = "https://repo1.maven.org/maven2/org/a/b/1.0/b-1.0.jar"
 
@@ -66,6 +68,31 @@ object NotebookCacheLoggerTests extends TestSuite {
       val current = handler.current
       assert(current.length == 1)
       assert(html(current.head).isEmpty)
+    }
+
+    test("lines have a text version") {
+      val handler = withLogger { logger =>
+        logger.downloadingArtifact(url, coursierapi.Artifact.of(url))
+        logger.downloadLength(url, 100L, 0L, false)
+        logger.downloadProgress(url, 50L)
+      }
+      val displayed = handler.displayed
+      assert(displayed.length == 1)
+      assert(content(displayed.head, "text/plain") == Some(s"Downloading $url"))
+      val current = handler.current
+      assert(current.length == 1)
+      assert(content(current.head, "text/plain") == Some(s"Downloading $url (50 %)"))
+    }
+
+    test("lines are cleared in all versions") {
+      val handler = withLogger { logger =>
+        logger.downloadingArtifact(url, coursierapi.Artifact.of(url))
+        logger.downloadedArtifact(url, true)
+      }
+      val current = handler.current
+      assert(current.length == 1)
+      assert(content(current.head, "text/plain") == Some(""))
+      assert(content(current.head, "text/html") == Some(""))
     }
 
     test("failed downloads are cleared") {
