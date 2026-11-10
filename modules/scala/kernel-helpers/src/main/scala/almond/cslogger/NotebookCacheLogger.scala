@@ -1,6 +1,6 @@
 package almond.cslogger
 
-import almond.interpreter.api.OutputHandler
+import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.logger.LoggerContext
 
 import java.lang.{Long => JLong}
@@ -13,13 +13,13 @@ class NotebookCacheLogger(
   publish: OutputHandler,
   logCtx: LoggerContext
 ) extends coursierapi.CacheLogger {
-  private val log = logCtx(getClass)
-  import scalatags.Text.all._
-  private var ids         = new ConcurrentHashMap[String, String]
-  private var totalLength = new ConcurrentHashMap[String, JLong]
-  private var downloaded  = new ConcurrentHashMap[String, JLong]
+  private val log         = logCtx(getClass)
+  private val ids         = new ConcurrentHashMap[String, String]
+  private val totalLength = new ConcurrentHashMap[String, JLong]
   private var threadOpt   = Option.empty[Thread]
-  private val updates     = new ConcurrentHashMap[String, String]
+  // display id -> latest content for it, not sent yet
+  private val updates           = new ConcurrentHashMap[String, DisplayData]
+  @volatile private var running = false
   private def newThread(): Thread =
     new Thread("cs-logger") {
       setDaemon(true)
@@ -27,66 +27,65 @@ class NotebookCacheLogger(
         if (publish.canOutput()) {
           val entries = updates.entrySet().asScala.toVector.map(e => (e.getKey, e.getValue))
           for ((k, v) <- entries) {
-            publish.updateHtml(v, k)
+            publish.updateDisplay(v.withId(k))
             updates.remove(k, v)
           }
         }
-      override def run(): Unit =
+      override def run(): Unit = {
         try
-          while (true) {
+          while (running) {
             proceed()
             Thread.sleep(25L)
           }
         catch {
           case _: InterruptedException =>
-            proceed()
         }
+        // sends the updates that came in since the last round
+        proceed()
+      }
     }
   override def init(sizeHint: Integer): Unit = {
+    stop()
     ids.clear()
     updates.clear()
     totalLength.clear()
-    downloaded.clear()
+    running = true
     val t = newThread()
     t.start()
     threadOpt = Some(t)
   }
+
+  /** Stops the thread sending updates, once it sent the pending ones */
   override def stop(): Unit =
     for (t <- threadOpt) {
-      t.interrupt()
+      // not interrupting the thread, which might be sending messages at that moment
+      running = false
+      t.join()
       threadOpt = None
     }
   override def downloadingArtifact(url: String, artifact: coursierapi.Artifact): Unit =
-    if (publish.canOutput()) {
+    // Checksum files are downloaded along with each file, they would only double the lines
+    if (publish.canOutput() && !NotebookCacheLogger.isChecksum(url)) {
       val newId       = UUID.randomUUID().toString
       val formerIdOpt = Option(ids.putIfAbsent(url, newId))
       val id          = formerIdOpt.getOrElse(newId)
-      val html        = div("Downloading ", a(href := url, url))
-      publish.html(html.render, id)
+      publish.display(NotebookCacheLogger.line(url, "").withId(id))
     }
-  override def downloadProgress(url: String, downloaded0: Long): Unit = {
-    downloaded.putIfAbsent(url, downloaded0: JLong)
+  override def downloadProgress(url: String, downloaded: Long): Unit = {
     val idOpt = Option(ids.get(url))
     for (id <- idOpt; len <- Option(totalLength.get(url))) {
-      val pct  = math.floor(100 * (downloaded0.toDouble / len)).toInt
-      val html = div("Downloading ", a(href := url, url), s" ($pct %)")
-      updates.put(id, html.render)
+      val pct = math.floor(100 * (downloaded.toDouble / len)).toInt
+      updates.put(id, NotebookCacheLogger.line(url, s" ($pct %)"))
     }
   }
-  override def downloadedArtifact(url: String, success: Boolean): Unit = {
-    val idOpt = Option(ids.get(url))
-    idOpt match {
-      case Some(id) =>
-        val msg = if (success) "" else div("Failed to download ", a(href := url, url)).render
-        updates.put(id, msg)
-      case None =>
-        if (publish.canOutput()) {
-          val msg  = if (success) "Downloaded" else "Failed to download"
-          val html = div(s"$msg ", a(href := url, url))
-          publish.html(html.render)
-        }
-    }
-  }
+  override def downloadedArtifact(url: String, success: Boolean): Unit =
+    // Nothing to do for downloads that have no line, as they started while nothing could be
+    // shown, or weren't announced
+    for (id <- Option(ids.get(url)))
+      // Failed downloads are cleared too: most of them are files missing from a repository,
+      // that coursier then looks for in the next one. If a dependency can't be fetched at all,
+      // the resolution or fetch error that follows says so.
+      updates.put(id, NotebookCacheLogger.cleared)
   override def downloadLength(
     url: String,
     totalLength0: Long,
@@ -94,6 +93,23 @@ class NotebookCacheLogger(
     watching: Boolean
   ): Unit = {
     totalLength.put(url, totalLength0: JLong)
-    downloaded.putIfAbsent(url, alreadyDownloaded: JLong)
   }
+}
+
+object NotebookCacheLogger {
+  import scalatags.Text.all._
+
+  /** A line about a download, with a text version for the clients that don't render HTML */
+  private def line(url: String, suffix: String): DisplayData =
+    DisplayData()
+      .add(DisplayData.ContentType.text, s"Downloading $url$suffix")
+      .add(DisplayData.ContentType.html, div("Downloading ", a(href := url, url), suffix).render)
+  private val cleared: DisplayData =
+    DisplayData()
+      .add(DisplayData.ContentType.text, "")
+      .add(DisplayData.ContentType.html, "")
+
+  private val checksumExtensions = Seq(".md5", ".sha1", ".sha256", ".sha512")
+  private def isChecksum(url: String): Boolean =
+    checksumExtensions.exists(url.endsWith)
 }

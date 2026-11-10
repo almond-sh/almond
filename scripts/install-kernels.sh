@@ -44,7 +44,10 @@ for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
       --scala ${SCALA_FULL_VERSION} \
       --default=true --sources \
       -o almond "${EXTRA_ARGS[@]}"
-  ./almond --install --log info --metabrowse --id scala${SCALA_MAJOR_VERSION_TRIMMED} --display-name "Scala ${SCALA_MAJOR_VERSION}"
+  # --use-notebook-coursier-logger: show dependency downloads and their progress in the notebooks,
+  # rather than as "Downloading ..." / "Downloaded ..." lines on stderr
+  ./almond --install --log info --metabrowse --use-notebook-coursier-logger \
+      --id scala${SCALA_MAJOR_VERSION_TRIMMED} --display-name "Scala ${SCALA_MAJOR_VERSION}"
   rm -f almond
 done
 echo Installation was successful
