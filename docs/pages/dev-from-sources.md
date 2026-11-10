@@ -358,9 +358,14 @@ how notebooks that differ on Scala 2.13 or Scala 3 are handled.
 
 ## Run the proxy and mirror tests
 
-The [proxies and mirrors](install-proxies.md) instructions are tested with Docker: the kernels get
-installed and run from containers that can't reach Maven Central, except through an authenticated
-proxy or a repository mirror. With Docker running, run them with
+The [proxies and mirrors](install-proxies.md) instructions are tested with Docker. The tests
+install the kernel and run a notebook with it, from containers on a Docker network that can't reach
+the outside: the only way to Maven Central is an authenticated HTTP proxy, configured through
+`~/.m2/settings.xml`, or a mirror (an nginx reverse proxy of Maven Central), configured through
+`~/.config/coursier/mirror.properties`. They exercise both the newer launcher and the former one,
+and check that a wrongly configured proxy doesn't let the kernel through.
+
+With Docker running, run them with
 ```text
 $ ./mill -i -j 1 scala.proxy-tests.test
 ```
