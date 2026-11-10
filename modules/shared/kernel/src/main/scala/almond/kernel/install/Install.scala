@@ -210,9 +210,12 @@ object Install {
 
   /** The `java` command of the JVM we run on, as an absolute path if it can be found, or just
     * `java` (looked up in `PATH`) else
+    *
+    * This is the command of [[currentJavaHome]], so that it's consistent with the `JAVA_HOME` we
+    * set in kernel specs (on Java 8, this uses `bin/java` of the JDK rather than `jre/bin/java`).
     */
   def currentJavaCommand(): String =
-    javaCommandIn(Paths.get(sys.props("java.home")))
+    javaCommandIn(currentJavaHome())
       .map(_.toString)
       .getOrElse("java")
 
