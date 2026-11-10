@@ -65,7 +65,8 @@ class NotebookCacheLogger(
       threadOpt = None
     }
   override def downloadingArtifact(url: String, artifact: coursierapi.Artifact): Unit =
-    if (publish.canOutput()) {
+    // Checksum files are downloaded along with each file, they would only double the lines
+    if (publish.canOutput() && !NotebookCacheLogger.isChecksum(url)) {
       val newId       = UUID.randomUUID().toString
       val formerIdOpt = Option(ids.putIfAbsent(url, newId))
       val id          = formerIdOpt.getOrElse(newId)
@@ -96,4 +97,10 @@ class NotebookCacheLogger(
   ): Unit = {
     totalLength.put(url, totalLength0: JLong)
   }
+}
+
+object NotebookCacheLogger {
+  private val checksumExtensions = Seq(".md5", ".sha1", ".sha256", ".sha512")
+  private def isChecksum(url: String): Boolean =
+    checksumExtensions.exists(url.endsWith)
 }

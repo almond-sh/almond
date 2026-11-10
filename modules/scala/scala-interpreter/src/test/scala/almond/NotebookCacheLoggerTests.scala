@@ -87,6 +87,17 @@ object NotebookCacheLoggerTests extends TestSuite {
       assert(handler.events.isEmpty)
     }
 
+    test("checksum files aren't shown") {
+      val handler = withLogger { logger =>
+        for (ext <- Seq(".md5", ".sha1", ".sha256", ".sha512")) {
+          val url0 = url + ext
+          logger.downloadingArtifact(url0, coursierapi.Artifact.of(url0))
+          logger.downloadedArtifact(url0, true)
+        }
+      }
+      assert(handler.events.isEmpty)
+    }
+
     test("progress is shown") {
       val handler = withLogger { logger =>
         logger.downloadingArtifact(url, coursierapi.Artifact.of(url))
