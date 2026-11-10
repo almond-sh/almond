@@ -226,6 +226,103 @@ object ZeromqConnectionTests extends TestSuite {
       }
     }
 
+    test("wait for clients after port hand over") {
+      if (!ReusePort.supported || scala.util.Properties.isWin)
+        "SO_REUSEPORT not supported"
+      else {
+
+        val logCtx          = LoggerContext.nop
+        val zeroPortsParams = ConnectionParameters.randomZeroPorts()
+        val kernelThreads   = ZeromqThreads.create("test-kernel").withReusePort(true)
+        val clientThreads   = ZeromqThreads.create("test-client")
+        val ioRuntime       = IORuntime.global
+
+        val clientIdentity = "client"
+
+        def message(content: String, idents: Seq[String]) = Message(
+          idents.map(_.getBytes(StandardCharsets.UTF_8).toSeq),
+          "header".getBytes(StandardCharsets.UTF_8),
+          "parent_header".getBytes(StandardCharsets.UTF_8),
+          "metadata".getBytes(StandardCharsets.UTF_8),
+          content.getBytes(StandardCharsets.UTF_8)
+        )
+        val reply     = message("reply", Seq(clientIdentity))
+        val published = message("published", Seq("topic"))
+
+        def read(
+          client: ZeromqConnection,
+          channel: Channel,
+          deadline: Deadline
+        ): IO[Message] =
+          client.tryRead(Seq(channel), deadline.timeLeft.max(Duration.Zero)).flatMap {
+            case Some(Right((_, m))) => IO.pure(m)
+            case _                   => IO.raiseError(new Exception(s"no message on $channel"))
+          }
+
+        def readUntil(
+          client: ZeromqConnection,
+          channel: Channel,
+          content: String,
+          deadline: Deadline
+        ): IO[Message] =
+          read(client, channel, deadline).flatMap { m =>
+            if (new String(m.content, StandardCharsets.UTF_8) == content) IO.pure(m)
+            else readUntil(client, channel, content, deadline)
+          }
+
+        val t =
+          for {
+            kernel <- zeroPortsParams.channels(
+              bind = true,
+              kernelThreads,
+              None,
+              logCtx,
+              bindToRandomPorts = true,
+              identityOpt = None
+            )
+            ports <- kernel.open
+            params = zeroPortsParams.copy(
+              shell_port = ports(Some(Channel.Requests)),
+              control_port = ports(Some(Channel.Control)),
+              iopub_port = ports(Some(Channel.Publish)),
+              stdin_port = ports(Some(Channel.Input)),
+              hb_port = ports(None)
+            )
+            // no client yet
+            connectedEarly <- kernel.awaitClients(300.millis)
+            _ = assert(!connectedEarly)
+            waiting <- kernel.awaitClients(20.seconds).start
+            // the client shows up late, like clients re-connecting after a launcher exec-ed
+            // the actual kernel
+            _ <- IO.sleep(500.millis)
+            client <- params.channels(
+              bind = false,
+              clientThreads,
+              None,
+              logCtx,
+              bindToRandomPorts = false,
+              identityOpt = Some(clientIdentity)
+            )
+            _         <- client.open
+            connected <- waiting.joinWithNever
+            _ = assert(connected)
+            // replies sent straightaway reach the client
+            _ <- kernel.send(Channel.Requests, reply)
+            _ <- kernel.send(Channel.Publish, published)
+            deadline = 10.seconds.fromNow
+            gotReply     <- read(client, Channel.Requests, deadline)
+            gotPublished <- readUntil(client, Channel.Publish, "published", deadline)
+            _ = assert(gotReply.copy(idents = Nil) == reply.copy(idents = Nil))
+            _ = assert(gotPublished == published)
+            _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
+            _ <- client.close(partial = false, lingerDuration = 2.seconds)
+          } yield ()
+
+        t.timeout(1.minute).unsafeRunSync()(ioRuntime)
+        "done"
+      }
+    }
+
     test("malformed messages are dropped") {
 
       val logCtx        = LoggerContext.nop

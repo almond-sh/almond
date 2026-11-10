@@ -324,6 +324,33 @@ final case class Kernel(
             assert(bindToRandomPorts || ports.isEmpty)
             onBound(withPorts(connection, ports), ports.nonEmpty)
           }
+          // When taking over ports from a launcher, clients have to re-connect to us. We wait for
+          // them before replying to the messages the launcher left us, else replies could get lost.
+          // This can take a while on macOS, where clients get no response to their connection
+          // attempts in the meantime, and retry with exponential backoff.
+          _ <- {
+            if (zeromqThreads.reusePort && leftoverMessages.nonEmpty)
+              IO {
+                log.debug("Waiting for clients to re-connect")
+                System.nanoTime()
+              }.flatMap { start =>
+                c.awaitClients(clientsReconnectionTimeout).flatMap { connected =>
+                  IO {
+                    if (connected)
+                      log.debug(
+                        s"Clients re-connected after ${(System.nanoTime() - start) / 1000000L} ms"
+                      )
+                    else
+                      log.warn(
+                        s"Clients didn't re-connect within $clientsReconnectionTimeout, " +
+                          "replies to their pending messages may get lost"
+                      )
+                  }
+                }
+              }
+            else
+              IO.unit
+          }
           _ <- run(
             c.stream(),
             // If not closing automatically, the caller closes the connection itself, once
@@ -335,6 +362,8 @@ final case class Kernel(
         } yield ()
       (run0, c)
     }
+
+  private def clientsReconnectionTimeout = 30.seconds
 
   private def drainExecuteMessages: IO[Seq[(Channel, RawMessage)]] =
     Stream.repeatEval(executeQueue.take)

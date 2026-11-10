@@ -13,6 +13,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.{CharacterCodingException, CodingErrorAction}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 import almond.channels._
 import almond.logger.LoggerContext
@@ -21,11 +22,11 @@ import cats.Parallel
 import cats.effect.IO
 import cats.syntax.apply._
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToArray
-import org.zeromq.{SocketType, ZMQException}
+import org.zeromq.{SocketType, ZMQ, ZMQException}
 import zmq.ZError
 
 import scala.concurrent.Promise
-import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
+import scala.concurrent.duration.{Deadline, Duration, DurationInt, FiniteDuration}
 
 final class ZeromqConnection(
   params: ConnectionParameters,
@@ -232,9 +233,129 @@ final class ZeromqConnection(
     }
   }
 
+  // When binding ports taken over from a launcher (with SO_REUSEPORT), clients that were
+  // connected to the launcher have to re-connect to us. These get completed once a client
+  // subscribed to iopub, and once one connected to shell, so that awaitClients can wait for that.
+  private val iopubSubscribed = Promise[Unit]()
+  private val shellConnected  = Promise[Unit]()
+
+  private val monitorShell               = bind && threads.reusePort
+  private val shellMonitorStarted        = new AtomicBoolean(false)
+  @volatile private var stopShellMonitor = false
+
+  /** Starts monitoring the shell socket, so that we know when a client connects to it
+    *
+    * Must be called before the shell socket is bound.
+    */
+  private def startShellMonitor: IO[Unit] =
+    IO {
+      if (monitorShell && shellMonitorStarted.compareAndSet(false, true)) {
+        val addr = s"inproc://almond-shell-monitor-${UUID.randomUUID()}"
+        // JeroMQ 0.5.4 doesn't emit HANDSHAKE_SUCCEEDED events, so we rely on HANDSHAKE_PROTOCOL
+        // ones, sent once the ZeroMQ greetings are exchanged
+        if (requests0.channel.monitor(addr, ZMQ.EVENT_HANDSHAKE_PROTOCOL)) {
+          val reader = threads.context.socket(SocketType.PAIR)
+          reader.setReceiveTimeOut(200)
+          reader.connect(addr)
+          val thread = new Thread("ZeroMQ-shell-monitor") {
+            setDaemon(true)
+            override def run(): Unit =
+              try {
+                var done = false
+                while (!done && !stopShellMonitor) {
+                  val event = ZMQ.Event.recv(reader)
+                  if (event != null) {
+                    log.debug(s"Client connected to shell on ${event.getAddress}")
+                    shellConnected.trySuccess(())
+                    done = true
+                  }
+                  else if (reader.errno() == ZMQ.Error.ETERM.getCode)
+                    done = true
+                }
+              }
+              catch {
+                case e: Throwable =>
+                  log.warn("Error monitoring shell socket", e)
+              }
+              finally {
+                // JeroMQ sends monitoring events in blocking mode, so we stop monitoring before we
+                // stop reading events
+                try requests0.channel.monitor(null, 0)
+                catch {
+                  case _: Throwable =>
+                }
+                try reader.close()
+                catch {
+                  case _: Throwable =>
+                }
+                shellConnected.trySuccess(())
+              }
+          }
+          thread.start()
+        }
+        else {
+          log.warn(s"Cannot monitor shell socket (error ${requests0.channel.errno()})")
+          shellConnected.trySuccess(())
+        }
+        ()
+      }
+    }.evalOn(threads.channelEces(Channel.Requests))
+
+  /** Waits for a client to connect to the shell channel, and for one to subscribe to the iopub
+    * channel
+    *
+    * This is meant to be used when taking over ports from a launcher (see
+    * [[ZeromqThreads.reusePort]]), before sending replies to the messages it left us: clients
+    * connected to the launcher have to re-connect to us first, or those replies would get lost.
+    *
+    * This handles subscriptions to the iopub channel itself, so it should be called before reading
+    * messages from this connection.
+    *
+    * @return
+    *   whether the clients connected before the timeout (always false when not binding with
+    *   SO_REUSEPORT)
+    */
+  def awaitClients(timeout: FiniteDuration): IO[Boolean] =
+    if (!monitorShell) IO.pure(false)
+    else
+      IO.defer {
+        val deadline = timeout.fromNow
+
+        def iopub: IO[Boolean] =
+          IO.defer {
+            if (iopubSubscribed.isCompleted) IO.pure(true)
+            else if (deadline.isOverdue()) IO.pure(false)
+            else
+              // subscription events are handled by tryRead
+              tryRead(Seq(Channel.Publish), deadline.timeLeft).flatMap {
+                case Some(Left(())) => IO.pure(false) // connection closed
+                case _              => iopub
+              }
+          }
+
+        // Polling rather than using IO.fromFuture, as the IO of the latter can't be cancelled
+        // when timing out
+        def shell: IO[Boolean] =
+          IO.defer {
+            if (shellConnected.isCompleted) IO.pure(true)
+            else if (deadline.isOverdue()) IO.pure(false)
+            else IO.sleep(deadline.timeLeft.min(20.millis)).flatMap(_ => shell)
+          }
+
+        for {
+          iopubOk <- iopub
+          shellOk <- shell
+          // The handshake event we get on shell is sent a round-trip before the shell socket
+          // knows the identity of the client, which it needs to route replies to it. Giving it
+          // a bit of time to get it.
+          _ <- if (shellOk) IO.sleep(100.millis) else IO.unit
+        } yield iopubOk && shellOk
+      }
+
   private val handleSubscriptionEvent: IO[Unit] =
     publish0.readSubscriptionEvent.flatMap {
       case Some(event) if event.subscribe =>
+        iopubSubscribed.trySuccess(())
         welcomeMessage(event.topic) match {
           case Some(msg) =>
             IO(log.debug(s"Sending iopub_welcome on $actualParams")) *> publish0.send(msg)
@@ -317,6 +438,7 @@ final class ZeromqConnection(
 
     for {
       _          <- log0
+      _          <- startShellMonitor
       ports      <- t
       _          <- other
       extraPorts <- maybeHeartBeatPort
@@ -458,6 +580,7 @@ final class ZeromqConnection(
 
       if (!partial)
         heartBeatThreadOpt.foreach(_.interrupt())
+      stopShellMonitor = true
 
       synchronized {
         for (pollers <- pollersOpt; poller <- pollers.valuesIterator)
