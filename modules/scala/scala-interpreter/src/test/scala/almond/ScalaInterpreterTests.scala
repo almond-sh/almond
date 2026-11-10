@@ -821,6 +821,22 @@ object ScalaInterpreterTests extends TestSuite {
       for (name <- Seq("a", "b", "c", resName))
         assert(text.contains(s""""varName":"$name""""))
     }
+    test("variable inspector named tuples") {
+      if (TestUtil.hasNamedTuples) {
+        val interpreter = newInterpreter()
+        val initCode    = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.init()"
+        assert(interpreter.execute(initCode).success)
+        assert(interpreter.execute("""val nt = (x = 1, y = "a")""").success)
+        val outputHandler = new MockOutputHandler
+        val dictListCode  = "_root_.almond.api.JupyterAPIHolder.value.VariableInspector.dictList()"
+        assert(interpreter.execute(dictListCode, outputHandler = Some(outputHandler)).success)
+        val text = outputHandler.displayed()
+          .flatMap(_.detailedData.get("text/plain").flatMap(_.asString))
+          .mkString
+        assert(text.contains(""""varName":"nt""""))
+        assert(text.contains(""""varType":"(x : Int, y : String)""""))
+      }
+    }
   }
 
 }
