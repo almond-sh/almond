@@ -5,12 +5,21 @@ import ammonite.runtime.Frame
 
 import java.io.{File, IOException}
 import java.net.{URI, URL}
-import java.nio.file.{FileSystem, FileSystems, Files, Path, Paths, StandardCopyOption}
+import java.nio.file.{
+  FileSystem,
+  FileSystemNotFoundException,
+  FileSystems,
+  Files,
+  Path,
+  Paths,
+  StandardCopyOption
+}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.{ZipException, ZipFile}
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 /** The source JARs of the class path of a session, that inspections read docs from.
   *
@@ -220,7 +229,14 @@ object SourcePath {
   private val localFiles = new ConcurrentHashMap[Path, Path]
   private lazy val localFilesDir = {
     val dir = Files.createTempDirectory("almond-sources")
-    dir.toFile.deleteOnExit()
+    // Rather than File#deleteOnExit, as the copies may still be open when the JVM exits, and
+    // open files can't be deleted on Windows. deleteLocalFiles closes them first.
+    Runtime.getRuntime.addShutdownHook(
+      new Thread("almond-sources-cleanup") {
+        override def run(): Unit =
+          deleteLocalFiles()
+      }
+    )
     dir
   }
 
@@ -228,7 +244,7 @@ object SourcePath {
     *
     * `path` itself if it's in the default file system already, or a copy of it in a temporary
     * directory otherwise, like for JARs embedded in standalone launchers (see [[classPathEntry]]).
-    * These copies are made once, and deleted when the JVM exits.
+    * These copies are made once, and deleted when the JVM exits (see [[deleteLocalFiles]]).
     */
   def localFile(path: Path): Path =
     if (path.getFileSystem == FileSystems.getDefault) path
@@ -237,12 +253,69 @@ object SourcePath {
         path,
         { _ =>
           // in a directory of its own, so that the copy keeps the name of the original
-          val dir = Files.createTempDirectory(localFilesDir, "jar")
-          dir.toFile.deleteOnExit()
+          val dir  = Files.createTempDirectory(Files.createDirectories(localFilesDir), "jar")
           val dest = dir.resolve(path.getFileName.toString)
-          dest.toFile.deleteOnExit()
           Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING)
           dest
         }
       )
+
+  // ZipFiles opened by openZipFile on copies made by localFile, closed by deleteLocalFiles
+  private val openZipFiles = ConcurrentHashMap.newKeySet[ZipFile]()
+
+  /** Opens `path` (see [[localFile]]) as a ZipFile, to be closed with [[closeZipFile]]
+    *
+    * Unlike the ZipFiles opened directly, these get closed before [[deleteLocalFiles]] deletes the
+    * copies they read, even if they're still open by then.
+    */
+  def openZipFile(path: Path): ZipFile = {
+    val local = localFile(path)
+    val zf    = new ZipFile(local.toFile)
+    if (local != path)
+      openZipFiles.add(zf)
+    zf
+  }
+
+  def closeZipFile(zf: ZipFile): Unit = {
+    openZipFiles.remove(zf)
+    zf.close()
+  }
+
+  /** Deletes the copies made by [[localFile]]
+    *
+    * Run when the JVM exits. On Windows, files that are open can't be deleted, so this first closes
+    * the ZipFiles opened on them via [[openZipFile]], and the ZIP file systems that mtags opens on
+    * the source JARs it indexes (Scala 2 inspections), that it never closes. The copies shouldn't
+    * be used after this is called.
+    */
+  private[almond] def deleteLocalFiles(): Unit = {
+    def ignoringErrors(f: => Unit): Unit =
+      try f
+      catch { case NonFatal(_) => }
+
+    openZipFiles.forEach(zf => ignoringErrors(zf.close()))
+    openZipFiles.clear()
+
+    val dirs = mutable.LinkedHashSet.empty[Path]
+    for (path <- localFiles.keySet().asScala.toVector) {
+      val copy = localFiles.remove(path)
+      if (copy != null) {
+        // the ZIP file systems of copies are those whose URI is the one of the copy
+        // (see jdk.nio.zipfs.ZipFileSystemProvider)
+        ignoringErrors {
+          val fs =
+            try Some(FileSystems.getFileSystem(new URI("jar:" + copy.toUri.toString)))
+            catch { case _: FileSystemNotFoundException => None }
+          fs.foreach(_.close())
+        }
+        ignoringErrors(Files.deleteIfExists(copy))
+        ignoringErrors(Files.deleteIfExists(copy.getParent))
+        // localFilesDir, not referenced directly here, which would create it if needed
+        dirs += copy.getParent.getParent
+      }
+    }
+
+    for (dir <- dirs)
+      ignoringErrors(Files.deleteIfExists(dir))
+  }
 }
