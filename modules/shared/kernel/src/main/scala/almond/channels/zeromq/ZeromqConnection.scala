@@ -16,8 +16,9 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 import almond.channels._
+import almond.interpreter.KernelSession
 import almond.logger.LoggerContext
-import almond.protocol.{Header, IopubWelcome, Protocol}
+import almond.protocol.IopubWelcome
 import cats.Parallel
 import cats.effect.IO
 import cats.syntax.apply._
@@ -35,10 +36,30 @@ final class ZeromqConnection(
   threads: ZeromqThreads,
   lingerPeriod: Option[Duration],
   logCtx: LoggerContext,
-  bindToRandomPorts: Boolean
+  bindToRandomPorts: Boolean,
+  kernelSessionOpt: Option[KernelSession]
 ) extends Connection {
 
   import ZeromqConnection._
+
+  def this(
+    params: ConnectionParameters,
+    bind: Boolean,
+    identityOpt: Option[String],
+    threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    bindToRandomPorts: Boolean
+  ) = this(
+    params,
+    bind,
+    identityOpt,
+    threads,
+    lingerPeriod,
+    logCtx,
+    bindToRandomPorts,
+    kernelSessionOpt = None
+  )
 
   @deprecated("Use the override accepting bindToRandomPorts", "0.14.2")
   def this(
@@ -198,8 +219,10 @@ final class ZeromqConnection(
       case Channel.Input    => stdin0
     }
 
-  // session of the iopub_welcome messages we send
-  private lazy val welcomeSession = UUID.randomUUID().toString
+  // session of the iopub_welcome messages we send - the kernel one if we know it, so that
+  // these messages have the same session as all the other kernel messages
+  private lazy val welcomeSession =
+    kernelSessionOpt.getOrElse(KernelSession.create(None, Some("kernel")))
 
   private def welcomeMessage(subscription: Seq[Byte]): Option[Message] = {
     val decoder = UTF_8
@@ -214,13 +237,7 @@ final class ZeromqConnection(
       }
     subscriptionStrOpt.map { subscriptionStr =>
       val msgType = IopubWelcome.messageType.messageType
-      val header = Header(
-        msg_id = UUID.randomUUID().toString,
-        username = "kernel",
-        session = welcomeSession,
-        msg_type = msgType,
-        version = Some(Protocol.versionStr)
-      )
+      val header  = welcomeSession.header(IopubWelcome.messageType)
       Message(
         // the topic must match the subscription for the subscriber to get the message
         idents = Seq(if (subscription.isEmpty) msgType.getBytes(UTF_8).toSeq else subscription),
@@ -607,7 +624,8 @@ object ZeromqConnection {
     threads: ZeromqThreads,
     lingerPeriod: Option[Duration],
     logCtx: LoggerContext,
-    bindToRandomPorts: Boolean
+    bindToRandomPorts: Boolean,
+    kernelSessionOpt: Option[KernelSession]
   ): IO[ZeromqConnection] =
     IO(
       new ZeromqConnection(
@@ -617,9 +635,30 @@ object ZeromqConnection {
         threads,
         lingerPeriod,
         logCtx,
-        bindToRandomPorts = bindToRandomPorts
+        bindToRandomPorts = bindToRandomPorts,
+        kernelSessionOpt = kernelSessionOpt
       )
     ).evalOn(threads.selectorOpenCloseEces)
+
+  def apply(
+    connection: ConnectionParameters,
+    bind: Boolean,
+    identityOpt: Option[String],
+    threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    bindToRandomPorts: Boolean
+  ): IO[ZeromqConnection] =
+    apply(
+      connection,
+      bind,
+      identityOpt,
+      threads,
+      lingerPeriod,
+      logCtx,
+      bindToRandomPorts = bindToRandomPorts,
+      kernelSessionOpt = None
+    )
 
   @deprecated("Use override accepting bindToRandomPorts", "0.14.2")
   def apply(

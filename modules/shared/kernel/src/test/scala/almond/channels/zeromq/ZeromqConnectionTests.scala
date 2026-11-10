@@ -6,6 +6,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
 
 import almond.channels.{Channel, ConnectionParameters, Message}
+import almond.interpreter.KernelSession
 import almond.logger.LoggerContext
 import almond.protocol.{Header, IopubWelcome}
 import cats.effect.{Deferred, IO}
@@ -611,6 +612,8 @@ object ZeromqConnectionTests extends TestSuite {
             case None => welcome(kernel, server, deadline)
           }
 
+      val session = KernelSession.create(Some("kernel-session-id"), Some("kernel-user"))
+
       val t =
         for {
           kernel <- ZeromqConnection(
@@ -620,7 +623,8 @@ object ZeromqConnectionTests extends TestSuite {
             kernelThreads,
             None,
             logCtx,
-            bindToRandomPorts = false
+            bindToRandomPorts = false,
+            kernelSessionOpt = Some(session)
           )
           server <- ZeromqConnection(
             params,
@@ -638,6 +642,8 @@ object ZeromqConnectionTests extends TestSuite {
           content = readFromArray(msg.content)(IopubWelcome.codec)
           _       = assert(header.msg_type == IopubWelcome.messageType.messageType)
           _       = assert(header.version.contains("5.5"))
+          _       = assert(header.session == session.id)
+          _       = assert(header.username == session.username)
           _       = assert(content.subscription == "")
           _       = assert(new String(msg.parentHeader, StandardCharsets.UTF_8) == "{}")
           _ <- kernel.close(partial = false, lingerDuration = 2.seconds)
