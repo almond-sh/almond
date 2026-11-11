@@ -125,6 +125,9 @@ class AlmondPreprocessor(
     else Some(trees)
   }
 
+  // The type of the variable is rendered by the compiler, rather than by pprint's TPrint, that
+  // renders some Scala 3 types badly (like named tuples): the Ammonite compiler phase fills the
+  // empty strings passed to renderedType, like it does for the values it prints.
   private def declareVariableCode(ident: String, strValueOpt: Option[String]): String = {
     val strValuePart = strValueOpt.fold("")(s => ", " + pprint.Util.literalize(s))
     s"""_root_.almond
@@ -132,7 +135,11 @@ class AlmondPreprocessor(
        |  .JupyterAPIHolder
        |  .value
        |  .Internal
-       |  .declareVariable(${pprint.Util.literalize(ident)}, $ident$strValuePart)""".stripMargin
+       |  .declareVariableWithType(
+       |    ${pprint.Util.literalize(ident)},
+       |    $ident,
+       |    _root_.ammonite.repl.ReplBridge.value.Internal.renderedType($ident, "", "")$strValuePart
+       |  )""".stripMargin
   }
 
   /** Whether a definition should be listed in the variable inspector, and its name if it should */

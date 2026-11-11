@@ -67,6 +67,23 @@ trait FullJupyterApi extends JupyterApi { self =>
       classTagT: ClassTag[T] = null
     ): Unit =
       self.declareVariable(name, value, Option(strValueOrNull))
+
+    /** Like `declareVariable`, with the type of `value` passed explicitly
+      *
+      * Used on Scala 3, where the type comes from the compiler (see
+      * `ammonite.repl.FullReplAPI.Internal.renderedType`), as pprint's `TPrint` renders some Scala
+      * 3 types badly, like named tuples.
+      */
+    def declareVariableWithType[T](
+      name: String,
+      value: => T,
+      tprint: pprint.TPrint[T],
+      strValueOrNull: String = null
+    )(implicit
+      tcolors: pprint.TPrintColors,
+      classTagT: ClassTag[T] = null
+    ): Unit =
+      self.declareVariable(name, value, Option(strValueOrNull))(tprint, tcolors, classTagT)
   }
 
   def kernelClassLoader: ClassLoader

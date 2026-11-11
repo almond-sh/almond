@@ -53,6 +53,15 @@ object TestUtil {
     scala.util.Properties.versionNumberString.startsWith("2.12.")
   def isScala2 = almond.api.Properties.actualScalaVersion.startsWith("2.")
 
+  /** Whether the Scala version the kernel runs has named tuples, that are standard from 3.7 on */
+  def hasNamedTuples: Boolean =
+    // almond.api.Properties.actualScalaVersion is the version the API was built with, like 3.3.x
+    // for all the Scala 3 versions, not the one the interpreter runs
+    ammonite.compiler.CompilerBuilder.scalaVersion.split('.') match {
+      case Array("3", minor, _*) => minor.toInt >= 7
+      case _                     => false
+    }
+
   implicit class IOOps[T](private val io: IO[T]) extends AnyVal {
     // beware this is not *exactly* a timeout, more a max idle time say… (see the scaladoc of IO.unsafeRunTimed)
     def unsafeRunTimedOrThrow(ioRuntime: IORuntime, duration: Duration = Duration.Inf): T =

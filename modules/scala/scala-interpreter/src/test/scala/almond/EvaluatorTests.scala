@@ -162,6 +162,22 @@ object EvaluatorTests extends TestSuite {
         )
       )
     }
+
+    test("named tuples") {
+      if (TestUtil.hasNamedTuples)
+        runner.run(
+          Seq(
+            """val a = (x = 1, y = "a")""" ->
+              """a: (x : Int, y : String) = (x = 1, y = "a")""",
+            "val single = (x = 1)" ->
+              "single: (x : Int) = (x = 1)",
+            "a" ->
+              """res3: (x : Int, y : String) = (x = 1, y = "a")""",
+            """val l = Seq((x = 1, y = "a"))""" ->
+              """l: Seq[(x : Int, y : String)] = List((1, "a"))"""
+          )
+        )
+    }
   }
 
 }
