@@ -3,7 +3,7 @@ package almondbuild
 import coursier.version.Version
 
 object ScalaVersions {
-  def scala3Latest = "3.10.0"
+  def scala3Latest = "3.10.1"
   // The LTS series we support besides the latest Scala 3 version: 3.9.x and 3.3.x. Scala Steward
   // would bump them to the latest version, so we update them by hand.
   def scala3Lts    = "3.9.0" // scala-steward:off

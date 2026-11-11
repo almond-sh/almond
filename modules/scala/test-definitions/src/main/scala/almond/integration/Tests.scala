@@ -1150,9 +1150,9 @@ object Tests {
         "l.#"
       )
 
-      // Scala 3.10.0 and later don't offer the deprecated ArrowAssoc.→ in completions anymore
+      // Scala 3.10.1 and later don't offer the deprecated ArrowAssoc.→ in completions anymore
       val offersUnicodeArrow =
-        scalaVersion.startsWith("2.") || Version(scalaVersion) < Version("3.10.0")
+        scalaVersion.startsWith("2.") || Version(scalaVersion) < Version("3.10.1")
 
       val expectedMatches =
         if (scalaVersion.startsWith("2.12"))
@@ -2771,7 +2771,7 @@ object Tests {
     ) ++ {
       // the Scala 3 compiler depends on the ASM JARs themselves rather than on scala-asm since
       // 3.10.0 (asm itself is already there, from ammonite-compiler)
-      if (isScala2 || Version(scalaVersion) < Version("3.10.0")) Seq("scala-asm")
+      if (isScala2 || Version(scalaVersion) < Version("3.10.1")) Seq("scala-asm")
       else Seq("asm-analysis", "asm-commons", "asm-tree", "asm-util")
     }
     val specific =
