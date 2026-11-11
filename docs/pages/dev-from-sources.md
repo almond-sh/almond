@@ -72,7 +72,7 @@ Jupyter versions pinned in `examples/uv.lock` on the fly. To use a `uv` binary
 you already have instead, set the `ALMOND_UV` environment variable to its path.
 
 From the JupyterLab instance, select the kernel "Scala 2.13.18 (sources)" or
-"Scala 3.10.0 (sources)" (the exact Scala versions can differ, see the
+"Scala 3.10.1 (sources)" (the exact Scala versions can differ, see the
 [Scala versions](#list-available-scala-versions) commands below).
 
 The [xeus-python](https://github.com/jupyter-xeus/xeus-python) kernel is also available,
@@ -360,7 +360,7 @@ $ ./mill -i 'scala.examples[_].test'
 This runs them with a Scala 2.12 version, whose outputs the notebooks record, and with
 Scala 2.13 and Scala 3 versions. Pass one of these to run them with it only:
 ```text
-$ ./mill -i 'scala.examples[3.10.0].test'
+$ ./mill -i 'scala.examples[3.10.1].test'
 ```
 
 Optionally, you can pass a glob to filter notebook names:
