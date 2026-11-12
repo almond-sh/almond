@@ -253,6 +253,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
     Seq(PathRef(Task.dest)) ++ super.generatedSources()
   }
   object test extends Cross[ScalaInterpreterTests](ScalaVersions.fullVersionsFor(crossValue))
+      with ShortCrossNames[ScalaInterpreterTests]
   trait ScalaInterpreterTests extends CrossSbtModuleTests with AlmondFullCrossTests {
     def scalaVersionSpecificModule = shared.`test-kit`(crossValue)
     // else the test sources would be looked for under src/<the cross value>
@@ -306,6 +307,7 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     Deps.scalafmtDynamic.withDottyCompat(crossScalaVersion)
   )
   object test extends Cross[ScalaKernelTests](ScalaVersions.fullVersionsFor(crossValue))
+      with ShortCrossNames[ScalaKernelTests]
   trait ScalaKernelTests extends CrossSbtModuleTests with AlmondFullCrossTests {
     def scalaVersionSpecificModule = shared.`test-kit`(crossValue)
     // else the test sources would be looked for under src/<the cross value>
@@ -378,7 +380,8 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
     *     with.
     */
   object launchers extends Cross[Launchers](ScalaVersions.fullVersionsFor(crossValue))
-  trait Launchers  extends Cross.Module[String] with AlmondCrossSbtModule with AlmondRepositories
+      with ShortCrossNames[Launchers]
+  trait Launchers extends Cross.Module[String] with AlmondCrossSbtModule with AlmondRepositories
       with TransitiveSources with ExternalSources with BootstrapLauncher
       with AlmondForcedScalaVersion {
     def crossScalaVersion = crossValue
@@ -558,28 +561,40 @@ object echo extends AlmondSimpleModule {
 }
 
 object api extends Cross[Api](ScalaVersions.binaries)
+    with ShortCrossNames[Api]
 
 object shared extends Module {
   object `logger-scala2-macros` extends Cross[LoggerScala2Macros](ScalaVersions.scala2Binaries)
-  object kernel                 extends Cross[Kernel](ScalaVersions.binaries)
-  object test                   extends Test
-  object `test-kit`             extends Cross[TestKit](ScalaVersions.all)
+      with ShortCrossNames[LoggerScala2Macros]
+  object kernel extends Cross[Kernel](ScalaVersions.binaries)
+      with ShortCrossNames[Kernel]
+  object test       extends Test
+  object `test-kit` extends Cross[TestKit](ScalaVersions.all)
+      with ShortCrossNames[TestKit]
 }
 
 object scala extends Module {
-  object `scala-kernel-api`  extends Cross[ScalaKernelApi](ScalaVersions.binaries)
+  object `scala-kernel-api` extends Cross[ScalaKernelApi](ScalaVersions.binaries)
+      with ShortCrossNames[ScalaKernelApi]
   object `scala-interpreter` extends Cross[ScalaInterpreter](ScalaVersions.binaries)
-  object `scala-kernel`      extends Cross[ScalaKernel](ScalaVersions.binaries)
-  object `kernel-helpers`    extends Cross[KernelHelpers](ScalaVersions.binaries)
+      with ShortCrossNames[ScalaInterpreter]
+  object `scala-kernel` extends Cross[ScalaKernel](ScalaVersions.binaries)
+      with ShortCrossNames[ScalaKernel]
+  object `kernel-helpers` extends Cross[KernelHelpers](ScalaVersions.binaries)
+      with ShortCrossNames[KernelHelpers]
   object `directive-handler` extends Cross[DirectiveHandler](ScalaVersions.binaries)
-  object launcher            extends Launcher
-  object `almond-rx`         extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
+      with ShortCrossNames[DirectiveHandler]
+  object launcher    extends Launcher
+  object `almond-rx` extends Cross[AlmondRx](ScalaVersions.scala2Binaries)
+      with ShortCrossNames[AlmondRx]
 
   object `test-definitions` extends Cross[TestDefinitions](ScalaVersions.all)
-  object integration        extends Integration
-  object `proxy-tests`      extends ProxyTests
+      with ShortCrossNames[TestDefinitions]
+  object integration   extends Integration
+  object `proxy-tests` extends ProxyTests
 
   object examples extends Cross[Examples](ScalaVersions.examples)
+      with ShortCrossNames[Examples]
 }
 
 object `local-repo` extends Module {

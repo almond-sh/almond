@@ -79,6 +79,17 @@ object ScalaVersions {
     if (sv.startsWith("3.")) "3"
     else sv.split('.').take(2).mkString(".")
 
+  /** The shorter versions a full Scala version can be referred to by from the command line, in
+    * cross modules having a single instance for them (see [[almondbuild.modules.ShortCrossNames]]):
+    * its binary version, like `2.13` or `3.3`, and, for Scala 3, `3`.
+    */
+  def shortVersions(sv: String): Seq[String] =
+    sv.split('.') match {
+      case Array("3", minor, _*)      => Seq(s"3.$minor", "3")
+      case Array(major, minor, _, _*) => Seq(s"$major.$minor")
+      case _                          => Nil
+    }
+
   /** The full Scala versions the tests of a [[binaries]] module instance run with. */
   def fullVersionsFor(binaryScalaVersion: String): Seq[String] =
     all.filter(binary(_) == binaryScalaVersion)
