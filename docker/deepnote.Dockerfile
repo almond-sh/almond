@@ -10,7 +10,7 @@
 # deepnote/python images are linux/amd64 only, so is this image.
 
 # Pinned by digest, for the same reasons as the base image of the main Dockerfile (Dependabot updates it)
-FROM deepnote/python:3.12@sha256:6244475cac520ed1cbc0d2f928faae71f5d739d3d6eb7c032900974fcc0a022d
+FROM deepnote/python:3.14@sha256:94fd18cb10f20153cacc7e3d5f3ac39c2d66a65d5891ab256c0fec039a63fe0b
 
 # Deepnote's images set DEEPNOTE_PYTHON_KERNEL_ONLY=true, which makes Deepnote ignore non-Python
 # kernels (Deepnote's own R image empties it too). DEFAULT_KERNEL_NAME is the kernel Deepnote uses
