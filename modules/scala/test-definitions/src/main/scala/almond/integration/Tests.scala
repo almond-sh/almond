@@ -1153,6 +1153,11 @@ object Tests {
       // Scala 3.10.0 and later don't offer the deprecated ArrowAssoc.→ in completions anymore
       val offersUnicodeArrow =
         scalaVersion.startsWith("2.") || Version(scalaVersion) < Version("3.10.0")
+      // Since Scala 3.10.1, completions also list the alternatives of members brought by
+      // implicit conversions that the direct members don't shadow, like the deprecated
+      // methods of IterableOnceExtensionMethods
+      val offersConversionAlternatives =
+        !scalaVersion.startsWith("2.") && Version(scalaVersion) >= Version("3.10.1")
 
       val expectedMatches =
         if (scalaVersion.startsWith("2.12"))
@@ -1661,7 +1666,7 @@ object Tests {
       }
       expect(matches == expectedMatches)
 
-      val expectedTypes =
+      val expectedTypes0 =
         if (scalaVersion.startsWith("2.12."))
           Seq(
             ("!=", "Method"),
@@ -2184,6 +2189,24 @@ object Tests {
             ("zipWithIndex", "Method"),
             ("→", "Method")
           ).filter(_._1 != "→" || offersUnicodeArrow)
+      val expectedTypes =
+        if (offersConversionAlternatives) {
+          val conversionAlternatives = Seq(
+            "copyToBuffer",
+            "max",
+            "min",
+            "product",
+            "reduce",
+            "reduceLeft",
+            "reduceLeftOption",
+            "reduceOption",
+            "reduceRight",
+            "reduceRightOption",
+            "sum"
+          )
+          (expectedTypes0 ++ conversionAlternatives.map((_, "Method"))).sorted
+        }
+        else expectedTypes0
 
       val metadata = ujson.read(res.head.metadata.value)
       val types    = metadata.obj("_jupyter_types_experimental")

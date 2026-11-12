@@ -13,7 +13,7 @@ instead. Only the Scala version recorded in the notebook metadata may differ fro
 get.
 
 To update the notebooks from what the tests get, run them with `ALMOND_UPDATE_EXAMPLES=1`
-(`ALMOND_UPDATE_EXAMPLES=1 ./mill 'scala.examples[3.10.0].test'` for example). On Scala 2.13 or
+(`ALMOND_UPDATE_EXAMPLES=1 ./mill 'scala.examples[3.10.1].test'` for example). On Scala 2.13 or
 Scala 3, this writes a copy in `scala-2.13` or `scala-3` when the outputs differ from the
 reference notebook, and removes it when they don't anymore. To adapt the sources of a
 notebook for one of these, edit its copy there (copy the reference notebook first if needed),
