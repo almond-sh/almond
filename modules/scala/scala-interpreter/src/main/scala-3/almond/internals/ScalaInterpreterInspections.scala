@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Comments.{Comment, ContextDocstrings, docCtx}
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.termName
+import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
@@ -283,13 +284,55 @@ object ScalaInterpreterInspections {
       // have nothing to do with the literal
       case Some(_: tpd.Literal) => Nil
       case _ =>
-        try
-          Interactive.enclosingSourceSymbols(path, ctx.source.atSpan(Span(index)))
-            .filter(_.exists)
+        try enclosingSourceSymbols(path, Span(index))
         catch {
           case NonFatal(_) => Nil
         }
     }
+
+  // Adapted from dotty.tools.dotc.interactive.Interactive.enclosingSourceSymbols, which
+  // Scala 3.10.1 removed from the compiler. Only relies on methods that are still there.
+  private def enclosingSourceSymbols(path: List[tpd.Tree], span: Span)(using
+    Context
+  ): List[Symbol] = {
+    val syms = path match {
+      // For a named arg, find the target `DefDef` and jump to the param
+      case tpd.NamedArg(name, _) :: tpd.Apply(fn, _) :: _ =>
+        val funSym = fn.symbol
+        if (
+          funSym.name == StdNames.nme.copy &&
+          funSym.is(Flags.Synthetic) &&
+          funSym.owner.is(Flags.CaseClass)
+        )
+          List(funSym.owner.info.member(name).symbol)
+        else {
+          val classTree = funSym.topLevelClass.asClass.rootTree
+          val paramSymbol =
+            tpd.defPath(funSym, classTree).lastOption.flatMap {
+              case tpd.DefDef(_, paramss, _, _) =>
+                paramss.flatten.find(_.name == name).map(_.symbol)
+              case _ => None
+            }
+          List(paramSymbol.getOrElse(fn.symbol))
+        }
+
+      // For constructor calls, return the `<init>` that was selected
+      case _ :: (_: tpd.New) :: (select: tpd.Select) :: _ =>
+        List(select.symbol)
+
+      case (_: untpd.ImportSelector) :: (imp: tpd.Import) :: _ =>
+        tpd.importedSymbols(imp, _.span.contains(span))
+
+      case (imp: tpd.Import) :: _ =>
+        tpd.importedSymbols(imp, _.span.contains(span))
+
+      case _ =>
+        // closest enclosing tree with a symbol
+        path.find(_.symbol.exists).map(_.symbol).toList
+    }
+
+    syms.map(_.sourceSymbol).filter(_.exists)
+  }
 
   // The alternatives of an overloaded method selected under the cursor, along with their
   // types as seen from the qualifier
