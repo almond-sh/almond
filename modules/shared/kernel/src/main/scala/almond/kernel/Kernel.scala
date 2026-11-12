@@ -314,7 +314,8 @@ final case class Kernel(
         lingerPeriod = Some(5.minutes),
         logCtx = logCtx,
         identityOpt = Some(kernelId),
-        bindToRandomPorts = bindToRandomPorts
+        bindToRandomPorts = bindToRandomPorts,
+        kernelSessionOpt = Some(session)
       )
     } yield {
       val run0 =

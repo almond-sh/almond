@@ -3,6 +3,7 @@ package almond.channels
 import java.net.ServerSocket
 
 import almond.channels.zeromq.{ZeromqConnection, ZeromqThreads}
+import almond.interpreter.KernelSession
 import almond.logger.LoggerContext
 import almond.util.Secret
 import cats.effect.IO
@@ -43,7 +44,8 @@ final case class ConnectionParameters(
     lingerPeriod: Option[Duration],
     logCtx: LoggerContext,
     bindToRandomPorts: Boolean,
-    identityOpt: Option[String]
+    identityOpt: Option[String],
+    kernelSessionOpt: Option[KernelSession]
   ): IO[ZeromqConnection] =
     ZeromqConnection(
       this,
@@ -52,7 +54,26 @@ final case class ConnectionParameters(
       threads,
       lingerPeriod,
       logCtx,
-      bindToRandomPorts = bindToRandomPorts
+      bindToRandomPorts = bindToRandomPorts,
+      kernelSessionOpt = kernelSessionOpt
+    )
+
+  def channels(
+    bind: Boolean,
+    threads: ZeromqThreads,
+    lingerPeriod: Option[Duration],
+    logCtx: LoggerContext,
+    bindToRandomPorts: Boolean,
+    identityOpt: Option[String]
+  ): IO[ZeromqConnection] =
+    channels(
+      bind,
+      threads,
+      lingerPeriod,
+      logCtx,
+      bindToRandomPorts = bindToRandomPorts,
+      identityOpt = identityOpt,
+      kernelSessionOpt = None
     )
 
   // bin-compat stub
