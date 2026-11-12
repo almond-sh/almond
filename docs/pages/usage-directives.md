@@ -2,7 +2,7 @@
 title: Using directives
 ---
 
-Like [Scala CLI](https://scala-cli.virtuslab.org/docs/reference/directives), almond accepts
+Like [Scala CLI](https://scala-cli.virtuslab.org/docs/reference/directives), Almond accepts
 `//> using` directives at the beginning of cells, before any code, like
 ```scala
 //> using dep "com.lihaoyi::os-lib:0.11.4"
@@ -20,7 +20,7 @@ These can be used in any cell, and are taken into account before the cell is com
 
 | Directive | Description |
 |-----------|-------------|
-| `//> using dep` | Add dependencies, like `//> using dep "com.lihaoyi::os-lib:0.11.4"`. Also available as `deps`, `dependencies`, `lib`, and `libs`. Same as ``import $ivy.`…` ``, see [Load dependencies](api-ammonite.md#load-dependencies). |
+| `//> using dep` | Add dependencies, like `//> using dep "com.lihaoyi::os-lib:0.11.4"`. Also available as `deps`, `dependencies`, `lib`, and `libs`. Ammonite's ``import $ivy.`…` `` syntax does the same, see [Load dependencies](api-ammonite.md#load-dependencies). |
 | `//> using repository` | Add repositories to resolve dependencies from, like `//> using repository jitpack`, `//> using repository sonatype:snapshots`, `//> using repository m2Local`, or the URL of the root of a Maven repository. |
 | `//> using option` | Add Scala compiler options, like `//> using option "-Xfatal-warnings"`. Also available as `options`. See [Compiler options](usage-compiler-options.md). |
 | `//> using script` | Compile and run [Ammonite scripts](api-ammonite.md#load-scripts), like `//> using script path/to/script.sc`. Also available as `scripts`. |

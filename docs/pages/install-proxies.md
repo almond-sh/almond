@@ -12,7 +12,7 @@ something:
 - **when Jupyter starts the kernel**: the launcher checks the JARs it needs against the coursier
   cache, and downloads missing ones. The [newer launcher](install-advanced.md#creating-an-almond-launcher-and-installing-it---newer-launcher)
   also resolves the actual kernel for the Scala version of the notebook at that point;
-- **in notebooks**: `import $ivy` and `//> using dep` directives resolve and download the
+- **in notebooks**: `//> using dep` directives (or `import $ivy`) resolve and download the
   libraries they pull.
 
 The configuration described below is read at all of these points, by the `cs` command, by the
@@ -141,14 +141,14 @@ the kernel, that Jupyter sets when it starts the kernel.
 
 ## Checking that it works
 
-`import $ivy` in a notebook is the quickest way to check that the configuration is picked up by
-the kernel:
+Loading a dependency in a notebook is the quickest way to check that the configuration is picked
+up by the kernel:
 ```scala
-import $ivy.`org.typelevel::cats-core:2.12.0`
+//> using dep "org.typelevel::cats-core:2.12.0"
 ```
 
-If Almond fails to start, or the import fails, run the `cs` command with the same configuration
-to check it on its own, like
+If Almond fails to start, or loading the dependency fails, run the `cs` command with the same
+configuration to check it on its own, like
 ```text
 $ cs fetch org.typelevel::cats-core:2.12.0
 ```

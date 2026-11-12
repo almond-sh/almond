@@ -2,17 +2,28 @@
 title: Writing libraries interacting with Jupyter
 ---
 
-Libraries can interact with Jupyter front-ends when they're loaded in an almond session,
+Libraries can interact with Jupyter front-ends when they're loaded in an Almond session,
 like plotting libraries such as [plotly-scala](usage-plotting.md#plotly-scala) do. They can
 
 - display things in the front-end, update or clear them later on,
 - control how values of their types are shown, when they're the results of cells,
 - request input from users, or exchange messages with JavaScript code running in the front-end.
 
-## Accessing the almond API
+## Accessing the Almond API
 
-Libraries get access to the almond API by depending on the `scala-kernel-api` module, as a
-"provided" dependency, like
+Libraries get access to the Almond API by depending on the `scala-kernel-api` module, as a
+"provided" (compile-time only) dependency. With [Mill](https://mill-build.org), add to your module
+in `build.mill`
+```scala
+def compileMvnDeps = Seq(
+  mvn"sh.almond::scala-kernel-api:@VERSION@"
+)
+```
+With [Scala CLI](https://scala-cli.virtuslab.org), add the directive
+```scala
+//> using compileOnly.dep sh.almond::scala-kernel-api:@VERSION@
+```
+With [sbt](https://www.scala-sbt.org), add to `build.sbt`
 ```scala
 libraryDependencies += "sh.almond" %% "scala-kernel-api" % "@VERSION@" % Provided
 ```
@@ -24,8 +35,8 @@ of the library, so that users don't have to pass it themselves. See
 ## Displaying values of library types
 
 To have values of a type displayed in a rich way when they're the results of cells, register a
-[jvm-repr](https://github.com/jupyter/jvm-repr) displayer for that type. Such displayers return
-a map from MIME types to content, like
+[jvm-repr](https://github.com/almond-sh/almond/tree/main/modules/api/src/main/java/jupyter)
+displayer for that type. Such displayers return a map from MIME types to content, like
 ```scala
 case class Matrix(values: Seq[Seq[Double]])
 
@@ -40,9 +51,10 @@ jupyter.Displayers.register(
 )
 ```
 The registration needs to run before such values are displayed, for example from the
-initialization of an object of the library that users call first. jvm-repr comes with the
-`scala-kernel-api` module. As it doesn't depend on almond itself, other
-JVM kernels supporting it display these values too.
+initialization of an object of the library that users call first. Almond ships the jvm-repr
+classes, in their original `jupyter` package, so they come with the `scala-kernel-api` module. As
+displayers don't depend on Almond itself, other JVM kernels supporting jvm-repr display these
+values too.
 
 Whether such values are displayed when assigned to variables, or only when they're the result of a
 bare expression, can be changed via `almond.display.ResultDisplay`, see
@@ -51,4 +63,4 @@ bare expression, can be changed via `almond.display.ResultDisplay`, see
 ## Example
 
 [almond-sh/example-library-jupyter-api](https://github.com/almond-sh/example-library-jupyter-api)
-is an example of a library relying on the almond API, along with a notebook using it.
+is an example of a library relying on the Almond API, along with a notebook using it.

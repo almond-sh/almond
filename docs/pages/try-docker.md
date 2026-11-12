@@ -2,7 +2,7 @@
 title: docker
 ---
 
-Docker images of almond are automatically published on
+Docker images of Almond are automatically published on
 [dockerhub](https://hub.docker.com/r/almondsh/almond) upon each release.
 
 Run the latest version with

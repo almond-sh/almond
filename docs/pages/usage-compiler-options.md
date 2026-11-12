@@ -182,7 +182,7 @@ when the next compiler instance gets created, that is, when the next cell gets c
 ## At kernel startup
 
 To enable options for all sessions of an installed kernel, put one of the
-`interp.preConfigureCompiler` calls above in a predef, passed to almond at installation time.
+`interp.preConfigureCompiler` calls above in a predef, passed to Almond at installation time.
 Predef code can be passed inline with [`--predef-code`](install-options.md#--predef-code),
 or from a file with `--predef`:
 ```bash

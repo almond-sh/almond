@@ -2,7 +2,7 @@
 title: Installation
 ---
 
-## Install the almond kernel
+## Install the Almond kernel
 
 Almond is a kernel for [Jupyter](https://jupyter.org), that needs to be installed
 beforehand, like with `pip install jupyterlab` (see the
@@ -97,13 +97,13 @@ Pass `--help` instead of `--install`, like
 $ ./cs launch --use-bootstrap almond -- --help
 ```
 
-## Update the almond kernel
+## Update the Almond kernel
 
-To update the almond kernel, just re-install it, but passing the `--force` option to almond (like `./cs launch --use-bootstrap almond -- --install --force`). That will override any previous almond (or kernel with name `scala`).
+To update the Almond kernel, just re-install it, but passing the `--force` option to Almond (like `./cs launch --use-bootstrap almond -- --install --force`). That will override any previous Almond (or kernel with name `scala`).
 
-## Uninstall the almond kernel
+## Uninstall the Almond kernel
 
-To uninstall the almond kernel, use `jupyter kernelspec remove scala`.
+To uninstall the Almond kernel, use `jupyter kernelspec remove scala`.
 
 ## What happens during installation
 

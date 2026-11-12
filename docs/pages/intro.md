@@ -3,9 +3,9 @@ title: Overview
 hide_title: true
 ---
 
-# almond
+# Almond
 
-*almond* is a [Scala](https://scala-lang.org) kernel for [Jupyter](https://jupyter.org). It is formerly known as *jupyter-scala*.
+*Almond* is a [Scala](https://scala-lang.org) kernel for [Jupyter](https://jupyter.org). It is formerly known as *jupyter-scala*.
 
 It supports Scala 3, Scala 2.13, and Scala 2.12 (see [Versions](install-versions.md)), and features:
 - all the [Ammonite](https://ammonite.io) niceties,

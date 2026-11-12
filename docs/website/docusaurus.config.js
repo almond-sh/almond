@@ -9,7 +9,7 @@ const siteUrl = new URL(process.env.ALMOND_WEBSITE_URL || 'https://almond.sh/');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'almond',
+  title: 'Almond',
   tagline: 'A Scala kernel for Jupyter',
   favicon: 'logos/impure-logos-almond-0.svg',
 
@@ -88,10 +88,10 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       navbar: {
-        title: 'almond',
+        title: 'Almond',
         style: 'dark',
         logo: {
-          alt: 'almond logo',
+          alt: 'Almond logo',
           src: 'logos/impure-logos-almond-0.svg',
         },
         items: [
@@ -127,7 +127,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} almond contributors`,
+        copyright: `Copyright © ${new Date().getFullYear()} Almond contributors`,
       },
       prism: {
         theme: prismThemes.github,

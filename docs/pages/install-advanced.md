@@ -230,7 +230,8 @@ module, that is always in the user-facing part of the Almond class path. (They u
 separate `toree-hooks` module, that had to be added to it via `--shared sh.almond::toree-hooks` or
 `--shared-dependencies sh.almond::toree-hooks:_` - that isn't needed any more.)
 
-From a predef script, call
+Add `sh.almond::almond-toree-spark` to the kernel with [`--dependency`](install-options.md#--dependency),
+and call, from a predef script,
 ```scala
 almond.spark.ToreeSql.setup()
 ```
@@ -238,13 +239,13 @@ almond.spark.ToreeSql.setup()
 Complete example with the new launcher:
 ```text
 $ cat predef.sc
-import $ivy.`sh.almond::almond-toree-spark:@VERSION@`
 almond.spark.ToreeSql.setup()
 
 $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- \
   --install \
   --scala @SCALA213_VERSION@ \
   --toree-magics \
+  --dependency sh.almond::almond-toree-spark:@VERSION@ \
   --predef predef.sc
 ```
 

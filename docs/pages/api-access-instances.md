@@ -25,7 +25,7 @@ To access API instances from libraries, depend on either
 - `sh.almond:scala-kernel-api_@SCALA_BINARY_VERSION@:@VERSION@` for [`almond.api.JupyterApi`](api-jupyter.md#jupyterapi).
 
 You can depend on those libraries as "provided" dependencies, as these libraries
-are guaranteed to be already loaded by almond itself.
+are guaranteed to be already loaded by Almond itself.
 
 In practice, with [Mill](https://mill-build.org), you can add something along those
 lines to your module in `build.mill`,
@@ -78,10 +78,10 @@ a notebook using it, are available in
 
 ## Showing results
 
-By default, almond shows both the results of bare expressions, like `res0: Int = 2`
+By default, Almond shows both the results of bare expressions, like `res0: Int = 2`
 for `1 + 1`, and the values of named definitions, like `n: Int = 2` for
 `val n = 1 + 1`. Values with a rich representation ([displays](api-jupyter.md#display),
-values with a [jvm-repr](https://github.com/jupyter/jvm-repr) displayer) are displayed
+values with a [jvm-repr](https://github.com/almond-sh/almond/tree/main/modules/api/src/main/java/jupyter) displayer) are displayed
 via it, rather than printed as text.
 
 Libraries can change that for their own types via `almond.display.ResultDisplay`, like
