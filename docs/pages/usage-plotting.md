@@ -13,7 +13,8 @@ The [Almond examples](https://github.com/almond-sh/examples) have
 [plotly-scala](https://github.com/alexarchambault/plotly-scala) provides Scala bindings for
 [plotly.js](https://plotly.com/javascript), with a module for Almond, `plotly-almond`:
 ```scala
-import $ivy.`org.plotly-scala::plotly-almond:0.8.5`
+//> using dep "org.plotly-scala::plotly-almond:0.8.5"
+
 import plotly._, plotly.element._, plotly.layout._, plotly.Almond._
 
 val trace1 = Scatter(Seq(1, 2, 3, 4), Seq(10, 15, 13, 17))
@@ -23,7 +24,7 @@ plot(Seq(trace1, trace2))
 ```
 
 plotly-scala isn't published for Scala 3, but its Scala 2.13 artifacts work from Scala 3
-kernels. Use ``import $ivy.`org.plotly-scala:plotly-almond_2.13:0.8.5` `` there (note the single
+kernels. Use `//> using dep "org.plotly-scala:plotly-almond_2.13:0.8.5"` there (note the single
 `:` before the module name, followed by the explicit `_2.13` suffix).
 
 By default, the plots load plotly.js from a CDN. To embed it in the notebook instead, so that
@@ -69,7 +70,8 @@ a specification at compile time, and lets you change any of its fields in a type
 `dedav4s_notebook` module shows plots in Almond, along with a static SVG for viewers that don't
 run JavaScript, like GitHub:
 ```scala
-//> using dep io.github.quafadas::dedav4s_notebook:0.10.9
+//> using dep "io.github.quafadas::dedav4s_notebook:0.10.9"
+
 import io.github.quafadas.plots.SetupVegaNotebook.{*, given}
 
 val barChart = VegaPlot.fromString("""{
@@ -111,7 +113,8 @@ can be shown with the [`Svg` and `Image` displays](api-jupyter.md#display).
 [nspl](https://github.com/pityka/nspl) is a Scala 2.13 and Scala 3 plotting library, that renders
 plots as bitmaps or as vector images:
 ```scala
-import $ivy.`io.github.pityka::nspl-awt:0.20.0`
+//> using dep "io.github.pityka::nspl-awt:0.20.0"
+
 import org.nspl._
 import org.nspl.awtrenderer._
 
@@ -128,7 +131,8 @@ for more examples.
 
 [XChart](https://github.com/knowm/XChart) is a Java charting library, with few dependencies:
 ```scala
-import $ivy.`org.knowm.xchart:xchart:4.0.4`
+//> using dep "org.knowm.xchart:xchart:4.0.4"
+
 import org.knowm.xchart._
 
 val xs = (0 to 100).map(_ / 10.0).toArray

@@ -41,25 +41,20 @@ The dependencies can then be used in the cell right _after_ the one calling
 `interp.load.ivy`.
 
 Note that in the case of simple dependencies, when directly entering code
-in a notebook,
-the following syntax is preferred
+in a notebook, the [`//> using dep`](usage-directives.md) directive is preferred,
 and allows to use the dependency in the current cell rather than the next one:
-```scala
-import $ivy.`com.lihaoyi::os-lib:0.11.4`
-```
-
-The same goes for the `//> using dep` directive:
 ```scala
 //> using dep "com.lihaoyi::os-lib:0.11.4"
 ```
 
-Both syntaxes accept a classifier, appended to the dependency as
-`,classifier=…`:
-```scala
-import $ivy.`org.bytedeco:javacpp:1.5.10,classifier=linux-x86_64`
-```
+Dependencies accept a classifier, appended to them as `,classifier=…`:
 ```scala
 //> using dep "org.bytedeco:javacpp:1.5.10,classifier=linux-x86_64"
+```
+
+The `import $ivy` syntax of Ammonite is also accepted, and behaves the same way:
+```scala
+import $ivy.`com.lihaoyi::os-lib:0.11.4`
 ```
 
 #### Pinning dependency versions
@@ -73,14 +68,14 @@ For example, the workaround in [issue #332](https://github.com/almond-sh/almond/
 loads Hadoop before Spark. In a first cell:
 
 ```scala
-import $ivy.`org.apache.hadoop:hadoop-common:2.9.2`
-import $ivy.`org.apache.hadoop:hadoop-azure-datalake:3.1.1`
+//> using dep "org.apache.hadoop:hadoop-common:2.9.2"
+//> using dep "org.apache.hadoop:hadoop-azure-datalake:3.1.1"
 ```
 
 Then, in a separate cell:
 
 ```scala
-import $ivy.`org.apache.spark::spark-sql:2.4.0`
+//> using dep "org.apache.spark::spark-sql:2.4.0"
 ```
 
 This is both a feature and a limitation: it lets you keep chosen versions when

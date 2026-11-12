@@ -25,8 +25,8 @@ Pressing Tab completes:
   Typing `HashM` then offers `java.util.HashMap`, `scala.collection.immutable.HashMap`,
   `scala.collection.mutable.HashMap`, and so on, which are inserted with their fully
   qualified names,
-- the dependencies in `import $ivy`, where organizations, module names, and versions are
-  looked up in the repositories of the kernel, like
+- the dependencies in `import $ivy` (not yet in [`//> using dep`](usage-directives.md) directives),
+  where organizations, module names, and versions are looked up in the repositories of the kernel, like
   ```scala
   import $ivy.`org.typelevel::cats-co
   ```
@@ -89,8 +89,8 @@ being called is inspected.
 
 The documentation of a class is read from the source JAR of its library, or, for
 Scala 3 libraries, from their TASTy files. The source JARs of the dependencies of the
-kernel and of the dependencies added with `import $ivy` or
-[`//> using dep`](usage-directives.md) are available. Those of JARs added with
+kernel and of the dependencies added with [`//> using dep`](usage-directives.md) or
+`import $ivy` are available. Those of JARs added with
 [`--extra-class-path`](install-options.md#--extra-class-path), `import $cp`, or
 `interp.load.cp` aren't: add their source JARs to the class path too to get their
 documentation, like

@@ -15,16 +15,17 @@ The Scala version of Spark and the one of the Almond kernel must match: use a Sc
 and for the Scala 2.13 builds of Spark 3.x, and a Scala 2.12 kernel for the Scala 2.12 builds of Spark 3.x
 (see [Multiple kernels](install-multiple.md) to install both). Spark doesn't support Scala 3.
 
-To use it, import Spark:
+To use it, load Spark:
 
 ```scala
-import $ivy.`org.apache.spark::spark-sql:3.5.8` // Or any other Spark 3.x or 4.x version
+// Or any other Spark 3.x or 4.x version
+//> using dep "org.apache.spark::spark-sql:3.5.8"
 ```
 
 This also adds *almond-spark* to the session (`sh.almond::almond-spark:@AMMONITE_SPARK_VERSION@` for Almond `@VERSION@`).
 It can also be added explicitly, if needed, with
 ```scala
-import $ivy.`sh.almond::almond-spark:_`
+//> using dep "sh.almond::almond-spark:_"
 ```
 where the `_` version stands for the version Almond was built with.
 
@@ -97,13 +98,13 @@ as well as a link to cancel the job if you are using the Jupyter classic UI.
 
 ### Syncing dependencies
 
-If extra dependencies are loaded, via ``import $ivy.`…` `` after the `SparkSession` has been created, one should call
+If extra dependencies are loaded, via `//> using dep` after the `SparkSession` has been created, one should call
 `NotebookSparkSession.sync()` for the newly added JARs to be passed to the Spark executors.
 
 ## Re-using a Spark distribution via `SPARK_HOME`
 
 By default, *almond-spark* does not need a Spark distribution. Spark is loaded in the kernel via
-``import $ivy.`org.apache.spark::spark-sql:…` ``, and the JARs *almond-spark* resolves from Maven Central that way
+`//> using dep "org.apache.spark::spark-sql:…"`, and the JARs *almond-spark* resolves from Maven Central that way
 are the ones the driver runs with, and the ones sent to the executors.
 
 That is the simplest way to get started, but one may prefer to re-use a Spark distribution already at hand, like
@@ -136,13 +137,13 @@ Note that, unlike `spark-shell`, *almond-spark* does not read the `conf/spark-de
 distribution: pass its settings via `.config("key", "value")` when building the session if needed.
 
 `SPARK_HOME` changes how *almond-spark* handles the JARs of any session, so only set it for kernels that load Spark
-from that distribution. If Spark is loaded via ``import $ivy.`…` `` while `SPARK_HOME` is set, the Spark JARs from
+from that distribution. If Spark is loaded via `//> using dep` while `SPARK_HOME` is set, the Spark JARs from
 Maven Central are not recognized as Spark JARs. They then all get sent to the executors via `spark.jars`, and on YARN
 the executors run with the JARs of the distribution rather than those of the notebook.
 
 ### Load the JARs of the distribution in the kernel
 
-Rather than importing Spark with ``import $ivy.`…` ``, load the JARs of the distribution in the session, with the Ammonite
+Rather than loading Spark with `//> using dep`, load the JARs of the distribution in the session, with the Ammonite
 `interp.load.cp` API:
 
 ```scala
@@ -179,11 +180,11 @@ Spark 4.x distributions ship Scala 2.13. Install Almond with the matching `--sca
 
 ### Import almond-spark and create the session
 
-As Spark is not imported via ``import $ivy.`…` `` in that case, *almond-spark* is not added automatically to the
-session. Import it explicitly, then create the `SparkSession` as usual:
+As Spark is not loaded via `//> using dep` in that case, *almond-spark* is not added automatically to the
+session. Load it explicitly, then create the `SparkSession` as usual:
 
 ```scala
-import $ivy.`sh.almond::almond-spark:_`
+//> using dep "sh.almond::almond-spark:_"
 
 import org.apache.spark.sql._
 
@@ -198,7 +199,7 @@ When `SPARK_HOME` is set, `NotebookSparkSession.builder()` does not resolve any 
 (you should not see the `Getting spark JARs` message in the cell output). Instead, it considers the JARs of
 `$SPARK_HOME/jars` as the Spark JARs, that the executors already have:
 - they are not sent to the executors via `spark.jars`. Only the JARs loaded in the notebook via
-  ``import $ivy.`…` `` on top of them are,
+  `//> using dep` on top of them are,
 - if `SPARK_DIST_CLASSPATH` is set in the environment too, like it is by `spark-env.sh` on some Hadoop setups, its
   entries are also considered part of the distribution, and are not sent to the executors either,
 - on YARN, `spark.yarn.jars` is set to the JARs of the distribution, so that the YARN containers use the same JARs
@@ -220,7 +221,7 @@ val spark = {
 ```
 
 Ensure the version of Spark used to start the master and executors matches the one loaded in the notebook session
-(via e.g. ``import $ivy.`org.apache.spark::spark-sql:X.Y.Z` ``), and that the machine running the kernel can access / is
+(via e.g. `//> using dep "org.apache.spark::spark-sql:X.Y.Z"`), and that the machine running the kernel can access / is
 accessible from all nodes of the standalone cluster.
 
 The most reliable way to get matching versions is to load Spark from the very distribution the master and workers were
