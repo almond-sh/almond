@@ -25,10 +25,11 @@ Pressing Tab completes:
   Typing `HashM` then offers `java.util.HashMap`, `scala.collection.immutable.HashMap`,
   `scala.collection.mutable.HashMap`, and so on, which are inserted with their fully
   qualified names,
-- the dependencies in `import $ivy` (not yet in [`//> using dep`](usage-directives.md) directives),
-  where organizations, module names, and versions are looked up in the repositories of the kernel, like
+- the dependencies of [`//> using dep`](usage-directives.md) directives (and, but with
+  Scala 3.9 and later, of `import $ivy`), where module names and versions are looked up in the
+  default repositories of coursier (usually Maven Central), like
   ```scala
-  import $ivy.`org.typelevel::cats-co
+  //> using dep "org.typelevel::cats-co
   ```
 
 Implicit definitions, names containing `$` (internal to the compiler or to Almond), and a

@@ -239,7 +239,26 @@ final class ScalaInterpreter(
       inspections.inspect(code, pos, detailLevel)
     }
 
-  override def complete(code: String, pos: Int): Completion = {
+  // completes the dependencies of '//> using dep' directives, that the compiler sees as comments
+  private def completeDirectiveDependency(
+    value: DirectiveCompletion.DependencyValue
+  ): (Int, Seq[String]) =
+    if (value.prefix.isEmpty) (value.start, Nil)
+    else {
+      val (from, completions) =
+        try ammInterp.dependencyComplete(value.prefix)
+        catch {
+          case NonFatal(e) =>
+            log.info(s"Ignoring exception while completing dependency ${value.prefix}", e)
+            (0, Nil)
+        }
+      (value.start + from, completions)
+    }
+
+  private def completeCode(
+    code: String,
+    pos: Int
+  ): (Int, Int, Seq[String], Seq[(String, String)]) = {
 
     val backquotedIdentOpt = BackquotedCompletion.find(code, pos)
 
@@ -266,6 +285,20 @@ final class ScalaInterpreter(
       case (compl, tpe) =>
         (adjustCompletion(compl), tpe)
     }
+
+    (newPos, endPos, completions, completionsWithTypes)
+  }
+
+  override def complete(code: String, pos: Int): Completion = {
+
+    val (newPos, endPos, completions, completionsWithTypes) =
+      DirectiveCompletion.findDependency(code, pos) match {
+        case Some(value) =>
+          val (start, completions) = completeDirectiveDependency(value)
+          (start, pos, completions, completions.map(c => (c, "dependency")))
+        case None =>
+          completeCode(code, pos)
+      }
 
     val metadata =
       if (java.lang.Boolean.getBoolean("almond.completion.demo") && code.startsWith("// Demo"))
