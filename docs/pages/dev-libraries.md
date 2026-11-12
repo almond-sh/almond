@@ -24,8 +24,8 @@ of the library, so that users don't have to pass it themselves. See
 ## Displaying values of library types
 
 To have values of a type displayed in a rich way when they're the results of cells, register a
-[jvm-repr](https://github.com/jupyter/jvm-repr) displayer for that type. Such displayers return
-a map from MIME types to content, like
+[jvm-repr](https://github.com/almond-sh/almond/tree/main/modules/api/src/main/java/jupyter)
+displayer for that type. Such displayers return a map from MIME types to content, like
 ```scala
 case class Matrix(values: Seq[Seq[Double]])
 
@@ -40,9 +40,10 @@ jupyter.Displayers.register(
 )
 ```
 The registration needs to run before such values are displayed, for example from the
-initialization of an object of the library that users call first. jvm-repr comes with the
-`scala-kernel-api` module. As it doesn't depend on Almond itself, other
-JVM kernels supporting it display these values too.
+initialization of an object of the library that users call first. Almond ships the jvm-repr
+classes, in their original `jupyter` package, so they come with the `scala-kernel-api` module. As
+displayers don't depend on Almond itself, other JVM kernels supporting jvm-repr display these
+values too.
 
 Whether such values are displayed when assigned to variables, or only when they're the result of a
 bare expression, can be changed via `almond.display.ResultDisplay`, see

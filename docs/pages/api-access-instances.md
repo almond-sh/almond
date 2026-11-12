@@ -81,7 +81,7 @@ a notebook using it, are available in
 By default, Almond shows both the results of bare expressions, like `res0: Int = 2`
 for `1 + 1`, and the values of named definitions, like `n: Int = 2` for
 `val n = 1 + 1`. Values with a rich representation ([displays](api-jupyter.md#display),
-values with a [jvm-repr](https://github.com/jupyter/jvm-repr) displayer) are displayed
+values with a [jvm-repr](https://github.com/almond-sh/almond/tree/main/modules/api/src/main/java/jupyter) displayer) are displayed
 via it, rather than printed as text.
 
 Libraries can change that for their own types via `almond.display.ResultDisplay`, like
