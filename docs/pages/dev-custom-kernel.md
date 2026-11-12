@@ -8,7 +8,11 @@ language of your choice.
 
 The Almond sources contain a demo kernel relying on it, the
 [echo kernel](https://github.com/almond-sh/almond/tree/main/modules/echo). It depends on
-- the `kernel` module, `"sh.almond" %% "kernel" % "@VERSION@"`,
+- the `kernel` module, `sh.almond::kernel:@VERSION@`, added with
+  `mvn"sh.almond::kernel:@VERSION@"` in the `mvnDeps` of a [Mill](https://mill-build.org) module,
+  `//> using dep sh.almond::kernel:@VERSION@` with [Scala CLI](https://scala-cli.virtuslab.org), or
+  `"sh.almond" %% "kernel" % "@VERSION@"` in the `libraryDependencies` of an
+  [sbt](https://www.scala-sbt.org) project,
 - [case-app](https://github.com/alexarchambault/case-app), to parse its command-line arguments
   (case-app can be replaced by the command-line parsing library of your choice).
 
@@ -37,8 +41,9 @@ For the kernel installation to work out-of-the-box, the kernel should be launche
 [coursier](https://get-coursier.io) in one way or another, like the Almond kernel is. (It is
 possible nonetheless to rely on e.g. uber JARs, by tweaking the `arg` or `command` fields of
 the installation options, see [`--arg`](install-options.md#--arg) and [`--command`](install-options.md#--command).)
-To test your kernel locally, publish it locally (with `publishLocal` with sbt, or Mill, or
-`scala-cli publish local`), note its organization, module name, and version, then install it with
+To test your kernel locally, publish it locally (with `./mill <module>.publishLocal` with Mill,
+`scala-cli --power publish local .` with Scala CLI, or `publishLocal` with sbt), note its
+organization, module name, and version, then install it with
 ```text
 $ cs launch --use-bootstrap organization:module-name_3:version -- --install
 ```

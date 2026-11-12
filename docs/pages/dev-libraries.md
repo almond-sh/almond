@@ -12,7 +12,18 @@ like plotting libraries such as [plotly-scala](usage-plotting.md#plotly-scala) d
 ## Accessing the Almond API
 
 Libraries get access to the Almond API by depending on the `scala-kernel-api` module, as a
-"provided" dependency, like
+"provided" (compile-time only) dependency. With [Mill](https://mill-build.org), add to your module
+in `build.mill`
+```scala
+def compileMvnDeps = Seq(
+  mvn"sh.almond::scala-kernel-api:@VERSION@"
+)
+```
+With [Scala CLI](https://scala-cli.virtuslab.org), add the directive
+```scala
+//> using compileOnly.dep sh.almond::scala-kernel-api:@VERSION@
+```
+With [sbt](https://www.scala-sbt.org), add to `build.sbt`
 ```scala
 libraryDependencies += "sh.almond" %% "scala-kernel-api" % "@VERSION@" % Provided
 ```
