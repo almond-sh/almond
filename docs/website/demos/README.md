@@ -49,7 +49,14 @@ Pass it the paths of some demos to only record those, and [`record.mjs`](record.
 $ docs/website/demos/record.sh --ffmpeg /path/to/ffmpeg docs/website/demos/spark.sc
 ```
 
-It requires
+On GitHub Actions, the [Website demos workflow](../../../.github/workflows/website-demos.yml),
+run by hand (typically after a release), runs `record.sh`, and opens a pull request with the new
+recordings:
+```text
+$ gh workflow run website-demos.yml -f almond-version=0.15.0
+```
+
+`record.sh` requires
 - [coursier](https://get-coursier.io) (`cs`), [uv](https://docs.astral.sh/uv), and Node.js,
 - a Chrome or Chromium: the one Playwright downloads (`npx playwright-core install chromium-headless-shell`
   from this directory) is picked up automatically, pass `--chrome /path/to/chrome` otherwise,
