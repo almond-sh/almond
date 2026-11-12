@@ -314,6 +314,16 @@ This is what CI does on pull requests.
 $ ./mill 'scala.scala-kernel[2.13.3].compile'
 ```
 
+The cross modules over Scala versions also accept shorter versions, when these only match one of
+their instances: the binary version (`2.12`, `2.13`, `3.3`, `3.9`, `3.10`), or even `3` when a
+module has a single Scala 3 instance. These can be written with dots or underscores:
+```text
+$ ./mill 'scala.scala-kernel[2.13].compile'
+$ ./mill scala.scala-kernel.2_13.compile
+$ ./mill scala.scala-interpreter.3.test.3_10.testOnly almond.ScalaInterpreterTests
+$ ./mill scala.examples.2_12.test
+```
+
 ### Set up an IDE
 
 Mill supports IDEs via [BSP](https://build-server-protocol.github.io), that both
