@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import {useColorMode} from '@docusaurus/theme-common';
 import Layout from '@theme/Layout';
 
 import styles from './index.module.css';
@@ -109,10 +110,15 @@ function HomeSplash() {
 }
 
 // Videos recorded by demos/record.mjs, with a poster image (the last frame of the video), shown
-// while the video loads, or instead of it when it can't be played
-function FeatureVideo({video, alt}) {
+// while the video loads, or instead of it when it can't be played. Videos are recorded with the
+// light and dark themes of JupyterLab, the one matching the color mode of the website is shown.
+function FeatureVideo({video: name, alt}) {
+  const {colorMode} = useColorMode();
+  const video = colorMode === 'dark' ? `${name}-dark` : name;
   return (
     <video
+      // changing the sources of a video element doesn't reload it, re-create it instead
+      key={video}
       className={styles.featureImage}
       autoPlay
       loop

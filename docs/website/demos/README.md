@@ -37,7 +37,9 @@ for (i <- 1 to 100) {
 ## Recording
 
 [`record.sh`](record.sh) installs the kernels of a released version of Almond in a temporary
-directory (`ALMOND_VERSION`, 0.15.0 by default), then records all the demos with them:
+directory (`ALMOND_VERSION`, 0.15.0 by default), then records all the demos with them, with the
+light and dark themes of JupyterLab (set `THEMES=light` or `THEMES=dark` to record only one of
+them):
 ```text
 $ docs/website/demos/record.sh
 ```
@@ -69,7 +71,8 @@ $ node docs/website/demos/record.mjs \
 It writes `<demo>.mp4`, `<demo>.webm`, and `<demo>.png` (the last frame, used as poster) to
 `../static/frontpage`. Run `node record.mjs --help` for the full list of options. Among them:
 - `--formats mp4,webm,gif,png`: the files to write,
-- `--theme dark`: record with the JupyterLab dark theme, writing `<demo>-dark.*` files,
+- `--theme dark`: record with the JupyterLab dark theme, writing `<demo>-dark.*` files (the front
+  page shows those when the website is in dark mode),
 - `--width` / `--height` / `--scale`: default size of the browser viewport, in CSS pixels, and
   device scale factor (640 x 520 at 2x by default),
 - `--max-idle 400`: longest time spent waiting for the kernel with nothing changing on screen
