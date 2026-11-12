@@ -56,6 +56,8 @@ When passed the `--install` option, Almond tries to determine the path of its ow
 and copies it alongside the `kernel.json` file it generates for Jupyter to be able to launch
 Almond. That way, the launcher used during the installation can be safely deleted right after
 the installation.
+See [What happens during installation](quick-start-install.md#what-happens-during-installation)
+for the files that the installation and the kernel startup download or write.
 
 ### Where the kernel gets installed
 
@@ -125,12 +127,13 @@ The newer launcher allows users to configure Almond in the first cells of notebo
 (more precisely, before any actual code - that is, not comments or blank lines - needs to be compiled), with
 directives like
 ```scala
-//> using scala "2.12"
 //> using scala "@SCALA212_VERSION@"
 //> using jvm "17"
 //> using javaOpt "-Xmx10g"
 //> using javaOpt "-Dfoo=bar"
 ```
+(`//> using scala` also accepts short Scala versions, like `"2.12"` or `"3"`. See
+[Using directives](usage-directives.md#launcher-directives) for the full list.)
 
 The newer launcher can be installed with
 ```text
@@ -139,10 +142,10 @@ $ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_V
 (`sh.almond:launcher_3:@VERSION@` also works as a dependency in case `cs` is having issues finding out the
 `_3` suffix on its own)
 
-Just like above, you can also generate a launcher on your own first, then use it install Almond:
+Just like above, you can also generate a launcher on your own first, then use it to install Almond:
 ```text
-$ cs bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ -o almond --install
-$ ./almond --install
+$ cs bootstrap sh.almond::launcher:@VERSION@ -o almond
+$ ./almond --scala @SCALA213_VERSION@ --install
 $ rm -f almond
 ```
 
@@ -150,7 +153,7 @@ Important thing to note here: the Scala version must be passed as argument to Al
 to `cs`. The launcher uses its own Scala version (Scala 3), then, later on, spawns the same Almond kernel as above
 on its own, that takes over as a kernel. The argument passed via `--scala` corresponds to the default
 Scala version that will be used, if users don't specify a version of their own via a directive like
-`//> using scala "@SCALA213_VERSION@"`. Specify that option is optional: without it, Almond will default
+`//> using scala "@SCALA213_VERSION@"`. That option is optional: without it, Almond will default
 to the Scala 3 version that Almond uses at the time of its release (which should be the latest stable Scala 3
 version at the time of the release).
 
@@ -318,34 +321,23 @@ kernel.display.html("<b>foo</b>")
 ## Using custom Maven repositories
 
 If you want to use custom Maven repositories rather than Maven Central, you need to set
-[`COURSIER_REPOSITORIES`](https://github.com/coursier/coursier/blob/3e212b42d3bda5d80453b4e7804670ccf75d4197/doc/docs/other-repositories.md)
-at few places. It needs to be set when installing Almond, and when Jupyter starts Almond.
+[`COURSIER_REPOSITORIES`](https://get-coursier.io/docs/other-repositories)
+at a few places. It needs to be set when installing Almond, and when Jupyter starts Almond.
 
 This can be achieved the following way, with the former launcher:
 ```text
 $ export COURSIER_REPOSITORIES="ivy2Local|https://artifacts.company.com/maven"
 $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- \
-    --env "COURSIER_REPOSITORIES=$COURSIER_REPOSITORIES"
+    --install \
+    --env COURSIER_REPOSITORIES
 ```
 
 `--env` sets environment variables in the kernel spec that gets written when installing Almond. Jupyter
-sets those prior to launching Almond when users open notebooks.
+sets those prior to launching Almond when users open notebooks. Passed just a name, like here, `--env`
+writes the value that variable has during installation. Pass `--env name=value` to set a different value.
 
 To keep using Maven Central through a proxy or a mirror of it, see [proxies and mirrors](install-proxies.md).
 
 ## Available options
 
-To list the options that the former launcher accepts, run
-```text
-$ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- --help
-```
-
-To list the options that the newer launcher accepts, run
-```text
-$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --help
-```
-
-Note that the newer launcher also accepts the former launcher options after an extra `--`, like
-```text
-$ cs launch --use-bootstrap sh.almond::launcher:@VERSION@ -- --scala @SCALA213_VERSION@ --install -- --toree-api
-```
+See [Options](install-options.md) for the options that the former and the newer launchers accept.

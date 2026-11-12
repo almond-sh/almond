@@ -36,6 +36,20 @@ object CopyLauncherTests extends TestSuite {
       assert(res == expectedRes)
     }
 
+    test("absolute java path") {
+      val cmd         = List("/opt/jvm/bin/java", "-jar", "foo", "arg1")
+      val res         = Install.launcherPos(cmd)
+      val expectedRes = Some(("foo", 2))
+      assert(res == expectedRes)
+    }
+
+    test("Windows java path") {
+      val cmd         = List("C:\\jvm\\bin\\java.exe", "-jar", "foo", "arg1")
+      val res         = Install.launcherPos(cmd)
+      val expectedRes = Some(("foo", 2))
+      assert(res == expectedRes)
+    }
+
     test("no java: nope") {
       val cmd         = List("zava", "-cp", "foo:other", "arg1", "arg2")
       val res         = Install.launcherPos(cmd)

@@ -110,7 +110,10 @@ const config = {
         links: [
           {
             title: 'Docs',
-            items: [{label: 'Quick start', to: '/docs/intro'}],
+            items: [
+              {label: 'Overview', to: '/docs/intro'},
+              {label: 'Installation', to: '/docs/quick-start-install'},
+            ],
           },
           {
             title: 'Community',

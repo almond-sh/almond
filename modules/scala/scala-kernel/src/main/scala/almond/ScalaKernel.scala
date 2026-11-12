@@ -10,11 +10,13 @@ import almond.directives.KernelOptions
 import almond.interpreter.KernelSession
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
-import almond.kernel.install.Install
+import almond.kernel.install.{Install, OptionGroups}
 import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
 import almond.util.ThreadUtil.{daemonThreadFactory, singleThreadedExecutionContextExecutorService}
 import caseapp._
+import caseapp.core.Scala3Helpers._
+import caseapp.core.help.HelpFormat
 import coursier.cputil.ClassPathUtil
 
 import java.nio.file.Paths
@@ -25,6 +27,9 @@ import scala.concurrent.ExecutionContext
 import scala.util.Properties
 
 object ScalaKernel extends CaseApp[Options] {
+
+  override def helpFormat: HelpFormat =
+    super.helpFormat.withSortedGroups(Some(OptionGroups.all))
 
   def run(options: Options, args: RemainingArgs): Unit = {
 

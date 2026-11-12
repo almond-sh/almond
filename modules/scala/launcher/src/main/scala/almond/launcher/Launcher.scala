@@ -8,7 +8,7 @@ import almond.directives.KernelOptions
 import almond.interpreter.{ExecuteError, KernelSession}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.messagehandlers.MessageHandler
-import almond.kernel.install.Install
+import almond.kernel.install.{Install, OptionGroups}
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, Logger, LoggerContext}
@@ -16,6 +16,8 @@ import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnec
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
+import caseapp.core.Scala3Helpers._
+import caseapp.core.help.HelpFormat
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -54,6 +56,9 @@ object Launcher extends CaseApp[LauncherOptions] {
     def command(channelArgs: Seq[String]): Seq[String] =
       javaCommand ++ javaArgs ++ channelArgs ++ kernelArgs
   }
+
+  override def helpFormat: HelpFormat =
+    super.helpFormat.withSortedGroups(Some(OptionGroups.all))
 
   private def actualKernelCommand(
     msgFileOpt: Option[os.Path],
@@ -194,7 +199,8 @@ object Launcher extends CaseApp[LauncherOptions] {
         val ext      = if (scala.util.Properties.isWin) ".exe" else ""
         Seq((javaHome / "bin" / s"java$ext").toString)
       case None =>
-        params0.javaCmd.getOrElse(Seq("java"))
+        // Same JVM as ours by default, that might not be on PATH
+        params0.javaCmd.getOrElse(Seq(Install.currentJavaCommand()))
     }
 
     // JAVA_OPTS comes first, so that options from the command-line or from directives win

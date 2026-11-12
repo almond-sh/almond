@@ -258,6 +258,9 @@ jobs:
         job: ${{ runner.os }}
         ignoreMatrix: true
         cacheMode: read
+    # The option lists of the options page are generated from the sources of the options
+    - run: ./mill docs.checkOptionsPage
+      shell: bash
     - run: ./mill docs.generate
       shell: bash
 

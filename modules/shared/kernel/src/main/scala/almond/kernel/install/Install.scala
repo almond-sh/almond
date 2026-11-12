@@ -185,6 +185,40 @@ object Install {
     else
       mainJar
 
+  /** The home directory of the JVM we run on.
+    *
+    * On Java 8, `java.home` points at the `jre` directory of JDKs, so we take its parent in that
+    * case.
+    */
+  def currentJavaHome(): Path = {
+    val home = Paths.get(sys.props("java.home")).toAbsolutePath.normalize
+    val parentIsJdkHome = home.getFileName != null &&
+      home.getFileName.toString == "jre" &&
+      home.getParent != null &&
+      javaCommandIn(home.getParent).exists(Files.isRegularFile(_))
+    if (parentIsJdkHome) home.getParent
+    else home
+  }
+
+  private def javaCommandIn(javaHome: Path): Option[Path] = {
+    val bin = javaHome.resolve("bin")
+    val candidates =
+      if (OS.current == OS.Windows) Seq(bin.resolve("java.exe"), bin.resolve("java"))
+      else Seq(bin.resolve("java"))
+    candidates.find(Files.isRegularFile(_))
+  }
+
+  /** The `java` command of the JVM we run on, as an absolute path if it can be found, or just
+    * `java` (looked up in `PATH`) else
+    *
+    * This is the command of [[currentJavaHome]], so that it's consistent with the `JAVA_HOME` we
+    * set in kernel specs (on Java 8, this uses `bin/java` of the JDK rather than `jre/bin/java`).
+    */
+  def currentJavaCommand(): String =
+    javaCommandIn(currentJavaHome())
+      .map(_.toString)
+      .getOrElse("java")
+
   /** Gets the command that launched the current application if possible.
     *
     * Works if the coursier launcher is involved.
@@ -212,7 +246,7 @@ object Install {
         .flatten
         .toList
       cp = (extraStartupClassPath :+ mainJar0).mkString(File.pathSeparator)
-    } yield "java" :: "-cp" :: cp :: mainClass(mainJar0) :: processArgs(mainArgs)
+    } yield currentJavaCommand() :: "-cp" :: cp :: mainClass(mainJar0) :: processArgs(mainArgs)
 
   // Options of Options (and --install), that only matter when installing the kernel. These
   // must not end up in the command of the installed kernel: their values would be visible
@@ -279,11 +313,16 @@ object Install {
         .drop(1) // drop launcher path (should be mainJar)
         .filter(!filterOutArgs(_))
         .toList
-    } yield "java" :: "-jar" :: mainJar :: mainArgs
+    } yield currentJavaCommand() :: "-jar" :: mainJar :: mainArgs
+
+  private def isJavaCommand(command: String): Boolean = {
+    val name = command.split("[/\\\\]").lastOption.getOrElse(command)
+    name == "java" || name.equalsIgnoreCase("java.exe")
+  }
 
   def launcherPos(command: List[String]): Option[(String, Int)] =
     command match {
-      case h :: t if h == "java" || h.endsWith("/java") =>
+      case h :: t if isJavaCommand(h) =>
         @tailrec
         def helper(l: List[(String, Int)]): Option[(String, Int)] =
           l match {
@@ -391,19 +430,26 @@ object Install {
             }
       }
 
-    val cmd =
+    // When the kernel command is the one of the current app, the kernel runs on the JVM we
+    // run on, that might not be on PATH (like when coursier downloaded it). The kernel also
+    // gets that JVM as JAVA_HOME, so that the processes it starts default to it too.
+    val (cmd, defaultEnv) =
       options.command.map(_.trim).filter(_.nonEmpty) match {
         case Some(command) =>
-          command
+          val cmd0 = command
             .split("\\s+")
             .toSeq
+          (cmd0, Map.empty[String, String])
         case None =>
-          if (options.arg.isEmpty)
-            Install.currentAppCommand0(extraStartupClassPath, withoutInstallArgs).getOrElse {
-              throw new InstallException.CannotGetKernelCommand
-            }
+          if (options.arg.isEmpty) {
+            val cmd0 =
+              Install.currentAppCommand0(extraStartupClassPath, withoutInstallArgs).getOrElse {
+                throw new InstallException.CannotGetKernelCommand
+              }
+            (cmd0, Map("JAVA_HOME" -> currentJavaHome().toString))
+          }
           else
-            options.arg
+            (options.arg, Map.empty[String, String])
       }
 
     val logoOpt =
@@ -423,7 +469,8 @@ object Install {
         display_name = options.displayName.getOrElse(defaultDisplayName),
         language = language,
         interrupt_mode = interruptMode,
-        env = ActualMap(env)
+        // values passed explicitly, like via --env, win
+        env = ActualMap(defaultEnv ++ env)
       ),
       path,
       logo64PngOpt = logoOpt,

@@ -20,8 +20,18 @@ Run a specific version with a specific Scala version with
 $ docker run -it --rm -p 8888:8888 almondsh/almond:@LATEST_RELEASE@-scala-@SCALA_VERSION@
 ```
 
+The `latest` and `@LATEST_RELEASE@` images have kernels for Scala 3, Scala 2.13 and Scala 2.12,
+while the `@LATEST_RELEASE@-scala-…` ones only have a kernel for the Scala version in their tag.
 See [here](install-versions.md) for the compatible Almond versions / Scala
 versions.
+
+The images are based on the `base-notebook` image of the
+[Jupyter Docker Stacks](https://jupyter-docker-stacks.readthedocs.io), and run Jupyter as the
+`jovyan` user, from `/home/jovyan`. To work on notebooks of your machine, mount their directory
+under it, like
+```
+$ docker run -it --rm -p 8888:8888 -v "$PWD:/home/jovyan/work" almondsh/almond:latest
+```
 
 JupyterLab in these images shows [completions while typing](usage-completion.md),
 follows the system theme, and indents with 2 spaces by default.

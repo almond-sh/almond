@@ -47,9 +47,9 @@ const features = [
     imageAlt: 'Plots',
     content: (
       <p>
-        Several plotting libraries are already available to plot things from notebooks, such
-        as <a href="http://plotly-scala.org">plotly-scala</a> or{' '}
-        <a href="https://github.com/vegas-viz/Vegas">Vegas</a>.
+        Plot things from notebooks with{' '}
+        <a href="https://github.com/alexarchambault/plotly-scala">plotly-scala</a>,
+        Vega and Vega-Lite, or any library rendering images or HTML.
       </p>
     ),
   },
@@ -61,19 +61,6 @@ const features = [
       <p>
         Load the spark version of your choice, create a Spark session, and start using it from your
         notebooks.
-      </p>
-    ),
-  },
-  {
-    title: 'IDE-like features',
-    image: 'frontpage/metabrowse.gif',
-    imageAlt: 'Metabrowse',
-    content: (
-      <p>
-        Almond already supports code navigation in dependencies
-        via <a href="https://github.com/scalameta/metabrowse">metabrowse</a>, paving the way for
-        more IDE-like features and a closer integration with
-        the <a href="https://github.com/scalameta">scalameta</a> ecosystem.
       </p>
     ),
   },
@@ -105,7 +92,7 @@ function HomeSplash() {
         <div className={styles.buttons}>
           <Link
             className="button button--primary button--lg"
-            href="https://mybinder.org/v2/gh/almond-sh/examples/master?urlpath=lab%2Ftree%2Fnotebooks%2Findex.ipynb">
+            href="https://mybinder.org/v2/gh/almond-sh/examples/main?urlpath=lab%2Ftree%2Fnotebooks%2Findex.ipynb">
             Try it online
           </Link>
           <Link className="button button--primary button--lg" to="/docs/try-docker">

@@ -12,9 +12,18 @@ A number of higher level helpers rely on it, and provide [a more convenient API 
 
 ### Display
 
-A number of classes under [`almond.display`](https://github.com/almond-sh/almond/tree/master/modules/api/src/main/scala/almond/display)
+A number of classes under [`almond.display`](https://github.com/almond-sh/almond/tree/main/modules/api/src/main/scala/almond/display)
 provide an API similar to the
-[IPython display module](https://ipython.readthedocs.io/en/7.4.0/api/generated/IPython.display.html).
+[IPython display module](https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html).
+They're imported by default in notebooks:
+- `Html`, `Markdown`, `Latex`, `Math`, `Javascript`, `Svg`, `Json`, `Text`: text-based content,
+  passed as a string, or loaded from a URL or a file, like `Svg.fromFile("plot.svg")`,
+- `Image`: images, passed as bytes (`Image(bytes)`), as a `java.awt.image.RenderedImage`
+  (`Image.fromRenderedImage(img)`), or loaded from a URL or a file,
+- `IFrame`: an iframe pointing at a URL,
+- `FileLink`: a link to a local file,
+- `ProgressBar`: a progress bar, that can be updated (see below),
+- `Data`: content with arbitrary MIME types, like `Data("application/vnd.vegalite.v5+json" -> spec)`.
 
 Examples:
 ```scala
@@ -40,6 +49,18 @@ _content_
 
 // can be later cleared
 handle.clear()
+```
+
+```scala
+// Progress bars
+val bar = ProgressBar(0, 100)
+  .withLabel("Step {progress} / {total}")
+bar.display()
+
+for (i <- 1 to 100) {
+  Thread.sleep(50L)
+  bar.withProgress(i).update()
+}
 ```
 
 ### Input
@@ -89,19 +110,21 @@ The automatic updates of `var`s and `lazy val`s can be disabled with the
 [`--auto-update-vars=false`](install-options.md#--auto-update-vars) and
 [`--auto-update-lazy-vals=false`](install-options.md#--auto-update-lazy-vals) kernel options.
 
-## `JupyterAPI`
+## `JupyterApi`
 
 `almond.api.JupyterApi` allows to
 - [request input](#request-input) (password input in particular),
-- [exchange comm messages](#comm-messages) with the front-end.
+- [exchange comm messages](#comm-messages) with the front-end,
 - [display data](#display-data) (HTML, text, images, …) in the front-end while a cell is running,
 - [update a previous display](#updatable-display-data) in the background (while the initial cell is running or not),
+- [run code after a cell is interrupted](#after-interrupt-hooks),
+- [pre-process the code of cells](#hooks).
 
 Note that most of its capabilities have more convenient alternatives, see [High level API](#high-level-api).
 
 ### Request input
 
-Call `stdin` on `JupyterAPI` to request user input, e.g.
+Call `stdin` on `JupyterApi` to request user input, e.g.
 ```scala
 kernel.stdin() // clear text input
 kernel.stdin(prompt = ">> ", password = true) // password input, with custom prompt
@@ -111,8 +134,8 @@ kernel.stdin(prompt = ">> ", password = true) // password input, with custom pro
 
 ### Comm messages
 
-[Comm messages](https://jupyter-notebook.readthedocs.io/en/5.7.2/comms.html) are part of the
-[Jupyter messaging protocol](https://jupyter-client.readthedocs.io/en/5.2.3/messaging.html). They
+[Comm messages](https://jupyter-client.readthedocs.io/en/stable/messaging.html#custom-messages) are part of the
+[Jupyter messaging protocol](https://jupyter-client.readthedocs.io/en/stable/messaging.html). They
 allow the exchange of arbitrary messages between code running in the front-end (typically JavaScript code)
 and kernels.
 
@@ -125,19 +148,36 @@ kernel.publish.html("Waiting", id)
 
 kernel.comm.receiver("A") { data =>
   // received message `data` from front-end
-  kernel.publish.updateHtml(s"<code>$data</code>", id)
+  val content = new String(data, java.nio.charset.StandardCharsets.UTF_8)
+  kernel.publish.updateHtml(s"<code>$content</code>", id)
 }
 ```
 
 ![](/demo/comm-receive.gif)
 
-TODO Send to client
+`kernel.comm.sender` opens a comm with a target registered in the front-end, and allows to send
+it messages, like
+```scala
+import java.nio.charset.StandardCharsets.UTF_8
+
+val comm = kernel.comm.sender(
+  "B",
+  onMessage = (_, data) => println(s"Got ${new String(data, UTF_8)}") // messages sent back by the front-end
+)
+
+comm.message("""{"count": 1}""".getBytes(UTF_8), "{}".getBytes(UTF_8))
+
+comm.close("{}".getBytes(UTF_8), "{}".getBytes(UTF_8))
+```
+Messages are JSON objects, passed as UTF-8 encoded bytes. The front-end side needs to
+register the target first, like `kernel.registerCommTarget("B", (comm, msg) => …)` with
+the JavaScript API of JupyterLab.
 
 ### Display data
 
-The `publish` field, of type [`almond.interpreter.api.OutputHandler`](https://github.com/almond-sh/almond/blob/master/modules/api/src/main/scala/almond/interpreter/api/OutputHandler.scala), has numerous methods to push display data to the front-end.
+The `publish` field, of type [`almond.interpreter.api.OutputHandler`](https://github.com/almond-sh/almond/blob/main/modules/api/src/main/scala/almond/interpreter/api/OutputHandler.scala), has numerous methods to push display data to the front-end.
 
-The most generic is `display`, accepting a `almond.api.DisplayData`.
+The most generic is `display`, accepting an `almond.interpreter.api.DisplayData`.
 
 ```scala
 kernel.publish.display(
@@ -200,21 +240,12 @@ for (i <- 1 to 10) {
 ### After Interrupt Hooks
 
 After Interrupt Hooks allow clean-up code to be run after cell
-execution is interrupted.
+execution is interrupted. For example, with a [Spark](usage-spark.md) session:
 ```scala
-val sparkAmmonite = {
-  new AmmoniteSparkSessionBuilder()
-    .getOrCreate()
-}
-lazy val spark = {
-  NotebookSparkSession.builder()
-    .progress(enable=true, keep=false)
-    .logsInDeveloperConsole(false)
-    .getOrCreate()
-}
-lazy val sc = {
-  spark.sparkContext
-}
+val spark = NotebookSparkSession.builder()
+  .master("local[*]")
+  .getOrCreate()
+def sc = spark.sparkContext
 
 // Add new hook with name "CancelAllSparkJobs"
 kernel.addPostInterruptHook(

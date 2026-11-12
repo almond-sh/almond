@@ -155,16 +155,3 @@ $ cs fetch org.typelevel::cats-core:2.12.0
 When `cs` works but Almond doesn't, the configuration probably doesn't reach the kernel: check the
 environment Jupyter starts the kernel with, or pin the variables the configuration relies on in the
 kernel spec, as described above.
-
-## How this is tested
-
-The Almond repository has Docker-based tests of these instructions, that you can run with
-```text
-$ ./mill -i -j 1 scala.proxy-tests.test
-```
-
-They install the kernel and run a notebook with it, from containers on a Docker network that
-can't reach the outside: the only way to Maven Central is an authenticated HTTP proxy, configured
-through `~/.m2/settings.xml`, or a mirror (an nginx reverse proxy of Maven Central), configured
-through `~/.config/coursier/mirror.properties`. They exercise both the newer launcher and the
-former one, and check that a wrongly configured proxy doesn't let the kernel through.

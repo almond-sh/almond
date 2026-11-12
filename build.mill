@@ -999,6 +999,51 @@ object docs extends ScalaModule with AlmondRepositories {
 
   private def toStderr = os.ProcessOutput.Readlines(System.err.println(_))
 
+  /** Generates the lists of options of the options page (`docs/pages/install-options.md`), from the
+    * case-app annotations of the options of the kernel and of the launcher
+    */
+  object `options-page` extends ScalaModule with AlmondRepositories {
+    // The launcher is built with the latest Scala 3 version, and the kernel with the oldest one we
+    // support, whose TASTy files the latest one reads. Both rely on the Scala 3 case-app.
+    def scalaVersion = ScalaVersions.scala3Latest
+    def moduleDeps = Seq(
+      scala.`scala-kernel`(ScalaVersions.scala3Compat),
+      scala.launcher
+    )
+    def mainClass = Some("almond.docs.OptionsPage")
+    // The parsers of the options are derived in this module, from their annotations. As Zinc
+    // doesn't see changes in annotations as API changes, we don't compile incrementally, so that
+    // they're derived again whenever the modules of the options change.
+    def zincIncrementalCompilation = false
+  }
+
+  private def optionsPage = BuildCtx.workspaceRoot / "docs" / "pages" / "install-options.md"
+
+  private def runOptionsPage = Task.Anon {
+    val runner0 = `options-page`.runner()
+    (args: Seq[String]) =>
+      try runner0.run(args = args :+ optionsPage.toString)
+      catch {
+        // the generator already printed why it failed
+        case _: RuntimeException =>
+          Task.fail(s"Generating the options page failed (see above)")
+      }
+  }
+
+  /** Updates the lists of options of the options page, from the sources of the options */
+  def updateOptionsPage() = Task.Command {
+    runOptionsPage()(Nil)
+    ()
+  }
+
+  /** Fails if the lists of options of the options page aren't up-to-date (see
+    * [[updateOptionsPage]])
+    */
+  def checkOptionsPage() = Task.Command {
+    runOptionsPage()(Seq("--check"))
+    ()
+  }
+
   /** Installs the website dependencies, if they aren't already installed from the current
     * `package-lock.json`
     */

@@ -13,7 +13,7 @@ The following instances are available:
 
 ## `InterpAPI`
 
-[`InterpAPI`](https://github.com/lihaoyi/Ammonite/blob/master/amm/interp/src/main/scala/ammonite/interp/InterpAPI.scala) allows to
+[`InterpAPI`](https://github.com/almond-sh/Ammonite/blob/main/amm/repl/api/src/main/scala/ammonite/interp/api/InterpAPI.scala) allows to
 - [load new dependencies](#load-dependencies), [JARs](#load-jars) or [compiler plugins](#load-compiler-plugins),
 - [add repositories](#add-repositories) for dependencies,
 - [add exit hooks](#add-exit-hooks),
@@ -22,18 +22,18 @@ The following instances are available:
 ### Load dependencies
 
 `interp.load.ivy` accepts one or several
-[`coursier.Dependency`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19).
+[`coursierapi.Dependency`](https://github.com/coursier/interface/blob/main/interface/src/main/java/coursierapi/Dependency.java).
 
 Load simple dependencies
 ```scala
-interp.load.ivy("org.platanios" %% "tensorflow-data" % "0.4.1")
+interp.load.ivy("com.lihaoyi" %% "os-lib" % "0.11.4")
 ```
 
 Load dependencies while adjusting some parameters
 ```scala
 interp.load.ivy(
-  // replace with linux-gpu-x86_64 on linux with nvidia gpu or with darwin-cpu-x86_64 on macOS 
-  ("org.platanios" %% "tensorflow" % "0.4.1").withClassifier("linux-cpu-x86_64")
+  // replace with macosx-arm64 on Apple Silicon Macs, windows-x86_64 on Windows, …
+  ("org.bytedeco" % "javacpp" % "1.5.10").withClassifier("linux-x86_64")
 )
 ```
 
@@ -45,21 +45,21 @@ in a notebook,
 the following syntax is preferred
 and allows to use the dependency in the current cell rather than the next one:
 ```scala
-import $ivy.`org.platanios::tensorflow-data:0.4.1`
+import $ivy.`com.lihaoyi::os-lib:0.11.4`
 ```
 
 The same goes for the `//> using dep` directive:
 ```scala
-//> using dep "org.platanios::tensorflow-data:0.4.1"
+//> using dep "com.lihaoyi::os-lib:0.11.4"
 ```
 
 Both syntaxes accept a classifier, appended to the dependency as
 `,classifier=…`:
 ```scala
-import $ivy.`org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64`
+import $ivy.`org.bytedeco:javacpp:1.5.10,classifier=linux-x86_64`
 ```
 ```scala
-//> using dep "org.platanios::tensorflow:0.4.1,classifier=linux-cpu-x86_64"
+//> using dep "org.bytedeco:javacpp:1.5.10,classifier=linux-x86_64"
 ```
 
 #### Pinning dependency versions
@@ -140,10 +140,11 @@ If the kernel is started with [`--toree-magics`](install-options.md#--toree-magi
 ### Load compiler plugins
 
 `interp.load.plugin.ivy` accepts one or several
-[`coursier.Dependency`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L19).
+[`coursierapi.Dependency`](https://github.com/coursier/interface/blob/main/interface/src/main/java/coursierapi/Dependency.java).
 
 ```scala
-interp.load.plugin.ivy("org.spire-math" %% "kind-projector" % "0.9.9")
+// Scala 2 kernel
+interp.load.plugin.ivy("com.olegpy" %% "better-monadic-for" % "0.3.1")
 ```
 The plugins can then be used in the cell right _after_ the one calling
 `interp.load.plugin.ivy`.
@@ -152,11 +153,11 @@ The plugins can then be used in the cell right _after_ the one calling
 Note that when directly entering code in a notebook, the following syntax
 is more concise, and allows to use the compiler plugin in the current cell:
 ```scala
-import $plugin.$ivy.`org.spire-math::kind-projector:0.9.9`
+import $plugin.$ivy.`com.olegpy::better-monadic-for:0.3.1`
 
-// example of use
-trait T[F[_]]
-type T2 = T[Either[String, ?]]
+// example of use (doesn't compile without the plugin)
+val e: Either[String, (Int, Int)] = Right((1, 2))
+for ((a, b) <- e) yield a + b
 ```
 
 ### Load scripts
@@ -184,7 +185,7 @@ see its new definitions.
 ### Add repositories
 
 One can add extra
-[`coursier.Repository`](https://github.com/coursier/coursier/blob/ac5a6efa3e13925f0fb1409ea45d6b9a29865deb/modules/coursier/shared/src/main/scala/coursier/package.scala#L69) via
+[`coursierapi.Repository`](https://github.com/coursier/interface/blob/main/interface/src/main/java/coursierapi/Repository.java) via
 
 ```scala
 import coursierapi._
@@ -227,12 +228,11 @@ via this API.
 
 ## `ReplAPI`
 
-[`ReplAPI`](https://github.com/lihaoyi/Ammonite/blob/master/amm/repl/src/main/scala/ammonite/repl/ReplAPI.scala) allows to
+[`ReplAPI`](https://github.com/almond-sh/Ammonite/blob/main/amm/repl/api/src/main/scala/ammonite/repl/api/ReplAPI.scala) allows to
 - [access the pretty-printer and customize its behavior](#pretty-printer),
 - [access the latest thrown exception](#latest-thrown-exception),
 - [access the command history](#command-history),
 - [request the compiler instance to be re-created](#refresh-compiler-instance),
-- [get the current compiler instance](#get-compiler-instance),
 - [get the current imports](#get-current-imports),
 - [evaluate code from strings or files](#evaluate-code), and lastly
 - [get the class names and byte code](#byte-code-of-repl-inputs) of the code entered during the current
@@ -271,12 +271,6 @@ repl.fullHistory // shared history
 
 ```scala
 repl.newCompiler()
-```
-
-### Get compiler instance
-
-```scala
-repl.compiler // has type scala.tools.nsc.Global
 ```
 
 ### Get current imports
