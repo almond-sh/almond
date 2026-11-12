@@ -32,7 +32,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/setup-action@v3.0
+    - uses: coursier/setup-action@v3.1
       with:
         jvm: 21
     - run: ./mill -i ci.publishSdkman --almondVersion "${VERSION#v}"
