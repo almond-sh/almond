@@ -32,7 +32,8 @@ const features = [
   },
   {
     title: 'APIs to interact with Jupyter front-ends',
-    image: 'frontpage/progressbar.gif',
+    // recorded by demos/record.mjs, from demos/progressbar.sc
+    video: 'frontpage/progressbar',
     imageAlt: 'Progress bar',
     content: (
       <p>
@@ -107,7 +108,25 @@ function HomeSplash() {
   );
 }
 
-function Feature({title, image, imageAlt, content, imageLeft}) {
+// Videos recorded by demos/record.mjs, with a poster image (the last frame of the video), shown
+// while the video loads, or instead of it when it can't be played
+function FeatureVideo({video, alt}) {
+  return (
+    <video
+      className={styles.featureImage}
+      autoPlay
+      loop
+      muted
+      playsInline
+      poster={useBaseUrl(`${video}.png`)}
+      aria-label={alt}>
+      <source src={useBaseUrl(`${video}.webm`)} type="video/webm" />
+      <source src={useBaseUrl(`${video}.mp4`)} type="video/mp4" />
+    </video>
+  );
+}
+
+function Feature({title, image, video, imageAlt, content, imageLeft}) {
   return (
     <section className={styles.feature}>
       <div className="container">
@@ -117,7 +136,11 @@ function Feature({title, image, imageAlt, content, imageLeft}) {
             {content}
           </div>
           <div className="col col--6">
-            <img className={styles.featureImage} src={useBaseUrl(image)} alt={imageAlt} />
+            {video ? (
+              <FeatureVideo video={video} alt={imageAlt} />
+            ) : (
+              <img className={styles.featureImage} src={useBaseUrl(image)} alt={imageAlt} />
+            )}
           </div>
         </div>
       </div>
