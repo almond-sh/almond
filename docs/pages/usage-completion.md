@@ -2,7 +2,7 @@
 title: Code completion
 ---
 
-almond answers the
+Almond answers the
 [completion](https://jupyter-client.readthedocs.io/en/stable/messaging.html#completion) and
 [inspection](https://jupyter-client.readthedocs.io/en/stable/messaging.html#introspection)
 requests of the
@@ -31,11 +31,11 @@ Pressing Tab completes:
   import $ivy.`org.typelevel::cats-co
   ```
 
-Implicit definitions, names containing `$` (internal to the compiler or to almond), and a
+Implicit definitions, names containing `$` (internal to the compiler or to Almond), and a
 few methods of `Any` and `Object` (`##`, `eq`, `ne`, `synchronized`, `wait`, `notify`, …)
 are left out of completions.
 
-Along with each completion, almond sends its kind (class, method, value, package, …),
+Along with each completion, Almond sends its kind (class, method, value, package, …),
 which JupyterLab shows next to it.
 
 ## Completions while typing
@@ -67,18 +67,18 @@ To make these the defaults of a JupyterLab installation, write them to an
 }
 ```
 
-The [almond Docker images](try-docker.md) ship with these defaults.
+The [Almond Docker images](try-docker.md) ship with these defaults.
 
 JupyterLab also has an
 [inline completer](https://jupyterlab.readthedocs.io/en/stable/user/completer.html#inline-completer),
 that shows suggestions as greyed out text. Its suggestions don't come from the completions
 of the kernel. Its default provider suggests lines from the history of the kernel, which
-almond doesn't send for now, so that only providers added by extensions make suggestions
-with almond.
+Almond doesn't send for now, so that only providers added by extensions make suggestions
+with Almond.
 
 ## Inspections
 
-almond also answers the
+Almond also answers the
 [inspection requests](https://jupyter-client.readthedocs.io/en/stable/messaging.html#introspection)
 of the Jupyter protocol. In JupyterLab, press Shift+Tab in a code cell to get the
 signature or the type of what is under the cursor, along with its documentation, in a
@@ -109,7 +109,7 @@ though, as they rely on the same compiler.
 
 ## Multi-line input in consoles
 
-almond also answers the
+Almond also answers the
 [code completeness requests](https://jupyter-client.readthedocs.io/en/stable/messaging.html#code-completeness)
 of the Jupyter protocol. Console front-ends, like
 [Jupyter console](https://jupyter-console.readthedocs.io), send those to decide what pressing
@@ -118,14 +118,14 @@ after `def f(n: Int) = {`.
 
 ## Differences with language servers
 
-Completions and inspections from almond aren't based on the
+Completions and inspections from Almond aren't based on the
 [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) (LSP),
 that IDEs and editors use, and that JupyterLab supports via extensions, such as
 [jupyterlab-lsp](https://github.com/jupyter-lsp/jupyterlab-lsp) (see
 [the JupyterLab documentation](https://jupyterlab.readthedocs.io/en/stable/user/lsp.html)).
 A language server, like [Metals](https://scalameta.org/metals) for Scala, is a process
 running alongside the editor, that reads the code being edited and the build definition of
-a project. almond instead answers requests of the Jupyter protocol itself, from the kernel,
+a project. Almond instead answers requests of the Jupyter protocol itself, from the kernel,
 which has a few consequences:
 - completions take into account the actual state of the session: the dependencies loaded so
   far, and what the cells that were run defined, whatever the order they were run in,
@@ -134,4 +134,4 @@ which has a few consequences:
   shown as you type (these only show up when running a cell), go to definition, find
   references, or renaming.
 
-almond doesn't ship a language server for notebooks.
+Almond doesn't ship a language server for notebooks.

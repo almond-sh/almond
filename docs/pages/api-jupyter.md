@@ -3,7 +3,7 @@ title: Almond Jupyter API
 ---
 
 The Almond Jupyter API can be accessed via an instance of [`almond.api.JupyterApi`](#jupyterapi). Such an
-instance is created by almond upon start-up. This instance accessible via the `kernel` variable and in the
+instance is created by Almond upon start-up. This instance accessible via the `kernel` variable and in the
 implicit scope via e.g. `implicitly[almond.api.JupyterApi]`.
 
 A number of higher level helpers rely on it, and provide [a more convenient API to display objects](#display).

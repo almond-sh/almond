@@ -21,11 +21,11 @@ $ rm -f almond # the generated launcher can be removed after install, it copied 
 
 
 Kernels run from such a launcher read the JARs it embeds through `jar:` URLs, rather
-than from the file system. Up to almond 0.15.0, this makes them noticeably slower
+than from the file system. Up to Almond 0.15.0, this makes them noticeably slower
 than kernels installed by the default command whenever the Scala compiler is
 (re-)created - when the first cell runs, and each time dependencies are added - and
 makes them use more memory. With Scala 3, these versions can't compile any cell from
-such a launcher. This should be fixed in almond 0.16.0 and later, whose kernels read
+such a launcher. This should be fixed in Almond 0.16.0 and later, whose kernels read
 these JARs about as fast as those of the file system. See
 [#1244](https://github.com/almond-sh/almond/issues/1244).
 
@@ -35,5 +35,5 @@ copy these to a temporary directory, named `almond-sources...` in the temporary
 directory of the system: Scala 2 kernels copy all of them on the first inspection,
 Scala 3 ones only those they read documentation from. These copies are deleted when
 kernels exit, unless they are forcibly killed (like with `kill -9`, or when Jupyter
-gives up waiting for them to shut down) or crash. Up to almond 0.15.0, inspections
+gives up waiting for them to shut down) or crash. Up to Almond 0.15.0, inspections
 from such launchers show no documentation from these.

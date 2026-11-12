@@ -2,7 +2,7 @@
 title: Versions
 ---
 
-Available Scala versions for each version of almond
+Available Scala versions for each version of Almond
 
 Almond version       | Scala 2.11 version | Scala 2.12 version                                | Scala 2.13 version           | Scala 3 version
 ---------------------|--------------------|---------------------------------------------------|------------------------------|--------------------------------------------------------------------------------------------------------
@@ -31,14 +31,14 @@ Almond version       | Scala 2.11 version | Scala 2.12 version                  
 There are no `0.12.x` versions, and `0.14.0` was never published to Maven Central. Release
 candidates (`0.14.0-RC*`) and intermediate versions (`0.14.1-*`) are omitted.
 
-Starting from `0.15.0`, almond supports all the Scala 2.12 versions from `2.12.8` on, and all the
+Starting from `0.15.0`, Almond supports all the Scala 2.12 versions from `2.12.8` on, and all the
 Scala 2.13 versions from `2.13.3` on, up to the latest ones at the time of the release, along with
 Scala 3 (its 3.3.x and 3.9.x LTS series, and its latest version). Note that the Scala 2.12
 versions before `2.12.18` and the Scala 2.13 versions before `2.13.11` need a JDK at most 17 to run.
 
 See also release notes at https://github.com/almond-sh/almond/releases
 
-To find out which version of almond is installed, from a running notebook, go to the menu bar and select:
+To find out which version of Almond is installed, from a running notebook, go to the menu bar and select:
 
 - `Help -> About`, if using Jupyter Classic
 - `Help -> About the Scala Kernel`, if using JupyterLab

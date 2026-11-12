@@ -18,9 +18,9 @@ export default function Versions() {
   );
 
   return (
-    <Layout title="Versions" description="almond documentation versions">
+    <Layout title="Versions" description="Almond documentation versions">
       <main className="container margin-vert--lg">
-        <h1>almond Versions</h1>
+        <h1>Almond Versions</h1>
 
         <h2 id="latest">Current version</h2>
         <table>

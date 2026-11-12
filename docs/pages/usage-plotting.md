@@ -2,16 +2,16 @@
 title: Plotting
 ---
 
-Several Scala and Java plotting libraries work from almond. They either output specifications
+Several Scala and Java plotting libraries work from Almond. They either output specifications
 that Jupyter front-ends render interactively ([plotly-scala](#plotly-scala),
 [Vega and Vega-Lite](#vega-and-vega-lite)), or images ([nspl, XChart, …](#image-based-libraries)).
-The [almond examples](https://github.com/almond-sh/examples) have
+The [Almond examples](https://github.com/almond-sh/examples) have
 [example notebooks](https://github.com/almond-sh/examples/tree/main/notebooks/visualization) for most of them.
 
 ## plotly-scala
 
 [plotly-scala](https://github.com/alexarchambault/plotly-scala) provides Scala bindings for
-[plotly.js](https://plotly.com/javascript), with a module for almond, `plotly-almond`:
+[plotly.js](https://plotly.com/javascript), with a module for Almond, `plotly-almond`:
 ```scala
 import $ivy.`org.plotly-scala::plotly-almond:0.8.5`
 import plotly._, plotly.element._, plotly.layout._, plotly.Almond._
@@ -66,7 +66,7 @@ the actual data in it from Scala, with the JSON library of your choice.
 
 [dedav4s](https://github.com/Quafadas/dedav4s) builds on that workflow, from Scala 3. It parses
 a specification at compile time, and lets you change any of its fields in a type-safe way. Its
-`dedav4s_notebook` module shows plots in almond, along with a static SVG for viewers that don't
+`dedav4s_notebook` module shows plots in Almond, along with a static SVG for viewers that don't
 run JavaScript, like GitHub:
 ```scala
 //> using dep io.github.quafadas::dedav4s_notebook:0.10.9
@@ -145,7 +145,7 @@ for more examples. Other Java 2D-based libraries, like [JFreeChart](https://www.
 ### EvilPlot
 
 [EvilPlot](https://github.com/cibotech/evilplot) is a Scala 2.12 and 2.13 plotting library. It
-isn't very active anymore (its last release dates from 2024), but still works fine from almond. See its
+isn't very active anymore (its last release dates from 2024), but still works fine from Almond. See its
 [example notebook](https://github.com/almond-sh/examples/blob/main/notebooks/visualization/evilplot.ipynb).
 
 ## Matplotlib

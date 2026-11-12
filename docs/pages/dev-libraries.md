@@ -2,16 +2,16 @@
 title: Writing libraries interacting with Jupyter
 ---
 
-Libraries can interact with Jupyter front-ends when they're loaded in an almond session,
+Libraries can interact with Jupyter front-ends when they're loaded in an Almond session,
 like plotting libraries such as [plotly-scala](usage-plotting.md#plotly-scala) do. They can
 
 - display things in the front-end, update or clear them later on,
 - control how values of their types are shown, when they're the results of cells,
 - request input from users, or exchange messages with JavaScript code running in the front-end.
 
-## Accessing the almond API
+## Accessing the Almond API
 
-Libraries get access to the almond API by depending on the `scala-kernel-api` module, as a
+Libraries get access to the Almond API by depending on the `scala-kernel-api` module, as a
 "provided" dependency, like
 ```scala
 libraryDependencies += "sh.almond" %% "scala-kernel-api" % "@VERSION@" % Provided
@@ -41,7 +41,7 @@ jupyter.Displayers.register(
 ```
 The registration needs to run before such values are displayed, for example from the
 initialization of an object of the library that users call first. jvm-repr comes with the
-`scala-kernel-api` module. As it doesn't depend on almond itself, other
+`scala-kernel-api` module. As it doesn't depend on Almond itself, other
 JVM kernels supporting it display these values too.
 
 Whether such values are displayed when assigned to variables, or only when they're the result of a
@@ -51,4 +51,4 @@ bare expression, can be changed via `almond.display.ResultDisplay`, see
 ## Example
 
 [almond-sh/example-library-jupyter-api](https://github.com/almond-sh/example-library-jupyter-api)
-is an example of a library relying on the almond API, along with a notebook using it.
+is an example of a library relying on the Almond API, along with a notebook using it.

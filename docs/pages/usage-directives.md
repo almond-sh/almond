@@ -2,7 +2,7 @@
 title: Using directives
 ---
 
-Like [Scala CLI](https://scala-cli.virtuslab.org/docs/reference/directives), almond accepts
+Like [Scala CLI](https://scala-cli.virtuslab.org/docs/reference/directives), Almond accepts
 `//> using` directives at the beginning of cells, before any code, like
 ```scala
 //> using dep "com.lihaoyi::os-lib:0.11.4"

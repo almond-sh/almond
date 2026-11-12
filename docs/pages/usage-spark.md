@@ -21,12 +21,12 @@ To use it, import Spark:
 import $ivy.`org.apache.spark::spark-sql:3.5.8` // Or any other Spark 3.x or 4.x version
 ```
 
-This also adds *almond-spark* to the session (`sh.almond::almond-spark:@AMMONITE_SPARK_VERSION@` for almond `@VERSION@`).
+This also adds *almond-spark* to the session (`sh.almond::almond-spark:@AMMONITE_SPARK_VERSION@` for Almond `@VERSION@`).
 It can also be added explicitly, if needed, with
 ```scala
 import $ivy.`sh.almond::almond-spark:_`
 ```
-where the `_` version stands for the version almond was built with.
+where the `_` version stands for the version Almond was built with.
 
 Usually you want to disable logging in order to avoid polluting your cell outputs:
 
@@ -124,7 +124,7 @@ The kernel needs to have `SPARK_HOME` set in its environment. Either export it b
 $ export SPARK_HOME=/path/to/spark-3.5.8-bin-hadoop3
 $ jupyter lab
 ```
-or bake it in the kernel spec when installing almond, with the `--env` option
+or bake it in the kernel spec when installing Almond, with the `--env` option
 (see [Using custom Maven repositories](install-advanced.md#using-custom-maven-repositories) for more details about it):
 ```text
 $ cs launch --use-bootstrap almond:@VERSION@ --scala @SCALA213_VERSION@ -- \
@@ -175,7 +175,7 @@ $ ls "$SPARK_HOME/jars"/scala-library-*
 /path/to/spark-3.5.8-bin-hadoop3/jars/scala-library-2.12.18.jar
 ```
 Spark 3.x distributions ship Scala 2.12 by default, and Scala 2.13 in their `-scala2.13` variant.
-Spark 4.x distributions ship Scala 2.13. Install almond with the matching `--scala` version.
+Spark 4.x distributions ship Scala 2.13. Install Almond with the matching `--scala` version.
 
 ### Import almond-spark and create the session
 
@@ -244,7 +244,7 @@ val spark = {
 Ensure the configuration directory of the cluster is set in `HADOOP_CONF_DIR` or `YARN_CONF_DIR` in the environment
 of the kernel, or is available at `/etc/hadoop/conf`. This directory should contain files like `core-site.xml`,
 `hdfs-site.xml`, … Like `SPARK_HOME` above, these variables can be passed to the kernel with the `--env` option
-when installing almond.
+when installing Almond.
 
 If a Spark distribution is available on the machine running the kernel, it can be re-used by setting `SPARK_HOME`, as
 described in [Re-using a Spark distribution via `SPARK_HOME`](#re-using-a-spark-distribution-via-spark_home).

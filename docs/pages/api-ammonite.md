@@ -3,7 +3,7 @@ title: Ammonite API
 ---
 
 The Ammonite API consists in instances of several classes, that are created
-by Ammonite or almond, and allow you to interact with the REPL. These instances
+by Ammonite or Almond, and allow you to interact with the REPL. These instances
 are accessible either by their name, from the REPL, like `interp`,
 or via implicits, like `implicitly[ammonite.interp.api.InterpAPI]`.
 

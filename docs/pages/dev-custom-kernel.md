@@ -2,11 +2,11 @@
 title: Writing custom kernels
 ---
 
-The `kernel` module of almond implements the Jupyter protocol, independently of the
-Scala interpreter of almond. It can be used to write Jupyter kernels in Scala, for the
+The `kernel` module of Almond implements the Jupyter protocol, independently of the
+Scala interpreter of Almond. It can be used to write Jupyter kernels in Scala, for the
 language of your choice.
 
-The almond sources contain a demo kernel relying on it, the
+The Almond sources contain a demo kernel relying on it, the
 [echo kernel](https://github.com/almond-sh/almond/tree/main/modules/echo). It depends on
 - the `kernel` module, `"sh.almond" %% "kernel" % "@VERSION@"`,
 - [case-app](https://github.com/alexarchambault/case-app), to parse its command-line arguments
@@ -34,7 +34,7 @@ command-line arguments differently, or add extra command-line options to pass to
 `Interpreter` implementation.
 
 For the kernel installation to work out-of-the-box, the kernel should be launched via
-[coursier](https://get-coursier.io) in one way or another, like the almond kernel is. (It is
+[coursier](https://get-coursier.io) in one way or another, like the Almond kernel is. (It is
 possible nonetheless to rely on e.g. uber JARs, by tweaking the `arg` or `command` fields of
 the installation options, see [`--arg`](install-options.md#--arg) and [`--command`](install-options.md#--command).)
 To test your kernel locally, publish it locally (with `publishLocal` with sbt, or Mill, or

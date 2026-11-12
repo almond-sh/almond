@@ -85,7 +85,7 @@ function HomeSplash() {
         <img
           className={styles.logo}
           src={useBaseUrl('logos/impure-logos-almond-0.svg')}
-          alt="almond logo"
+          alt="Almond logo"
         />
         <h1 className={styles.title}>{siteConfig.title}</h1>
         <p className={styles.tagline}>{siteConfig.tagline}</p>

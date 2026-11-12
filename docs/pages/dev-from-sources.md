@@ -4,7 +4,7 @@ title: Installing from sources
 
 ## Prerequisites
 
-You don't need to install a JVM to build almond. Its Mill launcher downloads Mill as a
+You don't need to install a JVM to build Almond. Its Mill launcher downloads Mill as a
 native executable, and Mill downloads the JVMs the build needs on its own: the one Mill
 runs on, and the JDK 17 the oldest Scala 2 versions are built with (see
 [below](#list-available-scala-versions)).
@@ -23,8 +23,8 @@ $ cd almond
 ```
 
 Almond is built with [Mill](https://mill-build.org). A Mill
-launcher ships with almond, so that you don't need to install Mill yourself.
-We list below useful commands, to help get you started using Mill to build almond.
+launcher ships with Almond, so that you don't need to install Mill yourself.
+We list below useful commands, to help get you started using Mill to build Almond.
 
 ## Run a Jupyter notebook server without installing a kernel
 
@@ -33,16 +33,16 @@ $ ./mill -i dev.jupyter
 ```
 
 This should
-- build almond, and publish its modules to a local Maven repository (`local-repo.localRepo`),
+- build Almond, and publish its modules to a local Maven repository (`local-repo.localRepo`),
 - install kernels for Scala 2.13 and Scala 3 from it, with the same command as the
   [installation instructions](quick-start-install.md), plus that repository, like
   `cs launch --use-bootstrap almond:<version> --scala 2.13.18 --channel app -r file:///…/local-repo -- --install …`,
-  along with a "special" kernel, that runs the almond launcher, then
+  along with a "special" kernel, that runs the Almond launcher, then
 - start JupyterLab in the `notebooks` directory, in the background.
 
 The [example notebooks](#validate-the-example-notebooks) are available from JupyterLab,
 under `examples`: `notebooks/examples` is a symbolic link to the `examples` directory,
-so that changes made to them from JupyterLab end up in the almond sources. Where
+so that changes made to them from JupyterLab end up in the Almond sources. Where
 symbolic links can't be created (Windows without developer mode, say), the notebooks
 get copied there instead. `notebooks/examples` is left as is if it already exists:
 remove it to have it re-created.
@@ -82,7 +82,7 @@ come from the Python environment of JupyterLab, at the versions pinned in
 `examples/uv.lock`. As xeus-python is built on
 [xeus](https://github.com/jupyter-xeus/xeus) and
 [xeus-zmq](https://github.com/jupyter-xeus/xeus-zmq), this is handy to compare how
-almond and xeus kernels behave. `dev.jupyterConsole` can run it too, with
+Almond and xeus kernels behave. `dev.jupyterConsole` can run it too, with
 `./mill -i dev.jupyterConsole --kernel=xpython`. (No xeus-python wheels exist for Linux
 ARM64, so it isn't installed there.)
 
@@ -94,7 +94,7 @@ precedence.
 
 JupyterLab comes with the
 [variable inspector](https://github.com/jupyterlab-contrib/jupyterlab-variableInspector)
-extension, and the kernels are started with `--variable-inspector`, which enables almond's
+extension, and the kernels are started with `--variable-inspector`, which enables Almond's
 support for it. Open it with "Open Variable Inspector", from the context menu of a notebook
 or from the command palette: it lists the variables defined in the notebook, along with
 their types and values.
@@ -147,7 +147,7 @@ port the proxy forwards to) are passed to JupyterLab as is.
 
 To work on [almond-scalafmt](https://github.com/almond-sh/almond-scalafmt), the
 JupyterLab extension formatting cells with scalafmt, point the `ALMOND_SCALAFMT_EXTENSION`
-environment variable at its sources (an absolute path, or a path relative to the almond
+environment variable at its sources (an absolute path, or a path relative to the Almond
 sources):
 ```text
 $ git clone https://github.com/almond-sh/almond-scalafmt.git work/almond-scalafmt
@@ -220,8 +220,8 @@ You can re-build a launcher upon source changes with
 $ ./mill -w dev.launcherFast
 ```
 
-If you [ran a JupyterLab server from the almond sources](#run-a-jupyter-notebook-server-without-installing-a-kernel),
-its kernels load the almond JARs from the local repository. Re-publish them there upon source
+If you [ran a JupyterLab server from the Almond sources](#run-a-jupyter-notebook-server-without-installing-a-kernel),
+its kernels load the Almond JARs from the local repository. Re-publish them there upon source
 changes with
 ```text
 $ ./mill -w local-repo.localRepo
@@ -325,7 +325,7 @@ $ ./mill --bsp-install
 then open the project in your IDE, and choose to import it via BSP if asked. See the
 [Mill documentation](https://mill-build.org/mill/cli/installation-ide.html) for more details.
 
-The almond modules are cross-built for many Scala versions. Importing them all can take a
+The Almond modules are cross-built for many Scala versions. Importing them all can take a
 while: to speed that up, you can temporarily trim the lists of Scala versions in
 `mill-build/src/almondbuild/ScalaVersions.scala`.
 
