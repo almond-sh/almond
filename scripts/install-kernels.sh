@@ -4,6 +4,8 @@ set -eu
 [ -z "$SCALA_VERSIONS" ] && { echo "SCALA_VERSIONS is empty" ; exit 1; }
 [ -z "$ALMOND_VERSION" ] && { echo "ALMOND_VERSION is empty" ; exit 1; }
 
+# Kernels go in the user's Jupyter directory by default, set JUPYTER_KERNELS_DIR=/path/to/kernels to install them elsewhere
+
 # coursier command to use (the native launcher in the Docker image), override with COURSIER=/path/to/coursier if needed
 COURSIER="${COURSIER:-cs}"
 # oldest coursier version known to work with the options passed below
@@ -44,10 +46,15 @@ for SCALA_FULL_VERSION in ${SCALA_VERSIONS}; do
       --scala ${SCALA_FULL_VERSION} \
       --default=true --sources \
       -o almond "${EXTRA_ARGS[@]}"
+  INSTALL_ARGS=()
+  if [[ -n "${JUPYTER_KERNELS_DIR:-}" ]]; then
+    INSTALL_ARGS+=(--jupyter-path "${JUPYTER_KERNELS_DIR}")
+  fi
   # --use-notebook-coursier-logger: show dependency downloads and their progress in the notebooks,
   # rather than as "Downloading ..." / "Downloaded ..." lines on stderr
   ./almond --install --log info --metabrowse --use-notebook-coursier-logger \
-      --id scala${SCALA_MAJOR_VERSION_TRIMMED} --display-name "Scala ${SCALA_MAJOR_VERSION}"
+      --id scala${SCALA_MAJOR_VERSION_TRIMMED} --display-name "Scala ${SCALA_MAJOR_VERSION}" \
+      "${INSTALL_ARGS[@]}"
   rm -f almond
 done
 echo Installation was successful

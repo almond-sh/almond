@@ -26,7 +26,9 @@ echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 # Builds an image for DOCKER_PLATFORM, pushes it by digest, and writes its digest and tags
 # under DIR/<first tag, sanitized>/
-# Usage: build_image <scala versions> <tag>... [-- <extra docker buildx build args>...]
+# The image is built from DOCKERFILE (docker/Dockerfile by default), with the root of the
+# repository as build context.
+# Usage: [DOCKERFILE=docker/<name>.Dockerfile] build_image <scala versions> <tag>... [-- <extra docker buildx build args>...]
 build_image() {
   local scala_versions="$1"
   shift
@@ -44,6 +46,7 @@ build_image() {
     --platform "$DOCKER_PLATFORM" \
     --build-arg ALMOND_VERSION="$ALMOND_VERSION" \
     --build-arg SCALA_VERSIONS="$scala_versions" \
+    -f "${DOCKERFILE:-docker/Dockerfile}" \
     "$@" \
     --output "type=image,name=${DOCKER_REPO},push-by-digest=true,name-canonical=true,push=true" \
     --metadata-file "$image_dir/metadata-$platform_id.json" \
@@ -81,6 +84,11 @@ build() {
     build_image "$SCALA212_VERSION" ${IMAGE_NAME}-scala-${SCALA212_VERSION}
     build_image "$SCALA3_VERSION $SCALA213_VERSION $SCALA212_VERSION" \
       ${IMAGE_NAME} ${DOCKER_REPO}:latest
+    # Image for Deepnote, whose base images only exist for linux/amd64
+    if [[ $DOCKER_PLATFORM == linux/amd64 ]]; then
+      DOCKERFILE=docker/deepnote.Dockerfile build_image "$SCALA3_VERSION $SCALA213_VERSION $SCALA212_VERSION" \
+        ${IMAGE_NAME}-deepnote ${DOCKER_REPO}:latest-deepnote
+    fi
   fi
 }
 
