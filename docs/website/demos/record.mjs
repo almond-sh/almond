@@ -68,27 +68,39 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Demo scripts
 
-/** Parses a demo script: header comments, then cells, each starting with a "// %%" line, optionally
- * followed by key=value options (like "// %% pause=3000") */
+const parseOptions = (s) =>
+  Object.fromEntries(s.trim().split(/\s+/).filter(Boolean).map((kv) => kv.split('=', 2)));
+
+/** Parses a demo script: a header, then cells, each starting with a "// %%" line, optionally
+ * followed by key=value options (like "// %% pause=3000"). In the header, a "// %demo" line can
+ * set options for the whole demo (like "// %demo kernel=echo height=400"). */
 function parseDemo(file) {
   const cells = [];
+  let options = {};
   let current = null;
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     const m = /^\/\/ %%(.*)$/.exec(line);
+    const demo = /^\/\/ %demo(.*)$/.exec(line);
     if (m) {
-      const options = Object.fromEntries(
-        m[1].trim().split(/\s+/).filter(Boolean).map((kv) => kv.split('=', 2))
-      );
-      current = { lines: [], options };
+      current = { lines: [], options: parseOptions(m[1]) };
       cells.push(current);
-    } else if (current) current.lines.push(line);
+    } else if (demo && !current) options = { ...options, ...parseOptions(demo[1]) };
+    else if (current) current.lines.push(line);
   }
   for (const cell of cells) {
     while (cell.lines.length && !cell.lines[cell.lines.length - 1].trim()) cell.lines.pop();
     while (cell.lines.length && !cell.lines[0].trim()) cell.lines.shift();
     cell.source = cell.lines.join('\n');
   }
-  return { name: path.basename(file).replace(/\.[^.]*$/, ''), cells };
+  return {
+    name: path.basename(file).replace(/\.[^.]*$/, ''),
+    kernel: options.kernel ?? opts.kernel,
+    width: Number(options.width ?? width),
+    height: Number(options.height ?? height),
+    // run the demo once before recording it, so that things like dependency downloads don't show
+    warmUp: options.warmup === 'true',
+    cells,
+  };
 }
 
 // JupyterLab server
@@ -183,10 +195,23 @@ async function startJupyter(workDir) {
     await sleep(500);
   }
   return {
-    stop: () => {
-      try {
-        process.kill(-proc.pid, 'SIGTERM');
-      } catch {}
+    /** Stops JupyterLab and its kernels, and waits for them to exit, so that the port is free */
+    stop: async () => {
+      const exited = new Promise((resolve) => proc.once('exit', resolve));
+      const kill = (signal) => {
+        try {
+          process.kill(-proc.pid, signal);
+        } catch {}
+      };
+      if (proc.exitCode === null && proc.signalCode === null) {
+        kill('SIGTERM');
+        if ((await Promise.race([exited, sleep(10_000).then(() => 'timeout')])) === 'timeout') {
+          kill('SIGKILL');
+          await exited;
+        }
+      }
+      // kernels are in the same process group, make sure none is left
+      kill('SIGKILL');
     },
   };
 }
@@ -221,8 +246,9 @@ class Recorder {
   async start() {
     await this.cdp.send('Page.startScreencast', {
       format: 'png',
-      maxWidth: width * scale,
-      maxHeight: height * scale,
+      // larger than any viewport, so that frames are never scaled down
+      maxWidth: 8192,
+      maxHeight: 8192,
       everyNthFrame: 1,
     });
     await this.waitForQuiet(300, 5000);
@@ -332,21 +358,24 @@ function run(cmd, args) {
 
 // Driving JupyterLab
 
-async function recordDemo(browser, demo, workDir) {
+async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
   const nbPath = `${demo.name}.ipynb`;
+  const spec = (await api('GET', 'kernelspecs')).kernelspecs[demo.kernel]?.spec;
+  if (!spec) throw new Error(`Kernel ${demo.kernel} of ${demo.name} not found`);
+  const kernelspec = { name: demo.kernel, display_name: spec.display_name, language: spec.language };
   await api('PUT', `contents/${nbPath}`, {
     type: 'notebook',
     format: 'json',
     content: {
       cells: [{ id: 'cell-0', cell_type: 'code', source: '', metadata: {}, outputs: [], execution_count: null }],
-      metadata: { kernelspec: { name: opts.kernel, display_name: opts.kernel, language: 'scala' } },
+      metadata: { kernelspec },
       nbformat: 4,
       nbformat_minor: 5,
     },
   });
 
   const context = await browser.newContext({
-    viewport: { width, height },
+    viewport: { width: demo.width, height: demo.height },
     deviceScaleFactor: scale,
     colorScheme: dark ? 'dark' : 'light',
   });
@@ -374,6 +403,15 @@ async function recordDemo(browser, demo, workDir) {
         if (app.shell.isSideTabBarVisible(side)) app.shell.toggleSideTabBarVisibility(side);
       if (app.commands.isToggled('statusbar:toggle')) await app.commands.execute('statusbar:toggle');
       const w = app.shell.currentWidget;
+      // keep track of execute replies, to check that cells ran fine
+      window.demoExecuteReplies = [];
+      const listen = (kernel) =>
+        kernel?.anyMessage.connect((_, { msg, direction }) => {
+          if (direction === 'recv' && msg.header.msg_type === 'execute_reply')
+            window.demoExecuteReplies.push(msg.content);
+        });
+      listen(w.sessionContext.session.kernel);
+      w.sessionContext.kernelChanged.connect((_, change) => listen(change.newValue));
       w.toolbar.setHidden(true);
       w.content.activeCellIndex = 0;
       w.content.mode = 'edit';
@@ -407,6 +445,15 @@ async function recordDemo(browser, demo, workDir) {
       );
       if (actual !== cell.source)
         throw new Error(`Cell ${idx} of ${demo.name}: typed ${JSON.stringify(cell.source)} but got ${JSON.stringify(actual)}`);
+      // lines too long for the viewport make the editor scroll horizontally, hiding their end
+      const overflow = await page.evaluate((idx) => {
+        const scroller = window.jupyterapp.shell.currentWidget.content.widgets[idx].node.querySelector('.cm-scroller');
+        return scroller.scrollWidth - scroller.clientWidth;
+      }, idx);
+      if (overflow > 1)
+        throw new Error(
+          `Cell ${idx} of ${demo.name} is ${overflow} pixels too wide for the viewport, shorten its lines`
+        );
       await sleep(300);
       await page.keyboard.press('Shift+Enter');
       await rec.idle(async () => {
@@ -418,12 +465,27 @@ async function recordDemo(browser, demo, workDir) {
           idx,
           { timeout: 600_000, polling: 50 }
         );
+        // compilation errors and exceptions (Almond reports some of them via stderr only)
+        const reply = await page.evaluate(() => window.demoExecuteReplies.at(-1));
+        if (reply?.status !== 'ok')
+          throw new Error(
+            `Cell ${idx} of ${demo.name} failed: ${reply?.ename ?? ''} ${reply?.evalue ?? reply?.status}`
+          );
+        // outputs rendered asynchronously, like plots loading their JavaScript library
+        if (cell.options.wait)
+          await page.waitForFunction(
+            ([idx, sel]) =>
+              window.jupyterapp.shell.currentWidget.content.widgets[idx].node.querySelector(sel),
+            [idx, cell.options.wait],
+            { timeout: 120_000, polling: 50 }
+          );
         await rec.waitForQuiet(250, 10_000);
       });
       await sleep(Number(cell.options.pause ?? 1200));
     }
     await sleep(2500);
     await rec.stop();
+    if (warmUp) return;
 
     const framesDir = path.join(workDir, `frames-${demo.name}${dark ? '-dark' : ''}`);
     const { count, duration } = rec.writeFrames(framesDir);
@@ -432,6 +494,11 @@ async function recordDemo(browser, demo, workDir) {
     encode(framesDir, duration, crop, path.join(opts.out, `${demo.name}${dark ? '-dark' : ''}`));
     if (!opts['keep-frames']) fs.rmSync(framesDir, { recursive: true, force: true });
     else console.error(`  frames kept in ${framesDir}`);
+  } catch (e) {
+    const screenshot = path.join(workDir, `${demo.name}-failure.png`);
+    await page.screenshot({ path: screenshot }).catch(() => {});
+    console.error(`  failed, screenshot of the page in ${screenshot}`);
+    throw e;
   } finally {
     await context.close();
     // shut down the kernel of the demo, and remove its notebook
@@ -482,6 +549,10 @@ let failed = false;
 try {
   for (const file of demoFiles) {
     const demo = parseDemo(file);
+    if (demo.warmUp) {
+      console.error(`Warming up ${demo.name}`);
+      await recordDemo(browser, demo, workDir, { warmUp: true });
+    }
     console.error(`Recording ${demo.name}`);
     await recordDemo(browser, demo, workDir);
   }
@@ -490,6 +561,7 @@ try {
   console.error(e);
 } finally {
   await browser.close();
-  server.stop();
+  await server.stop();
+  if (!failed && !opts['keep-frames']) fs.rmSync(workDir, { recursive: true, force: true });
 }
 process.exit(failed ? 1 : 0);

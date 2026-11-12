@@ -7,6 +7,7 @@ import Layout from '@theme/Layout';
 
 import styles from './index.module.css';
 
+// The videos are recorded by demos/record.sh, from the demos/*.sc scripts
 const features = [
   {
     title: (
@@ -14,7 +15,7 @@ const features = [
         All the <a href="https://ammonite.io">Ammonite</a> niceties
       </>
     ),
-    image: 'frontpage/ammonite.gif',
+    video: 'frontpage/ammonite',
     imageAlt: 'Ammonite features',
     content: (
       <>
@@ -32,7 +33,6 @@ const features = [
   },
   {
     title: 'APIs to interact with Jupyter front-ends',
-    // recorded by demos/record.mjs, from demos/progressbar.sc
     video: 'frontpage/progressbar',
     imageAlt: 'Progress bar',
     content: (
@@ -44,7 +44,7 @@ const features = [
   },
   {
     title: 'Plotting libraries',
-    image: 'frontpage/plotly.gif',
+    video: 'frontpage/plotly',
     imageAlt: 'Plots',
     content: (
       <p>
@@ -56,7 +56,7 @@ const features = [
   },
   {
     title: 'Spark support',
-    image: 'frontpage/spark.gif',
+    video: 'frontpage/spark',
     imageAlt: 'Spark',
     content: (
       <p>
@@ -67,7 +67,7 @@ const features = [
   },
   {
     title: 'Custom kernels',
-    image: 'frontpage/echo.gif',
+    video: 'frontpage/echo',
     imageAlt: 'Echo kernel',
     content: (
       <p>
