@@ -1,0 +1,109 @@
+name: Website demos
+
+# Records the videos of the front page of the website (see docs/website/demos/README.md) with a
+# released version of Almond, uploads them as an artifact, and opens a pull request updating them.
+# Run by hand, from the Actions tab or with `gh workflow run website-demos.yml`, typically after a
+# release.
+#
+# Pull requests opened with the GITHUB_TOKEN don't trigger other workflows: close and re-open the
+# pull request to get CI to run on it. Opening pull requests needs "Allow GitHub Actions to create
+# and approve pull requests" to be enabled in the settings of the repository.
+on:
+  workflow_dispatch:
+    inputs:
+      almond-version:
+        description: Almond version to record the demos with (latest v* tag by default)
+        required: false
+        default: ""
+      scala-version:
+        description: Scala 2.13 version of the kernel
+        required: false
+        default: "2.13.18"
+      demos:
+        description: Demos to record, space-separated, like "spark plotly" (all by default)
+        required: false
+        default: ""
+      open-pull-request:
+        description: Open a pull request with the new videos
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+    - uses: coursier/cache-action@v9.0.1
+      with:
+        job: ${{ runner.os }}
+        ignoreMatrix: true
+        cacheMode: read
+    - uses: coursier/setup-action@v3.1
+      with:
+        jvm: 21
+    - name: Install uv, ffmpeg, and Chromium
+      run: |
+        pipx install uv
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+        cd docs/website/demos
+        npm ci --no-audit --no-fund
+        npx playwright-core install --with-deps chromium-headless-shell
+      shell: bash
+    - name: Record demos
+      id: record
+      env:
+        INPUT_ALMOND_VERSION: ${{ inputs.almond-version }}
+        SCALA_VERSION: ${{ inputs.scala-version }}
+        INPUT_DEMOS: ${{ inputs.demos }}
+      run: |
+        version="$INPUT_ALMOND_VERSION"
+        if [ -z "$version" ]; then
+          version="$(git describe --tags --abbrev=0 --match 'v[0-9]*' | sed 's/^v//')"
+        fi
+        echo "Recording demos with Almond $version"
+        echo "almond-version=$version" >> "$GITHUB_OUTPUT"
+        demos=()
+        for demo in $INPUT_DEMOS; do
+          demos+=("docs/website/demos/$demo.sc")
+        done
+        ALMOND_VERSION="$version" docs/website/demos/record.sh "${demos[@]}"
+      shell: bash
+    - uses: actions/upload-artifact@v7
+      with:
+        name: website-demos
+        path: docs/website/static/frontpage
+    - name: Open pull request
+      if: inputs.open-pull-request
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ALMOND_VERSION: ${{ steps.record.outputs.almond-version }}
+      run: |
+        if [ -z "$(git status --porcelain docs/website/static/frontpage)" ]; then
+          echo "No changes in the recordings"
+          exit 0
+        fi
+        branch="website-demos-$GITHUB_RUN_ID"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git switch -c "$branch"
+        git add docs/website/static/frontpage
+        git commit -m "Re-record the front page demos with Almond $ALMOND_VERSION"
+        git push origin "$branch"
+        gh pr create \
+          --base "$GITHUB_REF_NAME" \
+          --head "$branch" \
+          --title "Re-record the front page demos with Almond $ALMOND_VERSION" \
+          --body "Recorded by the [Website demos workflow]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+      shell: bash

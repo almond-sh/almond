@@ -3,10 +3,12 @@ import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import {useColorMode} from '@docusaurus/theme-common';
 import Layout from '@theme/Layout';
 
 import styles from './index.module.css';
 
+// The videos are recorded by demos/record.sh, from the demos/*.sc scripts
 const features = [
   {
     title: (
@@ -14,7 +16,7 @@ const features = [
         All the <a href="https://ammonite.io">Ammonite</a> niceties
       </>
     ),
-    image: 'frontpage/ammonite.gif',
+    video: 'frontpage/ammonite',
     imageAlt: 'Ammonite features',
     content: (
       <>
@@ -32,7 +34,7 @@ const features = [
   },
   {
     title: 'APIs to interact with Jupyter front-ends',
-    image: 'frontpage/progressbar.gif',
+    video: 'frontpage/progressbar',
     imageAlt: 'Progress bar',
     content: (
       <p>
@@ -43,7 +45,7 @@ const features = [
   },
   {
     title: 'Plotting libraries',
-    image: 'frontpage/plotly.gif',
+    video: 'frontpage/plotly',
     imageAlt: 'Plots',
     content: (
       <p>
@@ -55,7 +57,7 @@ const features = [
   },
   {
     title: 'Spark support',
-    image: 'frontpage/spark.gif',
+    video: 'frontpage/spark',
     imageAlt: 'Spark',
     content: (
       <p>
@@ -66,7 +68,7 @@ const features = [
   },
   {
     title: 'Custom kernels',
-    image: 'frontpage/echo.gif',
+    video: 'frontpage/echo',
     imageAlt: 'Echo kernel',
     content: (
       <p>
@@ -107,7 +109,30 @@ function HomeSplash() {
   );
 }
 
-function Feature({title, image, imageAlt, content, imageLeft}) {
+// Videos recorded by demos/record.mjs, with a poster image (the last frame of the video), shown
+// while the video loads, or instead of it when it can't be played. Videos are recorded with the
+// light and dark themes of JupyterLab, the one matching the color mode of the website is shown.
+function FeatureVideo({video: name, alt}) {
+  const {colorMode} = useColorMode();
+  const video = colorMode === 'dark' ? `${name}-dark` : name;
+  return (
+    <video
+      // changing the sources of a video element doesn't reload it, re-create it instead
+      key={video}
+      className={styles.featureImage}
+      autoPlay
+      loop
+      muted
+      playsInline
+      poster={useBaseUrl(`${video}.png`)}
+      aria-label={alt}>
+      <source src={useBaseUrl(`${video}.webm`)} type="video/webm" />
+      <source src={useBaseUrl(`${video}.mp4`)} type="video/mp4" />
+    </video>
+  );
+}
+
+function Feature({title, image, video, imageAlt, content, imageLeft}) {
   return (
     <section className={styles.feature}>
       <div className="container">
@@ -117,7 +142,11 @@ function Feature({title, image, imageAlt, content, imageLeft}) {
             {content}
           </div>
           <div className="col col--6">
-            <img className={styles.featureImage} src={useBaseUrl(image)} alt={imageAlt} />
+            {video ? (
+              <FeatureVideo video={video} alt={imageAlt} />
+            ) : (
+              <img className={styles.featureImage} src={useBaseUrl(image)} alt={imageAlt} />
+            )}
           </div>
         </div>
       </div>

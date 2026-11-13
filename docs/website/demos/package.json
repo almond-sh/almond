@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Records the animations of the front page of the website from a real JupyterLab",
+  "scripts": {
+    "record": "node record.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  }
+}
