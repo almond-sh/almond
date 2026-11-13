@@ -126,8 +126,9 @@ object DirectiveCompletionTests extends TestSuite {
     test("sort versions") {
       val versions =
         Seq("2.0.0-M4", "2.0.0-RC1", "2.0.0", "2.10.0", "2.9.0", "2.13.0", "2.13.0-RC1", "2.9.0")
-      val res      = DirectiveCompletion.sortCompletions("org.typelevel::cats-core:", versions)
-      val expected = Seq("2.13.0", "2.13.0-RC1", "2.10.0", "2.9.0", "2.0.0", "2.0.0-RC1", "2.0.0-M4")
+      val res = DirectiveCompletion.sortCompletions("org.typelevel::cats-core:", versions)
+      val expected =
+        Seq("2.13.0", "2.13.0-RC1", "2.10.0", "2.9.0", "2.0.0", "2.0.0-RC1", "2.0.0-M4")
       assert(res == expected)
     }
 

@@ -36,8 +36,8 @@ object DirectiveCompletion {
   /** Sorts dependency completions, and removes duplicates from them
     *
     * Versions are sorted semantically, highest first, with the coursier version ordering (the one
-    * used to pick versions when resolving dependencies). Organizations and module names are left
-    * as is (in the order of the repository listings, sorted alphabetically for Maven Central).
+    * used to pick versions when resolving dependencies). Organizations and module names are left as
+    * is (in the order of the repository listings, sorted alphabetically for Maven Central).
     */
   def sortCompletions(dependencyPrefix: String, completions: Seq[String]): Seq[String] = {
     // several repositories may list the same organizations, module names, or versions
