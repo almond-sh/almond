@@ -10,5 +10,5 @@ object Versions {
   def devJvm        = "21" // JVM the dev.jupyter* commands run the kernel with
   def scalafmt      = "3.9.6"
   def scalafmtJava8 = "3.7.15"
-  def uv            = "0.13.7"
+  def uv            = "0.13.8"
 }
