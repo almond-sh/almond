@@ -252,7 +252,7 @@ final class ScalaInterpreter(
             log.info(s"Ignoring exception while completing dependency ${value.prefix}", e)
             (0, Nil)
         }
-      (value.start + from, completions)
+      (value.start + from, DirectiveCompletion.sortCompletions(value.prefix, completions))
     }
 
   private def completeCode(
@@ -295,7 +295,10 @@ final class ScalaInterpreter(
       DirectiveCompletion.findDependency(code, pos) match {
         case Some(value) =>
           val (start, completions) = completeDirectiveDependency(value)
-          (start, pos, completions, completions.map(c => (c, "dependency")))
+          // No types for these: when filtering completions, JupyterLab sorts the ones matching
+          // equally well alphabetically by the text that comes with their type, and keeps their
+          // order if they have none, which keeps versions sorted (highest first)
+          (start, pos, completions, Nil)
         case None =>
           completeCode(code, pos)
       }

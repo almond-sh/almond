@@ -92,6 +92,51 @@ object DirectiveCompletionTests extends TestSuite {
       assert(find(code).isEmpty)
     }
 
+    test("right after a colon") {
+      val res = find("//> using dep org.typelevel:|")
+      assert(res == Some(DependencyValue(14, "org.typelevel:")))
+      val res0 = find("""//> using dep "org.typelevel::cats-core:|"""")
+      assert(res0 == Some(DependencyValue(15, "org.typelevel::cats-core:")))
+    }
+
+    test("is version") {
+      val versions = Seq(
+        "org.typelevel:cats-core_2.13:",
+        "org.typelevel:cats-core_2.13:2.1",
+        "org.typelevel::cats-core:",
+        "org.typelevel::cats-core:2.1",
+        "org.scala-lang:::scala-compiler:"
+      )
+      val notVersions = Seq(
+        "",
+        "org.type",
+        "org.typelevel:",
+        "org.typelevel:cats-co",
+        "org.typelevel::",
+        "org.typelevel::cats-co",
+        "org.typelevel:::",
+        "org.typelevel:::cats-co"
+      )
+      for (input <- versions)
+        assert(DirectiveCompletion.isVersion(input))
+      for (input <- notVersions)
+        assert(!DirectiveCompletion.isVersion(input))
+    }
+
+    test("sort versions") {
+      val versions =
+        Seq("2.0.0-M4", "2.0.0-RC1", "2.0.0", "2.10.0", "2.9.0", "2.13.0", "2.13.0-RC1", "2.9.0")
+      val res      = DirectiveCompletion.sortCompletions("org.typelevel::cats-core:", versions)
+      val expected = Seq("2.13.0", "2.13.0-RC1", "2.10.0", "2.9.0", "2.0.0", "2.0.0-RC1", "2.0.0-M4")
+      assert(res == expected)
+    }
+
+    test("don't sort names") {
+      val names = Seq("cats-free", "cats-core", "cats-effect")
+      assert(DirectiveCompletion.sortCompletions("org.typelevel::cats-", names) == names)
+      assert(DirectiveCompletion.sortCompletions("org.typelevel::", names) == names)
+    }
+
     test("code") {
       assert(find("val n = Lis|").isEmpty)
       assert(find("//> using dep org.typelevel::cats-core:2.12.0\nval n = Lis|").isEmpty)

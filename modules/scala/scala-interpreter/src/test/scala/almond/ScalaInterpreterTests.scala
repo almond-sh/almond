@@ -330,6 +330,19 @@ object ScalaInterpreterTests extends TestSuite {
           "cats-core"
         )
 
+        // right after a ':', for the module name or the version
+        check("//> using dep \"org.typelevel::", 30, "cats-core")
+        check("//> using dep org.typelevel::cats-core:", 39, "2.12.0")
+
+        // versions are sorted semantically, highest first
+        val versions =
+          interpreter.complete("//> using dep org.typelevel::cats-core:2.", 41).completions
+        assert(versions.contains("2.12.0"))
+        assert(versions.contains("2.0.0-M4"))
+        assert(versions.indexOf("2.12.0") < versions.indexOf("2.9.0"))
+        assert(versions.indexOf("2.0.0") < versions.indexOf("2.0.0-RC1"))
+        assert(versions.indexOf("2.0.0-RC1") < versions.indexOf("2.0.0-M4"))
+
         // no completions out of the values of dependency directives
         val res = interpreter.complete("//> using dep ", 14)
         assert(res.completions.isEmpty)

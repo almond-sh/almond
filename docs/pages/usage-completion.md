@@ -31,13 +31,18 @@ Pressing Tab completes:
   ```scala
   //> using dep "org.typelevel::cats-co
   ```
+  Completions are also offered right after a `:`, like in `//> using dep "org.typelevel::`
+  (all the Scala modules of `org.typelevel`) or `//> using dep "org.typelevel::cats-core:`
+  (all the versions of `cats-core`). In `//> using dep` directives, versions are sorted from
+  the highest one.
 
 Implicit definitions, names containing `$` (internal to the compiler or to Almond), and a
 few methods of `Any` and `Object` (`##`, `eq`, `ne`, `synchronized`, `wait`, `notify`, …)
 are left out of completions.
 
-Along with each completion, Almond sends its kind (class, method, value, package, …),
-which JupyterLab shows next to it.
+Along with each completion (except the dependencies of `//> using dep` directives, so that
+JupyterLab keeps the order of versions), Almond sends its kind (class, method, value,
+package, …), which JupyterLab shows next to it.
 
 ## Completions while typing
 

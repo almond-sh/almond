@@ -20,6 +20,34 @@ object DirectiveCompletion {
     */
   final case class DependencyValue(start: Int, prefix: String)
 
+  /** Whether a dependency being typed is at its version, like `org.typelevel::cats-core:` or
+    * `org.typelevel:cats-core_2.13:2.1`, rather than at its organization or module name
+    */
+  def isVersion(dependencyPrefix: String): Boolean = {
+    val idx = dependencyPrefix.lastIndexOf(':')
+    idx >= 0 && {
+      // the module name is the last non-empty part before the last ':', the parts in between
+      // being empty in 'org::name:' (Scala module) or 'org:::name:' (full cross-version one)
+      val parts = dependencyPrefix.substring(0, idx).split(":", -1)
+      parts.length >= 2 && parts.last.nonEmpty
+    }
+  }
+
+  /** Sorts dependency completions, and removes duplicates from them
+    *
+    * Versions are sorted semantically, highest first, with the coursier version ordering (the one
+    * used to pick versions when resolving dependencies). Organizations and module names are left
+    * as is (in the order of the repository listings, sorted alphabetically for Maven Central).
+    */
+  def sortCompletions(dependencyPrefix: String, completions: Seq[String]): Seq[String] = {
+    // several repositories may list the same organizations, module names, or versions
+    val completions0 = completions.distinct
+    if (isVersion(dependencyPrefix))
+      completions0.sortWith((a, b) => coursierapi.Version.compare(a, b) > 0)
+    else
+      completions0
+  }
+
   private val dependencyKeys = Set("dep", "deps", "dependencies", "lib", "libs")
 
   private val headerRegex = """//>\s*using\s+([^\s"`]+)\s""".r
