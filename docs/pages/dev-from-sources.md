@@ -99,6 +99,11 @@ support for it. Open it with "Open Variable Inspector", from the context menu of
 or from the command palette: it lists the variables defined in the notebook, along with
 their types and values.
 
+It also comes with the
+[almond-scalafmt](usage-extensions.md#formatting-cells-with-scalafmt) extension, which
+formats Scala cells with scalafmt (see
+[below](#use-the-scalafmt-extension-from-its-sources) to use it from its sources instead).
+
 JupyterLab also comes with [Jupyter AI](https://jupyter-ai.readthedocs.io/), which lets
 you chat with Claude and Codex. Open the "Jupyter Chat" panel from the left sidebar
 (speech bubbles icon), click "New chat", then pick an agent from the menu at the
@@ -160,7 +165,8 @@ needs to be a JupyterLab 4 prebuilt extension (with a `jupyterlab.outputDir` fie
 under `out/dev/scalafmtExtension.dest` and built there, with the `jlpm` command of the
 Python environment of JupyterLab (nothing gets written to the extension sources). If
 the directory `ALMOND_SCALAFMT_EXTENSION` points at doesn't exist, the commands print a
-warning and run without the extension.
+warning and use the latest almond-scalafmt release instead, like they do when
+`ALMOND_SCALAFMT_EXTENSION` isn't set.
 
 After changing the extension sources, run the command again: it rebuilds the extension
 (keeping its dependencies around, so that this only takes a few seconds), and
