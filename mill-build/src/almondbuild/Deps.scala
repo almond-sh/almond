@@ -105,7 +105,7 @@ object Deps {
   def scalaparse               = mvn"com.lihaoyi::scalaparse:3.1.1"
   def scalaReflect(sv: String) = mvn"org.scala-lang:scala-reflect:$sv"
   // Version of the Scala CLI launcher some integration tests run
-  def scalaCliVersion = "1.18.0"
+  def scalaCliVersion = "1.19.0"
   // Ammonite modules are cross-published for binary Scala versions only, and pull the Scala
   // compiler of the oldest Scala version of their binary version. Depending on the compiler
   // explicitly ensures we get the one of the Scala version we're built with, both here and
