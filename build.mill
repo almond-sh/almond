@@ -1245,7 +1245,8 @@ object dev extends Module {
 
   /** The sources of the almond-scalafmt JupyterLab extension, if the `ALMOND_SCALAFMT_EXTENSION`
     * environment variable points at them: their directory, and the source files in it. If the
-    * directory it points at doesn't exist, it's ignored, with a warning.
+    * directory it points at doesn't exist, it's ignored, with a warning: JupyterLab then uses the
+    * almond-scalafmt release of the `lab` group of `examples/pyproject.toml`.
     */
   def scalafmtExtensionSources = Task.Input {
     Task.env.get(LabExtension.scalafmtEnvVar)
@@ -1257,7 +1258,8 @@ object dev extends Module {
         if (!exists)
           System.err.println(
             s"Warning: ${LabExtension.scalafmtEnvVar} points at " +
-              s"$dir, which doesn't exist, ignoring it"
+              s"$dir, which doesn't exist, using the almond-scalafmt release instead " +
+              s"(clone https://github.com/almond-sh/almond-scalafmt there to use its sources)"
           )
         exists
       }

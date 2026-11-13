@@ -67,6 +67,7 @@ ai = [
     { name = "jupyter-ai" },
 ]
 lab = [
+    { name = "almond-scalafmt" },
     { name = "lckr-jupyterlab-variableinspector" },
 ]
 xeus = [
@@ -84,8 +85,20 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 ai = [{ name = "jupyter-ai", specifier = ">=3" }]
-lab = [{ name = "lckr-jupyterlab-variableinspector", specifier = ">=3.2" }]
+lab = [
+    { name = "almond-scalafmt", specifier = ">=0.2.0" },
+    { name = "lckr-jupyterlab-variableinspector", specifier = ">=3.2" },
+]
 xeus = [{ name = "xeus-python", marker = "platform_machine != 'aarch64' or sys_platform != 'linux'", specifier = ">=0.19" }]
+
+[[package]]
+name = "almond-scalafmt"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/de/83ac82c6135cf4f32c1189dfb811f4dd949474ac96f363b0a67d61c74e93/almond_scalafmt-0.2.0.tar.gz", hash = "sha256:bd46f0428ff925800e96cf20375df32195a1bbdb79c0644f2f7200a48ccdbf78", size = 1347816, upload-time = "2026-10-02T23:34:16.682Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/02/9f2a4d1e3999c642dfcd646a568a1094b8f3ec9c4bbbfab103c4e05955d4/almond_scalafmt-0.2.0-py3-none-any.whl", hash = "sha256:8f6cb9e48707ba96b6e0313b0940cc9790fb51c9633192a529712d1b343160f5", size = 18776, upload-time = "2026-10-02T23:34:15.032Z" },
+]
 
 [[package]]
 name = "annotated-types"
