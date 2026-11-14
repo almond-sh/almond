@@ -1,6 +1,8 @@
 // Front page demo: "Spark support"
 // Each "// %%" line starts a cell, typed then run by record.mjs (see README.md).
 // Spark needs the kernel to be started with --add-opens Java options.
+// Spark is downloaded during a warm-up run: its many and large JARs would make for a long list of
+// downloads in the recording.
 
 // %demo height=640 warmup=true
 

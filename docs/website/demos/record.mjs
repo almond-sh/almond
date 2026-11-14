@@ -5,8 +5,11 @@
 //
 // Frames are captured with Chrome's screencast API, along with the time they were captured at.
 // Time spent waiting for the kernel with nothing changing on screen (kernel start-up, compilation,
-// dependency downloads, …) is cut down to at most --max-idle milliseconds, so that recordings
-// don't depend on how fast the machine they're made on is. Frames are then assembled with ffmpeg.
+// …) is cut down to at most --max-idle milliseconds, so that recordings don't depend on how fast
+// the machine they're made on is. Frames are then assembled with ffmpeg.
+//
+// Kernels use a coursier cache of their own, reset before each demo, so that the dependencies of
+// the demos get downloaded while they're recorded, and these downloads show up in the recordings.
 //
 // Usage (see README.md):
 //   node record.mjs --jupyter-cmd "$(./mill show dev.jupyterCmd 2.13.18 | jq -r .)" [demo.sc…]
@@ -98,6 +101,7 @@ function parseDemo(file) {
     width: Number(options.width ?? width),
     height: Number(options.height ?? height),
     // run the demo once before recording it, so that things like dependency downloads don't show
+    // (like the many and large ones of Spark)
     warmUp: options.warmup === 'true',
     cells,
   };
@@ -180,6 +184,8 @@ async function startJupyter(workDir) {
       JUPYTER_CONFIG_DIR: configDir,
       JUPYTERLAB_SETTINGS_DIR: settingsDir,
       JUPYTERLAB_WORKSPACES_DIR: path.join(workDir, 'workspaces'),
+      // inherited by the kernels, see CoursierCache
+      COURSIER_CACHE: coursierCache.dir,
     },
     stdio: ['ignore', log, log],
     detached: true,
@@ -224,6 +230,35 @@ async function api(method, p, body) {
   });
   if (!resp.ok) throw new Error(`${method} /api/${p}: ${resp.status} ${await resp.text()}`);
   return resp.status === 204 ? null : resp.json();
+}
+
+// Coursier cache
+
+/** The coursier cache of the kernels. It's empty at first, then gets the files the kernels need to
+ * start and run code (see the main code below). Before each demo, it's reset to that state, so that the
+ * dependencies a demo loads get downloaded during it, whatever the demos that ran before it. */
+class CoursierCache {
+  constructor(dir) {
+    this.dir = dir;
+    this.kept = new Set();
+  }
+  /** Relative paths of all the files and directories of the cache */
+  list() {
+    return fs.existsSync(this.dir) ? fs.readdirSync(this.dir, { recursive: true }) : [];
+  }
+  /** Makes the current content of the cache the one it gets reset to */
+  keep() {
+    this.kept = new Set(this.list());
+  }
+  /** Removes everything that got into the cache since the last call to keep */
+  reset() {
+    // deepest paths first, so that directories are empty when they get removed
+    const added = this.list()
+      .filter((p) => !this.kept.has(p))
+      .sort((a, b) => b.length - a.length);
+    for (const p of added) fs.rmSync(path.join(this.dir, p), { recursive: true, force: true });
+    if (added.length) console.error(`  removed ${added.length} entries from the coursier cache`);
+  }
 }
 
 // Recording
@@ -537,6 +572,7 @@ const demoFiles = positionals.length
   : fs.readdirSync(demosDir).filter((f) => f.endsWith('.sc')).sort().map((f) => path.join(demosDir, f));
 
 const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'almond-website-demos-'));
+const coursierCache = new CoursierCache(path.join(workDir, 'coursier-cache'));
 console.error(`Starting JupyterLab (logs in ${workDir}/jupyter.log)`);
 const server = await startJupyter(workDir);
 const browser = await chromium.launch({
@@ -547,8 +583,19 @@ const browser = await chromium.launch({
 });
 let failed = false;
 try {
-  for (const file of demoFiles) {
-    const demo = parseDemo(file);
+  const demos = demoFiles.map(parseDemo);
+  // run some code once with each kernel, so that the coursier cache has what kernels need to start
+  // and run code, like the actual Scala kernel the Almond launcher loads when a notebook starts
+  for (const kernel of new Set(demos.map((demo) => demo.kernel))) {
+    console.error(`Starting kernel ${kernel} once`);
+    const cells = [{ source: '1', options: { pause: '0' } }];
+    await recordDemo(browser, { name: `prime-${kernel}`, kernel, width, height, cells }, workDir, {
+      warmUp: true,
+    });
+  }
+  coursierCache.keep();
+  for (const demo of demos) {
+    coursierCache.reset();
     if (demo.warmUp) {
       console.error(`Warming up ${demo.name}`);
       await recordDemo(browser, demo, workDir, { warmUp: true });

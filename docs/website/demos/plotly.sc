@@ -2,7 +2,7 @@
 // Each "// %%" line starts a cell, typed then run by record.mjs (see README.md).
 // Plots render in JupyterLab via the jupyterlab-plotly extension, from the plotly Python package.
 
-// %demo height=600 warmup=true
+// %demo height=600
 
 // %%
 //> using dep "org.plotly-scala::plotly-almond:0.8.5"

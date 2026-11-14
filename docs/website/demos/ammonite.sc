@@ -1,7 +1,7 @@
 // Front page demo: "All the Ammonite niceties"
 // Each "// %%" line starts a cell, typed then run by record.mjs (see README.md).
 
-// %demo height=640 warmup=true
+// %demo height=640
 
 // %%
 //> using dep "com.lihaoyi::ujson:4.4.3"
