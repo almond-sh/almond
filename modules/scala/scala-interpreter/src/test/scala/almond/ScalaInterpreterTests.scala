@@ -314,6 +314,41 @@ object ScalaInterpreterTests extends TestSuite {
         else backticksTest()
       }
 
+      test("using dep directives") {
+        // module names and versions are looked up on Maven Central
+        def check(code: String, start: Int, expected: String): Unit = {
+          val res = interpreter.complete(code, code.length)
+          assert(res.from == start)
+          assert(res.until == code.length)
+          assert(res.completions.contains(expected))
+        }
+        check("//> using dep \"org.typelevel::cats-co", 30, "cats-core")
+        check("//> using dep org.typelevel::cats-core:2.12", 39, "2.12.0")
+        check(
+          "//> using option -deprecation\n//> using deps com.lihaoyi::os-lib:0.11.4, org.typelevel::cats-co",
+          30 + 43 + 15,
+          "cats-core"
+        )
+
+        // right after a ':', for the module name or the version
+        check("//> using dep \"org.typelevel::", 30, "cats-core")
+        check("//> using dep org.typelevel::cats-core:", 39, "2.12.0")
+
+        // versions are sorted semantically, highest first
+        // (explicit Scala 2.13 module, as cats-core_3 has no 2.0.0 milestones or RCs)
+        val versions =
+          interpreter.complete("//> using dep org.typelevel:cats-core_2.13:2.", 45).completions
+        assert(versions.contains("2.12.0"))
+        assert(versions.contains("2.0.0-M4"))
+        assert(versions.indexOf("2.12.0") < versions.indexOf("2.9.0"))
+        assert(versions.indexOf("2.0.0") < versions.indexOf("2.0.0-RC1"))
+        assert(versions.indexOf("2.0.0-RC1") < versions.indexOf("2.0.0-M4"))
+
+        // no completions out of the values of dependency directives
+        val res = interpreter.complete("//> using dep ", 14)
+        assert(res.completions.isEmpty)
+      }
+
     }
 
     test("inspection results") {
