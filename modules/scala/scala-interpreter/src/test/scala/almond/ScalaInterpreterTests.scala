@@ -335,8 +335,9 @@ object ScalaInterpreterTests extends TestSuite {
         check("//> using dep org.typelevel::cats-core:", 39, "2.12.0")
 
         // versions are sorted semantically, highest first
+        // (explicit Scala 2.13 module, as cats-core_3 has no 2.0.0 milestones or RCs)
         val versions =
-          interpreter.complete("//> using dep org.typelevel::cats-core:2.", 41).completions
+          interpreter.complete("//> using dep org.typelevel:cats-core_2.13:2.", 45).completions
         assert(versions.contains("2.12.0"))
         assert(versions.contains("2.0.0-M4"))
         assert(versions.indexOf("2.12.0") < versions.indexOf("2.9.0"))
