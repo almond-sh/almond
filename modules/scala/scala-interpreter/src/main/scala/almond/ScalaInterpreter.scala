@@ -47,7 +47,8 @@ final class ScalaInterpreter(
       ammInterp
         .compilerManager
         .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
-      frames0()
+      frames0(),
+      (ammInterp.predefImports ++ frames0().head.imports).toString()
     )
     inspectionsInitialized = true
     value

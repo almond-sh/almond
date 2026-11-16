@@ -27,7 +27,8 @@ final class ScalaInterpreterInspections(
   metabrowsePort: Int,
   scalaVersion: String,
   compilerManager: => ammonite.compiler.CompilerLifecycleManager,
-  frames: => List[Frame]
+  frames: => List[Frame],
+  previousImports: => String
 ) {
 
   private val log = logCtx(getClass)
@@ -56,7 +57,7 @@ final class ScalaInterpreterInspections(
     compilerManager0.init()
     val compiler = compilerManager0.compiler
 
-    val prefix  = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
+    val prefix  = previousImports + newLine + "object InspectWrapper{" + newLine
     val suffix  = newLine + "}"
     val allCode = prefix + code + suffix
     val index   = prefix.length + pos

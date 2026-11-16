@@ -28,7 +28,8 @@ final class ScalaInterpreterInspections(
   metabrowsePort: Int,
   scalaVersion: String,
   compilerManager: => ammonite.compiler.CompilerLifecycleManager,
-  frames: => List[Frame]
+  frames: => List[Frame],
+  previousImports: => String
 ) {
 
   private val log = logCtx(getClass)
