@@ -2672,7 +2672,7 @@ object Tests {
         else
           Seq(
             "ammonite.$sess.cmd2$Helper.<init>(cmd2.sc:1)",
-            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:65451)"
+            "ammonite.$sess.cmd2$.<clinit>(cmd2.sc:-1)"
           )
 
       execute(
