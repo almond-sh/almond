@@ -75,7 +75,7 @@ final class ScalaInterpreterInspections(
     val semanticdbOps = new AlmondSemanticDbOps(pressy)
     import semanticdbOps._
 
-    val prefix  = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
+    val prefix  = previousImports + newLine + "object InspectWrapper{" + newLine
     val suffix  = newLine + "}"
     val allCode = prefix + code + suffix
     val index   = prefix.length + pos

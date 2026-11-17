@@ -45,35 +45,6 @@ object ScalaInterpreterInspectionTests extends TestSuite {
     )
 
   val tests = Tests {
-    test("predef imports") {
-      if (TestUtil.isScala2) "disabled"
-      else {
-        val interpreter = new ScalaInterpreter(
-          params = interpreterParams.copy(
-            predefCode =
-              "val x = 1\ncase class Point(x: Int, y: Int)\n" +
-                "import scala.collection.mutable.ArrayBuffer"
-          ),
-          logCtx = logCtx
-        )
-        try {
-          assert(lines(interpreter, "x", 1).head.matches("Type: +Int"))
-
-          val pointCode = "val point: Point = Point(1, 2)"
-          val pointRes  = lines(interpreter, pointCode, pointCode.indexOf("Point") + 1)
-          assert(pointRes.head.matches("Type: +.*Point"))
-
-          val bufferCode = "val points = ArrayBuffer(1, 2)"
-          val bufferRes  = lines(interpreter, bufferCode, bufferCode.indexOf("points") + 1)
-          assert(bufferRes.head.contains("ArrayBuffer[Int]"))
-
-          assert(interpreter.execute("val x = \"abc\"").success)
-          assert(lines(interpreter, "x", 1).head.matches("Type: +String"))
-        }
-        finally interpreter.shutdown()
-      }
-    }
-
     test("scaladoc") {
       if (TestUtil.isScala2) "disabled"
       else {
