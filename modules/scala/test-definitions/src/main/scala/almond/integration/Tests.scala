@@ -79,6 +79,36 @@ object Tests {
       )
     }
 
+  def progressBar()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      def bar(progress: Int) =
+        s"<progress  style='width:60ex' max='3' value='$progress'></progress>"
+      // the definition of bar isn't displayed again at the end of the cell, as it was
+      // already displayed by bar.display()
+      execute(
+        """val bar = ProgressBar(0, 3)
+          |bar.display()
+          |for (i <- 1 to 3)
+          |  bar.withProgress(i).update()""".stripMargin,
+        "",
+        displaysHtml = Seq(bar(0)),
+        displaysHtmlUpdates = Seq(bar(1), bar(2), bar(3))
+      )
+      // a definition of an updatable display that wasn't displayed yet in the current cell
+      // is displayed
+      execute(
+        "val bar2 = bar.withProgress(2)",
+        "",
+        displaysHtml = Seq(bar(2))
+      )
+      // displaying it again explicitly still works
+      execute(
+        "bar2",
+        "",
+        displaysHtml = Seq(bar(2))
+      )
+    }
+
   def clearOutput()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(

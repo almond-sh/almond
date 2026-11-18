@@ -78,9 +78,10 @@ final class ReplApiImpl(
       case Some(p) =>
         val displayedOpt =
           resultDisplayMode(classTagT, ident.matches(expressionResultName)) match {
-            case ResultDisplay.Mode.Hidden  => Some(Iterator())
-            case ResultDisplay.Mode.Text    => None
-            case ResultDisplay.Mode.Default => displayRich(value, p)(classTagT)
+            case ResultDisplay.Mode.Hidden => Some(Iterator())
+            case ResultDisplay.Mode.Text   => None
+            case ResultDisplay.Mode.Default =>
+              displayRich(value, p, definition = !ident.matches(expressionResultName))(classTagT)
           }
         displayedOpt.orElse {
           for (
@@ -190,7 +191,7 @@ final class ReplApiImpl(
     *   an empty iterator if the value was displayed, `None` if it doesn't have a rich
     *   representation
     */
-  private def displayRich[T](value: => T, p: OutputHandler)(implicit
+  private def displayRich[T](value: => T, p: OutputHandler, definition: Boolean)(implicit
     classTagT: ClassTag[T]
   ): Option[Iterator[String]] = {
     val isUpdatableDisplay =
@@ -207,7 +208,16 @@ final class ReplApiImpl(
 
     if (isUpdatableDisplay) {
       val d = value.asInstanceOf[almond.display.Display]
-      d.display()(p)
+      val alreadyDisplayed = definition && (d match {
+        // Definitions of updatable displays that the cell already displayed, like `bar` in
+        // `val bar = ProgressBar(0, 10); bar.display(); …`, aren't displayed again: displaying
+        // them again would add a second output with the same display id, showing the state
+        // the definition holds, rather than the latest one
+        case u: almond.display.UpdatableDisplay => execute0.displayedInCurrentCell(u.displayId)
+        case _                                  => false
+      })
+      if (!alreadyDisplayed)
+        d.display()(p)
       Some(Iterator())
     }
     else if (useJvmReprDisplay) {
@@ -245,7 +255,7 @@ final class ReplApiImpl(
         case mode =>
           execute0.currentPublishOpt
             .filter(_ => mode == ResultDisplay.Mode.Default)
-            .flatMap(displayRich(value, _))
+            .flatMap(displayRich(value, _, definition = false))
             .getOrElse {
               pprinter().tokenize(value).map(_.render)
             }

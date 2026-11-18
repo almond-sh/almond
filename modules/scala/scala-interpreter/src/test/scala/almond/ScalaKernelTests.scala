@@ -243,6 +243,11 @@ object ScalaKernelTests extends TestSuite {
       almond.integration.Tests.updatableDisplay()
     }
 
+    test("progress bar") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.progressBar()
+    }
+
     test("clear output") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.clearOutput()

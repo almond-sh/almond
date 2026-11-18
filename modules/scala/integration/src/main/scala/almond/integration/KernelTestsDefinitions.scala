@@ -45,6 +45,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  test0("progress bar") { implicit forceVersion =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.progressBar()
+    }
+  }
+
   test0("clear output") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()

@@ -10,6 +10,7 @@ import almond.directives.{HasKernelOptions, KernelOptions}
 import almond.directives.HasKernelOptions.ops._
 import almond.internals.{
   Capture,
+  DisplayIdTracker,
   FunctionInputStream,
   FunctionOutputStream,
   HtmlAnsiOutputStream,
@@ -115,6 +116,8 @@ final class Execute(
 
   private var currentPublishOpt0 = Option.empty[OutputHandler]
 
+  @volatile private var currentDisplayIdTracker0 = Option.empty[DisplayIdTracker]
+
   private val capture0 =
     if (trapOutput)
       Capture.nop()
@@ -217,6 +220,10 @@ final class Execute(
     currentInputManagerOpt0
   def currentPublishOpt: Option[OutputHandler] =
     currentPublishOpt0
+
+  /** Whether an element with display id `id` was displayed in the output of the current cell */
+  def displayedInCurrentCell(id: String): Boolean =
+    currentDisplayIdTracker0.exists(_.wasDisplayed(id))
 
   lazy val updatableResults: JupyterApi.UpdatableResults =
     new JupyterApi.UpdatableResults {
@@ -610,6 +617,34 @@ final class Execute(
     }
 
   def apply(
+    ammInterp: ammonite.interp.Interpreter,
+    code: String,
+    inputManager: Option[InputManager],
+    outputHandler0: Option[OutputHandler],
+    colors0: Ref[Colors],
+    storeHistory: Boolean,
+    executeHooks: Seq[JupyterApi.ExecuteHook],
+    postRunHooks: Seq[JupyterApi.PostRunHook],
+    jupyterApi: JupyterApi
+  ): ExecuteResult = {
+    val tracker  = new DisplayIdTracker
+    val previous = currentDisplayIdTracker0
+    currentDisplayIdTracker0 = Some(tracker)
+    try apply0(
+        ammInterp,
+        code,
+        inputManager,
+        outputHandler0.map(tracker.wrap),
+        colors0,
+        storeHistory,
+        executeHooks,
+        postRunHooks,
+        jupyterApi
+      )
+    finally currentDisplayIdTracker0 = previous
+  }
+
+  private def apply0(
     ammInterp: ammonite.interp.Interpreter,
     code: String,
     inputManager: Option[InputManager],
