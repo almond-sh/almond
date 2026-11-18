@@ -350,6 +350,16 @@ object Install {
   def defaultConnectionFileArgs: Seq[String] =
     Seq("--connection-file", "{connection_file}")
 
+  /** Adds the connection file arguments to a kernel command
+    *
+    * They go before any `--`: what follows it is passed as is to the actual kernel by the launcher,
+    * which needs the connection file itself.
+    */
+  def withConnectionFileArgs(cmd: Seq[String], connectionFileArgs: Seq[String]): Seq[String] = {
+    val (before, after) = cmd.span(_ != "--")
+    before ++ connectionFileArgs ++ after
+  }
+
   def install(
     defaultId: String,
     defaultDisplayName: String,
@@ -465,7 +475,7 @@ object Install {
     val dir = Install.installIn(
       options.id.getOrElse(defaultId),
       KernelSpec(
-        argv = (cmd ++ connectionFileArgs).toList,
+        argv = withConnectionFileArgs(cmd, connectionFileArgs).toList,
         display_name = options.displayName.getOrElse(defaultDisplayName),
         language = language,
         interrupt_mode = interruptMode,

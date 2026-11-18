@@ -42,6 +42,23 @@ object InstallArgsTests extends TestSuite {
       assert(res == expectedRes)
     }
 
+    test("connection file arguments before --") {
+      val connArgs = Seq("--connection-file", "{connection_file}")
+      val res = Install.withConnectionFileArgs(
+        Seq("java", "-cp", "launcher.jar", "Launcher", "--log", "info", "--", "--quiet"),
+        connArgs
+      )
+      val expectedRes = Seq("java", "-cp", "launcher.jar", "Launcher", "--log", "info") ++
+        connArgs ++ Seq("--", "--quiet")
+      assert(res == expectedRes)
+    }
+
+    test("connection file arguments at the end without --") {
+      val connArgs = Seq("--connection-file", "{connection_file}")
+      val res = Install.withConnectionFileArgs(Seq("java", "Kernel", "--log", "info"), connArgs)
+      assert(res == Seq("java", "Kernel", "--log", "info") ++ connArgs)
+    }
+
     test("keep other options starting like install ones") {
       val args = List("--environment", "foo", "--ids=a", "--install-dir", "d")
       val res  = Install.withoutInstallArgs(args)
