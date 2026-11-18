@@ -7,9 +7,10 @@ import dotty.tools.dotc.ScalacCommand
 
 object ConfigureCompiler {
   def addOptions(interpApi: InterpAPI)(options: Seq[String]): Unit =
-    interpApi.preConfigureCompiler { ctx =>
-      val summary =
-        ScalacCommand.distill(options.toArray, ctx.settings)(ctx.settingsState)(using ctx)
-      ctx.setSettings(summary.sstate)
-    }
+    if (options.nonEmpty)
+      interpApi.preConfigureCompiler { ctx =>
+        val summary =
+          ScalacCommand.distill(options.toArray, ctx.settings)(ctx.settingsState)(using ctx)
+        ctx.setSettings(summary.sstate)
+      }
 }
