@@ -197,6 +197,21 @@ JupyterLab options.
 
 `dev.jupyterFast` and `dev.jupyterCmdFast` are the same as `dev.jupyter` and `dev.jupyterCmd`.
 
+## Run a Jupyter console
+
+```text
+$ ./mill -i dev.jupyterConsole
+```
+
+This installs the kernels like `dev.jupyter` does, then runs `jupyter console` on the
+Scala 2.13 kernel. Pass a Scala version first to run another one, like
+`./mill -i dev.jupyterConsole 3.10.1`, and `jupyter console` options after it.
+
+`jupyter console` sends the standard error of the kernel to the terminal, so the kernels
+it runs log to files rather than to their standard error, under
+`out/dev/jupyterConsole0.dest/logs` (one file per kernel id). The command prints the
+`tail -F` command to follow them.
+
 ## Build a kernel launcher
 
 ```text

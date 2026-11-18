@@ -232,6 +232,8 @@ object JupyterServer {
     *   directory with the `jupyter` command, put first in the `PATH` of the installation
     * @param app
     *   what `cs launch` runs, along with its options
+    * @param logFile
+    *   file the kernel writes its logs to, rather than to its standard error
     */
   private def installKernel(
     source: KernelSource,
@@ -241,6 +243,7 @@ object JupyterServer {
     app: Seq[String],
     kernelId: String,
     name: String,
+    logFile: Option[os.Path],
     extraOptions: Seq[String]
   ): Unit = {
     val command = Seq(source.cs, "launch", "--use-bootstrap") ++ app ++ source.csRepositoryArgs ++
@@ -257,6 +260,7 @@ object JupyterServer {
         s"COURSIER_REPOSITORIES=${source.kernelRepositories}"
       ) ++
       kernelOptions ++
+      logFile.toSeq.flatMap(f => Seq("--log-to", f.toString)) ++
       extraOptions
     System.err.println(s"Installing kernel $kernelId")
     os.proc(command).call(
@@ -501,6 +505,10 @@ object JupyterServer {
     * `jupyterDir/kernels`, with `cs launch` (see [[installKernel]]), relying on the `jupyter`
     * command of the uv-managed environment with the dependency groups `groups`. Kernels installed
     * there earlier are removed first.
+    *
+    * The kernels log at the debug level, to their standard error by default, which Jupyter servers
+    * send to their own output. If `logDir` is specified, each kernel logs to `<kernel id>.log` in
+    * it instead.
     */
   private def installKernels(
     uv: os.Path,
@@ -510,6 +518,7 @@ object JupyterServer {
     javaHome: os.Path,
     scalaVersions: Seq[String],
     jupyterDir: os.Path,
+    logDir: Option[os.Path],
     specialExtraOptions: String*
   ): Unit = {
     val scriptsDir = jupyterScriptsDir(uv, workspace, groups)
@@ -524,6 +533,7 @@ object JupyterServer {
         Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion) ++ source.csChannelArgs,
         kernelId(scalaVersion),
         s"Scala $scalaVersion (sources)",
+        logDir.map(_ / s"${kernelId(scalaVersion)}.log"),
         Nil
       )
     installKernel(
@@ -534,6 +544,7 @@ object JupyterServer {
       Seq(source.launcherDependency, "--main-class", source.launcherMainClass),
       specialKernelId,
       "Scala (special, sources)",
+      logDir.map(_ / s"$specialKernelId.log"),
       specialExtraOptions
     )
     System.err.println(s"JUPYTER_PATH=$jupyterDir")
@@ -575,6 +586,7 @@ object JupyterServer {
       javaHome,
       scalaVersions,
       jupyterDir,
+      None,
       "--quiet=false"
     )
 
@@ -643,6 +655,9 @@ object JupyterServer {
   /** Runs a Jupyter console on a kernel running Scala `scalaVersion`. `args` are passed to `jupyter
     * console`: a `--kernel=…` there replaces that kernel (`--kernel=xpython` runs xeus-python,
     * say).
+    *
+    * `jupyter console` passes the standard error of the kernel to the terminal, so the kernels log
+    * to files under `logDir` here, rather than flooding the console with their debug logs.
     */
   def jupyterConsole(
     uv: os.Path,
@@ -650,17 +665,38 @@ object JupyterServer {
     source: KernelSource,
     scalaVersion: String,
     jupyterDir: os.Path,
+    logDir: os.Path,
     args: Seq[String],
     workspace: os.Path
   ): Unit = {
 
-    installKernels(uv, workspace, kernelGroups, source, javaHome, Seq(scalaVersion), jupyterDir)
+    os.makeDir.all(logDir)
+    installKernels(
+      uv,
+      workspace,
+      kernelGroups,
+      source,
+      javaHome,
+      Seq(scalaVersion),
+      jupyterDir,
+      Some(logDir)
+    )
 
     // jupyter console rejects several --kernel options, so only pass ours if args has none
     val hasKernelArg = args.exists(arg => arg == "--kernel" || arg.startsWith("--kernel="))
     val kernelArgs   = if (hasKernelArg) Nil else Seq(s"--kernel=${kernelId(scalaVersion)}")
     val command =
       jupyterCommand(uv, workspace, kernelGroups, Seq("console") ++ kernelArgs ++ args*)
+    // tail -F, as the kernel creates its log file only once it starts
+    if (hasKernelArg)
+      System.err.println(
+        s"The almond kernels log to <kernel id>.log under $logDir (tail -F to follow them)"
+      )
+    else {
+      val logFile = logDir / s"${kernelId(scalaVersion)}.log"
+      System.err.println(s"The kernel logs to $logFile, follow them with")
+      System.err.println(s"  tail -F $logFile")
+    }
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }
