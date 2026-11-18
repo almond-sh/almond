@@ -62,7 +62,9 @@ object LineMagicHook {
 
             userHandlers0.get(name0).orElse(handlers.get(name0)) match {
               case None =>
-                System.err.println(s"Warning: ignoring unrecognized Toree line magic $name")
+                // kept, for execute hooks registered after this one to handle it (like the
+                // %sql one of the docs) - unrecognizedMagicsHook reports it if none does
+                remainingCode ++= rawLine
               case Some(handler) =>
                 handler.handle(name, values) match {
                   case Left(res) => errorOpt = Some(res)
@@ -77,6 +79,36 @@ object LineMagicHook {
         }
 
       errorOpt.toLeft(remainingCode.result())
+  }
+
+  /** Reports the line and cell magics that no execute hook handled
+    *
+    * The magic hooks keep the magics they don't know about, for other execute hooks to handle them.
+    * This hook should run after all the others, so that the magics that are still there by then are
+    * reported as errors, rather than reaching the compiler.
+    */
+  val unrecognizedMagicsHook: JupyterApi.ExecuteHook = { code =>
+    val cellMagicOpt = code.linesIterator.take(1).toList.collectFirst {
+      case line if line.startsWith("%%") => sep.split(line.trim).head
+    }
+    val lineMagics = inspect(code)
+      .collect {
+        case Left((elems, _, _)) => elems.head
+      }
+      .toVector
+    val messageOpt = cellMagicOpt match {
+      case Some(name) => Some(s"Cell magic $name not found")
+      case None if lineMagics.nonEmpty =>
+        val (kind, names) =
+          if (lineMagics.length == 1) ("magic", lineMagics.head)
+          else ("magics", lineMagics.mkString(", "))
+        Some(s"Line $kind $names not found")
+      case None => None
+    }
+    messageOpt match {
+      case Some(message) => Left(JupyterApi.ExecuteHookResult.Error("", message, Nil))
+      case None          => Right(code)
+    }
   }
 
 }

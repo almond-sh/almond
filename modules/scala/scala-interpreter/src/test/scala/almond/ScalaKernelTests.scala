@@ -1121,6 +1121,74 @@ object ScalaKernelTests extends TestSuite {
       )
     }
 
+    test("execute hooks handling magics with toree magics") {
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      // the %sql example of api-jupyter.md
+      kernel.execute(
+        """kernel.addExecuteHook { code =>
+          |  import almond.api.JupyterApi
+          |  import almond.interpreter.api.DisplayData
+          |
+          |  if (code.linesIterator.take(1).toList == List("%sql")) {
+          |    val sql = code.linesWithSeparators.drop(1).mkString
+          |    Left(JupyterApi.ExecuteHookResult.Success(DisplayData.text("SQL: " + sql.trim)))
+          |  }
+          |  else
+          |    Right(code)
+          |}
+          |""".stripMargin,
+        "res1: Boolean = true"
+      )
+      kernel.execute(
+        """%sql
+          |SELECT id, name FROM my_table
+          |""".stripMargin,
+        "SQL: SELECT id, name FROM my_table",
+        stderr = "" // no warning about an unrecognized magic
+      )
+
+      // magics that no hook handles are errors
+      kernel.execute(
+        """%nopenope
+          |1
+          |""".stripMargin,
+        stdout = "",
+        stderr = "",
+        errors = Seq(
+          ("", "Line magic %nopenope not found", List("Line magic %nopenope not found"))
+        )
+      )
+      kernel.execute(
+        """%%nopenope
+          |1
+          |""".stripMargin,
+        stdout = "",
+        stderr = "",
+        errors = Seq(
+          ("", "Cell magic %%nopenope not found", List("Cell magic %%nopenope not found"))
+        )
+      )
+      // the known ones still work
+      kernel.execute(
+        """%%html
+          |<b>foo</b>
+          |""".stripMargin,
+        "",
+        displaysHtml = Seq("<b>foo</b>" + ls)
+      )
+    }
+
     test("execution counts") {
       val interpreter = new ScalaInterpreter(
         params = interpreterParams.copy(

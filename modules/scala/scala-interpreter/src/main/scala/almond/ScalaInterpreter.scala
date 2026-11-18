@@ -232,7 +232,11 @@ final class ScalaInterpreter(
           outputHandler,
           colors0,
           storeHistory,
-          jupyterApi.executeHooks,
+          // after the hooks of users, so that they can handle magics unknown to the Toree ones
+          if (params.toreeMagics)
+            jupyterApi.executeHooks :+ LineMagicHook.unrecognizedMagicsHook
+          else
+            jupyterApi.executeHooks,
           jupyterApi.postRunHooks(),
           jupyterApi
         )
