@@ -308,6 +308,32 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       }
     }
 
+    test("scala 2 source JARs added after the first inspection") {
+      if (TestUtil.isScala2) {
+        // Scala 2 inspections are made of HTML, with the type then the docs
+        def html(interpreter: Interpreter, code: String, pos: Int): String =
+          interpreter.inspect(code, pos, detailLevel = 1)
+            .flatMap(_.data.get("text/html"))
+            .map(raw => readFromArray(raw.value)(stringCodec))
+            .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
+
+        val interpreter = newInterpreter(withSourceJars = false)
+        val code        = "os.list"
+        val pos         = code.length
+        // indexes the source JARs of the session, of which there are none here
+        assert(!html(interpreter, code, pos).contains("Returns all the files and folders"))
+
+        val jar = testSourceJars.find(_.last.startsWith("os-lib_")).getOrElse {
+          sys.error(s"No os-lib source JAR found in $testSourceJars")
+        }
+        val loadCode = "interp.load.cp(java.nio.file.Paths.get(\"\"\"" + jar + "\"\"\"))"
+        assert(interpreter.execute(loadCode).success)
+        // the JAR loaded above should have been indexed too
+        assert(html(interpreter, code, pos).contains("Returns all the files and folders"))
+      }
+      else "disabled"
+    }
+
     test("no result outside of trees") {
       // the Scala 2 implementation returns the type of the enclosing tree instead
       if (TestUtil.isScala2) "disabled"

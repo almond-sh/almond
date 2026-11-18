@@ -40,6 +40,11 @@ final class ScalaInterpreterInspections(
     new SourceDocs(frames, log)
   }
 
+  /** Nothing to do here: source JARs are only read when looking for the docs of a symbol (see
+    * SourceDocs), rather than indexed beforehand like in Scala 2
+    */
+  def updateSourceIndex(): Unit = ()
+
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] =
     try inspect0(code, pos)
     catch {

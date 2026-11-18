@@ -9,18 +9,17 @@ import ammonite.util.Util.newLine
 import scala.meta.dialects
 import scala.meta.internal.metals.Docstrings
 import scala.meta.internal.mtags.MtagsEnrichments._
-import scala.meta.internal.mtags.{IndexingExceptions, OnDemandSymbolIndex}
 import scala.meta.internal.semanticdb.scalac.SemanticdbOps
-import scala.meta.io.AbsolutePath
 import scala.meta.pc.SymbolDocumentation
-import scala.meta.pc.reports.EmptyReportContext
 
 import java.util.Optional
+import java.util.concurrent.TimeUnit
 
 import scala.collection.compat._
 import scala.jdk.CollectionConverters._
 import scala.tools.nsc.interactive.{Global => Interactive}
 import scala.util.Properties
+import scala.util.control.NonFatal
 
 final class ScalaInterpreterInspections(
   logCtx: LoggerContext,
@@ -35,38 +34,39 @@ final class ScalaInterpreterInspections(
 
   private val log = logCtx(getClass)
 
-  private lazy val docs: Docstrings = {
+  // FIXME In 2.13 and 3, the actual dialect might be one or the other,
+  // when reading JARs from the other version via TASTy compatibility
+  private val dialect =
+    if (scalaVersion.startsWith("3."))
+      dialects.Scala3
+    else if (scalaVersion.startsWith("2.13."))
+      dialects.Scala213
+    else
+      dialects.Scala212
 
-    val sourcePaths = SourcePath.sourcePath(frames, log)
+  private val sourceIndex = new SourceIndex(dialect, () => SourcePath.base(frames, log), log)
 
-    val symbolIndex = {
-      // FIXME In 2.13 and 3, the actual dialect might be one or the other,
-      // when reading JARs from the other version via TASTy compatibility
-      val dialect =
-        if (scalaVersion.startsWith("3."))
-          dialects.Scala3
-        else if (scalaVersion.startsWith("2.13."))
-          dialects.Scala213
-        else
-          dialects.Scala212
-      val index = OnDemandSymbolIndex.empty()(new EmptyReportContext)
-      for (p <- sourcePaths)
-        // mtags only reads source JARs from the default file system, see SourcePath.localFile
-        try index.addSourceJar(AbsolutePath(SourcePath.localFile(p)), dialect)
-        catch {
-          case e: java.io.IOException =>
-            log.warn(s"Ignoring exception while indexing $p", e)
-          case e: IndexingExceptions.PathIndexingException =>
-            log.warn(s"Ignoring exception while indexing $p", e)
-          case e: IndexingExceptions.InvalidJarException =>
-            log.warn(s"Ignoring exception while indexing $p", e)
-          case e: IndexingExceptions.InvalidSymbolException =>
-            log.warn(s"Ignoring exception while indexing $p", e)
-        }
-      index
+  /** Schedules the indexing of the source JARs of the session that haven't been indexed yet, in the
+    * background
+    *
+    * Called once the interpreter is initialized, and after each cell, so that inspections don't
+    * have to wait for indexing, and that the docs of the dependencies added by cells are found.
+    */
+  def updateSourceIndex(): Unit =
+    try sourceIndex.update(SourcePath.session(frames, log))
+    catch {
+      case NonFatal(e) =>
+        log.warn("Error looking for the source JARs of the session", e)
     }
 
-    new Docstrings(symbolIndex)(new EmptyReportContext)
+  // How long inspections wait for source JARs being indexed, before returning results without
+  // the docs of the JARs that aren't indexed yet
+  private def maxIndexWaitSeconds = 3L
+
+  private def docs: Docstrings = {
+    updateSourceIndex()
+    sourceIndex.await(maxIndexWaitSeconds, TimeUnit.SECONDS)
+    sourceIndex.docs
   }
 
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
@@ -155,12 +155,13 @@ final class ScalaInterpreterInspections(
                 )
                 log.debug(s"Symbol for '${code.take(pos)}|${code.drop(pos)}' is $sym")
 
+                lazy val docs0 = docs
                 val documentation =
                   if (sym.isEmpty)
                     Optional.empty[SymbolDocumentation]()
                   else
                     try
-                      docs.documentation(
+                      docs0.documentation(
                         sym,
                         () => parents,
                         scala.meta.pc.ContentType.MARKDOWN
@@ -222,7 +223,8 @@ final class ScalaInterpreterInspections(
     }
   }
 
-  def shutdown(): Unit = ()
+  def shutdown(): Unit =
+    sourceIndex.shutdown()
 }
 
 object ScalaInterpreterInspections {
