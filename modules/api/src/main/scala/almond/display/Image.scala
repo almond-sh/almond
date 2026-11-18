@@ -62,6 +62,14 @@ final class Image private (
   def withEmbed(embed: Boolean): Image =
     copy(embed = embed)
 
+  override def toString: String = {
+    val source = byteArrayOrUrl match {
+      case Left(url)    => s"Image.from(${Display.literal(url.toString)})"
+      case Right(bytes) => s"Image(${bytes.length} byte${if (bytes.length == 1) "" else "s"})"
+    }
+    source + format.fold("")(f => s".withFormat(Image.$f)")
+  }
+
   override def metadata(): Map[String, String] =
     Map() ++
       width.map("width" -> _) ++

@@ -60,6 +60,9 @@ final class IFrame private (
   def data(): Map[String, String] =
     Map(Html.mimeType -> html)
 
+  override def toString: String =
+    s"IFrame(${Display.literal(src)})"
+
 }
 
 object IFrame {

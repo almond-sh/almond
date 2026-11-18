@@ -27,6 +27,23 @@ trait Display {
 
 object Display {
 
+  /** Quotes and escapes `s`, like a Scala string literal */
+  private[display] def literal(s: String): String = {
+    val b = new StringBuilder
+    b += '"'
+    s.foreach {
+      case '"'                            => b ++= "\\\""
+      case '\\'                           => b ++= "\\\\"
+      case '\n'                           => b ++= "\\n"
+      case '\r'                           => b ++= "\\r"
+      case '\t'                           => b ++= "\\t"
+      case c if Character.isISOControl(c) => b ++= "\\" + "u%04x".format(c.toInt)
+      case c                              => b += c
+    }
+    b += '"'
+    b.result()
+  }
+
   private lazy val registered: Unit =
     Displayers.register(
       classOf[Display],

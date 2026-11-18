@@ -38,6 +38,9 @@ final class FileLink private (
   def data(): Map[String, String] =
     Map(Html.mimeType -> html)
 
+  override def toString: String =
+    s"FileLink(${Display.literal(link)})"
+
 }
 
 object FileLink {

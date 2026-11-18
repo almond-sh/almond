@@ -21,6 +21,10 @@ final class Data private (
     metadata0
   def data(): Map[String, String] =
     data0
+
+  // the data itself can be large, so only its MIME types are printed
+  override def toString: String =
+    data0.keys.toVector.sorted.mkString("Data(", ", ", ")")
 }
 
 object Data {
