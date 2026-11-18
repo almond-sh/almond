@@ -204,10 +204,11 @@ final class ScalaInterpreter(
   private def loadUpfrontOptions(
     ammInterp: ammonite.interp.Interpreter,
     outputHandler: Option[OutputHandler]
-  ): Unit =
-    if (!upfrontOptionsLoaded) {
+  ): Option[ExecuteResult.Error] =
+    if (upfrontOptionsLoaded) None
+    else {
       upfrontOptionsLoaded = true
-      execute0.loadOptions(ammInterp, params.upfrontKernelOptions, outputHandler)
+      execute0.loadOptions(ammInterp, params.upfrontKernelOptions, outputHandler, colors0())
     }
 
   def execute(
@@ -220,18 +221,22 @@ final class ScalaInterpreter(
     try {
       currentExecuteRequestOpt0 = messageOpt
       val ammInterp0 = ammInterp
-      loadUpfrontOptions(ammInterp0, outputHandler)
-      execute0(
-        ammInterp0,
-        code,
-        inputManager,
-        outputHandler,
-        colors0,
-        storeHistory,
-        jupyterApi.executeHooks,
-        jupyterApi.postRunHooks(),
-        jupyterApi
-      )
+      // If the upfront options can't be loaded, we report it in the cell and don't run it (like
+      // when the directives of a cell can't be loaded). Users can then run the cell holding
+      // the faulty directives again, once fixed.
+      loadUpfrontOptions(ammInterp0, outputHandler).getOrElse {
+        execute0(
+          ammInterp0,
+          code,
+          inputManager,
+          outputHandler,
+          colors0,
+          storeHistory,
+          jupyterApi.executeHooks,
+          jupyterApi.postRunHooks(),
+          jupyterApi
+        )
+      }
     }
     finally {
       currentExecuteRequestOpt0 = None

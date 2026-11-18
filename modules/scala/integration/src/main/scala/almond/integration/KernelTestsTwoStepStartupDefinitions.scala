@@ -162,6 +162,27 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
     }
   }
 
+  test0("Unknown dependency in launcher directives") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |//> using dep "org.nope::nope:0.0.1"
+             |""".stripMargin,
+          ""
+        )
+        // the actual kernel fails to load that dependency, and reports it in the first cell
+        val (handler, errors) = errorCollector()
+        execute("val n = 1 + 1", expectError = true, handler = handler)
+        assert(errors().length == 1)
+        assert(errors().head.contains("org.nope:nope_2.13:0.0.1"))
+        // later cells run fine
+        execute("val n = 1 + 1", "n: Int = 2")
+      }
+    }
+  }
+
   test0("Several directives and comments") { implicit forceVersion =>
     kernelLauncher.withKernel { runner =>
       implicit val sessionId: SessionId = SessionId()

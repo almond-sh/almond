@@ -377,17 +377,27 @@ final class Execute(
     else
       currentNoHistoryLine0 += 1
 
+  /** Loads kernel options passed upfront
+    *
+    * @return
+    *   an error to report in the current cell, if they couldn't be loaded (like an unknown
+    *   dependency)
+    */
   def loadOptions(
     ammInterp: ammonite.interp.Interpreter,
     options: KernelOptions,
-    outputHandler: Option[OutputHandler]
-  ): Unit =
+    outputHandler: Option[OutputHandler],
+    colors: Colors
+  ): Option[ExecuteResult.Error] =
     // with the output handler set, so that the notebook coursier logger can show the downloads of
     // the dependencies of these options
     withOutputHandler(outputHandler)(useOptions(ammInterp, options)) match {
       case Left(err) =>
         log.warn(s"Error loading initial kernel options: $err")
+        // same error as when loading the options of a cell fails
+        Some(Execute.error(colors, Some(new Exception(err)), ""))
       case Right(()) =>
+        None
     }
 
   private var standaloneSourceCount = 0
