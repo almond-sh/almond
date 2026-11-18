@@ -71,6 +71,9 @@ final class TestInterpreter extends Interpreter {
       Thread.sleep(code.stripPrefix("error-after:").toLong)
       ExecuteResult.Error("error")
     }
+    else if (code.startsWith("throw:"))
+      // like an interpreter crashing while running a cell
+      throw new Exception(code.stripPrefix("throw:"))
     else if (code.startsWith("echo:")) {
       if (storeHistory)
         count += 1

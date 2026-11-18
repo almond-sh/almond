@@ -130,13 +130,17 @@ final case class InterpreterMessageHandlers(
         if (aborted)
           IO.pure(ExecuteResult.Abort)
         else {
-          val run = interpreter.execute(
-            message.content.code,
-            storeHistory,
-            if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
-            Some(handler),
-            Some(message)
-          )
+          val run = interpreter
+            .execute(
+              message.content.code,
+              storeHistory,
+              if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
+              Some(handler),
+              Some(message)
+            )
+            // Errors here would end the kernel (see MessageHandler.blocking0): we report them as
+            // errors of the cell instead
+            .handleError(unexpectedErrorResult)
           // comm messages sent while the cell is running go along with its outputs
           commHandlerOpt match {
             case Some(commHandler: DefaultCommHandler) =>
@@ -344,6 +348,13 @@ final case class InterpreterMessageHandlers(
 }
 
 object InterpreterMessageHandlers {
+
+  private def unexpectedErrorResult(e: Throwable): ExecuteResult.Error =
+    ExecuteResult.Error(
+      e.getClass.getName,
+      Option(e.getMessage).getOrElse(""),
+      e.getStackTrace.toList.map("at " + _)
+    )
 
   // Jupyter protocol >= 5.2 cursor positions are offsets in unicode code points, while
   // interpreters work with Java String indices (UTF-16 code units). These differ as soon
