@@ -326,6 +326,54 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       }
     }
 
+    test("scala 2 docs") {
+      if (TestUtil.isScala2) {
+        val interpreter = newInterpreter()
+
+        // Source JARs are indexed in the background, and inspections only wait for that for a
+        // few seconds, which may not be enough here
+        val deadline = System.currentTimeMillis() + 120000L
+        while (
+          !scala2Html(interpreter, "os.list", "os.list".length).contains("Returns all the") &&
+          System.currentTimeMillis() < deadline
+        )
+          Thread.sleep(200L)
+
+        // scaladoc variables, like $coll, substituted with the values of the site, List here,
+        // including those whose values are variables too ($ccoll is $coll)
+        // complete code: the type of `List(1, 2).map(` varies (List[Nothing], CanBuildFrom
+        // overload in 2.12, …), as it depends on the presentation compiler's error recovery
+        val mapCode = "List(1, 2).map(_ + 1)"
+        val mapRes  = scala2Html(interpreter, mapCode, mapCode.indexOf("map") + 1)
+        // "Builds a new collection by …" in Scala 2.12
+        assert(mapRes.contains("by applying a function to all elements of this list."))
+        assert(!mapRes.contains("$"))
+
+        // variables defined in a base class of the site, from another file ($orderDependent)
+        val foldCode = "Vector(1, 2).foldLeft(0)(_ + _)"
+        val foldRes  = scala2Html(interpreter, foldCode, foldCode.indexOf("foldLeft") + 1)
+        assert(foldRes.contains("Applies "))
+        assert(!foldRes.contains("$"))
+        // The doc of foldLeft has x,,1,, subscripts since Scala 2.13.4 or so
+        if (foldRes.contains("Going left to right")) {
+          // x,,1,, subscripts, and lines of paragraphs without leading spaces
+          assert(foldRes.contains("\n`x\u2081`, `x\u2082`"))
+          assert(!foldRes.contains("\n elements"))
+        }
+
+        // links to other symbols rendered as code, rather than as [walk](walk)
+        val listRes = scala2Html(interpreter, "os.list", "os.list".length)
+        assert(listRes.contains("Returns all the files and folders"))
+        assert(listRes.contains("`walk`"))
+        assert(!listRes.contains("](walk)"))
+
+        // docs of the companion class of objects
+        val optionRes = scala2Html(interpreter, "Option", "Option".length)
+        assert(optionRes.startsWith("<div><pre>Option.type</pre><pre>Represents optional values."))
+      }
+      else "disabled"
+    }
+
     test("scala 2 source JARs added after the first inspection") {
       if (TestUtil.isScala2) {
         val interpreter = newInterpreter(withSourceJars = false)

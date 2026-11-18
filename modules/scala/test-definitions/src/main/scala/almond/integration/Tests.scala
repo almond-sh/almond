@@ -817,7 +817,7 @@ object Tests {
           val code   = "os.read"
           val result = inspect(code, code.length - 3, detailed = true)
           val expected = Seq(
-            """<div><pre>os.read.type</pre><pre>Reads the contents of a [os.Path](os.Path) or other [os.Source](os.Source) as a
+            """<div><pre>os.read.type</pre><pre>Reads the contents of a `os.Path` or other `os.Source` as a
               |`java.lang.String`. Defaults to reading the entire file as UTF-8, but you can
               |also select a different `charSet` to use, and provide an `offset`/`count` to
               |read from if the source supports seeking.</pre></div>""".stripMargin
