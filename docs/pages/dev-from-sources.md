@@ -118,6 +118,18 @@ warning, and these two personas aren't available. The agents use your existing
 Claude Code and Codex credentials (or the `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`
 environment variables).
 
+Jupyter AI also ships an MCP server (`jupyter_server_mcp`), that lets MCP clients,
+like these personas, read and edit notebooks, run cells and run JupyterLab commands.
+That server doesn't require the Jupyter token, nor any other credentials: any process
+running on the machine could use it. So it's disabled by default. Pass `--mcp` to
+enable it:
+```text
+$ ./mill -i dev.jupyter --mcp
+```
+It then listens on a free port of `localhost`, that the command prints, rather than
+on its default port (3001), so that servers started from different worktrees don't
+clash. Pass `--MCPExtensionApp.mcp_port=…` along with `--mcp` to pick its port.
+
 The same server also serves the Jupyter Notebook UI (the classic, single-document
 one, [Notebook 7](https://jupyter-notebook.readthedocs.io/)) under `/tree`, next to
 JupyterLab under `/lab`. Switch between them from the View menu ("Launch Jupyter
@@ -192,8 +204,8 @@ Pass it to `eval` to run JupyterLab, with jq for example:
 $ ( eval "$(./mill show dev.jupyterCmd | jq -r .)" )
 ```
 (The subshell keeps the `cd` from changing the current directory of your shell.)
-Like `dev.jupyter`, it accepts a Scala version, `--classic`, `--base-address`, and
-JupyterLab options.
+Like `dev.jupyter`, it accepts a Scala version, `--classic`, `--base-address`, `--mcp`,
+and JupyterLab options.
 
 `dev.jupyterFast` and `dev.jupyterCmdFast` are the same as `dev.jupyter` and `dev.jupyterCmd`.
 
