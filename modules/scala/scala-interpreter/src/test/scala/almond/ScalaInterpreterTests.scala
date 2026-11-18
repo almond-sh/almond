@@ -314,6 +314,45 @@ object ScalaInterpreterTests extends TestSuite {
         else backticksTest()
       }
 
+      test("types aligned with matches") {
+        // JupyterLab matches the items of the '_jupyter_types_experimental' metadata with
+        // completions by index, and inserts their text, so these need to be aligned
+        val interpreter = newInterpreter()
+        assert(interpreter.execute("val `my-value` = 1").success)
+
+        def types(res: Completion): Seq[(String, String)] =
+          ujson.read(res.metadata.value).obj.get("_jupyter_types_experimental").toSeq.flatMap {
+            types =>
+              types.arr.map(entry => (entry("text").str, entry("type").str))
+          }
+
+        def check(code: String, expected: String*): Seq[(String, String)] = {
+          val res    = interpreter.complete(code, code.length)
+          val types0 = types(res)
+          assert(types0.nonEmpty)
+          assert(types0.map(_._1) == res.completions)
+          for (compl <- expected)
+            assert(res.completions.contains(compl))
+          types0
+        }
+
+        // overloads, and members brought by implicit conversions
+        val listTypes = check("List(1, 2).ma", "max", "maxBy")
+        assert(listTypes.contains(("maxBy", "Method")))
+        check("kernel.publish.", "html", "js")
+        check("import scala.collection.mu", "mutable")
+        check("repl.la", "lastException")
+        // Scope completions crash in Ammonite 3.1.0's completion internals for Scala >= 3.9
+        if (!scala.util.Properties.versionNumberString.startsWith("3.9."))
+          check("`my-v", "`my-value`")
+        if (TestUtil.isScala2)
+          // classes and their companions, inner classes, from unimported packages
+          for (code <- Seq("HashM", "val m = new HashM")) {
+            val hashMapTypes = check(code, "java.util.HashMap", "scala.collection.mutable.HashMap")
+            assert(hashMapTypes.contains(("java.util.HashMap", "Class")))
+          }
+      }
+
       test("using dep directives") {
         // module names and versions are looked up on Maven Central
         def check(code: String, start: Int, expected: String): Unit = {

@@ -56,6 +56,12 @@ object ScalaInterpreterCompletions {
     it.toSet
   }
 
+  /** Completes code
+    *
+    * @return
+    *   the position completions start from in `snippet`, and the completions, along with their
+    *   kinds ("method", "class", "value", etc., or empty if unknown), sorted
+    */
   def complete(
     compilerManager: ammonite.compiler.iface.CompilerLifecycleManager,
     dependencyCompleteOpt: Option[String => (Int, Seq[String])],
@@ -63,7 +69,7 @@ object ScalaInterpreterCompletions {
     previousImports: String,
     snippet: String,
     logCtx: LoggerContext
-  ): (Int, Seq[String], Seq[String], Seq[(String, String)]) = {
+  ): (Int, Seq[(String, String)]) = {
 
     val compilerManager0 = compilerManager match {
       case m: ammonite.compiler.CompilerLifecycleManager => m
@@ -166,30 +172,18 @@ object ScalaInterpreterCompletions {
       s.name.decode.toString.contains('$')
     }
 
-    val filteredCompletions = completions.filter { c =>
-      c.symbols.isEmpty || c.symbols.exists(!blacklisted(_))
-    }
-    val signatures = {
+    val completionsWithKinds = {
       given Context = ctx1
       for {
-        c <- filteredCompletions
-        s <- c.symbols
-        isMethod = s.denot.is(Flags.Method)
-        if isMethod
-      } yield s"def ${s.name}${s.denot.info.widenTermRefExpr.show}"
-    }
-    val completionsWithTypes = {
-      given Context = ctx1
-      for {
-        c <- filteredCompletions
-        s <- c.symbols
-      } yield (c.finalLabel, s.denot.kindString)
+        c <- completions
+        // the symbols of a completion are its overloads, or a class and its companion, …
+        symbols = c.symbols.filter(!blacklisted(_))
+        if c.symbols.isEmpty || symbols.nonEmpty
+      } yield (c.finalLabel, symbols.headOption.fold("")(_.denot.kindString))
     }
     (
       start - prefix.length,
-      filteredCompletions.map(_.finalLabel).sorted,
-      signatures,
-      completionsWithTypes.sorted
+      completionsWithKinds.sorted.distinct
     )
   }
 

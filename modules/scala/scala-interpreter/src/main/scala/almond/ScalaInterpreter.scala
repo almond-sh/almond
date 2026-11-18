@@ -21,6 +21,7 @@ import fastparse.Parsed
 
 import java.nio.charset.StandardCharsets
 
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 /** Holds bits of state for the interpreter, and implements [[almond.interpreter.Interpreter]]. */
@@ -278,14 +279,22 @@ final class ScalaInterpreter(
       (value.start + from, DirectiveCompletion.sortCompletions(value.prefix, completions))
     }
 
+  /** Removes the completions we don't want to offer, and the duplicates (keeping the first one) */
+  private def cleanCompletions(completions: Seq[(String, String)]): Seq[(String, String)] = {
+    val seen = mutable.HashSet.empty[String]
+    completions
+      .map { case (compl, kind) => (compl.trim, kind) }
+      .filter { case (compl, _) => compl.nonEmpty && !compl.contains("$") && seen.add(compl) }
+  }
+
   private def completeCode(
     code: String,
     pos: Int
-  ): (Int, Int, Seq[String], Seq[(String, String)]) = {
+  ): (Int, Int, Seq[(String, String)]) = {
 
     val backquotedIdentOpt = BackquotedCompletion.find(code, pos)
 
-    val (newPos0, completions0, _, completionsWithTypes0) = withCompilerLock {
+    val (newPos0, completions0) = withCompilerLock {
       ScalaInterpreterCompletions.complete(
         ammInterp.compilerManager,
         Some(ammInterp.dependencyComplete),
@@ -300,30 +309,31 @@ final class ScalaInterpreter(
       .flatMap(_.adjust(pos, newPos0))
       .getOrElse((newPos0, pos, (s: String) => s))
 
-    val completions = completions0
-      .filter(!_.contains("$"))
-      .filter(_.nonEmpty)
-      .map(adjustCompletion)
-    val completionsWithTypes = completionsWithTypes0.map {
-      case (compl, tpe) =>
-        (adjustCompletion(compl), tpe)
+    val completions = cleanCompletions(completions0).map {
+      case (compl, kind) =>
+        (adjustCompletion(compl), kind)
     }
 
-    (newPos, endPos, completions, completionsWithTypes)
+    (newPos, endPos, cleanCompletions(completions))
   }
 
   override def complete(code: String, pos: Int): Completion = {
 
-    val (newPos, endPos, completions, completionsWithTypes) =
+    // matches, and their types if any, which must be aligned with them: JupyterLab matches
+    // items of '_jupyter_types_experimental' with completions by index, and inserts the text
+    // of the former
+    val (newPos, endPos, completions, typesOpt) =
       DirectiveCompletion.findDependency(code, pos) match {
         case Some(value) =>
           val (start, completions) = completeDirectiveDependency(value)
           // No types for these: when filtering completions, JupyterLab sorts the ones matching
           // equally well alphabetically by the text that comes with their type, and keeps their
           // order if they have none, which keeps versions sorted (highest first)
-          (start, pos, completions, Nil)
+          val completions0 = cleanCompletions(completions.map((_, ""))).map(_._1)
+          (start, pos, completions0, None)
         case None =>
-          completeCode(code, pos)
+          val (newPos, endPos, completionsWithKinds) = completeCode(code, pos)
+          (newPos, endPos, completionsWithKinds.map(_._1), Some(completionsWithKinds.map(_._2)))
       }
 
     val metadata =
@@ -369,11 +379,11 @@ final class ScalaInterpreter(
             |""".stripMargin.getBytes(StandardCharsets.UTF_8)
         )
       else {
-        val elems = completionsWithTypes.map {
-          case (compl, tpe) =>
-            val tpe0 = tpe match {
+        val elems = typesOpt.toSeq.flatMap(completions.zip(_)).map {
+          case (compl, kind) =>
+            val tpe0 = kind match {
               case "value" => "Field"
-              case _       => tpe.capitalize
+              case _       => kind.capitalize
             }
             ujson.Obj(
               "text" -> ujson.Str(compl),
@@ -391,7 +401,7 @@ final class ScalaInterpreter(
     Completion(
       if (completions.isEmpty) pos else newPos,
       if (completions.isEmpty) pos else endPos,
-      completions.map(_.trim).distinct,
+      completions,
       None,
       metadata = metadata
     )
