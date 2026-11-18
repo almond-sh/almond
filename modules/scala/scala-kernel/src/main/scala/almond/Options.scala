@@ -191,7 +191,8 @@ final case class Options(
     """Write the kernel logs to a file, rather than to the standard error, like
       |```bash
       |--log debug --log-to /tmp/almond.log
-      |```""".stripMargin
+      |```
+      |Logs are appended to the file if it already exists.""".stripMargin
   )
   @ValueDescription("/path/to/log-file")
     logTo: Option[String] = None,

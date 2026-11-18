@@ -72,7 +72,10 @@ object ScalaKernel extends CaseApp[Options] {
           case None =>
             LoggerContext.stderr(level)
           case Some(f) =>
-            LoggerContext.printStream(level, new PrintStream(new FileOutputStream(new File(f))))
+            LoggerContext.printStream(
+              level,
+              new PrintStream(new FileOutputStream(new File(f), true))
+            )
         }
     }
 
