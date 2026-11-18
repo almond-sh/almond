@@ -1215,6 +1215,20 @@ object ScalaKernelTests extends TestSuite {
       kernel.execute("loaded + 1", "res7: Int = 7")
     }
 
+    test("repl load output") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      runner.withSession() { implicit session =>
+        // no "Compiling /…/(console)" message
+        Dsl.execute(
+          """repl.load("val loaded = 41")""",
+          "",
+          stdout = "",
+          stderr = ""
+        )
+        Dsl.execute("loaded + 1", "res2: Int = 42")
+      }
+    }
+
     test("invalid compiler option") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.invalidCompilerOption(scalaVersion)

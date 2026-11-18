@@ -885,6 +885,7 @@ final class Execute(
 }
 
 object Execute {
+
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
 
