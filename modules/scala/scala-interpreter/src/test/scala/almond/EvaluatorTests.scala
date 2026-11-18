@@ -70,11 +70,11 @@ object EvaluatorTests extends TestSuite {
       test("lazy vals") {
         runner.run(
           Seq(
-            "lazy val x = 'h'"            -> (if (TestUtil.isScala2) "" else "x: Char = <lazy>"),
+            "lazy val x = 'h'"            -> (if (TestUtil.isScala2) "" else "x: Char = [lazy]"),
             "x"                           -> "res2: Char = 'h'",
             "var w = 'l'"                 -> ifNotVarUpdates("w: Char = 'l'"),
-            "lazy val y = {w = 'a'; 'A'}" -> (if (TestUtil.isScala2) "" else "y: Char = <lazy>"),
-            "lazy val z = {w = 'b'; 'B'}" -> (if (TestUtil.isScala2) "" else "z: Char = <lazy>"),
+            "lazy val y = {w = 'a'; 'A'}" -> (if (TestUtil.isScala2) "" else "y: Char = [lazy]"),
+            "lazy val z = {w = 'b'; 'B'}" -> (if (TestUtil.isScala2) "" else "z: Char = [lazy]"),
             "z"                           -> "res6: Char = 'B'",
             "y"                           -> "res7: Char = 'A'",
             "w"                           -> "res8: Char = 'a'"
