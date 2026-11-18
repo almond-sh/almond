@@ -37,6 +37,13 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       .map(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.toVector)
       .getOrElse(sys.error(s"No text inspection result for '$code' at $pos"))
 
+  // Scala 2 inspections are made of HTML, with the type then the docs
+  private def scala2Html(interpreter: Interpreter, code: String, pos: Int): String =
+    interpreter.inspect(code, pos, detailLevel = 1)
+      .flatMap(_.data.get("text/html"))
+      .map(raw => readFromArray(raw.value)(stringCodec))
+      .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
+
   // The docs of Java libraries and of Scala 2 libraries are read from source JARs
   // (from the src.zip of the JDK for the JDK classes), see SourceDocs
   private def hasJdkSources =
@@ -214,6 +221,17 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       }
     }
 
+    test("scala 2 types defined in cells") {
+      if (TestUtil.isScala2) {
+        val interpreter = newInterpreter(withSourceJars = false)
+        assert(interpreter.execute("case class Q(x: Int)\nval q = Q(1)").success)
+        // no wrapper prefixes, like ammonite.$sess.cmd0.instance.Q
+        assert(scala2Html(interpreter, "q", 1) == "<div><pre>Q</pre></div>")
+        assert(scala2Html(interpreter, "val qs = List(q)", 5) == "<div><pre>List[Q]</pre></div>")
+      }
+      else "disabled"
+    }
+
     test("default arguments") {
       if (TestUtil.isScala2) "disabled"
       else {
@@ -310,18 +328,11 @@ object ScalaInterpreterInspectionTests extends TestSuite {
 
     test("scala 2 source JARs added after the first inspection") {
       if (TestUtil.isScala2) {
-        // Scala 2 inspections are made of HTML, with the type then the docs
-        def html(interpreter: Interpreter, code: String, pos: Int): String =
-          interpreter.inspect(code, pos, detailLevel = 1)
-            .flatMap(_.data.get("text/html"))
-            .map(raw => readFromArray(raw.value)(stringCodec))
-            .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
-
         val interpreter = newInterpreter(withSourceJars = false)
         val code        = "os.list"
         val pos         = code.length
         // indexes the source JARs of the session, of which there are none here
-        assert(!html(interpreter, code, pos).contains("Returns all the files and folders"))
+        assert(!scala2Html(interpreter, code, pos).contains("Returns all the files and folders"))
 
         val jar = testSourceJars.find(_.last.startsWith("os-lib_")).getOrElse {
           sys.error(s"No os-lib source JAR found in $testSourceJars")
@@ -329,7 +340,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         val loadCode = "interp.load.cp(java.nio.file.Paths.get(\"\"\"" + jar + "\"\"\"))"
         assert(interpreter.execute(loadCode).success)
         // the JAR loaded above should have been indexed too
-        assert(html(interpreter, code, pos).contains("Returns all the files and folders"))
+        assert(scala2Html(interpreter, code, pos).contains("Returns all the files and folders"))
       }
       else "disabled"
     }

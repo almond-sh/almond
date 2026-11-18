@@ -129,6 +129,9 @@ final class ScalaInterpreterInspections(
               // symbol read and trips assertCorrectThread. typeOfTree now produces this
               // fallback from inside its own askForResponse block instead.
               .getOrElse("<unknown>")
+            // like `Point` rather than `ammonite.$sess.cmd3.instance.Point`, for the types
+            // defined in cells
+            val typeStr0 = CellWrappers.withoutWrappers(typeStr)
 
             val docstringsOpt = {
               val symbol = tree.symbol
@@ -200,7 +203,7 @@ final class ScalaInterpreterInspections(
 
             import scalatags.Text.all._
 
-            val typeHtml0      = pre(typeStr)
+            val typeHtml0      = pre(typeStr0)
             val typeHtml: Frag = typeHtml0
 
             val wholeHtml = div(
@@ -208,7 +211,7 @@ final class ScalaInterpreterInspections(
               docstringsOpt.fold[Frag](Seq.empty[Frag])(pre(_))
             )
 
-            val wholeText = typeStr + docstringsOpt.fold("")(newLine + newLine + _)
+            val wholeText = typeStr0 + docstringsOpt.fold("")(newLine + newLine + _)
 
             // A text/plain alternative alongside the HTML: the VS Code Jupyter PowerToys
             // Contextual Help panel drops any inspect_request reply whose data has no
