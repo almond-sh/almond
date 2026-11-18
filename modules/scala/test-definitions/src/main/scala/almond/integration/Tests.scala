@@ -302,8 +302,13 @@ object Tests {
     * still set when it's done. This checks that this flag doesn't break the publishing of the
     * result, nor the cells that follow.
     */
-  def interruptIgnoredByUserCode()(implicit sessionId: SessionId, runner: Runner): Unit =
-    runner.withSession("--use-thread-interrupt") { implicit session =>
+  def interruptIgnoredByUserCode()(implicit sessionId: SessionId, runner: Runner): Unit = {
+    // --use-thread-interrupt is an option of the actual kernel, that the launcher (two-step
+    // start-up) only passes along after a "--"
+    val options =
+      if (runner.differedStartUp) Seq("--", "--use-thread-interrupt")
+      else Seq("--use-thread-interrupt")
+    runner.withSession(options: _*) { implicit session =>
       val sendInterruptRequest = onStdout("waiting for interrupt") {
         interruptRequest()
       }
@@ -337,6 +342,7 @@ object Tests {
         "notInterrupted: Boolean = true"
       )
     }
+  }
 
   def exit()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
