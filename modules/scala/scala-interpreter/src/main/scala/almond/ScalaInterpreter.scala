@@ -331,6 +331,9 @@ final class ScalaInterpreter(
           // order if they have none, which keeps versions sorted (highest first)
           val completions0 = cleanCompletions(completions.map((_, ""))).map(_._1)
           (start, pos, completions0, None)
+        case None if Comments.isInComment(code, pos) =>
+          // the Scala 2 presentation compiler offers all the names in scope there
+          (pos, pos, Nil, None)
         case None =>
           val (newPos, endPos, completionsWithKinds) = completeCode(code, pos)
           (newPos, endPos, completionsWithKinds.map(_._1), Some(completionsWithKinds.map(_._2)))

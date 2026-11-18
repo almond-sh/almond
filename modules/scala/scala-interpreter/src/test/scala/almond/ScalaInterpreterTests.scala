@@ -353,6 +353,22 @@ object ScalaInterpreterTests extends TestSuite {
           }
       }
 
+      test("no completions in comments") {
+        val interpreter = newInterpreter()
+        def check(code: String): Unit = {
+          val res = interpreter.complete(code, code.length)
+          assert(res.completions.isEmpty)
+        }
+        check("// List(1).ma")
+        check("// foo")
+        check("val n = 2 // n")
+        check("//> using de")
+        check("/* Lis")
+        // not in comments anymore
+        assert(interpreter.complete("// foo\nLis", 10).completions.contains("List"))
+        assert(interpreter.complete("/* foo */ Lis", 13).completions.contains("List"))
+      }
+
       test("using dep directives") {
         // module names and versions are looked up on Maven Central
         def check(code: String, start: Int, expected: String): Unit = {
