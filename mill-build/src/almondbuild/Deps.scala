@@ -48,10 +48,18 @@ object Deps {
     )
       .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}")
 
+  /** The empty module that Guava depends on, so that it evicts the standalone `listenablefuture`
+    * artifacts, whose classes Guava ships. It has no sources JAR, so that installing the kernel
+    * with `cs launch`, that fetches sources (see `app/almond.json`), prints errors about it. Guava
+    * comes from Ammonite (via scala-cli-bsp, bsp4j, lsp4j) and mtags.
+    */
+  private def guavaListenableFuture = ("com.google.guava", "listenablefuture")
+
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
   def ammoniteRepl =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))
+      .exclude(guavaListenableFuture)
   def ammoniteReplApi    = mvn"sh.almond.ammonite::ammonite-repl-api:${Versions.ammonite}"
   def ammoniteSpark      = mvn"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = mvn"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
@@ -98,6 +106,7 @@ object Deps {
         oldestMtagsScalaVersion
       else sv
     mvn"org.scalameta:mtags_$mtagsScalaVersion:$mtagsVersion"
+      .exclude(guavaListenableFuture)
   }
   def munit                    = mvn"org.scalameta::munit:1.3.6"
   def osLib                    = mvn"com.lihaoyi::os-lib:0.11.10"
