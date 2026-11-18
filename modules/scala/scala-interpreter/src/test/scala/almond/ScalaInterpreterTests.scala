@@ -314,6 +314,20 @@ object ScalaInterpreterTests extends TestSuite {
         else backticksTest()
       }
 
+      test("backticks in the same cell") {
+        val interpreter = newInterpreter()
+        // '|' marks the cursor position (and is removed from code)
+        def check(code: String, expected: Completion): Unit = {
+          val pos = code.indexOf('|')
+          val res = interpreter.complete(code.take(pos) + code.drop(pos + 1), pos).clearMetadata
+          assert(res == expected)
+        }
+        // a line starting with a backquoted identifier, after another line
+        check("val `my-value` = 1\n`my-v|", Completion(19, 24, Seq("`my-value`")))
+        check("val `my-value` = 1\n`my-v|`", Completion(20, 24, Seq("my-value")))
+        check("val myValue = 1\n`myV|", Completion(16, 20, Seq("`myValue`")))
+      }
+
       test("types aligned with matches") {
         // JupyterLab matches the items of the '_jupyter_types_experimental' metadata with
         // completions by index, and inserts their text, so these need to be aligned
@@ -342,9 +356,7 @@ object ScalaInterpreterTests extends TestSuite {
         check("kernel.publish.", "html", "js")
         check("import scala.collection.mu", "mutable")
         check("repl.la", "lastException")
-        // Scope completions crash in Ammonite 3.1.0's completion internals for Scala >= 3.9
-        if (!scala.util.Properties.versionNumberString.startsWith("3.9."))
-          check("`my-v", "`my-value`")
+        check("`my-v", "`my-value`")
         if (TestUtil.isScala2)
           // classes and their companions, inner classes, from unimported packages
           for (code <- Seq("HashM", "val m = new HashM")) {

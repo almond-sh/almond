@@ -83,7 +83,10 @@ object ScalaInterpreterCompletions {
 
     val prefix = previousImports + newLine +
       "object AutocompleteWrapper{ val expr: _root_.scala.Unit = {" + newLine
-    val suffix  = newLine + "()}}"
+    // The ';' ensures the last line of the snippet isn't parsed as a leading infix operator
+    // applied to the '()', which a line starting with a backquoted identifier, like `` `my-v` ``,
+    // would be: its completions would be those of a method of the previous line
+    val suffix  = newLine + ";()}}"
     val allCode = prefix + snippet + suffix
     val index   = offset + prefix.length
 
