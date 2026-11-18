@@ -417,13 +417,16 @@ final class ScalaInterpreter(
   }
 
   private def nl = System.lineSeparator()
-  def kernelInfo() =
+  def kernelInfo() = {
+    // Not scala.util.Properties.versionNumberString, that's the version of the Scala library,
+    // like 2.13.x for Scala 3 versions earlier than 3.8
+    val scalaVersion = AlmondCompilerLifecycleManager.compilerVersion
     KernelInfo(
       "scala",
       almond.api.Properties.version,
       KernelInfo.LanguageInfo(
         name = "scala",
-        version = scala.util.Properties.versionNumberString,
+        version = scalaVersion,
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
@@ -431,11 +434,12 @@ final class ScalaInterpreter(
       ),
       s"""Almond ${almond.api.Properties.version}
          |Ammonite ${ammonite.Constants.version}
-         |${scala.util.Properties.versionMsg}
+         |Scala $scalaVersion
          |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin +
         params.extraBannerOpt.fold("")(nl + nl + _),
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
+  }
 
   override def shutdown(): Unit = {
     try Function.chain(ammInterp.beforeExitHooks).apply(())
