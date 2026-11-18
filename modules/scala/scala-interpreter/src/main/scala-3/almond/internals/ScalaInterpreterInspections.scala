@@ -7,7 +7,7 @@ import ammonite.runtime.Frame
 import ammonite.util.Imports
 import ammonite.util.Util.newLine
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Comments.{Comment, ContextDocstrings, docCtx}
+import dotty.tools.dotc.core.Comments.{ContextDocstrings, docCtx}
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.termName
@@ -397,15 +397,28 @@ object ScalaInterpreterInspections {
         Iterator.empty
     val fromTasty = for {
       docCtx <- ctx.docCtx
-      doc <- symbols
-        .iterator
-        .flatMap(candidates)
-        .flatMap(sym => docCtx.docstring(sym).map((sym, _)))
-        .map { (sym, comment) =>
-          val expanded = expand(docCtx, comment, sym, site(path, sym))
-          DocText.fromScaladoc(expanded.expandedBody.getOrElse(expanded.raw)).render
-        }
-        .find(_.nonEmpty)
+      doc <- {
+        val docs = symbols
+          .iterator
+          .flatMap(candidates)
+          .flatMap(sym => docCtx.docstring(sym).map((sym, _)))
+          .toList
+        docs
+          .iterator
+          .zipWithIndex
+          .map {
+            case ((sym, comment), idx) =>
+              // for @inheritdoc: the doc of an overridden symbol
+              lazy val inherited = docs
+                .drop(idx + 1)
+                .headOption
+                .fold("")((_, parent) => DocText.fromScaladoc(parent.raw).main)
+              DocText.fromScaladoc(comment.raw, inherited)
+                .expand(variables(docCtx, sym, site(path, sym)))
+                .render
+          }
+          .find(_.nonEmpty)
+      }
     } yield doc
     fromTasty.orElse {
       symbols
@@ -427,27 +440,22 @@ object ScalaInterpreterInspections {
     if (qualifierClass.exists) qualifierClass else sym.owner
   }
 
-  // Like dotty.tools.dotc.typer.Docstrings.cookComment, minus the typing of @usecase
-  // sections, which would enter symbols in the compiler, and minus the caching of the
-  // result, which depends on the site here.
-  private def expand(
+  // The scaladoc variables defined with @define in the docs of site and of its base classes,
+  // most specific first, then of the classes enclosing sym, like SourceDocs.variables.
+  // These variables are substituted by DocText rather than by the compiler (via
+  // ContextDocstrings.templateExpander), whose values keep the leading '*' and the line
+  // break of the lines following @define, like the `$coll\n *` of `ccoll` in
+  // scala.collection.IterableOnceOps, which gave "Builds a new list\n by applying …".
+  private def variables(
     docCtx: ContextDocstrings,
-    comment: Comment,
     sym: Symbol,
     site: Symbol
-  )(using Context): Comment =
-    if (comment.isExpanded || !site.exists) comment
-    else
-      try {
-        val expander  = docCtx.templateExpander
-        val baseSites = if (site.isClass) site.info.baseClasses else Nil
-        // CommentExpander.expand(s, s) is called for its side effect of registering the
-        // @define variables of s: CommentExpander.defineVariables isn't public anymore
-        // in recent Scala versions
-        (sym :: site :: baseSites).distinct.foreach(s => expander.expand(s, s))
-        comment.expand(expander.expandedDocComment(sym, site, _))
-      }
-      catch {
-        case NonFatal(_) => comment // e.g. CommentExpander.ExpansionLimitExceeded
-      }
+  )(using Context): Map[String, String] = {
+    val classes =
+      (if (site.exists && site.isClass) site.info.baseClasses else Nil) ++
+        sym.ownersIterator.filter(_.isClass).toList
+    classes.reverse.foldLeft(Map.empty[String, String]) { (acc, cls) =>
+      acc ++ docCtx.docstring(cls).fold(Map.empty[String, String])(c => DocText.defines(c.raw))
+    }
+  }
 }

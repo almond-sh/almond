@@ -102,6 +102,12 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         assert(res.head.matches("Signature: +map\\[B\\]\\(f: Int => B\\): List\\[B\\]"))
         // scaladoc variables, like $coll, should have been substituted
         assert(!res.exists(_.contains("$coll")))
+        // with no line break or space left by their definitions (3.8+, where the docs of the
+        // standard library come from its TASTy files)
+        assert(
+          res.contains("Builds a new list by applying a function to all elements of this list.")
+        )
+        assert(res.contains("  B: the element type of the returned list."))
       }
     }
 
