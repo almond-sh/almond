@@ -1096,6 +1096,29 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
+    test("silent imports") {
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          silentImports = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute("import scala.collection.mutable", "")
+      kernel.execute(
+        """import scala.util.Try, scala.util.Success
+          |val s = mutable.Set(Try(2).get)
+          |""".stripMargin,
+        if (scalaVersion.startsWith("2.12.")) "s: mutable.Set[Int] = Set(2)"
+        else "s: mutable.Set[Int] = HashSet(2)"
+      )
+    }
+
     test("invalid compiler option") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.invalidCompilerOption(scalaVersion)

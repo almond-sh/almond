@@ -23,6 +23,11 @@ class AlmondPreprocessor(
   // useful when debugging
   // this prints the code after pre-processing, that is the code that is actually passed to scalac for compilation
   private lazy val log = logCtx(getClass)
+
+  override protected def importPrinters(imported: String): Seq[String] =
+    if (silentImports) Nil
+    else super.importPrinters(imported)
+
   override def transform(
     stmts: Seq[String],
     resultIndex: String,
