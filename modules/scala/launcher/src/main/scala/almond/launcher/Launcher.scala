@@ -13,7 +13,7 @@ import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, Logger, LoggerContext}
 import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnection}
-import almond.util.ParentProcessWatcher
+import almond.util.{ParentProcessWatcher, SigInt}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -544,6 +544,9 @@ object Launcher extends CaseApp[LauncherOptions] {
       )
       sys.exit(1)
     }
+
+    // Don't exit if Jupyter sends us SIGINT while no cell is running
+    SigInt.installIdleHandler(logCtx)
 
     // Exit if the Jupyter client that started us goes away without shutting us down (the actual
     // kernel watches it too, once we've started it)

@@ -271,6 +271,12 @@ object Tests {
         "added: Boolean = true"
       )
 
+      // SIGINT while no cell is running shouldn't kill the kernel (JVMs exit upon SIGINT by
+      // default)
+      session.sendInterruptSignal()
+      Thread.sleep(1000L)
+      execute("val stillAlive = true", "stillAlive: Boolean = true")
+
       val sendSignal = onStdout("sleeping") {
         fs2.Stream.exec(cats.effect.IO(session.sendInterruptSignal()))
       }

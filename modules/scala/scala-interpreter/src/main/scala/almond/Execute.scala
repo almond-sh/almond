@@ -22,10 +22,11 @@ import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
 import almond.logger.internal.PrintStreamLogger
 import almond.protocol.{Execute => ProtocolExecute}
+import almond.util.SigInt
 import ammonite.compiler.{CodeClassWrapper, Parsers}
 import ammonite.compiler.iface.Preprocessor
 import ammonite.repl.api.History
-import ammonite.repl.{Repl, Signaller}
+import ammonite.repl.Repl
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
 import ammonite.util.Util.CodeSource
@@ -302,9 +303,9 @@ final class Execute(
     * handler that was there before.
     */
   private def withSigIntHandler[T](jupyterApi: JupyterApi)(t: => T): T =
-    Signaller("INT") {
+    SigInt.scoped { () =>
       interruptCurrentThread(jupyterApi, "Received SIGINT", fromSignal = true)
-    }.apply {
+    } {
       t
     }
 
