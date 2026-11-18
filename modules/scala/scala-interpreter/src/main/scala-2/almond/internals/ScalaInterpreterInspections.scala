@@ -7,7 +7,6 @@ import ammonite.runtime.Frame
 import ammonite.util.Imports
 import ammonite.util.Util.newLine
 import scala.meta.dialects
-import scala.meta.internal.metals.Docstrings
 import scala.meta.internal.mtags.MtagsEnrichments._
 import scala.meta.internal.semanticdb.scalac.SemanticdbOps
 
@@ -41,7 +40,19 @@ final class ScalaInterpreterInspections(
     else
       dialects.Scala212
 
-  private val sourceIndex = new SourceIndex(dialect, () => SourcePath.base(frames, log), log)
+  // None if mtags, that SourceIndex relies on, can't be loaded, like on JVMs older than the one
+  // it targets (Java 17 for mtags 1.6). Inspections then only give types, without docs.
+  private lazy val sourceIndexOpt: Option[SourceIndex] =
+    try Some(new SourceIndex(dialect, () => SourcePath.base(frames, log), log))
+    catch {
+      case e: LinkageError =>
+        log.warn(
+          "Inspections won't show docs, as the library reading them (mtags) can't be loaded " +
+            s"on Java ${sys.props.getOrElse("java.version", "[unknown]")}",
+          e
+        )
+        None
+    }
 
   /** Schedules the indexing of the source JARs of the session that haven't been indexed yet, in the
     * background
@@ -50,7 +61,9 @@ final class ScalaInterpreterInspections(
     * have to wait for indexing, and that the docs of the dependencies added by cells are found.
     */
   def updateSourceIndex(): Unit =
-    try sourceIndex.update(SourcePath.session(frames, log))
+    try
+      for (sourceIndex <- sourceIndexOpt)
+        sourceIndex.update(SourcePath.session(frames, log))
     catch {
       case NonFatal(e) =>
         log.warn("Error looking for the source JARs of the session", e)
@@ -60,12 +73,13 @@ final class ScalaInterpreterInspections(
   // the docs of the JARs that aren't indexed yet
   private def maxIndexWaitSeconds = 3L
 
-  private val scaladocs = new Scaladocs(sourceIndex.index)
-
-  private def docs: Docstrings = {
+  // the source index, once the source JARs being indexed are (or after maxIndexWaitSeconds)
+  private def awaitSourceIndex(): Option[SourceIndex] = {
     updateSourceIndex()
-    sourceIndex.await(maxIndexWaitSeconds, TimeUnit.SECONDS)
-    sourceIndex.docs
+    for (sourceIndex <- sourceIndexOpt) yield {
+      sourceIndex.await(maxIndexWaitSeconds, TimeUnit.SECONDS)
+      sourceIndex
+    }
   }
 
   def inspect(code: String, pos: Int, detailLevel: Int): Option[Inspection] = {
@@ -152,22 +166,9 @@ final class ScalaInterpreterInspections(
                     s"(site: ${siteClasses.headOption.getOrElse("none")})"
                 )
 
-                lazy val docs0 = docs
+                lazy val sourceIndexOpt0 = awaitSourceIndex()
                 def documentation(sym: String): Option[String] =
-                  try
-                    if (scaladocs.isJava(sym))
-                      // Javadoc, via mtags
-                      Some(
-                        docs0.documentation(
-                          sym,
-                          () => java.util.Collections.emptyList[String](),
-                          scala.meta.pc.ContentType.MARKDOWN
-                        )
-                      )
-                        .filter(_.isPresent)
-                        .map(_.get().docstring)
-                    else
-                      scaladocs.documentation(sym, siteClasses)
+                  try sourceIndexOpt0.flatMap(_.documentation(sym, siteClasses))
                   catch {
                     // a failed docstring lookup should cost an inspection, not the whole kernel
                     case e: Throwable =>
@@ -177,11 +178,7 @@ final class ScalaInterpreterInspections(
 
                 // the docs of the symbol, or of the first symbol it overrides that has some
                 val documentationOpt =
-                  if (candidates.isEmpty) None
-                  else {
-                    docs0 // waits for the source JARs being indexed
-                    candidates.iterator.flatMap(documentation(_).iterator).find(_.nonEmpty)
-                  }
+                  candidates.iterator.flatMap(documentation(_).iterator).find(_.nonEmpty)
 
                 documentationOpt.map { docstring =>
                   if (Properties.isWin)
@@ -228,7 +225,7 @@ final class ScalaInterpreterInspections(
   }
 
   def shutdown(): Unit =
-    sourceIndex.shutdown()
+    sourceIndexOpt.foreach(_.shutdown())
 }
 
 object ScalaInterpreterInspections {

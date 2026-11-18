@@ -18,6 +18,7 @@ import scala.meta.Dialect
 import scala.meta.internal.metals.Docstrings
 import scala.meta.internal.mtags.OnDemandSymbolIndex
 import scala.meta.io.AbsolutePath
+import scala.meta.pc.ContentType
 import scala.meta.pc.reports.EmptyReportContext
 import scala.util.control.NonFatal
 
@@ -37,7 +38,8 @@ final class SourceIndex(dialect: Dialect, basePath: () => Seq[Path], log: Logger
 
   private implicit val reportContext: EmptyReportContext = new EmptyReportContext
 
-  val index: OnDemandSymbolIndex = OnDemandSymbolIndex.empty()
+  private val index: OnDemandSymbolIndex = OnDemandSymbolIndex.empty()
+  private val scaladocs                  = new Scaladocs(index)
 
   // only accessed from the indexing thread
   private val indexed        = new mutable.HashSet[Path]
@@ -123,8 +125,26 @@ final class SourceIndex(dialect: Dialect, basePath: () => Seq[Path], log: Logger
         }
     }
 
-  /** The docs read from the source JARs indexed so far */
-  def docs: Docstrings = docs0
+  /** The rendered doc of a symbol, read from the source JARs indexed so far
+    *
+    * Uses mtags for Javadoc, and [[Scaladocs]] for scaladoc.
+    *
+    * @param symbol
+    *   the semanticdb symbol whose doc is rendered
+    * @param siteClasses
+    *   see [[Scaladocs.documentation]]
+    */
+  def documentation(symbol: String, siteClasses: Seq[String]): Option[String] =
+    if (scaladocs.isJava(symbol)) {
+      val doc = docs0.documentation(
+        symbol,
+        () => java.util.Collections.emptyList[String](),
+        ContentType.MARKDOWN
+      )
+      if (doc.isPresent) Some(doc.get().docstring).filter(_.nonEmpty) else None
+    }
+    else
+      scaladocs.documentation(symbol, siteClasses)
 
   def shutdown(): Unit =
     executor.shutdownNow()
