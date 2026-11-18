@@ -419,6 +419,48 @@ object ScalaInterpreterTests extends TestSuite {
           assert(lines(interpreter, code, pos) == Vector("Type: scala.collection.mutable"))
       }
 
+      test("predef imports") {
+        val interpreter = new ScalaInterpreter(
+          params = interpreterParams.copy(
+            predefCode =
+              "val x = 1\ncase class Point(x: Int, y: Int)\n" +
+                "import scala.collection.mutable.ArrayBuffer"
+          ),
+          logCtx = logCtx
+        )
+
+        // Type of the tree, from the HTML (Scala 2) or text (Scala 3) inspection results
+        def typeOf(code: String, pos: Int): String =
+          if (TestUtil.isScala2) {
+            val res = html(interpreter, code, pos)
+            assert(res.startsWith("<div><pre>"))
+            assert(res.endsWith("</pre></div>"))
+            res.stripPrefix("<div><pre>").stripSuffix("</pre></div>")
+          }
+          else {
+            val res = lines(interpreter, code, pos)
+            assert(res.head.startsWith("Type:"))
+            res.head.stripPrefix("Type:").trim
+          }
+
+        try {
+          assert(typeOf("x", 1) == "Int")
+
+          val pointCode = "val point: Point = Point(1, 2)"
+          val pointType = typeOf(pointCode, pointCode.indexOf("point") + 1)
+          assert(pointType.endsWith("Point"))
+
+          val bufferCode = "val points = ArrayBuffer(1, 2)"
+          val bufferType = typeOf(bufferCode, bufferCode.indexOf("points") + 1)
+          assert(bufferType.endsWith("ArrayBuffer[Int]"))
+
+          // definitions of cells take precedence over those of the predef
+          assert(interpreter.execute("val x = \"abc\"").success)
+          assert(typeOf("x", 1) == "String")
+        }
+        finally interpreter.shutdown()
+      }
+
       test("incomplete member selection") {
         if (TestUtil.isScala2) {
           val interpreter = newInterpreter()

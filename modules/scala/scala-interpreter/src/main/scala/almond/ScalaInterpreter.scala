@@ -47,7 +47,8 @@ final class ScalaInterpreter(
       ammInterp
         .compilerManager
         .asInstanceOf[ammonite.compiler.CompilerLifecycleManager],
-      frames0()
+      frames0(),
+      fullImports
     )
     inspectionsInitialized = true
     value
@@ -129,6 +130,10 @@ final class ScalaInterpreter(
     jupyterApi.addExecuteHook(LineMagicHook.hook(replApi.pprinter))
     jupyterApi.addExecuteHook(CellMagicHook.hook(jupyterApi.publish))
   }
+
+  /** The imports in scope in cells: those of the predefs, then those of the previous cells */
+  private def fullImports: Imports =
+    ammInterp.predefImports ++ frames0().head.imports
 
   lazy val ammInterp: ammonite.interp.Interpreter = {
 
@@ -285,7 +290,7 @@ final class ScalaInterpreter(
         ammInterp.compilerManager,
         Some(ammInterp.dependencyComplete),
         pos,
-        (ammInterp.predefImports ++ frames0().head.imports).toString(),
+        fullImports.toString(),
         backquotedIdentOpt.fold(code)(_.codeToComplete(code, pos)),
         logCtx
       )

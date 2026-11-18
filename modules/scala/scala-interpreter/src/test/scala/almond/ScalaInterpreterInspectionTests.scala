@@ -143,7 +143,7 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       if (TestUtil.isScala2 || !hasJdkSources) "disabled"
       else {
         val interpreter = newInterpreter()
-        val code        = "Math.max("
+        val code        = "java.lang.Math.max("
         val res         = lines(interpreter, code, code.length)
         assert(res(0) == "Signature:")
         val signatures = res.drop(1).takeWhile(_ != "Docstring:").toSet

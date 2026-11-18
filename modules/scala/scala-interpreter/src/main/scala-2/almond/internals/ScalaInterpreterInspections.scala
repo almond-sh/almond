@@ -4,6 +4,7 @@ import almond.interpreter._
 import almond.interpreter.api.DisplayData
 import almond.logger.LoggerContext
 import ammonite.runtime.Frame
+import ammonite.util.Imports
 import ammonite.util.Util.newLine
 import scala.meta.dialects
 import scala.meta.internal.metals.Docstrings
@@ -28,7 +29,8 @@ final class ScalaInterpreterInspections(
   metabrowsePort: Int,
   scalaVersion: String,
   compilerManager: => ammonite.compiler.CompilerLifecycleManager,
-  frames: => List[Frame]
+  frames: => List[Frame],
+  imports: => Imports
 ) {
 
   private val log = logCtx(getClass)
@@ -74,7 +76,7 @@ final class ScalaInterpreterInspections(
     val semanticdbOps = new AlmondSemanticDbOps(pressy)
     import semanticdbOps._
 
-    val prefix  = frames.head.imports.toString() + newLine + "object InspectWrapper{" + newLine
+    val prefix  = imports.toString() + newLine + "object InspectWrapper{" + newLine
     val suffix  = newLine + "}"
     val allCode = prefix + code + suffix
     val index   = prefix.length + pos
