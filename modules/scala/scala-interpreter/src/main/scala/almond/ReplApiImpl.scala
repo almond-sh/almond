@@ -281,10 +281,12 @@ final class ReplApiImpl(
   val load: ReplLoad =
     new ReplLoad {
       def apply(line: String) =
+        // Not counted as cells, so that the cell calling repl.load gets the execution count
+        // announced in its execute_input message
         ammInterp.processExec(
           line,
-          execute0.currentLine + 1,
-          () => execute0.incrementLineCount()
+          execute0.currentNoHistoryLine + 1,
+          () => execute0.incrementNoHistoryLineCount()
         ) match {
           case Res.Failure(s)      => throw new CompilationError(s)
           case Res.Exception(t, _) => throw t

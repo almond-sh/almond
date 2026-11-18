@@ -371,7 +371,8 @@ object KernelTests extends TestSuite {
             new String(m.content.value, StandardCharsets.UTF_8)
         }
 
-        val expectedAbortReply = """{"execution_count":1,"status":"aborted"}"""
+        // no execution_count in aborted replies, like ipykernel
+        val expectedAbortReply = """{"status":"aborted"}"""
         assert(replies.drop(2) == Seq(expectedAbortReply, expectedAbortReply))
       }
     }

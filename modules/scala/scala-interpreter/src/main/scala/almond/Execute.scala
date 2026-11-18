@@ -221,6 +221,14 @@ final class Execute(
     currentLine0 += 1
   }
 
+  /** Line count of the code that doesn't get an execution count, like silent cells, or the code
+    * loaded with `repl.load`
+    */
+  def currentNoHistoryLine: Int = currentNoHistoryLine0
+  def incrementNoHistoryLineCount(): Unit = {
+    currentNoHistoryLine0 += 1
+  }
+
   def currentInputManagerOpt: Option[InputManager] =
     currentInputManagerOpt0
   def currentPublishOpt: Option[OutputHandler] =
@@ -676,6 +684,8 @@ final class Execute(
       sys.exit(0)
     }
 
+    val lineBefore = currentLine0
+
     if (storeHistory) {
       storage.fullHistory() = storage.fullHistory() :+ code
       history0 = history0 :+ code
@@ -832,6 +842,13 @@ final class Execute(
             }
         }
     }
+
+    // Like ipykernel, every cell but empty ones gets an execution count, whether it succeeds or
+    // not, and whether it runs code or not (cells failing to compile, magic-only cells, …), so
+    // that the next cell gets a new one (L2). Ammonite only increments it for cells that it
+    // compiles successfully.
+    if (storeHistory && code.trim.nonEmpty && currentLine0 == lineBefore)
+      currentLine0 += 1
 
     if (postRunHooks.isEmpty) {
       withInputManager(inputManager, done = true)(())

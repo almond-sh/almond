@@ -896,6 +896,8 @@ object ScalaKernelTests extends TestSuite {
 
       val nl = System.lineSeparator()
 
+      // magic-only cells get an execution count too, hence the result names
+
       kernel.execute(
         "%truncation",
         "",
@@ -910,7 +912,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res1: Vector[Int] = " + (1 to 200).toVector.toString
+        "res3: Vector[Int] = " + (1 to 200).toVector.toString
       )
       kernel.execute(
         "%truncation on",
@@ -920,7 +922,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res2: Vector[Int] = " +
+        "res5: Vector[Int] = " +
           (1 to 38)
             .toVector
             .map("  " + _ + "," + nl)
@@ -1117,6 +1119,32 @@ object ScalaKernelTests extends TestSuite {
         if (scalaVersion.startsWith("2.12.")) "s: mutable.Set[Int] = Set(2)"
         else "s: mutable.Set[Int] = HashSet(2)"
       )
+    }
+
+    test("execution counts") {
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      // like with ipykernel, every non-empty cell gets an execution count, whatever it does,
+      // and the result names follow it
+      kernel.execute("1", "res1: Int = 1")
+      kernel.execute("val x: Int = \"a\"", expectError = true, ignoreStreams = true)
+      kernel.execute("2", "res3: Int = 2")
+      kernel.execute("%LsMagic", "", ignoreStreams = true)
+      kernel.execute("", "")
+      kernel.execute("3", "res5: Int = 3")
+      // code loaded with repl.load doesn't take an execution count
+      kernel.execute("""repl.load("val loaded = 6")""", "", ignoreStreams = true)
+      kernel.execute("loaded + 1", "res7: Int = 7")
     }
 
     test("invalid compiler option") {

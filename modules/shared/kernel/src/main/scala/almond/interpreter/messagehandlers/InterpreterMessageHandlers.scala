@@ -201,7 +201,7 @@ final case class InterpreterMessageHandlers(
           )
           Right(r)
         case ExecuteResult.Abort =>
-          Right(Execute.Reply.Abort(countAfter))
+          Right(Execute.Reply.Abort())
         case ExecuteResult.Exit =>
           val payload = Execute.Reply.Success.AskExitPayload("ask_exit", false)
           Right(Execute.Reply.Success(countAfter, Map(), List(RawJson(writeToArray(payload)))))
