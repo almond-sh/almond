@@ -24,6 +24,13 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
       }
     }
 
+  test0("interrupt ignored by user code") { implicit forceVersion =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.interruptIgnoredByUserCode()
+    }
+  }
+
   test0("jvm-repr") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()

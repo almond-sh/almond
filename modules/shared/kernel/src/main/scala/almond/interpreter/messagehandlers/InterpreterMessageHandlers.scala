@@ -6,6 +6,7 @@ import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0, blockingWithStatus}
 import almond.interpreter.util.DisplayDataOps._
+import almond.interpreter.util.Uninterruptible
 import almond.interpreter.{IOInterpreter, IsCompleteResult, KernelSession, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
@@ -371,11 +372,22 @@ object InterpreterMessageHandlers {
     ioRuntime: IORuntime
   ) extends OutputHandler {
 
+    // These are called from the thread running user code, whose interrupt flag might be set
+    // if users interrupted a cell running code that doesn't check for interruptions
+    private def publish(io: IO[Unit]): Unit =
+      Uninterruptible.unsafeRunSync(io)(ioRuntime)
+
     private def print(on: String, s: String): Unit =
-      message
-        .publish(session, Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
-        .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(ioRuntime)
+      publish {
+        message
+          .publish(
+            session,
+            Execute.streamType,
+            Execute.Stream(name = on, text = s),
+            ident = Some(on)
+          )
+          .enqueueOn0(Channel.Publish, queue)
+      }
 
     def stdout(s: String): Unit =
       print("stdout", s)
@@ -390,17 +402,19 @@ object InterpreterMessageHandlers {
         Execute.DisplayData.Transient(data.idOpt)
       )
 
-      message
-        .publish(session, Execute.displayDataType, content)
-        .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(ioRuntime)
+      publish {
+        message
+          .publish(session, Execute.displayDataType, content)
+          .enqueueOn0(Channel.Publish, queue)
+      }
     }
 
     def clearOutput(waitForNewOutput: Boolean): Unit =
-      message
-        .publish(session, Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
-        .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(ioRuntime)
+      publish {
+        message
+          .publish(session, Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
+          .enqueueOn0(Channel.Publish, queue)
+      }
 
     def updateDisplay(displayData: DisplayData): Unit =
       // Using the commHandler rather than pushing a message through our own queue, so that

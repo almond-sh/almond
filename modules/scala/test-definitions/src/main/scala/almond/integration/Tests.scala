@@ -247,6 +247,18 @@ object Tests {
       else fs2.Stream.empty
     }
 
+  private def interruptRequest()(implicit sessionId: SessionId) =
+    Message(
+      Header(
+        msg_id = UUID.randomUUID().toString,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = Interrupt.requestType.messageType,
+        version = Some(Protocol.versionStr)
+      ),
+      Interrupt.Request
+    ).streamOn(Channel.Control)
+
   /** Interrupts a cell with SIGINT, like Jupyter does by default */
   def interruptViaSignal()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
@@ -276,6 +288,48 @@ object Tests {
       )
 
       execute("val hookRan = Hook.ran", "hookRan: Boolean = true")
+    }
+
+  /** Interrupts a cell running code that doesn't check for interruptions
+    *
+    * With `Thread.interrupt`, the code runs to completion, and the interrupt flag of the thread is
+    * still set when it's done. This checks that this flag doesn't break the publishing of the
+    * result, nor the cells that follow.
+    */
+  def interruptIgnoredByUserCode()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession("--use-thread-interrupt") { implicit session =>
+      val sendInterruptRequest = onStdout("waiting for interrupt") {
+        interruptRequest()
+      }
+
+      execute(
+        "object State { @volatile var interrupted = false }",
+        "defined object State"
+      )
+
+      // The println at the end checks that the interrupt flag, still set at that point, doesn't
+      // prevent publishing outputs
+      execute(
+        """println("waiting for interrupt")
+          |locally {
+          |  val deadline = System.nanoTime() + 30000000000L
+          |  while (!State.interrupted && System.nanoTime() < deadline)
+          |    State.interrupted = Thread.currentThread().isInterrupted()
+          |}
+          |println("done waiting")""".stripMargin,
+        "",
+        stdout = "waiting for interrupt" + ls + "done waiting" + ls,
+        expectInterrupt = true,
+        handler = sendInterruptRequest.orElse(ignoreInterruptReplies)
+      )
+
+      execute("val interrupted = State.interrupted", "interrupted: Boolean = true")
+
+      execute(
+        """Thread.sleep(10L)
+          |val notInterrupted = !Thread.currentThread().isInterrupted()""".stripMargin,
+        "notInterrupted: Boolean = true"
+      )
     }
 
   def exit()(implicit sessionId: SessionId, runner: Runner): Unit =
