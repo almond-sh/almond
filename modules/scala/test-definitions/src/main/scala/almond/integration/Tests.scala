@@ -2870,6 +2870,39 @@ object Tests {
     * parsing error of the cell code (its exact message depending on the Scala version). It used to
     * be reported as a malformed directive.
     */
+  /** Invalid compiler options are reported with a one-line error on Scala 2, without breaking later
+    * cells. Scala 3, like its compiler, only warns about unknown options.
+    */
+  def invalidCompilerOption(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      if (scalaVersion.startsWith("2."))
+        execute(
+          """//> using option "-Xnot-an-option"
+            |1
+            |""".stripMargin,
+          stdout = "",
+          stderr = "",
+          errors = Seq(
+            ("", "bad option: '-Xnot-an-option'", List("bad option: '-Xnot-an-option'"))
+          )
+        )
+      else
+        execute(
+          """//> using option "-Xnot-an-option"
+            |1
+            |""".stripMargin,
+          "res1: Int = 1",
+          stderr = "Warning: bad option '-Xnot-an-option' was ignored" + System.lineSeparator()
+        )
+      execute(
+        "val n = 1 + 1",
+        "n: Int = 2"
+      )
+    }
+
   def unclosedStringLitteral()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(

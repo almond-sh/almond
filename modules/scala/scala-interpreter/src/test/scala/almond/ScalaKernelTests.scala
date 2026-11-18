@@ -1096,6 +1096,11 @@ object ScalaKernelTests extends TestSuite {
       }
     }
 
+    test("invalid compiler option") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.invalidCompilerOption(scalaVersion)
+    }
+
     test("unclosed string litteral") {
       implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
       almond.integration.Tests.unclosedStringLitteral()

@@ -187,21 +187,26 @@ final class Execute(
     options: KernelOptions
   ): Either[String, Unit] = {
 
-    almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
+    val maybeOptionWarnings = almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
       options.scalacOptions.toSeq.map(_.value.value)
     )
 
-    for (value <- options.outputStyle)
-      outputStyle() = value
+    maybeOptionWarnings.flatMap { optionWarnings =>
+      for (warning <- optionWarnings)
+        printer0.warning(s"Warning: $warning")
 
-    val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
-    val loadDepsRes =
-      if (deps.isEmpty) Right(Nil)
-      else ammInterp.loadIvy(deps: _*)
-    loadDepsRes.map { loaded =>
-      if (loaded.nonEmpty)
-        ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
-      ()
+      for (value <- options.outputStyle)
+        outputStyle() = value
+
+      val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
+      val loadDepsRes =
+        if (deps.isEmpty) Right(Nil)
+        else ammInterp.loadIvy(deps: _*)
+      loadDepsRes.map { loaded =>
+        if (loaded.nonEmpty)
+          ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+        ()
+      }
     }
   }
 
@@ -769,8 +774,9 @@ final class Execute(
 
                 optionsRes match {
                   case Left(failureMsg) =>
-                    // kind of meh that we have to build a new Exception here
-                    Execute.error(colors0(), Some(new Exception(failureMsg)), "")
+                    // invalid compiler options, dependency resolution errors, … - no stack
+                    // trace, which would only point at the kernel code reporting the error (L9)
+                    Execute.error(colors0(), None, failureMsg)
                   case Right(()) =>
                     ammResult(
                       ammInterp,
