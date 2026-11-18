@@ -17,6 +17,12 @@ object ScalaInterpreterCompletions {
   // and around.
   // Most changes revolve around keeping "kind" info ("method", "class", "value", etc.)
 
+  /** Completes code
+    *
+    * @return
+    *   the position completions start from in `snippet`, and the completions, along with their
+    *   kinds ("method", "class", "value", etc., or empty if unknown), sorted
+    */
   def complete(
     compilerManager: ammonite.compiler.iface.CompilerLifecycleManager,
     dependencyCompleteOpt: Option[String => (Int, Seq[String])],
@@ -24,7 +30,7 @@ object ScalaInterpreterCompletions {
     previousImports: String,
     snippet: String,
     logCtx: LoggerContext
-  ): (Int, Seq[String], Seq[String], Seq[(String, String)]) = {
+  ): (Int, Seq[(String, String)]) = {
 
     val log = logCtx(getClass)
 
@@ -61,15 +67,13 @@ object ScalaInterpreterCompletions {
           (0, Seq.empty)
       }
 
-    val allNames = all.collect { case (name, None, _) => name }.sorted.distinct
-
-    val allNameWithTypes = all.collect { case (name, None, tpe) => (name, tpe) }.sorted.distinct
+    val allNamesWithKinds = all.collect { case (name, None, kind) => (name, kind) }.sorted.distinct
 
     val signatures = all.collect { case (name, Some(defn), _) => defn }.sorted.distinct
 
     log.info(s"signatures=$signatures")
 
-    val isPartialIvyImport = allNames.isEmpty &&
+    val isPartialIvyImport = allNamesWithKinds.isEmpty &&
       snippet.split("\\s+|`").startsWith(Seq("import", "$ivy.")) &&
       snippet.count(_ == '`') == 1
 
@@ -82,7 +86,7 @@ object ScalaInterpreterCompletions {
         snippet + "`",
         logCtx
       )
-    else (i - prefix.length, allNames, signatures, allNameWithTypes)
+    else (i - prefix.length, allNamesWithKinds)
   }
 
   class Run(

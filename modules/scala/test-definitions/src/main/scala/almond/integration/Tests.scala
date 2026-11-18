@@ -2214,11 +2214,20 @@ object Tests {
         val entry0 = entry.obj
         (entry0("text").str, entry0("type").str)
       }
-      if (types0 != expectedTypes) {
-        pprint.err.log(expectedTypes)
-        pprint.err.log(types0)
+      // JupyterLab matches types with matches by index, and inserts the text of the former,
+      // so these need to be aligned
+      val texts = types0.map(_._1).toSeq
+      if (texts != matches) {
+        pprint.err.log(matches)
+        pprint.err.log(texts)
       }
-      expect(types0 == expectedTypes)
+      expect(texts == matches)
+      // the expected types list the kinds of all the symbols of a completion (overloads,
+      // a class and its companion, …), but only one kind is sent per completion
+      val unexpectedTypes = types0.filterNot(expectedTypes.toSet)
+      if (unexpectedTypes.nonEmpty)
+        pprint.err.log(unexpectedTypes)
+      expect(unexpectedTypes.isEmpty)
     }
 
   def exceptionHandler()(implicit

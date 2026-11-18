@@ -314,6 +314,73 @@ object ScalaInterpreterTests extends TestSuite {
         else backticksTest()
       }
 
+      test("backticks in the same cell") {
+        val interpreter = newInterpreter()
+        // '|' marks the cursor position (and is removed from code)
+        def check(code: String, expected: Completion): Unit = {
+          val pos = code.indexOf('|')
+          val res = interpreter.complete(code.take(pos) + code.drop(pos + 1), pos).clearMetadata
+          assert(res == expected)
+        }
+        // a line starting with a backquoted identifier, after another line
+        check("val `my-value` = 1\n`my-v|", Completion(19, 24, Seq("`my-value`")))
+        check("val `my-value` = 1\n`my-v|`", Completion(20, 24, Seq("my-value")))
+        check("val myValue = 1\n`myV|", Completion(16, 20, Seq("`myValue`")))
+      }
+
+      test("types aligned with matches") {
+        // JupyterLab matches the items of the '_jupyter_types_experimental' metadata with
+        // completions by index, and inserts their text, so these need to be aligned
+        val interpreter = newInterpreter()
+        assert(interpreter.execute("val `my-value` = 1").success)
+
+        def types(res: Completion): Seq[(String, String)] =
+          ujson.read(res.metadata.value).obj.get("_jupyter_types_experimental").toSeq.flatMap {
+            types =>
+              types.arr.map(entry => (entry("text").str, entry("type").str))
+          }
+
+        def check(code: String, expected: String*): Seq[(String, String)] = {
+          val res    = interpreter.complete(code, code.length)
+          val types0 = types(res)
+          assert(types0.nonEmpty)
+          assert(types0.map(_._1) == res.completions)
+          for (compl <- expected)
+            assert(res.completions.contains(compl))
+          types0
+        }
+
+        // overloads, and members brought by implicit conversions
+        val listTypes = check("List(1, 2).ma", "max", "maxBy")
+        assert(listTypes.contains(("maxBy", "Method")))
+        check("kernel.publish.", "html", "js")
+        check("import scala.collection.mu", "mutable")
+        check("repl.la", "lastException")
+        check("`my-v", "`my-value`")
+        if (TestUtil.isScala2)
+          // classes and their companions, inner classes, from unimported packages
+          for (code <- Seq("HashM", "val m = new HashM")) {
+            val hashMapTypes = check(code, "java.util.HashMap", "scala.collection.mutable.HashMap")
+            assert(hashMapTypes.contains(("java.util.HashMap", "Class")))
+          }
+      }
+
+      test("no completions in comments") {
+        val interpreter = newInterpreter()
+        def check(code: String): Unit = {
+          val res = interpreter.complete(code, code.length)
+          assert(res.completions.isEmpty)
+        }
+        check("// List(1).ma")
+        check("// foo")
+        check("val n = 2 // n")
+        check("//> using de")
+        check("/* Lis")
+        // not in comments anymore
+        assert(interpreter.complete("// foo\nLis", 10).completions.contains("List"))
+        assert(interpreter.complete("/* foo */ Lis", 13).completions.contains("List"))
+      }
+
       test("using dep directives") {
         // module names and versions are looked up on Maven Central
         def check(code: String, start: Int, expected: String): Unit = {
