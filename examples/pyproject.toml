@@ -19,10 +19,14 @@ dependencies = [
 # JupyterLab extensions: the variable inspector, which supports almond kernels started with
 # --variable-inspector, and almond-scalafmt, formatting cells with scalafmt (when
 # ALMOND_SCALAFMT_EXTENSION points at its sources, the dev.jupyter* commands build it from there,
-# and that build takes precedence over this one)
+# and that build takes precedence over this one), and the renderer of plotly outputs
+# (application/vnd.plotly.v1+json), that plotly-scala plots rely on, shipped by plotly. plotly 6
+# and later come with plotly.js 3, that ignores the string titles (and titlefont) plotly-scala
+# emits.
 lab = [
   "almond-scalafmt>=0.2.0",
   "lckr-jupyterlab-variableinspector>=3.2",
+  "plotly>=5.24,<6",
 ]
 ai = [
   "jupyter-ai>=3",
