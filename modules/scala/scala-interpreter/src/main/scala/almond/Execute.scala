@@ -275,6 +275,20 @@ final class Execute(
       case Some(p) => capture0(p.stdout, p.stderr)(t)
     }
 
+  /** Stops the thread running a cell, with `Thread.stop`, or with `Thread.interrupt` if asked to,
+    * or if `Thread.stop` isn't supported (JDK 20 and later, where it throws an
+    * `UnsupportedOperationException`).
+    */
+  private def stopThread(t: Thread): Unit =
+    if (useThreadInterrupt || Execute.isJdk20OrHigher) {
+      log.debug(s"Calling 'Thread.interrupt'")
+      t.interrupt()
+    }
+    else {
+      log.debug(s"Calling 'Thread.stop'")
+      t.stop()
+    }
+
   private def interruptible[T](jupyterApi: JupyterApi)(t: => T): T = {
     interruptedStackTraceOpt0 = None
     currentThreadOpt0 = Some(Thread.currentThread())
@@ -289,14 +303,7 @@ final class Execute(
               val nl = System.lineSeparator()
               s"Received SIGINT, stopping thread $t$nl${interruptedStackTraceOpt0.map("  " + _).mkString(nl)}"
             }
-            if (useThreadInterrupt) {
-              log.debug(s"Calling 'Thread.interrupt'")
-              t.interrupt()
-            }
-            else {
-              log.debug(s"Calling 'Thread.stop'")
-              t.stop()
-            }
+            stopThread(t)
 
             // Run post-interrupt hooks
             jupyterApi.runPostInterruptHooks()
@@ -317,14 +324,7 @@ final class Execute(
           val nl = System.lineSeparator()
           s"Interrupt asked, stopping thread $t$nl${t.getStackTrace.map("  " + _).mkString(nl)}"
         }
-        if (useThreadInterrupt || Execute.isJdk20OrHigher) {
-          log.debug(s"Calling 'Thread.interrupt'")
-          t.interrupt()
-        }
-        else {
-          log.debug(s"Calling 'Thread.stop'")
-          t.stop()
-        }
+        stopThread(t)
 
         // Run post-interrupt hooks
         jupyterApi.runPostInterruptHooks()

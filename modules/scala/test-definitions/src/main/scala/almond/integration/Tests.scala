@@ -1,6 +1,6 @@
 package almond.integration
 
-import almond.channels.Channel
+import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
@@ -232,6 +232,51 @@ object Tests {
       )
     }
   }
+
+  private def ignoreInterruptReplies = MessageHandler.discard {
+    case (Channel.Publish, _)                                                                =>
+    case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
+    case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
+  }
+
+  /** Runs `f` once the running cell prints `text` (so that we know user code is running) */
+  private def onStdout(text: String)(f: => fs2.Stream[cats.effect.IO, (Channel, RawMessage)])
+    : MessageHandler =
+    MessageHandler(Channel.Publish, ProtocolExecute.streamType) { msg =>
+      if (msg.content.name == "stdout" && msg.content.text.contains(text)) f
+      else fs2.Stream.empty
+    }
+
+  /** Interrupts a cell with SIGINT, like Jupyter does by default */
+  def interruptViaSignal()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        "object Hook { @volatile var ran = false }",
+        "defined object Hook"
+      )
+      execute(
+        """val added = kernel.addPostInterruptHook("test", _ => Hook.ran = true)""",
+        "added: Boolean = true"
+      )
+
+      val sendSignal = onStdout("sleeping") {
+        fs2.Stream.exec(cats.effect.IO(session.sendInterruptSignal()))
+      }
+
+      // On JDK 20 and later, Thread.stop isn't supported, and the kernel calls Thread.interrupt:
+      // Thread.sleep throws an InterruptedException. Before that, it calls Thread.stop. Either
+      // way, the cell fails.
+      execute(
+        """println("sleeping")
+          |Thread.sleep(30000L)
+          |val n = "not interrupted"""".stripMargin,
+        ignoreStreams = true,
+        expectError = true,
+        handler = sendSignal.orElse(ignoreInterruptReplies)
+      )
+
+      execute("val hookRan = Hook.ran", "hookRan: Boolean = true")
+    }
 
   def exit()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>

@@ -504,10 +504,13 @@ class KernelLauncher(
     ctx: ZMQ.Context,
     zeromqThreads: ZeromqThreads,
     output: TestOutput,
-    ioRuntime: IORuntime
+    ioRuntime: IORuntime,
+    sendInterruptSignal0: () => Unit
   ): Session with AutoCloseable =
     new Session with AutoCloseable {
       def helperIORuntime = ioRuntime
+      override def sendInterruptSignal(): Unit =
+        sendInterruptSignal0()
       def run(streams: ClientStreams): Unit = {
 
         val s = SignallingRef[IO, Boolean](false).unsafeRunSync()(ioRuntime)
@@ -866,7 +869,17 @@ class KernelLauncher(
           conn0
         }
 
-        val sess = session(conn, ctx, zeromqThreads, output, ioRuntime)
+        val sess = session(
+          conn,
+          ctx,
+          zeromqThreads,
+          output,
+          ioRuntime,
+          () => {
+            assert(!Properties.isWin, "Interrupt signals not supported on Windows")
+            os.proc("kill", "-INT", proc.wrapped.pid().toString).call(stdin = os.Inherit)
+          }
+        )
         sessions = sess :: sessions
         sess
       }
