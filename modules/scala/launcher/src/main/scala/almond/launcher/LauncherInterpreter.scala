@@ -27,7 +27,8 @@ class LauncherInterpreter(
       implementation_version = Properties.version,
       language_info = KernelInfo.LanguageInfo(
         name = "scala",
-        version = Properties.version,
+        // the Scala version the actual kernel is going to run
+        version = sv,
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
