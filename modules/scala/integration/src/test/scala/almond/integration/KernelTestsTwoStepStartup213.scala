@@ -17,17 +17,17 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
           |val res2_1 = foo()
           |             ^
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else
         """cmd2.sc:6: method foo in class Helper is deprecated
           |val res2_1 = foo()
           |             ^
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -63,17 +63,17 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
           |val res2_1 = foo()
           |             ^
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else
         """cmd2.sc:4: method foo in class Helper is deprecated
           |val res2_1 = foo()
           |             ^
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -108,17 +108,17 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
           |val res1_1 = foo()
           |             ^
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else if (Version(KernelLauncher.testScala213Version) >= Version("2.13.15"))
         """1 deprecation; re-run enabling -deprecation for details, or try -help
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else
         """cmd1.sc:7: method foo in class Helper is deprecated
           |val res1_1 = foo()
           |             ^
           |No warnings can be incurred under -Werror.
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()
       runner.withSession() { implicit session =>
@@ -168,7 +168,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
               |val res2_1 = foo()
               |             ^
               |No warnings can be incurred under -Xfatal-warnings.
-              |Compilation Failed""".stripMargin,
+              |""".stripMargin,
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           )
@@ -203,7 +203,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
               |val res2_1 = foo()
               |             ^
               |No warnings can be incurred under -Xfatal-warnings.
-              |Compilation Failed""".stripMargin,
+              |""".stripMargin,
           errors = Seq(
             ("", "Compilation Failed", List("Compilation Failed"))
           )

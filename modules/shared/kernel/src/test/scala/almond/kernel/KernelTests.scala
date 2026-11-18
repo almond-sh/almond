@@ -359,6 +359,13 @@ object KernelTests extends TestSuite {
 
         assert(msgTypes == expectedMsgTypes)
 
+        // the error has no name nor stack trace, but its error output still gets a traceback,
+        // so that front-ends don't render it as ": error"
+        val error = streams.singleReply(Channel.Publish, Execute.errorType)
+        assert(error.content.ename == "")
+        assert(error.content.evalue == "error")
+        assert(error.content.traceback == List("error"))
+
         val replies = streams.generatedMessages.toList.collect {
           case Left((Channel.Requests, m)) if m.header.msg_type == "execute_reply" =>
             new String(m.content.value, StandardCharsets.UTF_8)

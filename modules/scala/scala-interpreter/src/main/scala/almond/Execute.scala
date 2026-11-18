@@ -786,9 +786,9 @@ final class Execute(
                       case Res.Failure(msg) =>
                         interruptedStackTraceOpt0 match {
                           case None =>
-                            val err = Execute.error(colors0(), None, msg)
-                            outputHandler.foreach(_.stderr(err.message)) // necessary?
-                            err
+                            // Not printed to stderr: the error output that the kernel publishes
+                            // for this result already shows the message (L4)
+                            Execute.error(colors0(), None, msg)
                           case Some(st) =>
                             val cutoff = Set("$main", "evaluatorRunPrinter")
 
