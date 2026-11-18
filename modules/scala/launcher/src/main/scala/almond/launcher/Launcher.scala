@@ -13,6 +13,7 @@ import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, Logger, LoggerContext}
 import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnection}
+import almond.util.ParentProcessWatcher
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
 import caseapp.core.app.CaseApp
@@ -543,6 +544,10 @@ object Launcher extends CaseApp[LauncherOptions] {
       )
       sys.exit(1)
     }
+
+    // Exit if the Jupyter client that started us goes away without shutting us down (the actual
+    // kernel watches it too, once we've started it)
+    ParentProcessWatcher.watchFromEnv(logCtx)
 
     val colors =
       if (options.color.getOrElse(true)) LauncherInterpreter.Colors.default
