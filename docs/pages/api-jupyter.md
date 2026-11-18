@@ -81,11 +81,20 @@ val result = Input().withPassword().request()
 
 ### Auto-updated variables
 
-When using Scala 2, the output of some cells gets updated later on, while or after other cells run:
-- the output of a top-level `var` is updated when the `var` is modified,
-- the output of a top-level `lazy val` is updated when it gets computed,
-- the output of a `Future` is updated when it completes.
+The output of some cells gets updated later on, while or after other cells run:
+- the output of a `Future` is updated when it completes,
+- when using Scala 2, the output of a top-level `var` is updated when the `var` is modified,
+- when using Scala 2, the output of a top-level `lazy val` is updated when it gets computed.
 
+```scala
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val f = Future { Thread.sleep(2000L); 2 } // output: "f: Future[Int] = [running]"
+// two seconds later, the output above becomes "f: Future[Int] = Success(value = 2)"
+```
+
+With Scala 2:
 ```scala
 var n = 0 // output: "n: Int = 0"
 ```
@@ -181,16 +190,16 @@ The most generic is `display`, accepting an `almond.interpreter.api.DisplayData`
 
 ```scala
 kernel.publish.display(
-  almond.interpreter.api.DisplayData(
-    Map(
-      // if we set up an extension for application/myapp+json, first element should be picked
-      "application/myapp+json" -> """{"a": "A"}""",
-      // else, text/html should be displayed
-      "text/html" -> "<b>A</b>"
-    )
-  )
+  almond.interpreter.api.DisplayData()
+    // if the front-end has an extension for application/myapp+json, it should display that
+    .addStringifiedJson("application/myapp+json", """{"a": "A"}""")
+    // else, it should fall back to text/html
+    .add("text/html", "<b>A</b>")
 )
 ```
+
+`add` adds textual content (HTML, Markdown, plain text, …), and `addStringifiedJson` adds JSON
+content, passed as a string.
 
 ![](/demo/display-alternative.gif)
 
