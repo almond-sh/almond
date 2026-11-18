@@ -167,8 +167,6 @@ final class ScalaInterpreter(
       logCode = params.logCode
     )
 
-    execute0.loadOptions(interp, params.upfrontKernelOptions)
-
     interp
   }
 
@@ -185,6 +183,24 @@ final class ScalaInterpreter(
   override def setCommHandler(commHandler0: CommHandler): Unit =
     commHandlerOpt = Some(commHandler0)
 
+  private var upfrontOptionsLoaded = false
+
+  /** Loads the upfront kernel options, if that wasn't done already
+    *
+    * These come from the directives of the first cell, that the launcher passes us. They're loaded
+    * when that cell runs, rather than when the interpreter is initialized (in the background, when
+    * the kernel starts), so that the notebook coursier logger can show the downloads of their
+    * dependencies in that cell.
+    */
+  private def loadUpfrontOptions(
+    ammInterp: ammonite.interp.Interpreter,
+    outputHandler: Option[OutputHandler]
+  ): Unit =
+    if (!upfrontOptionsLoaded) {
+      upfrontOptionsLoaded = true
+      execute0.loadOptions(ammInterp, params.upfrontKernelOptions, outputHandler)
+    }
+
   def execute(
     code: String,
     storeHistory: Boolean, // FIXME Take that one into account
@@ -194,8 +210,10 @@ final class ScalaInterpreter(
   ): ExecuteResult =
     try {
       currentExecuteRequestOpt0 = messageOpt
+      val ammInterp0 = ammInterp
+      loadUpfrontOptions(ammInterp0, outputHandler)
       execute0(
-        ammInterp,
+        ammInterp0,
         code,
         inputManager,
         outputHandler,

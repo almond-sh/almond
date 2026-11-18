@@ -16,7 +16,7 @@ Before the first cell, a `// %demo` line can set options for the whole demo:
 - `kernel=echo`: the kernel to run the demo with (the Scala kernel passed via `--kernel` by default),
 - `width=640` / `height=600`: size of the browser viewport, in CSS pixels (640 x 520 by default),
 - `warmup=true`: run the demo once before recording it, so that things like dependency downloads
-  don't show up in the recording.
+  don't show up in the recording (dependency downloads, and their progress, show up otherwise).
 
 Other lines before the first cell are ignored.
 
@@ -95,7 +95,16 @@ it with Shift+Enter, while capturing frames with Chrome's screencast API, along 
 of them was received at.
 
 Times spent waiting for the kernel with nothing changing on screen (kernel start-up, compilation,
-dependency downloads, …) are cut down to `--max-idle` milliseconds, so that recordings don't
-depend much on how fast the machine they're made on is. Frames are then cropped to the notebook
-and encoded with ffmpeg. Recording fails if a cell fails, or if one of its lines is too long for the
-viewport, which would make the editor scroll horizontally.
+…) are cut down to `--max-idle` milliseconds, so that recordings don't depend much on how fast the
+machine they're made on is. Frames are then cropped to the notebook and encoded with ffmpeg.
+Recording fails if a cell fails, or if one of its lines is too long for the viewport, which would
+make the editor scroll horizontally.
+
+Kernels run with a coursier cache of their own (`COURSIER_CACHE`), that starts empty. Before
+recording, `record.mjs` runs some code once with each kernel, so that the cache gets what kernels
+need to start, then resets the cache to that state before each demo. That way, the dependencies
+that demos load get downloaded while they're recorded, whatever is in the coursier cache of the
+machine, and the kernels installed by `record.sh` show these downloads and their progress in the
+notebook (`--use-notebook-coursier-logger`). Only demos with `warmup=true`, like the Spark one,
+don't show their downloads. Note that Almond 0.15.0 and earlier versions only show the downloads of
+`import $ivy`, not those of `//> using dep` directives (later versions show both).

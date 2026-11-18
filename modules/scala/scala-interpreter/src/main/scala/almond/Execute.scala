@@ -340,8 +340,14 @@ final class Execute(
     else
       currentNoHistoryLine0 += 1
 
-  def loadOptions(ammInterp: ammonite.interp.Interpreter, options: KernelOptions): Unit =
-    useOptions(ammInterp, options) match {
+  def loadOptions(
+    ammInterp: ammonite.interp.Interpreter,
+    options: KernelOptions,
+    outputHandler: Option[OutputHandler]
+  ): Unit =
+    // with the output handler set, so that the notebook coursier logger can show the downloads of
+    // the dependencies of these options
+    withOutputHandler(outputHandler)(useOptions(ammInterp, options)) match {
       case Left(err) =>
         log.warn(s"Error loading initial kernel options: $err")
       case Right(()) =>
