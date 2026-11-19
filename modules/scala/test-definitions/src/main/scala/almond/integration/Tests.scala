@@ -1047,6 +1047,34 @@ object Tests {
     }
   }
 
+  // The Scala 3 compiler prints "***** missing reference" messages to System.err while compiling,
+  // when looking for imports to suggest, with Scala 2.13 libraries like plotly-scala on the class
+  // path (see MissingReferenceFilter)
+  def noMissingReferenceMessages()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """//> using dep "org.plotly-scala:plotly-almond_2.13:0.8.5"
+          |""".stripMargin,
+        reply = "",
+        ignoreStreams = true
+      )
+      execute(
+        "plotly.Scatter(Seq(1, 2), Seq(3, 4)).notAMember",
+        stderr =
+          """-- [E008] Not Found Error: cmd2.sc:1:37 ----------------------------------------
+            |1 |plotly.Scatter(Seq(1, 2), Seq(3, 4)).notAMember
+            |  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            |  |value notAMember is not a member of plotly.Scatter
+            |""".stripMargin,
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        )
+      )
+    }
+
   def addDependency(scalaVersion: String)(implicit
     sessionId: SessionId,
     runner: Runner
