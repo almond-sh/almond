@@ -101,6 +101,9 @@ trait Kernel extends Cross.Module[String] with AlmondModule with FoldedModules {
   )
 
   def compileMvnDeps = Seq(
+    // Only used if it's on the class path at runtime (see almond.util.WindowsProcesses).
+    // The kernel itself doesn't depend on it, as it could clash with the JNA of users.
+    Deps.jna,
     Deps.jsoniterScalaMacros
   )
   def mvnDeps = Task {
@@ -123,6 +126,9 @@ trait Kernel extends Cross.Module[String] with AlmondModule with FoldedModules {
   object test extends CrossSbtModuleTests with AlmondTestModule {
     def moduleDeps = super.moduleDeps ++ Seq(
       shared.`test-kit`()
+    )
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      Deps.jna
     )
   }
 }
@@ -509,6 +515,8 @@ trait Launcher extends AlmondSimpleModule with BootstrapLauncher with PropertyFi
     Deps.coursierExec,
     Deps.coursierLauncher,
     Deps.fansi,
+    // to watch the Jupyter client via its handle on Windows (see almond.util.WindowsProcesses)
+    Deps.jna,
     Deps.scalaparse
   )
 
