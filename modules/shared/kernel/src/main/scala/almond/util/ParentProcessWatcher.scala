@@ -11,17 +11,27 @@ import scala.util.control.NonFatal
 
 /** Exits the kernel once the Jupyter client that started it is gone.
   *
-  * On Linux and macOS, `jupyter_client` passes its PID to the kernels it starts, via the
-  * `JPY_PARENT_PID` environment variable. If the client dies without shutting its kernels down
+  * `jupyter_client` tells the kernels it starts who it is, via the `JPY_PARENT_PID` environment
+  * variable (unless they're "independent"). If the client dies without shutting its kernels down
   * (killed, crashed, …), they would otherwise run forever, possibly keeping a cell running. Like
-  * ipykernel, we watch that process, and exit once it's gone.
+  * ipykernel, we watch the client, and exit once it's gone.
   *
-  * This relies on `java.lang.ProcessHandle`, that only exists from Java 9 on, and that we access
-  * via reflection (our modules target Java 8). On Java 8, parents aren't watched.
+  * On Linux and macOS, `JPY_PARENT_PID` contains the PID of the client. We poll that process with
+  * `java.lang.ProcessHandle`, that only exists from Java 9 on, and that we access via reflection
+  * (our modules target Java 8). On Java 8, the client isn't watched.
+  *
+  * On Windows, `JPY_PARENT_PID` contains a handle of the client process, that we inherited. If JNA
+  * is on the class path (launcher), we wait for that process via its handle. Else (kernel, that
+  * doesn't depend on JNA), we watch our parent process instead: the client if it started us
+  * directly, the launcher if the launcher started us. The launcher shuts the kernel down when it
+  * exits itself.
   */
 object ParentProcessWatcher {
 
   def envVar: String = "JPY_PARENT_PID"
+
+  private def defaultOnParentGone(): Unit =
+    sys.exit(1)
 
   /** PID of the client process that started us, if it passed it to us
     *
@@ -31,11 +41,14 @@ object ParentProcessWatcher {
   def parentPidFromEnv(): Option[Long] =
     if (Properties.isWin) None
     else
-      Option(System.getenv(envVar))
-        .map(_.trim)
-        .filter(_.nonEmpty)
+      envValue()
         .flatMap(s => scala.util.Try(s.toLong).toOption)
         .filter(_ > 1L) // PID 1 is init, our parent once the client is gone
+
+  private def envValue(): Option[String] =
+    Option(System.getenv(envVar))
+      .map(_.trim)
+      .filter(_.nonEmpty)
 
   /** Starts a daemon thread that exits the JVM once the process with the passed PID is gone
     *
@@ -49,7 +62,7 @@ object ParentProcessWatcher {
     pid: Long,
     logCtx: LoggerContext,
     period: FiniteDuration = 1.second,
-    onParentGone: () => Unit = () => sys.exit(1)
+    onParentGone: () => Unit = () => defaultOnParentGone()
   ): Option[Thread] = {
     val log = logCtx(getClass)
     ProcessHandles.instanceOpt match {
@@ -59,9 +72,7 @@ object ParentProcessWatcher {
       case Some(handles) =>
         handles.startInstant(pid) match {
           case None =>
-            log.warn(
-              s"Parent process $pid (from $envVar) not found, not watching it"
-            )
+            log.warn(s"Parent process $pid not found, not watching it")
             None
           case Some(startInstant) =>
             log.debug(s"Watching parent process $pid")
@@ -89,11 +100,67 @@ object ParentProcessWatcher {
     }
   }
 
-  /** Watches the process whose PID is in `JPY_PARENT_PID`, if any (see [[watch]]) */
+  /** Whether JNA can be used, so that we can watch Windows processes via their handles */
+  lazy val jnaAvailable: Boolean =
+    try {
+      Class.forName("com.sun.jna.Native", false, getClass.getClassLoader)
+      WindowsProcesses.kernel32
+      true
+    }
+    catch {
+      case _: ClassNotFoundException | _: LinkageError =>
+        false
+      case NonFatal(_) =>
+        false
+    }
+
+  /** Starts a daemon thread that exits the JVM once the process the passed handle refers to is gone
+    *
+    * Windows only, and needs JNA (see [[jnaAvailable]]). Does nothing if JNA isn't available, or if
+    * the handle doesn't refer to another live process.
+    */
+  def watchHandle(
+    handle: Long,
+    logCtx: LoggerContext,
+    onParentGone: () => Unit = () => defaultOnParentGone()
+  ): Option[Thread] =
+    if (Properties.isWin && jnaAvailable)
+      WindowsProcesses.watch(handle, logCtx, onParentGone)
+    else
+      None
+
+  /** Like [[watch]], for our current parent process */
+  def watchParent(logCtx: LoggerContext): Option[Thread] =
+    ProcessHandles.instanceOpt.flatMap(_.parentPid()) match {
+      case Some(pid) => watch(pid, logCtx)
+      case None =>
+        logCtx(getClass).debug("Parent process not found, not watching it")
+        None
+    }
+
+  /** Watches the Jupyter client that started us, if it passed us `JPY_PARENT_PID` (see the scaladoc
+    * of [[ParentProcessWatcher]])
+    */
   def watchFromEnv(logCtx: LoggerContext): Option[Thread] =
-    parentPidFromEnv().flatMap(watch(_, logCtx))
+    if (Properties.isWin)
+      envValue().flatMap { value =>
+        if (jnaAvailable)
+          scala.util.Try(value.toLong).toOption match {
+            case Some(handle) => watchHandle(handle, logCtx)
+            case None =>
+              logCtx(getClass).warn(s"Malformed $envVar value: '$value', not watching parent")
+              None
+          }
+        else
+          watchParent(logCtx)
+      }
+    else
+      parentPidFromEnv().flatMap(watch(_, logCtx))
 
   private final class ProcessHandles(
+    current: Method,
+    parent: Method,
+    pid: Method,
     of: Method,
     isAlive: Method,
     info: Method,
@@ -115,6 +182,14 @@ object ParentProcessWatcher {
       }
       else None
     }
+
+    def parentPid(): Option[Long] = {
+      val parentOpt = parent.invoke(current.invoke(null)).asInstanceOf[Optional[AnyRef]]
+      if (parentOpt.isPresent)
+        Some(pid.invoke(parentOpt.get()).asInstanceOf[java.lang.Long].longValue())
+      else
+        None
+    }
   }
 
   private object ProcessHandles {
@@ -124,6 +199,9 @@ object ParentProcessWatcher {
         val infoCls = Class.forName("java.lang.ProcessHandle$Info")
         Some(
           new ProcessHandles(
+            cls.getMethod("current"),
+            cls.getMethod("parent"),
+            cls.getMethod("pid"),
             cls.getMethod("of", java.lang.Long.TYPE),
             cls.getMethod("isAlive"),
             cls.getMethod("info"),

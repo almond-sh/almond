@@ -74,6 +74,8 @@ object Deps {
   def fs2                 = mvn"co.fs2::fs2-core:3.16.0"
   def jansi               = mvn"org.fusesource.jansi:jansi:2.4.3"
   def jeromq              = mvn"org.zeromq:jeromq:0.5.4"
+  // Same version as the one coursier-exec pulls
+  def jna = mvn"net.java.dev.jna:jna:5.19.1"
   def junitInterface      = mvn"com.github.sbt:junit-interface:0.13.3"
   def jsoniterScalaCore =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
