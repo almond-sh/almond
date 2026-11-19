@@ -37,6 +37,13 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       .map(_.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.toVector)
       .getOrElse(sys.error(s"No text inspection result for '$code' at $pos"))
 
+  // Scala 2 inspections are made of HTML, with the type then the docs
+  private def scala2Html(interpreter: Interpreter, code: String, pos: Int): String =
+    interpreter.inspect(code, pos, detailLevel = 1)
+      .flatMap(_.data.get("text/html"))
+      .map(raw => readFromArray(raw.value)(stringCodec))
+      .getOrElse(sys.error(s"No HTML inspection result for '$code' at $pos"))
+
   // The docs of Java libraries and of Scala 2 libraries are read from source JARs
   // (from the src.zip of the JDK for the JDK classes), see SourceDocs
   private def hasJdkSources =
@@ -95,6 +102,12 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         assert(res.head.matches("Signature: +map\\[B\\]\\(f: Int => B\\): List\\[B\\]"))
         // scaladoc variables, like $coll, should have been substituted
         assert(!res.exists(_.contains("$coll")))
+        // with no line break or space left by their definitions (3.8+, where the docs of the
+        // standard library come from its TASTy files)
+        assert(
+          res.contains("Builds a new list by applying a function to all elements of this list.")
+        )
+        assert(res.contains("  B: the element type of the returned list."))
       }
     }
 
@@ -214,6 +227,17 @@ object ScalaInterpreterInspectionTests extends TestSuite {
       }
     }
 
+    test("scala 2 types defined in cells") {
+      if (TestUtil.isScala2) {
+        val interpreter = newInterpreter(withSourceJars = false)
+        assert(interpreter.execute("case class Q(x: Int)\nval q = Q(1)").success)
+        // no wrapper prefixes, like ammonite.$sess.cmd0.instance.Q
+        assert(scala2Html(interpreter, "q", 1) == "<div><pre>Q</pre></div>")
+        assert(scala2Html(interpreter, "val qs = List(q)", 5) == "<div><pre>List[Q]</pre></div>")
+      }
+      else "disabled"
+    }
+
     test("default arguments") {
       if (TestUtil.isScala2) "disabled"
       else {
@@ -306,6 +330,73 @@ object ScalaInterpreterInspectionTests extends TestSuite {
         val res = lines(interpreter, code, pos)
         assert(res.exists(_.matches("Docstring: +The default mode which Jansi will use.*")))
       }
+    }
+
+    test("scala 2 docs") {
+      if (TestUtil.isScala2) {
+        val interpreter = newInterpreter()
+
+        // Source JARs are indexed in the background, and inspections only wait for that for a
+        // few seconds, which may not be enough here
+        val deadline = System.currentTimeMillis() + 120000L
+        while (
+          !scala2Html(interpreter, "os.list", "os.list".length).contains("Returns all the") &&
+          System.currentTimeMillis() < deadline
+        )
+          Thread.sleep(200L)
+
+        // scaladoc variables, like $coll, substituted with the values of the site, List here,
+        // including those whose values are variables too ($ccoll is $coll)
+        // complete code: the type of `List(1, 2).map(` varies (List[Nothing], CanBuildFrom
+        // overload in 2.12, …), as it depends on the presentation compiler's error recovery
+        val mapCode = "List(1, 2).map(_ + 1)"
+        val mapRes  = scala2Html(interpreter, mapCode, mapCode.indexOf("map") + 1)
+        // "Builds a new collection by …" in Scala 2.12
+        assert(mapRes.contains("by applying a function to all elements of this list."))
+        assert(!mapRes.contains("$"))
+
+        // variables defined in a base class of the site, from another file ($orderDependent)
+        val foldCode = "Vector(1, 2).foldLeft(0)(_ + _)"
+        val foldRes  = scala2Html(interpreter, foldCode, foldCode.indexOf("foldLeft") + 1)
+        assert(foldRes.contains("Applies "))
+        assert(!foldRes.contains("$"))
+        // The doc of foldLeft has x,,1,, subscripts since Scala 2.13.4 or so
+        if (foldRes.contains("Going left to right")) {
+          // x,,1,, subscripts, and lines of paragraphs without leading spaces
+          assert(foldRes.contains("\n`x\u2081`, `x\u2082`"))
+          assert(!foldRes.contains("\n elements"))
+        }
+
+        // links to other symbols rendered as code, rather than as [walk](walk)
+        val listRes = scala2Html(interpreter, "os.list", "os.list".length)
+        assert(listRes.contains("Returns all the files and folders"))
+        assert(listRes.contains("`walk`"))
+        assert(!listRes.contains("](walk)"))
+
+        // docs of the companion class of objects
+        val optionRes = scala2Html(interpreter, "Option", "Option".length)
+        assert(optionRes.startsWith("<div><pre>Option.type</pre><pre>Represents optional values."))
+      }
+      else "disabled"
+    }
+
+    test("scala 2 source JARs added after the first inspection") {
+      if (TestUtil.isScala2) {
+        val interpreter = newInterpreter(withSourceJars = false)
+        val code        = "os.list"
+        val pos         = code.length
+        // indexes the source JARs of the session, of which there are none here
+        assert(!scala2Html(interpreter, code, pos).contains("Returns all the files and folders"))
+
+        val jar = testSourceJars.find(_.last.startsWith("os-lib_")).getOrElse {
+          sys.error(s"No os-lib source JAR found in $testSourceJars")
+        }
+        val loadCode = "interp.load.cp(java.nio.file.Paths.get(\"\"\"" + jar + "\"\"\"))"
+        assert(interpreter.execute(loadCode).success)
+        // the JAR loaded above should have been indexed too
+        assert(scala2Html(interpreter, code, pos).contains("Returns all the files and folders"))
+      }
+      else "disabled"
     }
 
     test("no result outside of trees") {

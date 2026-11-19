@@ -176,9 +176,12 @@ final class ScalaInterpreter(
     interp
   }
 
-  if (!params.lazyInit)
+  if (!params.lazyInit) {
     // eagerly initialize ammInterp
     ammInterp
+    // and start indexing source JARs in the background (Scala 2), for inspections
+    inspections.updateSourceIndex()
+  }
 
   override def interruptSupported: Boolean =
     true
@@ -230,8 +233,11 @@ final class ScalaInterpreter(
         jupyterApi
       )
     }
-    finally
+    finally {
       currentExecuteRequestOpt0 = None
+      // index the source JARs of the dependencies the cell added, if any
+      inspections.updateSourceIndex()
+    }
 
   def currentLine(): Int =
     execute0.currentLine
