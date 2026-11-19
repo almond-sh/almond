@@ -204,10 +204,11 @@ final class ScalaInterpreter(
   private def loadUpfrontOptions(
     ammInterp: ammonite.interp.Interpreter,
     outputHandler: Option[OutputHandler]
-  ): Unit =
-    if (!upfrontOptionsLoaded) {
+  ): Option[ExecuteResult.Error] =
+    if (upfrontOptionsLoaded) None
+    else {
       upfrontOptionsLoaded = true
-      execute0.loadOptions(ammInterp, params.upfrontKernelOptions, outputHandler)
+      execute0.loadOptions(ammInterp, params.upfrontKernelOptions, outputHandler, colors0())
     }
 
   def execute(
@@ -220,18 +221,22 @@ final class ScalaInterpreter(
     try {
       currentExecuteRequestOpt0 = messageOpt
       val ammInterp0 = ammInterp
-      loadUpfrontOptions(ammInterp0, outputHandler)
-      execute0(
-        ammInterp0,
-        code,
-        inputManager,
-        outputHandler,
-        colors0,
-        storeHistory,
-        jupyterApi.executeHooks,
-        jupyterApi.postRunHooks(),
-        jupyterApi
-      )
+      // If the upfront options can't be loaded, we report it in the cell and don't run it (like
+      // when the directives of a cell can't be loaded). Users can then run the cell holding
+      // the faulty directives again, once fixed.
+      loadUpfrontOptions(ammInterp0, outputHandler).getOrElse {
+        execute0(
+          ammInterp0,
+          code,
+          inputManager,
+          outputHandler,
+          colors0,
+          storeHistory,
+          jupyterApi.executeHooks,
+          jupyterApi.postRunHooks(),
+          jupyterApi
+        )
+      }
     }
     finally {
       currentExecuteRequestOpt0 = None
@@ -417,13 +422,16 @@ final class ScalaInterpreter(
   }
 
   private def nl = System.lineSeparator()
-  def kernelInfo() =
+  def kernelInfo() = {
+    // Not scala.util.Properties.versionNumberString, that's the version of the Scala library,
+    // like 2.13.x for Scala 3 versions earlier than 3.8
+    val scalaVersion = AlmondCompilerLifecycleManager.compilerVersion
     KernelInfo(
       "scala",
       almond.api.Properties.version,
       KernelInfo.LanguageInfo(
         name = "scala",
-        version = scala.util.Properties.versionNumberString,
+        version = scalaVersion,
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
@@ -431,11 +439,12 @@ final class ScalaInterpreter(
       ),
       s"""Almond ${almond.api.Properties.version}
          |Ammonite ${ammonite.Constants.version}
-         |${scala.util.Properties.versionMsg}
+         |Scala $scalaVersion
          |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin +
         params.extraBannerOpt.fold("")(nl + nl + _),
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
     )
+  }
 
   override def shutdown(): Unit = {
     try Function.chain(ammInterp.beforeExitHooks).apply(())

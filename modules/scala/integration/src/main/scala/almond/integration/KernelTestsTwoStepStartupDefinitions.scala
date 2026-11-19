@@ -1,7 +1,14 @@
 package almond.integration
 
+import almond.channels.Channel
 import almond.integration.Tests.ls
+import almond.interpreter.messagehandlers.MessageHandler
 import almond.testkit.Dsl._
+
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentLinkedQueue
+
+import scala.jdk.CollectionConverters._
 
 abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
 
@@ -75,6 +82,103 @@ abstract class KernelTestsTwoStepStartupDefinitions extends AlmondFunSuite {
             |""".stripMargin,
           s"""sv: String = "${KernelLauncher.testScala212Version}""""
         )
+      }
+    }
+  }
+
+  /** Message handler keeping the content of error messages, along with the errors themselves */
+  private def errorCollector(): (MessageHandler, () => Seq[String]) = {
+    val errors = new ConcurrentLinkedQueue[String]
+    val handler = MessageHandler.discard {
+      case (Channel.Publish, m) if m.header.msg_type == "error" =>
+        errors.add(new String(m.content.value, StandardCharsets.UTF_8))
+      case _ =>
+    }
+    (handler, () => errors.asScala.toVector)
+  }
+
+  test0("Unknown Scala version") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        val (handler, errors) = errorCollector()
+        execute(
+          """//> using scala "3.99.99"
+            |val n = 1 + 1
+            |""".stripMargin,
+          expectError = true,
+          handler = handler
+        )
+        assert(errors().length == 1)
+        assert(errors().head.contains("Error fetching the Almond kernel for Scala 3.99.99"))
+        // the launcher is still there, and users can fix their directives
+        execute(
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |val sv = scala.util.Properties.versionNumberString
+             |""".stripMargin,
+          s"""sv: String = "${KernelLauncher.testScala213Version}""""
+        )
+      }
+    }
+  }
+
+  test0("Unknown Scala version in former cell") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        execute("""//> using scala "3.99.99"""", "")
+        execute("val n = 1 + 1", expectError = true)
+        execute(s"""//> using scala "${KernelLauncher.testScala213Version}"""", "")
+        execute(
+          "val sv = scala.util.Properties.versionNumberString",
+          s"""sv: String = "${KernelLauncher.testScala213Version}""""
+        )
+      }
+    }
+  }
+
+  test0("Unknown JVM") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        val (handler, errors) = errorCollector()
+        execute(
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |//> using jvm "nope:99"
+             |val n = 1 + 1
+             |""".stripMargin,
+          expectError = true,
+          handler = handler
+        )
+        assert(errors().length == 1)
+        assert(errors().head.contains("Error getting JVM nope:99"))
+        execute(
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |val n = 1 + 1
+             |""".stripMargin,
+          "n: Int = 2"
+        )
+      }
+    }
+  }
+
+  test0("Unknown dependency in launcher directives") { implicit forceVersion =>
+    kernelLauncher.withKernel { runner =>
+      implicit val sessionId: SessionId = SessionId()
+      runner.withSession() { implicit session =>
+        execute(
+          s"""//> using scala "${KernelLauncher.testScala213Version}"
+             |//> using dep "org.nope::nope:0.0.1"
+             |""".stripMargin,
+          ""
+        )
+        // the actual kernel fails to load that dependency, and reports it in the first cell
+        val (handler, errors) = errorCollector()
+        execute("val n = 1 + 1", expectError = true, handler = handler)
+        assert(errors().length == 1)
+        assert(errors().head.contains("org.nope:nope_2.13:0.0.1"))
+        // later cells run fine
+        execute("val n = 1 + 1", "n: Int = 2")
       }
     }
   }

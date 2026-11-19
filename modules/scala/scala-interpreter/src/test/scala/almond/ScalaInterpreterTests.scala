@@ -165,6 +165,15 @@ object ScalaInterpreterTests extends TestSuite {
 
   val tests = Tests {
 
+    test("kernel info") {
+      // the version of the compiler, not the one of the Scala library (2.13.x on Scala 3 < 3.8)
+      val sv   = ammonite.compiler.CompilerBuilder.scalaVersion
+      val info = interpreter.kernelInfo()
+      assert(info.language_info.version == sv)
+      val bannerLines = info.banner.linesIterator.toVector
+      assert(bannerLines.contains(s"Scala $sv"))
+    }
+
     test("execute") {
 
       // Code running is tested in (much) more detail in Ammonite itself.

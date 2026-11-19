@@ -11,13 +11,30 @@ import almond.protocol.{Execute, KernelInfo}
 
 import java.io.File
 
+import scala.util.control.NonFatal
+
 import almond.directivehandler._
 import almond.directivehandler.DirectiveValueParser.DirectiveValueParserValueOps
 import almond.directivehandler.EitherSequence._
 
+/** Interpreter of the launcher, handling the cells with only directives before the actual kernel
+  * starts
+  *
+  * @param prepareKernel
+  *   fetches what the actual kernel needs, and returns the command starting it, given the launcher
+  *   parameters and kernel options, the current cell count, the id of the message of the first cell
+  *   with code, and an output handler for that cell. Throws if anything goes wrong.
+  */
 class LauncherInterpreter(
   connectionFile: String,
-  options: LauncherOptions
+  options: LauncherOptions,
+  prepareKernel: (
+    LauncherParameters,
+    KernelOptions,
+    Int,
+    Option[String],
+    OutputHandler
+  ) => Launcher.KernelCommand
 ) extends Interpreter {
 
   def kernelInfo(): KernelInfo = {
@@ -27,7 +44,8 @@ class LauncherInterpreter(
       implementation_version = Properties.version,
       language_info = KernelInfo.LanguageInfo(
         name = "scala",
-        version = Properties.version,
+        // the Scala version the actual kernel is going to run
+        version = sv,
         mimetype = "text/x-scala",
         file_extension = ".sc",
         nbconvert_exporter = "script",
@@ -144,17 +162,66 @@ class LauncherInterpreter(
           "Error while processing using directives"
         )
       case Right((paramsUpdate, kernelOptionsUpdate)) =>
-        params = params + paramsUpdate
-        kernelOptions = kernelOptions + kernelOptionsUpdate
+        val newParams        = LauncherInterpreter.update(params, paramsUpdate)
+        val newKernelOptions = kernelOptions + kernelOptionsUpdate
         if (ScalaParser.hasActualCode(code))
-          // handing over execution to the actual kernel
-          ExecuteResult.Close
+          prepare(newParams, newKernelOptions, messageOpt, outputHandler) match {
+            case Right(kernelCommand) =>
+              params = newParams
+              kernelOptions = newKernelOptions
+              kernelCommandOpt0 = Some(kernelCommand)
+              // handing over execution to the actual kernel
+              ExecuteResult.Close
+            case Left(err) =>
+              // Not keeping the directives of this cell, so that users can fix them and run
+              // it again. We stay around, and the actual kernel isn't started. Like in the
+              // actual kernel, failed cells don't increment the execution count.
+              err
+          }
         else {
+          params = newParams
+          kernelOptions = newKernelOptions
           lineCount0 += 1
           ExecuteResult.Success(DisplayData.empty)
         }
     }
   }
+
+  private def prepare(
+    params0: LauncherParameters,
+    kernelOptions0: KernelOptions,
+    messageOpt: Option[Message[Execute.Request]],
+    outputHandler: Option[OutputHandler]
+  ): Either[ExecuteResult.Error, Launcher.KernelCommand] =
+    try {
+      val (launcherParams, kernelParams) = params0.processCustomDirectives(kernelOptions0)
+      val kernelCommand = prepareKernel(
+        launcherParams,
+        kernelParams,
+        lineCount0,
+        messageOpt.map(_.header.msg_id),
+        outputHandler.getOrElse(OutputHandler.NopOutputHandler)
+      )
+      Right(kernelCommand)
+    }
+    catch {
+      case e: Launcher.KernelPreparationException =>
+        Left(LauncherInterpreter.preparationError(LauncherInterpreter.Colors.default, e))
+      case NonFatal(e) =>
+        Left(
+          LauncherInterpreter.error(
+            LauncherInterpreter.Colors.default,
+            Some(e),
+            "Error while starting the kernel"
+          )
+        )
+    }
+
+  @volatile private var kernelCommandOpt0 = Option.empty[Launcher.KernelCommand]
+
+  /** The command starting the actual kernel, once a cell with code was run */
+  def kernelCommandOpt: Option[Launcher.KernelCommand] =
+    kernelCommandOpt0
 
   private var lineCount0 = 0
   def lineCount          = lineCount0
@@ -173,6 +240,44 @@ object LauncherInterpreter {
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error, colors.literal, exOpt, msg)
+
+  /** Error for exceptions users can likely fix themselves, showing their messages, but no stack
+    * trace
+    */
+  private def preparationError(
+    colors: Colors,
+    ex: Launcher.KernelPreparationException
+  ): ExecuteResult.Error = {
+    val causeMessages = Ex.unapplySeq(ex).get.drop(1)
+      .flatMap(e => Option(e.getMessage))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+    val hint = "Fix the directives (in this cell or earlier ones), then run this cell again."
+    ExecuteResult.Error(
+      "",
+      (ex.getMessage +: causeMessages).mkString(System.lineSeparator()),
+      colors.error(ex.getMessage).render +: (causeMessages.flatMap(_.linesIterator) :+ "" :+ hint)
+        .toList
+    )
+  }
+
+  /** Updates launcher parameters with those of a newer cell
+    *
+    * Unlike [[LauncherParameters.+]], the newer Scala version, JVM, or Java command win, so that
+    * users can fix those by running their directives again.
+    */
+  private def update(
+    params: LauncherParameters,
+    newer: LauncherParameters
+  ): LauncherParameters =
+    LauncherParameters(
+      jvm = newer.jvm.orElse(params.jvm),
+      javaOptions = params.javaOptions ++ newer.javaOptions,
+      scala = newer.scala.orElse(params.scala),
+      javaCmd = newer.javaCmd.orElse(params.javaCmd),
+      kernelOptions = params.kernelOptions ++ newer.kernelOptions,
+      customDirectives = params.customDirectives ++ newer.customDirectives
+    )
 
   // from Model.scala in Ammonite
   object Ex {

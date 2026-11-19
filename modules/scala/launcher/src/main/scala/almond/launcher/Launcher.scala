@@ -5,14 +5,14 @@ import almond.channels.relay.RelayServer
 import almond.channels.zeromq.{ReusePort, ZeromqThreads}
 import almond.cslogger.NotebookCacheLogger
 import almond.directives.KernelOptions
-import almond.interpreter.{ExecuteError, KernelSession}
+import almond.interpreter.KernelSession
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.install.{Install, OptionGroups}
 import almond.kernel.{Kernel, KernelThreads, MessageFile}
 import almond.launcher.directives.LauncherParameters
 import almond.logger.{Level, Logger, LoggerContext}
-import almond.protocol.{Execute, RawJson, Registration, Connection => JsonConnection}
+import almond.protocol.{Registration, Connection => JsonConnection}
 import almond.util.{ParentProcessWatcher, SigInt}
 import almond.util.ThreadUtil.singleThreadedExecutionContextExecutorService
 import caseapp.core.RemainingArgs
@@ -48,7 +48,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     * @param tempFiles
     *   temporary files the kernel needs, to be deleted once it exits
     */
-  private final case class KernelCommand(
+  private[launcher] final case class KernelCommand(
     javaCommand: Seq[String],
     javaArgs: Seq[String],
     kernelArgs: Seq[String],
@@ -56,13 +56,38 @@ object Launcher extends CaseApp[LauncherOptions] {
   ) {
     def command(channelArgs: Seq[String]): Seq[String] =
       javaCommand ++ javaArgs ++ channelArgs ++ kernelArgs
+
+    /** Passes the actual kernel the messages it should process first */
+    def withLeftoverMessages(msgFile: os.Path): KernelCommand =
+      copy(
+        kernelArgs = Seq("--leftover-messages", msgFile.toString) ++ kernelArgs,
+        tempFiles = tempFiles :+ msgFile
+      )
   }
+
+  /** Error preventing the actual kernel from starting, that users can likely fix by changing their
+    * directives (unknown Scala version, JVM, …)
+    *
+    * Its message (and those of its causes) are reported to users, but not its stack trace.
+    */
+  private[launcher] final class KernelPreparationException(message: String, cause: Throwable)
+      extends Exception(message, cause)
 
   override def helpFormat: HelpFormat =
     super.helpFormat.withSortedGroups(Some(OptionGroups.all))
 
+  private def userError[T](message: => String)(f: => T): T =
+    try f
+    catch {
+      case NonFatal(e) =>
+        throw new KernelPreparationException(message, e)
+    }
+
+  /** Fetches everything the actual kernel needs, and computes the command starting it
+    *
+    * This throws if anything goes wrong, like an unknown Scala version or JVM.
+    */
   private def actualKernelCommand(
-    msgFileOpt: Option[os.Path],
     currentCellCount: Int,
     options: LauncherOptions,
     noExecuteInputFor: Seq[String],
@@ -129,7 +154,7 @@ object Launcher extends CaseApp[LauncherOptions] {
         .toVector
         .map(e => (e.getKey, e.getValue))
     }
-    val apiFiles = {
+    val apiFiles = userError(s"Error fetching the Almond kernel for Scala $scalaVersion") {
       val extraDeps = options.sharedDependencies.map { str =>
         val dep = dependency.parser.DependencyParser.parse(str) match {
           case Left(err) =>
@@ -148,7 +173,7 @@ object Launcher extends CaseApp[LauncherOptions] {
       )
       fetch(dep, extraDeps = extraDeps) ++ fetch(dep, extraDeps = extraDeps, sources = true)
     }
-    val kernelFiles = {
+    val kernelFiles = userError(s"Error fetching the Almond kernel for Scala $scalaVersion") {
       val dep = coursierapi.Dependency.of(
         "sh.almond",
         s"scala-kernel_${scalaParams.scalaBinaryVersion}",
@@ -163,6 +188,22 @@ object Launcher extends CaseApp[LauncherOptions] {
       }
     }
 
+    val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
+    val javaCommand = jvmIdOpt match {
+      case Some(jvmId) =>
+        val jvmManager = coursierapi.JvmManager.create().setArchiveCache(
+          coursierapi.ArchiveCache.create().withCache(cache)
+        )
+        val javaHome = userError(s"Error getting JVM $jvmId") {
+          os.Path(jvmManager.get(jvmId), os.pwd)
+        }
+        val ext = if (scala.util.Properties.isWin) ".exe" else ""
+        Seq((javaHome / "bin" / s"java$ext").toString)
+      case None =>
+        // Same JVM as ours by default, that might not be on PATH
+        params0.javaCmd.getOrElse(Seq(Install.currentJavaCommand()))
+    }
+
     // Not deleting these temporary files on exit ourselves: when exec-ing the actual kernel,
     // shutdown hooks are run before the exec, and would delete them before the kernel reads them
     val launcher = os.temp(prefix = "almond", suffix = ".jar", deleteOnExit = false)
@@ -172,9 +213,6 @@ object Launcher extends CaseApp[LauncherOptions] {
     )
     BootstrapGenerator.generate(params, launcher.toNIO)
 
-    val msgFileArgs = msgFileOpt.toSeq.flatMap { msgFile =>
-      Seq[os.Shellable]("--leftover-messages", msgFile)
-    }
     val noExecuteInputArgs = noExecuteInputFor.flatMap { id =>
       Seq("--no-execute-input-for", id, "--ignore-launcher-directives-in", id)
     }
@@ -188,20 +226,6 @@ object Launcher extends CaseApp[LauncherOptions] {
       }
     val optionsArgs = optionsFileOpt.toSeq.flatMap { optionsFile =>
       Seq[os.Shellable]("--kernel-options", optionsFile)
-    }
-
-    val jvmIdOpt = params0.jvm.filter(_.trim.nonEmpty)
-    val javaCommand = jvmIdOpt match {
-      case Some(jvmId) =>
-        val jvmManager = coursierapi.JvmManager.create().setArchiveCache(
-          coursierapi.ArchiveCache.create().withCache(cache)
-        )
-        val javaHome = os.Path(jvmManager.get(jvmId), os.pwd)
-        val ext      = if (scala.util.Properties.isWin) ".exe" else ""
-        Seq((javaHome / "bin" / s"java$ext").toString)
-      case None =>
-        // Same JVM as ours by default, that might not be on PATH
-        params0.javaCmd.getOrElse(Seq(Install.currentJavaCommand()))
     }
 
     // JAVA_OPTS comes first, so that options from the command-line or from directives win
@@ -226,7 +250,6 @@ object Launcher extends CaseApp[LauncherOptions] {
     val kernelArgs = os.proc(
       "--initial-cell-count",
       currentCellCount,
-      msgFileArgs,
       noExecuteInputArgs,
       // so that the messages of the sub-kernel have the same session id as ours - both
       // processes are the same kernel from the point of view of the frontend
@@ -607,12 +630,37 @@ object Launcher extends CaseApp[LauncherOptions] {
     log.debug(s"Binding ports with SO_REUSEPORT: $reusePort")
     val zeromqThreads = zeromqThreads0.withReusePort(reusePort)
 
+    val session = KernelSession.create(None, options.username.map(_.trim).filter(_.nonEmpty))
+
     val interpreter = new LauncherInterpreter(
       kernelConnectionFile,
-      options
+      options,
+      (launcherParams, kernelParams, cellCount, firstMessageIdOpt, outputHandler) => {
+        val (kernelCommand, scalaVersion, jvmOpt) = actualKernelCommand(
+          cellCount,
+          options,
+          firstMessageIdOpt.toSeq,
+          session,
+          launcherParams,
+          kernelParams,
+          outputHandler,
+          logCtx
+        )
+        if (!options.quiet0) {
+          val toPrint =
+            s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
+          val toPrintHtml =
+            s"Launching Scala <code>$scalaVersion</code> kernel" +
+              jvmOpt.fold("")(jvm => s" with JVM <code>$jvm</code>")
+          outputHandler.display(
+            DisplayData()
+              .add(DisplayData.ContentType.text, toPrint)
+              .add(DisplayData.ContentType.html, toPrintHtml)
+          )
+        }
+        kernelCommand
+      }
     )
-
-    val session = KernelSession.create(None, options.username.map(_.trim).filter(_.nonEmpty))
 
     val (run, conn) =
       Kernel
@@ -642,8 +690,10 @@ object Launcher extends CaseApp[LauncherOptions] {
         .unsafeRunSync()(kernelThreads.ioRuntime)
     val leftoverMessages: Seq[(Channel, RawMessage)] = run.unsafeRunSync()(kernelThreads.ioRuntime)
 
-    val leftoverMessagesFileOpt =
-      if (leftoverMessages.isEmpty) None
+    // Set if a cell with code ran, and everything the actual kernel needs could be fetched.
+    // Else, the launcher was asked to shut down before that.
+    val maybeKernelCommand = interpreter.kernelCommandOpt.map { kernelCommand =>
+      if (leftoverMessages.isEmpty) kernelCommand
       else {
         val msgFile = MessageFile.from(leftoverMessages)
         val leftoverMessagesFile = os.temp(
@@ -652,76 +702,9 @@ object Launcher extends CaseApp[LauncherOptions] {
           suffix = ".json",
           deleteOnExit = false
         )
-        tempFiles += leftoverMessagesFile
-        Some(leftoverMessagesFile)
+        kernelCommand.withLeftoverMessages(leftoverMessagesFile)
       }
-
-    val firstMessageOpt = leftoverMessages
-      .headOption
-      .collect {
-        case (Channel.Requests, m) =>
-          almond.interpreter.Message.parse[RawJson](m).toOption // FIXME Log any error on the left?
-      }
-      .flatten
-
-    val firstMessageIdOpt = firstMessageOpt.map(_.header.msg_id)
-
-    val outputHandlerOpt = firstMessageOpt.map { firstMessage =>
-      new LauncherOutputHandler(firstMessage, session, conn, kernelThreads.ioRuntime)
     }
-
-    val maybeActualKernelCommand =
-      try {
-        val (launcherParams, kernelParams) =
-          interpreter.params.processCustomDirectives(interpreter.kernelOptions)
-        val (actualKernelCommand0, scalaVersion, jvmOpt) = actualKernelCommand(
-          leftoverMessagesFileOpt,
-          interpreter.lineCount,
-          options,
-          firstMessageIdOpt.toSeq,
-          session,
-          launcherParams,
-          kernelParams,
-          outputHandlerOpt.getOrElse(OutputHandler.NopOutputHandler),
-          logCtx
-        )
-
-        if (!options.quiet0)
-          for (outputHandler <- outputHandlerOpt) {
-            val toPrint =
-              s"Launching Scala $scalaVersion kernel" + jvmOpt.fold("")(jvm => s" with JVM $jvm")
-            val toPrintHtml =
-              s"Launching Scala <code>$scalaVersion</code> kernel" +
-                jvmOpt.fold("")(jvm => s" with JVM <code>$jvm</code>")
-            outputHandler.display(
-              DisplayData()
-                .add(DisplayData.ContentType.text, toPrint)
-                .add(DisplayData.ContentType.html, toPrintHtml)
-            )
-          }
-
-        Right(actualKernelCommand0)
-      }
-      catch {
-        case NonFatal(e) if firstMessageOpt.nonEmpty =>
-          val firstMessage = firstMessageOpt.getOrElse(sys.error("Cannot happen"))
-          val err          = ExecuteError.error(fansi.Color.Red, fansi.Color.Green, Some(e), "")
-          val errMsg = firstMessage.publish(
-            session,
-            Execute.errorType,
-            Execute.Error("", "", List(err.message))
-          )
-          try
-            conn.send(Channel.Publish, errMsg.asRawMessage).unsafeRunSync()(kernelThreads.ioRuntime)
-          catch {
-            case NonFatal(e) =>
-              throw new Exception(e)
-          }
-          Left(e)
-      }
-
-    for (outputHandler <- outputHandlerOpt)
-      outputHandler.done()
 
     def closeConnection(): Unit = {
       try
@@ -739,8 +722,8 @@ object Launcher extends CaseApp[LauncherOptions] {
       log.debug("ZeroMQ context closed")
     }
 
-    maybeActualKernelCommand match {
-      case Right(kernelCommand) =>
+    maybeKernelCommand match {
+      case Some(kernelCommand) =>
         val tempFiles0 = tempFiles.toList ++ kernelCommand.tempFiles
         val execOpt =
           if (reusePort)
@@ -788,11 +771,10 @@ object Launcher extends CaseApp[LauncherOptions] {
             if (exitCode != 0)
               sys.exit(exitCode)
         }
-      case Left(e) =>
+      case None =>
         for (f <- tempFiles)
           f.toIO.deleteOnExit()
         closeConnection()
-        throw new Exception(e)
     }
   }
 }
