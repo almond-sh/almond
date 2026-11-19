@@ -401,15 +401,14 @@ object Tests {
         execute(
           s"%AddJar $jarUri" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$" + ls +
-            "import picocli.CommandLine",
+          "import picocli.CommandLine",
           ignoreStreams = true,
           trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jarUri",
-          "import $cp.$",
+          "",
           ignoreStreams = true,
           trimReplyLines = true
         )
@@ -448,15 +447,14 @@ object Tests {
         execute(
           s"%AddJar $jar" + ls +
             "import picocli.CommandLine" + ls,
-          "import $cp.$" + ls +
-            "import picocli.CommandLine",
+          "import picocli.CommandLine",
           ignoreStreams = true,
           trimReplyLines = true
         )
       else {
         execute(
           s"%AddJar $jar",
-          "import $cp.$",
+          "",
           ignoreStreams = true,
           trimReplyLines = true
         )
@@ -604,7 +602,7 @@ object Tests {
 
         execute(
           "%AddJar foo://thing/a/b" + ls,
-          "import $cp.$",
+          "",
           trimReplyLines = true
         )
 
@@ -960,8 +958,7 @@ object Tests {
       execute(
         """import $ivy.`org.lwjgl:lwjgl:3.3.3,classifier=natives-macos`
           |""".stripMargin + checks,
-        s"""import $$ivy.$$
-           |defined function found
+        s"""defined function found
            |linuxNativeLibFound: Boolean = false
            |macOsNativeLibFound: Boolean = true
            |mainJarFound: Boolean = false""".stripMargin,
@@ -1003,7 +1000,7 @@ object Tests {
       // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
       execute(
         "import $file.Foo",
-        "import $file.$",
+        "",
         trimReplyLines = true,
         ignoreStreams = true
       )
@@ -1022,7 +1019,7 @@ object Tests {
       // Ammonite prints "Compiling …/Foo.sc" on stdout when compiling the script
       execute(
         "import $file.Foo",
-        "import $file.$",
+        "",
         trimReplyLines = true,
         ignoreStreams = true
       )
