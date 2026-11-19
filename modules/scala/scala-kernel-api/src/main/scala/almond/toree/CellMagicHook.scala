@@ -35,8 +35,9 @@ object CellMagicHook {
               val content = code.linesWithSeparators.drop(1).mkString
               handler.handle(name, content)
             case None =>
-              System.err.println(s"Warning: ignoring unrecognized Toree cell magic $name")
-              Right("")
+              // kept, for execute hooks registered after this one to handle it -
+              // LineMagicHook.unrecognizedMagicsHook reports it if none does
+              Right(code)
           }
         case None =>
           Right(code)

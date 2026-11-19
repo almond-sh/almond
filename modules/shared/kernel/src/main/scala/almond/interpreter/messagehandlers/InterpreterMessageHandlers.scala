@@ -170,7 +170,13 @@ final case class InterpreterMessageHandlers(
                 runAfterQueued(interpreter.cancelledSignal.set(false))
             else
               IO.unit
-          val error = Execute.Error(e.name, e.message, e.stackTrace)
+          // Front-ends show the traceback of error outputs, or "ename: evalue" when it's empty,
+          // which gives ": Compilation Failed" for errors without a name. So we always send a
+          // traceback, the first line of the one of the execute_reply below without a stack trace.
+          val traceback =
+            if (e.stackTrace.isEmpty) List(errorHeader(e))
+            else e.stackTrace
+          val error = Execute.Error(e.name, e.message, traceback)
           extra *>
             message
               .publish(session, Execute.errorType, error)
@@ -186,11 +192,7 @@ final case class InterpreterMessageHandlers(
         case v: ExecuteResult.Success =>
           Right(Execute.Reply.Success(countAfter, Map.empty, payload = payloadsAsJson()))
         case ex: ExecuteResult.Error =>
-          val traceBack =
-            Seq(ex.name, ex.message)
-              .filter(_.nonEmpty)
-              .mkString(": ") ::
-              ex.stackTrace.map("    " + _)
+          val traceBack = errorHeader(ex) :: ex.stackTrace.map("    " + _)
           val r = Execute.Reply.Error(
             ex.name,
             ex.message,
@@ -199,7 +201,7 @@ final case class InterpreterMessageHandlers(
           )
           Right(r)
         case ExecuteResult.Abort =>
-          Right(Execute.Reply.Abort(countAfter))
+          Right(Execute.Reply.Abort())
         case ExecuteResult.Exit =>
           val payload = Execute.Reply.Success.AskExitPayload("ask_exit", false)
           Right(Execute.Reply.Success(countAfter, Map(), List(RawJson(writeToArray(payload)))))
@@ -355,6 +357,12 @@ object InterpreterMessageHandlers {
       Option(e.getMessage).getOrElse(""),
       e.getStackTrace.toList.map("at " + _)
     )
+
+  /** "name: message", or just the message for errors without a name */
+  private def errorHeader(e: ExecuteResult.Error): String =
+    Seq(e.name, e.message)
+      .filter(_.nonEmpty)
+      .mkString(": ")
 
   // Jupyter protocol >= 5.2 cursor positions are offsets in unicode code points, while
   // interpreters work with Java String indices (UTF-16 code units). These differ as soon

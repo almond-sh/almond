@@ -91,17 +91,17 @@ object Execute {
 
     // status='aborted' is deprecated since protocol 5.1 (kernels should send status='error'
     // instead), but it's still what frontends expect for cells cancelled by stop_on_error.
-    // execute_reply messages have an execution_count field regardless of their status.
+    // Like ipykernel, we don't send an execution_count for these: the cells didn't run, and
+    // front-ends show the execution count of the reply as the prompt of the cell (L2).
     final case class Abort private[protocol] (
-      execution_count: Int,
       status: String // no default value here for the value not to be swallowed by the JSON encoder
     ) extends Reply {
       assert(status == "aborted")
     }
 
     object Abort {
-      def apply(execution_count: Int): Abort =
-        Abort(execution_count, "aborted")
+      def apply(): Abort =
+        Abort("aborted")
     }
 
   }

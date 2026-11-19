@@ -2,6 +2,7 @@ package almond.amm
 
 import java.nio.file.Path
 
+import almond.internals.MissingReferenceFilter
 import almond.logger.LoggerContext
 import ammonite.compiler.CompilerLifecycleManager
 import ammonite.compiler.iface
@@ -43,6 +44,17 @@ class AlmondCompilerLifecycleManager(
       logCode
     )
   }
+
+  // The compiler can print "missing reference" messages to System.err while compiling, when
+  // looking for imports to suggest in error messages (see MissingReferenceFilter)
+  override def compileClass(
+    processed: iface.Preprocessor.Output,
+    printer: ammonite.util.Printer,
+    fileName: String
+  ): Option[iface.Compiler.Output] =
+    MissingReferenceFilter.filteringSystemErr {
+      super.compileClass(processed, printer, fileName)
+    }
 }
 
 object AlmondCompilerLifecycleManager {

@@ -896,6 +896,8 @@ object ScalaKernelTests extends TestSuite {
 
       val nl = System.lineSeparator()
 
+      // magic-only cells get an execution count too, hence the result names
+
       kernel.execute(
         "%truncation",
         "",
@@ -910,7 +912,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res1: Vector[Int] = " + (1 to 200).toVector.toString
+        "res3: Vector[Int] = " + (1 to 200).toVector.toString
       )
       kernel.execute(
         "%truncation on",
@@ -920,7 +922,7 @@ object ScalaKernelTests extends TestSuite {
       )
       kernel.execute(
         "(1 to 200).toVector",
-        "res2: Vector[Int] = " +
+        "res5: Vector[Int] = " +
           (1 to 38)
             .toVector
             .map("  " + _ + "," + nl)
@@ -1094,6 +1096,142 @@ object ScalaKernelTests extends TestSuite {
         )
         assert(evaluatorHookThreadLocal.get().isEmpty)
       }
+    }
+
+    test("silent imports") {
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          silentImports = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      kernel.execute("import scala.collection.mutable", "")
+      kernel.execute(
+        """import scala.util.Try, scala.util.Success
+          |val s = mutable.Set(Try(2).get)
+          |""".stripMargin,
+        if (scalaVersion.startsWith("2.12.")) "s: mutable.Set[Int] = Set(2)"
+        else "s: mutable.Set[Int] = HashSet(2)"
+      )
+    }
+
+    test("execute hooks handling magics with toree magics") {
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      // the %sql example of api-jupyter.md
+      kernel.execute(
+        """kernel.addExecuteHook { code =>
+          |  import almond.api.JupyterApi
+          |  import almond.interpreter.api.DisplayData
+          |
+          |  if (code.linesIterator.take(1).toList == List("%sql")) {
+          |    val sql = code.linesWithSeparators.drop(1).mkString
+          |    Left(JupyterApi.ExecuteHookResult.Success(DisplayData.text("SQL: " + sql.trim)))
+          |  }
+          |  else
+          |    Right(code)
+          |}
+          |""".stripMargin,
+        "res1: Boolean = true"
+      )
+      kernel.execute(
+        """%sql
+          |SELECT id, name FROM my_table
+          |""".stripMargin,
+        "SQL: SELECT id, name FROM my_table",
+        stderr = "" // no warning about an unrecognized magic
+      )
+
+      // magics that no hook handles are errors
+      kernel.execute(
+        """%nopenope
+          |1
+          |""".stripMargin,
+        stdout = "",
+        stderr = "",
+        errors = Seq(
+          ("", "Line magic %nopenope not found", List("Line magic %nopenope not found"))
+        )
+      )
+      kernel.execute(
+        """%%nopenope
+          |1
+          |""".stripMargin,
+        stdout = "",
+        stderr = "",
+        errors = Seq(
+          ("", "Cell magic %%nopenope not found", List("Cell magic %%nopenope not found"))
+        )
+      )
+      // the known ones still work
+      kernel.execute(
+        """%%html
+          |<b>foo</b>
+          |""".stripMargin,
+        "",
+        displaysHtml = Seq("<b>foo</b>" + ls)
+      )
+    }
+
+    test("execution counts") {
+      val interpreter = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          toreeMagics = true
+        ),
+        logCtx = logCtx
+      )
+
+      val kernel = Kernel.create(interpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .unsafeRunTimedOrThrow(threads.ioRuntime)
+
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+
+      // like with ipykernel, every non-empty cell gets an execution count, whatever it does,
+      // and the result names follow it
+      kernel.execute("1", "res1: Int = 1")
+      kernel.execute("val x: Int = \"a\"", expectError = true, ignoreStreams = true)
+      kernel.execute("2", "res3: Int = 2")
+      kernel.execute("%LsMagic", "", ignoreStreams = true)
+      kernel.execute("", "")
+      kernel.execute("3", "res5: Int = 3")
+      // code loaded with repl.load doesn't take an execution count
+      kernel.execute("""repl.load("val loaded = 6")""", "", ignoreStreams = true)
+      kernel.execute("loaded + 1", "res7: Int = 7")
+    }
+
+    test("repl load output") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      runner.withSession() { implicit session =>
+        // no "Compiling /…/(console)" message
+        Dsl.execute(
+          """repl.load("val loaded = 41")""",
+          "",
+          stdout = "",
+          stderr = ""
+        )
+        Dsl.execute("loaded + 1", "res2: Int = 42")
+      }
+    }
+
+    test("invalid compiler option") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.invalidCompilerOption(scalaVersion)
     }
 
     test("unclosed string litteral") {

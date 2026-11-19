@@ -187,21 +187,26 @@ final class Execute(
     options: KernelOptions
   ): Either[String, Unit] = {
 
-    almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
+    val maybeOptionWarnings = almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
       options.scalacOptions.toSeq.map(_.value.value)
     )
 
-    for (value <- options.outputStyle)
-      outputStyle() = value
+    maybeOptionWarnings.flatMap { optionWarnings =>
+      for (warning <- optionWarnings)
+        printer0.warning(s"Warning: $warning")
 
-    val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
-    val loadDepsRes =
-      if (deps.isEmpty) Right(Nil)
-      else ammInterp.loadIvy(deps: _*)
-    loadDepsRes.map { loaded =>
-      if (loaded.nonEmpty)
-        ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
-      ()
+      for (value <- options.outputStyle)
+        outputStyle() = value
+
+      val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
+      val loadDepsRes =
+        if (deps.isEmpty) Right(Nil)
+        else ammInterp.loadIvy(deps: _*)
+      loadDepsRes.map { loaded =>
+        if (loaded.nonEmpty)
+          ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
+        ()
+      }
     }
   }
 
@@ -214,6 +219,14 @@ final class Execute(
   def currentLine: Int = currentLine0
   def incrementLineCount(): Unit = {
     currentLine0 += 1
+  }
+
+  /** Line count of the code that doesn't get an execution count, like silent cells, or the code
+    * loaded with `repl.load`
+    */
+  def currentNoHistoryLine: Int = currentNoHistoryLine0
+  def incrementNoHistoryLineCount(): Unit = {
+    currentNoHistoryLine0 += 1
   }
 
   def currentInputManagerOpt: Option[InputManager] =
@@ -671,6 +684,8 @@ final class Execute(
       sys.exit(0)
     }
 
+    val lineBefore = currentLine0
+
     if (storeHistory) {
       storage.fullHistory() = storage.fullHistory() :+ code
       history0 = history0 :+ code
@@ -769,8 +784,9 @@ final class Execute(
 
                 optionsRes match {
                   case Left(failureMsg) =>
-                    // kind of meh that we have to build a new Exception here
-                    Execute.error(colors0(), Some(new Exception(failureMsg)), "")
+                    // invalid compiler options, dependency resolution errors, … - no stack
+                    // trace, which would only point at the kernel code reporting the error (L9)
+                    Execute.error(colors0(), None, failureMsg)
                   case Right(()) =>
                     ammResult(
                       ammInterp,
@@ -786,9 +802,9 @@ final class Execute(
                       case Res.Failure(msg) =>
                         interruptedStackTraceOpt0 match {
                           case None =>
-                            val err = Execute.error(colors0(), None, msg)
-                            outputHandler.foreach(_.stderr(err.message)) // necessary?
-                            err
+                            // Not printed to stderr: the error output that the kernel publishes
+                            // for this result already shows the message (L4)
+                            Execute.error(colors0(), None, msg)
                           case Some(st) =>
                             val cutoff = Set("$main", "evaluatorRunPrinter")
 
@@ -827,6 +843,13 @@ final class Execute(
         }
     }
 
+    // Like ipykernel, every cell but empty ones gets an execution count, whether it succeeds or
+    // not, and whether it runs code or not (cells failing to compile, magic-only cells, …), so
+    // that the next cell gets a new one (L2). Ammonite only increments it for cells that it
+    // compiles successfully.
+    if (storeHistory && code.trim.nonEmpty && currentLine0 == lineBefore)
+      currentLine0 += 1
+
     if (postRunHooks.isEmpty) {
       withInputManager(inputManager, done = true)(())
       result
@@ -862,6 +885,7 @@ final class Execute(
 }
 
 object Execute {
+
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)
 

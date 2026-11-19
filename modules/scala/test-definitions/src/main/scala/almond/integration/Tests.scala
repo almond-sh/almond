@@ -460,7 +460,7 @@ object Tests {
               | required: String
               |def thing(s: String) = ""; val res1_1 = thing(Array(2))
               |                                                   ^
-              |Compilation Failed""".stripMargin
+              |""".stripMargin
           else if (scalaVersion.startsWith("3.3."))
             """-- [E007] Type Mismatch Error: cmd1.sc:1:38 ------------------------------------
               |1 |def thing(s: String) = ""; thing(Array(2))
@@ -475,7 +475,7 @@ object Tests {
               |  |
               |  |
               |  | longer explanation available when compiling with `-explain`
-              |Compilation Failed""".stripMargin
+              |""".stripMargin
           else
             """-- [E007] Type Mismatch Error: cmd1.sc:1:38 ------------------------------------
               |1 |def thing(s: String) = ""; thing(Array(2))
@@ -484,7 +484,7 @@ object Tests {
               |  |                                 Required: String
               |  |
               |  | longer explanation available when compiling with `-explain`
-              |Compilation Failed""".stripMargin
+              |""".stripMargin
       )
 
       val expectedMessage =
@@ -1008,7 +1008,7 @@ object Tests {
           |cmd1.sc:4: not found: value other
           |  other
           |  ^
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
       else
         """-- [E006] Not Found Error: cmd1.sc:2:2 -----------------------------------------
           |2 |  foo
@@ -1028,7 +1028,7 @@ object Tests {
           |  |  Not found: other
           |  |
           |  | longer explanation available when compiling with `-explain`
-          |Compilation Failed""".stripMargin
+          |""".stripMargin
 
     runner.withSession() { implicit session =>
       execute(
@@ -1046,6 +1046,34 @@ object Tests {
       )
     }
   }
+
+  // The Scala 3 compiler prints "***** missing reference" messages to System.err while compiling,
+  // when looking for imports to suggest, with Scala 2.13 libraries like plotly-scala on the class
+  // path (see MissingReferenceFilter)
+  def noMissingReferenceMessages()(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        """//> using dep "org.plotly-scala:plotly-almond_2.13:0.8.5"
+          |""".stripMargin,
+        reply = "",
+        ignoreStreams = true
+      )
+      execute(
+        "plotly.Scatter(Seq(1, 2), Seq(3, 4)).notAMember",
+        stderr =
+          """-- [E008] Not Found Error: cmd2.sc:1:37 ----------------------------------------
+            |1 |plotly.Scatter(Seq(1, 2), Seq(3, 4)).notAMember
+            |  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            |  |value notAMember is not a member of plotly.Scatter
+            |""".stripMargin,
+        errors = Seq(
+          ("", "Compilation Failed", List("Compilation Failed"))
+        )
+      )
+    }
 
   def addDependency(scalaVersion: String)(implicit
     sessionId: SessionId,
@@ -1224,26 +1252,26 @@ object Tests {
             // com-lihaoyi/Ammonite#1703 or a related PR should fix that
             """1 deprecation (since 0.1); re-run enabling -deprecation for details, or try -help
               |No warnings can be incurred under -Werror.
-              |Compilation Failed""".stripMargin
+              |""".stripMargin
           else
             """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
               |val n = getValue()
               |        ^
               |No warnings can be incurred under -Werror.
-              |Compilation Failed""".stripMargin
+              |""".stripMargin
         else if (scalaVersion.startsWith("2.12."))
           """cmd2.sc:4: method getValue in class Helper is deprecated (since 0.1): foo
             |val n = getValue()
             |        ^
             |No warnings can be incurred under -Xfatal-warnings.
-            |Compilation Failed""".stripMargin
+            |""".stripMargin
         else if (scalaVersion.startsWith("3.3."))
           // FIXME The line number is wrong here
           """-- Error: cmd2.sc:3:8 ----------------------------------------------------------
             |3 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
-            |Compilation Failed""".stripMargin
+            |""".stripMargin
         else if (scalaVersion0 < Version("3.8.0"))
           // FIXME The line number is wrong here
           """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
@@ -1251,7 +1279,7 @@ object Tests {
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |No warnings can be incurred under -Werror (or -Xfatal-warnings)
-            |Compilation Failed""".stripMargin
+            |""".stripMargin
         else
           // FIXME The line number is wrong here
           """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
@@ -1259,7 +1287,7 @@ object Tests {
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |No warnings can be incurred under -Werror
-            |Compilation Failed""".stripMargin
+            |""".stripMargin
 
       execute(
         """//> using option "-Xfatal-warnings" "-deprecation"
@@ -2870,6 +2898,39 @@ object Tests {
     * parsing error of the cell code (its exact message depending on the Scala version). It used to
     * be reported as a malformed directive.
     */
+  /** Invalid compiler options are reported with a one-line error on Scala 2, without breaking later
+    * cells. Scala 3, like its compiler, only warns about unknown options.
+    */
+  def invalidCompilerOption(scalaVersion: String)(implicit
+    sessionId: SessionId,
+    runner: Runner
+  ): Unit =
+    runner.withSession() { implicit session =>
+      if (scalaVersion.startsWith("2."))
+        execute(
+          """//> using option "-Xnot-an-option"
+            |1
+            |""".stripMargin,
+          stdout = "",
+          stderr = "",
+          errors = Seq(
+            ("", "bad option: '-Xnot-an-option'", List("bad option: '-Xnot-an-option'"))
+          )
+        )
+      else
+        execute(
+          """//> using option "-Xnot-an-option"
+            |1
+            |""".stripMargin,
+          "res1: Int = 1",
+          stderr = "Warning: bad option '-Xnot-an-option' was ignored" + System.lineSeparator()
+        )
+      execute(
+        "val n = 1 + 1",
+        "n: Int = 2"
+      )
+    }
+
   def unclosedStringLitteral()(implicit sessionId: SessionId, runner: Runner): Unit =
     runner.withSession() { implicit session =>
       execute(

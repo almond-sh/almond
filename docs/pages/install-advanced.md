@@ -298,6 +298,10 @@ println("Hello")
 // thing: Int = 2
 ```
 
+Magics that are neither built-in nor registered this way are left in the cell, so that
+[execute hooks](api-jupyter.md#hooks) added by users can handle them, like the `%sql` example there.
+If no execute hook handles them, the cell fails with an error like `Line magic %foo not found`.
+
 Custom magics are listed by `%LsMagic`, along with the built-in ones. Remove all custom magics
 with `almond.toree.LineMagicHook.clearHandlers()` and `almond.toree.CellMagicHook.clearHandlers()`.
 
