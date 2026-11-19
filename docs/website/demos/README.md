@@ -10,7 +10,10 @@ Each `*.sc` file is a demo, whose name is the file name without its extension. `
 cells, and can be followed by options:
 - `pause=3000`: how long to wait after the cell ran, in milliseconds (1200 by default),
 - `wait=.js-plotly-plot`: a CSS selector to wait for in the cell, for outputs rendered
-  asynchronously, like plots loading their JavaScript library.
+  asynchronously, like plots loading their JavaScript library,
+- `drag=.noUi-handle:165,-95`: once the cell ran, drag the first element matching a CSS selector
+  in the cell (here, the handle of a slider widget) horizontally, by each of the comma-separated
+  offsets in turn (in CSS pixels), with a mouse pointer drawn in the page.
 
 Before the first cell, a `// %demo` line can set options for the whole demo:
 - `kernel=echo`: the kernel to run the demo with (the Scala kernel passed via `--kernel` by default),
@@ -43,6 +46,10 @@ them):
 ```text
 $ docs/website/demos/record.sh
 ```
+The widgets demo needs Almond 0.16.0 or later, and the 0.1.0 release of
+[almond-widgets](https://github.com/almond-sh/almond-widgets) (its current recording was made with
+both built from sources, before they were released).
+
 Pass it the paths of some demos to only record those, and [`record.mjs`](record.mjs) options
 (see below), like
 ```text

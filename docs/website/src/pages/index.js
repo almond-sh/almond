@@ -44,6 +44,19 @@ const features = [
     ),
   },
   {
+    title: 'Interactive widgets',
+    video: 'frontpage/widgets',
+    imageAlt: 'Widgets',
+    content: (
+      <p>
+        Add sliders, buttons, text fields, and all the other{' '}
+        <a href="https://ipywidgets.readthedocs.io">Jupyter widgets</a> to your notebooks with{' '}
+        <a href="https://github.com/almond-sh/almond-widgets">almond-widgets</a>. Their values are
+        kept in sync with the kernel, and your code can react to users interacting with them.
+      </p>
+    ),
+  },
+  {
     title: 'Plotting libraries',
     video: 'frontpage/plotly',
     imageAlt: 'Plots',
