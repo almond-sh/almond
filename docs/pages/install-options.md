@@ -441,6 +441,7 @@ Write the kernel logs to a file, rather than to the standard error, like
 ```bash
 --log debug --log-to /tmp/almond.log
 ```
+Logs are appended to the file if it already exists.
 
 #### `--specific-loader`
 

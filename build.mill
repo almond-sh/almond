@@ -1399,6 +1399,7 @@ object dev extends Module {
         kernelSource(),
         sv,
         Task.dest / "jupyter",
+        Task.dest / "logs",
         args0,
         BuildCtx.workspaceRoot
       )

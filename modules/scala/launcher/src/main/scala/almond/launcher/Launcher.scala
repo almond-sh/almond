@@ -522,7 +522,7 @@ object Launcher extends CaseApp[LauncherOptions] {
           case Some(f) =>
             LoggerContext.printStream(
               level,
-              new PrintStream(new FileOutputStream(new File(f))),
+              new PrintStream(new FileOutputStream(new File(f), true)),
               options.color.getOrElse(true),
               addPid = true
             )

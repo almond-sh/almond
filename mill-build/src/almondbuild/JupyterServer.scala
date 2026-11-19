@@ -232,6 +232,8 @@ object JupyterServer {
     *   directory with the `jupyter` command, put first in the `PATH` of the installation
     * @param app
     *   what `cs launch` runs, along with its options
+    * @param logFile
+    *   file the kernel writes its logs to, rather than to its standard error
     */
   private def installKernel(
     source: KernelSource,
@@ -241,6 +243,7 @@ object JupyterServer {
     app: Seq[String],
     kernelId: String,
     name: String,
+    logFile: Option[os.Path],
     extraOptions: Seq[String]
   ): Unit = {
     val command = Seq(source.cs, "launch", "--use-bootstrap") ++ app ++ source.csRepositoryArgs ++
@@ -257,6 +260,7 @@ object JupyterServer {
         s"COURSIER_REPOSITORIES=${source.kernelRepositories}"
       ) ++
       kernelOptions ++
+      logFile.toSeq.flatMap(f => Seq("--log-to", f.toString)) ++
       extraOptions
     System.err.println(s"Installing kernel $kernelId")
     os.proc(command).call(
@@ -313,6 +317,50 @@ object JupyterServer {
     */
   private def classicOptions: Seq[String] =
     Seq("--LabApp.default_url=/tree")
+
+  /** Extracts a `--mcp` flag from the passed arguments, if any: whether the MCP server of Jupyter
+    * AI (the `jupyter_server_mcp` server extension) should be enabled. Returns it along with the
+    * remaining arguments.
+    */
+  private def extractMcp(args: Seq[String]): (Boolean, Seq[String]) = {
+    val flag = "--mcp"
+    (args.contains(flag), args.filterNot(_ == flag))
+  }
+
+  /** JupyterLab options for the MCP server of Jupyter AI (the `jupyter_server_mcp` server
+    * extension, that lets MCP clients, like the Claude and Codex personas, run cells, commands,
+    * etc. in JupyterLab).
+    *
+    * That server doesn't check the Jupyter token, nor any other credentials: any local process can
+    * drive JupyterLab through it. So it's disabled unless `enabled` is true, and the Jupyter AI
+    * personas are told not to use it then (they would connect to the one of another server on the
+    * same port otherwise). If it's enabled, it listens on a free port rather than on its default
+    * one (3001), so that several servers (from different worktrees, say) don't clash, unless `args`
+    * already sets its port. The personas pick that port from the server config.
+    */
+  private def mcpOptions(enabled: Boolean, args: Seq[String]): Seq[String] =
+    if (enabled) {
+      val portOpt = "--MCPExtensionApp.mcp_port"
+      if (args.exists(arg => arg == portOpt || arg.startsWith(portOpt + "="))) Nil
+      else {
+        val port = {
+          val socket = new java.net.ServerSocket(0, 0, java.net.InetAddress.getLoopbackAddress)
+          try socket.getLocalPort
+          finally socket.close()
+        }
+        System.err.println(
+          s"Warning: enabling the MCP server of Jupyter AI on localhost:$port. " +
+            "It doesn't require any authentication: any local process can run code through it."
+        )
+        Seq(s"$portOpt=$port")
+      }
+    }
+    else
+      Seq(
+        // Python literals, as traitlets parses dict and list options with ast.literal_eval
+        "--ServerApp.jpserver_extensions={'jupyter_server_mcp': False}",
+        "--PersonaManager.builtin_mcp_servers=[]"
+      )
 
   /** Extracts a `--base-address=…` (or `--base-address …`) option from the passed arguments, if
     * any, and returns it along with the remaining arguments.
@@ -501,6 +549,10 @@ object JupyterServer {
     * `jupyterDir/kernels`, with `cs launch` (see [[installKernel]]), relying on the `jupyter`
     * command of the uv-managed environment with the dependency groups `groups`. Kernels installed
     * there earlier are removed first.
+    *
+    * The kernels log at the debug level, to their standard error by default, which Jupyter servers
+    * send to their own output. If `logDir` is specified, each kernel logs to `<kernel id>.log` in
+    * it instead.
     */
   private def installKernels(
     uv: os.Path,
@@ -510,6 +562,7 @@ object JupyterServer {
     javaHome: os.Path,
     scalaVersions: Seq[String],
     jupyterDir: os.Path,
+    logDir: Option[os.Path],
     specialExtraOptions: String*
   ): Unit = {
     val scriptsDir = jupyterScriptsDir(uv, workspace, groups)
@@ -524,6 +577,7 @@ object JupyterServer {
         Seq(s"almond:${source.kernelVersion}", "--scala", scalaVersion) ++ source.csChannelArgs,
         kernelId(scalaVersion),
         s"Scala $scalaVersion (sources)",
+        logDir.map(_ / s"${kernelId(scalaVersion)}.log"),
         Nil
       )
     installKernel(
@@ -534,6 +588,7 @@ object JupyterServer {
       Seq(source.launcherDependency, "--main-class", source.launcherMainClass),
       specialKernelId,
       "Scala (special, sources)",
+      logDir.map(_ / s"$specialKernelId.log"),
       specialExtraOptions
     )
     System.err.println(s"JUPYTER_PATH=$jupyterDir")
@@ -543,7 +598,8 @@ object JupyterServer {
     * the command to run JupyterLab with them.
     *
     * The server also serves the Jupyter Notebook UI (the classic one), under `/tree`. `args` may
-    * contain `--base-address=…` and `--classic`, handled here, the rest is passed to JupyterLab.
+    * contain `--base-address=…`, `--classic` and `--mcp` (see [[mcpOptions]]), handled here, the
+    * rest is passed to JupyterLab.
     *
     * JupyterLab comes with Jupyter AI. Its Claude and Codex personas are enabled if `acpAgentsBin`,
     * added to the `PATH` of JupyterLab, contains the `claude-agent-acp` and `codex-acp` commands
@@ -575,6 +631,7 @@ object JupyterServer {
       javaHome,
       scalaVersions,
       jupyterDir,
+      None,
       "--quiet=false"
     )
 
@@ -585,11 +642,13 @@ object JupyterServer {
     linkExamples(workspace)
     val (baseAddressOpt, args0) = extractBaseAddress(args)
     val (classic, args1)        = extractClassic(args0)
+    val (mcp, args2)            = extractMcp(args1)
     val command =
       jupyterCommand(uv, workspace, labGroups, "lab", "--notebook-dir", "notebooks") ++
         baseAddressOpt.toSeq.flatMap(baseAddressOptions) ++
         (if (classic) classicOptions else Nil) ++
-        args1
+        mcpOptions(mcp, args2) ++
+        args2
     Command(
       workspace,
       jupyterEnvironment(javaHome, jupyterDir, acpAgentsBin.toSeq),
@@ -643,6 +702,9 @@ object JupyterServer {
   /** Runs a Jupyter console on a kernel running Scala `scalaVersion`. `args` are passed to `jupyter
     * console`: a `--kernel=…` there replaces that kernel (`--kernel=xpython` runs xeus-python,
     * say).
+    *
+    * `jupyter console` passes the standard error of the kernel to the terminal, so the kernels log
+    * to files under `logDir` here, rather than flooding the console with their debug logs.
     */
   def jupyterConsole(
     uv: os.Path,
@@ -650,17 +712,38 @@ object JupyterServer {
     source: KernelSource,
     scalaVersion: String,
     jupyterDir: os.Path,
+    logDir: os.Path,
     args: Seq[String],
     workspace: os.Path
   ): Unit = {
 
-    installKernels(uv, workspace, kernelGroups, source, javaHome, Seq(scalaVersion), jupyterDir)
+    os.makeDir.all(logDir)
+    installKernels(
+      uv,
+      workspace,
+      kernelGroups,
+      source,
+      javaHome,
+      Seq(scalaVersion),
+      jupyterDir,
+      Some(logDir)
+    )
 
     // jupyter console rejects several --kernel options, so only pass ours if args has none
     val hasKernelArg = args.exists(arg => arg == "--kernel" || arg.startsWith("--kernel="))
     val kernelArgs   = if (hasKernelArg) Nil else Seq(s"--kernel=${kernelId(scalaVersion)}")
     val command =
       jupyterCommand(uv, workspace, kernelGroups, Seq("console") ++ kernelArgs ++ args*)
+    // tail -F, as the kernel creates its log file only once it starts
+    if (hasKernelArg)
+      System.err.println(
+        s"The almond kernels log to <kernel id>.log under $logDir (tail -F to follow them)"
+      )
+    else {
+      val logFile = logDir / s"${kernelId(scalaVersion)}.log"
+      System.err.println(s"The kernel logs to $logFile, follow them with")
+      System.err.println(s"  tail -F $logFile")
+    }
     runJupyter(command, workspace, jupyterDir, javaHome)
   }
 }

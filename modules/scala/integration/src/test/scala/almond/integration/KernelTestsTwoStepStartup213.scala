@@ -317,4 +317,32 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
     }
   }
 
+  test0("launcher and kernel logs to the same file") { implicit forceVerbose =>
+    // The launcher passes --log-to to the kernel it starts: both should append to that file,
+    // rather than the kernel truncating it, and overwriting the logs of the launcher
+    val logFile = os.temp(prefix = "almond-launcher-test-", suffix = ".log")
+    try
+      kernelLauncher.withKernel { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        runner.withSession("--log-to", logFile.toString) { implicit session =>
+          execute(
+            s"""//> using scala "${KernelLauncher.testScala213Version}"
+               |2
+               |""".stripMargin,
+            "res1: Int = 2"
+          )
+        }
+        val logLines = os.read.lines(logFile)
+        assert(
+          logLines.headOption.exists(_.contains("Launcher")),
+          s"Expected the log file to start with launcher logs, got ${logLines.take(5)}"
+        )
+        assert(
+          logLines.exists(_.contains("ScalaKernel")),
+          "Expected kernel logs in the log file"
+        )
+      }
+    finally os.remove(logFile)
+  }
+
 }
