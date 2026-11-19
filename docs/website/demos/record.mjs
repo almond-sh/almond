@@ -516,6 +516,7 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
           );
         await rec.waitForQuiet(250, 10_000);
       });
+      if (cell.options.drag) await drag(page, rec, idx, cell.options.drag);
       await sleep(Number(cell.options.pause ?? 1200));
     }
     await sleep(2500);
@@ -541,6 +542,79 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
       if (session.path === nbPath) await api('DELETE', `sessions/${session.id}`).catch(() => {});
     await api('DELETE', `contents/${nbPath}`).catch(() => {});
   }
+}
+
+// Mouse pointer, drawn in the page, as screencast frames don't show the one of the browser
+const pointerSvg =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="26" viewBox="0 0 18 26">' +
+  '<path d="M1 1 L1 20 L6 15.5 L9.5 23.5 L12.5 22.2 L9 14.5 L15.5 14.5 Z" ' +
+  'fill="black" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+
+/** Drags an element of the output of a cell, like the handle of a slider, with a pointer drawn in
+ * the page. `spec` is "<CSS selector>:<dx>,<dx>,…": the element is moved by each dx in turn,
+ * horizontally, in CSS pixels, without being released in between. */
+async function drag(page, rec, idx, spec) {
+  const sep = spec.lastIndexOf(':');
+  const [selector, moves] = [spec.slice(0, sep), spec.slice(sep + 1).split(',').map(Number)];
+  const handle = await page.evaluateHandle(
+    ([idx, sel]) => window.jupyterapp.shell.currentWidget.content.widgets[idx].node.querySelector(sel),
+    [idx, selector]
+  );
+  const box = await handle.asElement()?.boundingBox();
+  if (!box) throw new Error(`No ${selector} element to drag in cell ${idx}`);
+  await page.evaluate((svg) => {
+    const pointer = document.createElement('div');
+    pointer.id = 'demo-pointer';
+    pointer.innerHTML = svg;
+    pointer.style.cssText =
+      'position: fixed; left: 0; top: 0; z-index: 100000; pointer-events: none; ' +
+      'opacity: 0; transition: opacity 300ms; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));';
+    document.body.appendChild(pointer);
+    const follow = (e) => {
+      pointer.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      pointer.style.opacity = '1';
+    };
+    window.addEventListener('pointermove', follow, true);
+    window.addEventListener('mousemove', follow, true);
+  }, pointerSvg);
+  // moves at about 200 pixels per second, easing in and out
+  const move = async (x, y, from) => {
+    const steps = Math.max(2, Math.round(Math.hypot(x - from.x, y - from.y) / 3.5));
+    for (let i = 1; i <= steps; i++) {
+      const t = (1 - Math.cos((Math.PI * i) / steps)) / 2;
+      await page.mouse.move(from.x + (x - from.x) * t, from.y + (y - from.y) * t);
+      await sleep(16);
+    }
+  };
+  let pos = { x: box.x + box.width / 2 + 60, y: box.y + box.height / 2 + 70 };
+  await page.mouse.move(pos.x, pos.y);
+  await sleep(400);
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await move(start.x, start.y, pos);
+  pos = start;
+  await sleep(300);
+  await page.mouse.down();
+  for (const dx of moves) {
+    const next = { x: pos.x + dx, y: pos.y };
+    await move(next.x, next.y, pos);
+    pos = next;
+    await sleep(500);
+  }
+  await page.mouse.up();
+  // let the kernel process the last changes
+  await rec.waitForQuiet(250, 5000);
+  await sleep(300);
+  // move the pointer away, then hide it
+  await move(pos.x + 40, pos.y + 60, pos);
+  await page.evaluate((idx) => {
+    document.getElementById('demo-pointer').style.opacity = '0';
+    // clicking in the output made its cell the active one, and the widget got the focus: give
+    // them back to the next cell, where the next cell of the demo gets typed
+    const notebook = window.jupyterapp.shell.currentWidget.content;
+    notebook.activeCellIndex = idx + 1;
+    notebook.mode = 'edit';
+    notebook.activeCell.editor.focus();
+  }, idx);
 }
 
 /** Types code like a human would, while working around the auto-indentation of the editor:

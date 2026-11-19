@@ -40,9 +40,10 @@ done
 [ -d "$demos_dir/node_modules" ] || (cd "$demos_dir" && npm ci --no-audit --no-fund)
 
 for theme in $themes; do
-  # plotly brings the jupyterlab-plotly extension, that renders plotly-scala plots
+  # plotly brings the jupyterlab-plotly extension, that renders plotly-scala plots, and
+  # jupyterlab-widgets the one rendering Jupyter widgets
   JUPYTER_PATH="$jupyter_dir" node "$demos_dir/record.mjs" \
-    --jupyter-cmd "uv run --project $repo_root/examples --frozen --with plotly jupyter lab" \
+    --jupyter-cmd "uv run --project $repo_root/examples --frozen --with plotly --with jupyterlab-widgets jupyter lab" \
     --kernel scala213 \
     --theme "$theme" \
     "$@"
