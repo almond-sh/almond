@@ -28,8 +28,14 @@ object RawJson {
   import com.github.plokhotnyuk.jsoniter_scala.core._
 
   implicit val codec: JsonValueCodec[RawJson] = new JsonValueCodec[RawJson] {
-    def decodeValue(in: JsonReader, default: RawJson): RawJson =
+    def decodeValue(in: JsonReader, default: RawJson): RawJson = {
+      // readRawValAsBytes keeps the whitespace before values, like the space after the colon
+      // in '"data": {"n": 1}' (the default formatting of Python's json module). Moving to
+      // the first byte of the value first leaves it out.
+      in.nextToken()
+      in.rollbackToken()
       new RawJson(in.readRawValAsBytes())
+    }
     def encodeValue(x: RawJson, out: JsonWriter): Unit =
       out.writeRawVal(x.value)
     val nullValue: RawJson =

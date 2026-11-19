@@ -37,6 +37,15 @@ object ProtocolTests extends TestSuite {
       }
     }
 
+    test("comm_msg") {
+      test("no leading whitespace in data") {
+        // like what Python's json module writes
+        val input  = """{"comm_id": "a", "data":  {"n": 1}}"""
+        val result = readFromString(input)(Comm.messageCodec)
+        assert(result.data.toString == """{"n": 1}""")
+      }
+    }
+
     test("is_complete_reply") {
       test("indent for incomplete code") {
         val json = writeToString(IsComplete.Reply("incomplete", Some("  ")))

@@ -81,6 +81,10 @@ final class ProgressBar private (
       Html.mimeType -> html
     )
 
+  override def toString: String =
+    "ProgressBar(" + progress.fold("")(p => s"$p, ") + total + ")" +
+      label.fold("")(l => s".withLabel(${Display.literal(l)})")
+
 }
 
 object ProgressBar {

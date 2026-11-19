@@ -952,6 +952,16 @@ object ScalaInterpreterTests extends TestSuite {
          else "") +
         s""",{"varName":"$listResName","varSize":"","varShape":"","varContent":"List(1, 2)","varType":"List[Int]","isMatrix":false}]"""
       assert(after4.text == expectedAfter4)
+
+      // displays are listed with a summary of their content
+      interpreter.execute("val h = Html(\"<b>a</b>\")")
+        .assertSuccess()
+      interpreter.execute(dictListCode, outputHandler = Some(outputHandler))
+        .assertSuccess()
+      val Seq(after5) = outputHandler.displayed()
+      val expectedAfter5 = after4.text.stripSuffix("]") +
+        """,{"varName":"h","varSize":"","varShape":"","varContent":"Html(\"<b>a</b>\")","varType":"Html","isMatrix":false}]"""
+      assert(after5.text == expectedAfter5)
     }
     test("variable inspector") {
       variableInspectorTest()

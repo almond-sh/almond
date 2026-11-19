@@ -23,6 +23,16 @@ abstract class TextDisplay extends UpdatableDisplay {
   def withContent(code: String): UpdatableDisplay
   def withUrl(url: String): UpdatableDisplay
 
+  // like the code creating this display, e.g. Html("<b>foo</b>") or Html.from("https://…"),
+  // so that variables holding displays print nicely (variable inspector, …)
+  override def toString: String = {
+    val name = getClass.getSimpleName
+    contentOrUrl match {
+      case Left(url) => s"$name.from(${Display.literal(url.toString)})"
+      case Right(c)  => s"$name(${Display.literal(c)})"
+    }
+  }
+
 }
 
 object TextDisplay {
