@@ -13,6 +13,7 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.{Install, OptionGroups}
 import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
+import almond.util.{ParentProcessWatcher, SigInt}
 import almond.util.ThreadUtil.{daemonThreadFactory, singleThreadedExecutionContextExecutorService}
 import caseapp._
 import caseapp.core.Scala3Helpers._
@@ -121,6 +122,12 @@ object ScalaKernel extends CaseApp[Options] {
           }
           Left(connectionFile)
       }
+
+    // Don't exit if Jupyter sends us SIGINT while no cell is running
+    SigInt.installIdleHandler(logCtx)
+
+    // Exit if the Jupyter client that started us goes away without shutting us down
+    ParentProcessWatcher.watchFromEnv(logCtx)
 
     val autoDependencies = options.autoDependencyMap()
     val autoVersions     = options.autoVersionsMap()

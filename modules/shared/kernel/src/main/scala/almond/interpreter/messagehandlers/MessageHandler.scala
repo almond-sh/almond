@@ -206,6 +206,11 @@ object MessageHandler {
       }
     }
 
+  /** Like [[blocking]], but the handler can push errors to the queue, to stop processing messages
+    * (see [[CloseExecutionException]])
+    *
+    * Errors of the [[IO]] the handler returns are only logged.
+    */
   def blocking0[T: JsonValueCodec](
     channel: Channel,
     messageType: MessageType[T],
@@ -331,12 +336,12 @@ object MessageHandler {
         _ <- {
           val t = for {
             _ <- status(queue, Status.busy)
-            _ <- main.attempt.flatMap {
+            _ <- main.attempt.map {
               case Left(e) =>
+                // Not passing e to the queue: it would fail the stream, and end the kernel. The
+                // handler can still do that on purpose, by pushing errors to the queue itself.
                 log.error(s"Error while processing ${currentMessage.header.msg_type} message", e)
-                queue.offer(Left(e))
               case Right(_) =>
-                IO.unit
             }
             _ <- status(queue, Status.idle)
             _ <- queue.offer(Right(poisonPill))

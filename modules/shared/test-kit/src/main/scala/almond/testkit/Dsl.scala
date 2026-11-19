@@ -35,6 +35,12 @@ object Dsl {
     def run(streams: ClientStreams): Unit
 
     def helperIORuntime: IORuntime
+
+    /** Sends SIGINT to the kernel process, like Jupyter does to interrupt kernels whose spec has no
+      * `interrupt_mode` (or a `signal` one)
+      */
+    def sendInterruptSignal(): Unit =
+      throw new UnsupportedOperationException("Interrupt signals not supported by this session")
   }
 
   private implicit class CustomStringOps(private val str: String) extends AnyVal {

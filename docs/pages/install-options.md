@@ -466,9 +466,9 @@ process (default: true). What user code prints is sent to the front-end either w
 
 Whether to stop running cells with `Thread.interrupt`, rather than with the deprecated
 `Thread.stop` (default) when interrupting the kernel. As `Thread.stop` isn't supported
-any more from JDK 20 on, interrupt messages (see [`--interrupt-via-message`](#--interrupt-via-message))
-always use `Thread.interrupt` on these JDKs. Note that `Thread.interrupt` only stops code
-that checks for interruptions, like `Thread.sleep` or blocking I/O calls.
+any more from JDK 20 on, interrupts always use `Thread.interrupt` on these JDKs. Note that
+`Thread.interrupt` only stops code that checks for interruptions, like `Thread.sleep` or
+blocking I/O calls, and not busy loops (see [Interrupting cells](api-jupyter.md#interrupting-cells)).
 
 Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
 

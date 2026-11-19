@@ -273,6 +273,11 @@ object ScalaKernelTests extends TestSuite {
       almond.integration.Tests.handleInterruptMessages()
     }
 
+    test("interrupt ignored by user code") {
+      implicit val sessionId: Dsl.SessionId = Dsl.SessionId()
+      almond.integration.Tests.interruptIgnoredByUserCode()
+    }
+
     test("start from custom class loader") {
 
       val loader = new URLClassLoader(Array(), interpreterParams.initialClassLoader) {

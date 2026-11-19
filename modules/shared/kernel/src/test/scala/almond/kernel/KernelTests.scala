@@ -369,6 +369,60 @@ object KernelTests extends TestSuite {
       }
     }
 
+    test("exception while executing") {
+      // An exception thrown by the interpreter must be reported as an error, and not end the kernel
+
+      val sessionId = UUID.randomUUID().toString
+      val requests = Seq("throw:boom", "echo:foo").map { code =>
+        Message(
+          Header.random("test", Execute.requestType, sessionId),
+          Execute.Request(code, stop_on_error = Some(false))
+        )
+      }
+
+      val lastMsgId = requests.last.header.msg_id
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (_, m) =>
+          IO.pure(
+            m.header.msg_type == "execute_reply" && m.parent_header.exists(_.msg_id == lastMsgId)
+          )
+
+      val input   = Stream(requests.map(_.on(Channel.Requests)): _*)
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val msgTypes = streams.generatedMessageTypes()
+      val expectedMsgTypes = Seq(
+        "execute_input",
+        "error",
+        "execute_reply",
+        "execute_input",
+        "execute_result",
+        "execute_reply"
+      )
+      assert(msgTypes == expectedMsgTypes)
+
+      val errorReply = streams.generatedMessages.toList.collectFirst {
+        case Left((Channel.Requests, m)) if m.header.msg_type == "execute_reply" =>
+          m.decodeAs[Execute.Reply] match {
+            case Left(err) => throw new Exception(s"Error decoding execute_reply: $err")
+            case Right(m0) => m0.content
+          }
+      }
+      errorReply match {
+        case Some(e: Execute.Reply.Error) =>
+          assert(e.ename == "java.lang.Exception")
+          assert(e.evalue == "boom")
+        case other =>
+          throw new Exception(s"Unexpected reply: $other")
+      }
+    }
+
     test("silent execute request") {
 
       val sessionId  = UUID.randomUUID().toString

@@ -1,6 +1,6 @@
 package almond.integration
 
-import almond.channels.Channel
+import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.Message
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.protocol.{Execute => ProtocolExecute, _}
@@ -229,6 +229,117 @@ object Tests {
       execute(
         """val s = "ok done"""",
         """s: String = "ok done""""
+      )
+    }
+  }
+
+  private def ignoreInterruptReplies = MessageHandler.discard {
+    case (Channel.Publish, _)                                                                =>
+    case (Channel.Requests, m) if m.header.msg_type == ProtocolExecute.replyType.messageType =>
+    case (Channel.Control, m) if m.header.msg_type == Interrupt.replyType.messageType        =>
+  }
+
+  /** Runs `f` once the running cell prints `text` (so that we know user code is running) */
+  private def onStdout(text: String)(f: => fs2.Stream[cats.effect.IO, (Channel, RawMessage)])
+    : MessageHandler =
+    MessageHandler(Channel.Publish, ProtocolExecute.streamType) { msg =>
+      if (msg.content.name == "stdout" && msg.content.text.contains(text)) f
+      else fs2.Stream.empty
+    }
+
+  private def interruptRequest()(implicit sessionId: SessionId) =
+    Message(
+      Header(
+        msg_id = UUID.randomUUID().toString,
+        username = "test",
+        session = sessionId.sessionId,
+        msg_type = Interrupt.requestType.messageType,
+        version = Some(Protocol.versionStr)
+      ),
+      Interrupt.Request
+    ).streamOn(Channel.Control)
+
+  /** Interrupts a cell with SIGINT, like Jupyter does by default */
+  def interruptViaSignal()(implicit sessionId: SessionId, runner: Runner): Unit =
+    runner.withSession() { implicit session =>
+      execute(
+        "object Hook { @volatile var ran = false }",
+        "defined object Hook"
+      )
+      execute(
+        """val added = kernel.addPostInterruptHook("test", _ => Hook.ran = true)""",
+        "added: Boolean = true"
+      )
+
+      // SIGINT while no cell is running shouldn't kill the kernel (JVMs exit upon SIGINT by
+      // default)
+      session.sendInterruptSignal()
+      Thread.sleep(1000L)
+      execute("val stillAlive = true", "stillAlive: Boolean = true")
+
+      val sendSignal = onStdout("sleeping") {
+        fs2.Stream.exec(cats.effect.IO(session.sendInterruptSignal()))
+      }
+
+      // On JDK 20 and later, Thread.stop isn't supported, and the kernel calls Thread.interrupt:
+      // Thread.sleep throws an InterruptedException. Before that, it calls Thread.stop. Either
+      // way, the cell fails.
+      execute(
+        """println("sleeping")
+          |Thread.sleep(30000L)
+          |val n = "not interrupted"""".stripMargin,
+        ignoreStreams = true,
+        expectError = true,
+        handler = sendSignal.orElse(ignoreInterruptReplies)
+      )
+
+      execute("val hookRan = Hook.ran", "hookRan: Boolean = true")
+    }
+
+  /** Interrupts a cell running code that doesn't check for interruptions
+    *
+    * With `Thread.interrupt`, the code runs to completion, and the interrupt flag of the thread is
+    * still set when it's done. This checks that this flag doesn't break the publishing of the
+    * result, nor the cells that follow.
+    */
+  def interruptIgnoredByUserCode()(implicit sessionId: SessionId, runner: Runner): Unit = {
+    // --use-thread-interrupt is an option of the actual kernel, that the launcher (two-step
+    // start-up) only passes along after a "--"
+    val options =
+      if (runner.differedStartUp) Seq("--", "--use-thread-interrupt")
+      else Seq("--use-thread-interrupt")
+    runner.withSession(options: _*) { implicit session =>
+      val sendInterruptRequest = onStdout("waiting for interrupt") {
+        interruptRequest()
+      }
+
+      execute(
+        "object State { @volatile var interrupted = false }",
+        "defined object State"
+      )
+
+      // The println at the end checks that the interrupt flag, still set at that point, doesn't
+      // prevent publishing outputs
+      execute(
+        """println("waiting for interrupt")
+          |locally {
+          |  val deadline = System.nanoTime() + 30000000000L
+          |  while (!State.interrupted && System.nanoTime() < deadline)
+          |    State.interrupted = Thread.currentThread().isInterrupted()
+          |}
+          |println("done waiting")""".stripMargin,
+        "",
+        stdout = "waiting for interrupt" + ls + "done waiting" + ls,
+        expectInterrupt = true,
+        handler = sendInterruptRequest.orElse(ignoreInterruptReplies)
+      )
+
+      execute("val interrupted = State.interrupted", "interrupted: Boolean = true")
+
+      execute(
+        """Thread.sleep(10L)
+          |val notInterrupted = !Thread.currentThread().isInterrupted()""".stripMargin,
+        "notInterrupted: Boolean = true"
       )
     }
   }

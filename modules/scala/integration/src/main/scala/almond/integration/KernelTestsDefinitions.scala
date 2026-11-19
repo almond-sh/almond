@@ -15,6 +15,22 @@ abstract class KernelTestsDefinitions extends AlmondFunSuite {
     }
   }
 
+  if (!scala.util.Properties.isWin)
+    test0("interrupt via signal") { implicit forceVersion =>
+      // Running the kernel on JDK >= 20, where Thread.stop isn't supported any more
+      kernelLauncher.withKernelOnJava(21) { implicit runner =>
+        implicit val sessionId: SessionId = SessionId()
+        almond.integration.Tests.interruptViaSignal()
+      }
+    }
+
+  test0("interrupt ignored by user code") { implicit forceVersion =>
+    kernelLauncher.withKernel { implicit runner =>
+      implicit val sessionId: SessionId = SessionId()
+      almond.integration.Tests.interruptIgnoredByUserCode()
+    }
+  }
+
   test0("jvm-repr") { implicit forceVersion =>
     kernelLauncher.withKernel { implicit runner =>
       implicit val sessionId: SessionId = SessionId()

@@ -3,6 +3,7 @@ package almond.interpreter.comm
 import almond.channels.{Channel, Message => RawMessage}
 import almond.interpreter.api.{CommHandler, CommTarget, DisplayData}
 import almond.interpreter.util.DisplayDataOps._
+import almond.interpreter.util.Uninterruptible
 import almond.interpreter.{KernelSession, Message}
 import almond.protocol._
 import cats.effect.IO
@@ -114,7 +115,8 @@ final class DefaultCommHandler(
             .copy(parent_header = callbackParent)
             .enqueueOn(Channel.Publish, queue)
       }
-      enqueue.unsafeRunSync()(ioRuntime)
+      // possibly called from the thread running user code, whose interrupt flag might be set
+      Uninterruptible.unsafeRunSync(enqueue)(ioRuntime)
     }
   }
 

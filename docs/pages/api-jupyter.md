@@ -237,6 +237,27 @@ for (i <- 1 to 10) {
 }
 ```
 
+### Interrupting cells
+
+Interrupting the kernel (the ■ button or <kbd>I</kbd>, <kbd>I</kbd> in JupyterLab) stops the
+cell being run, then runs the [after interrupt hooks](#after-interrupt-hooks).
+
+On JDK 20 and later, Almond stops cells with `Thread.interrupt`, as `Thread.stop`
+isn't supported any more. That stops code waiting in `Thread.sleep`, `Object.wait`,
+blocking I/O calls or the like, which then throws an `InterruptedException` or a
+`ClosedByInterruptException`. But it can't stop code that doesn't check for interruptions,
+like busy loops: such code runs until its end. Long-running loops can check for
+interruptions themselves:
+```scala
+while (!Thread.currentThread().isInterrupted()) {
+  // do some work
+}
+```
+
+Before JDK 20, Almond stops cells with `Thread.stop`, unless
+[`--use-thread-interrupt`](install-options.md#--use-thread-interrupt) is passed.
+`Thread.stop` stops busy loops too.
+
 ### After Interrupt Hooks
 
 After Interrupt Hooks allow clean-up code to be run after cell

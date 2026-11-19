@@ -6,6 +6,7 @@ import almond.interpreter.comm.DefaultCommHandler
 import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.MessageHandler.{blocking, blocking0, blockingWithStatus}
 import almond.interpreter.util.DisplayDataOps._
+import almond.interpreter.util.Uninterruptible
 import almond.interpreter.{IOInterpreter, IsCompleteResult, KernelSession, Message}
 import almond.logger.LoggerContext
 import almond.protocol._
@@ -129,13 +130,17 @@ final case class InterpreterMessageHandlers(
         if (aborted)
           IO.pure(ExecuteResult.Abort)
         else {
-          val run = interpreter.execute(
-            message.content.code,
-            storeHistory,
-            if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
-            Some(handler),
-            Some(message)
-          )
+          val run = interpreter
+            .execute(
+              message.content.code,
+              storeHistory,
+              if (message.content.allow_stdin.getOrElse(true)) inputManagerOpt else None,
+              Some(handler),
+              Some(message)
+            )
+            // Errors here would end the kernel (see MessageHandler.blocking0): we report them as
+            // errors of the cell instead
+            .handleError(unexpectedErrorResult)
           // comm messages sent while the cell is running go along with its outputs
           commHandlerOpt match {
             case Some(commHandler: DefaultCommHandler) =>
@@ -344,6 +349,13 @@ final case class InterpreterMessageHandlers(
 
 object InterpreterMessageHandlers {
 
+  private def unexpectedErrorResult(e: Throwable): ExecuteResult.Error =
+    ExecuteResult.Error(
+      e.getClass.getName,
+      Option(e.getMessage).getOrElse(""),
+      e.getStackTrace.toList.map("at " + _)
+    )
+
   // Jupyter protocol >= 5.2 cursor positions are offsets in unicode code points, while
   // interpreters work with Java String indices (UTF-16 code units). These differ as soon
   // as code contains characters outside of the BMP (emojis, some mathematical letters, …).
@@ -371,11 +383,22 @@ object InterpreterMessageHandlers {
     ioRuntime: IORuntime
   ) extends OutputHandler {
 
+    // These are called from the thread running user code, whose interrupt flag might be set
+    // if users interrupted a cell running code that doesn't check for interruptions
+    private def publish(io: IO[Unit]): Unit =
+      Uninterruptible.unsafeRunSync(io)(ioRuntime)
+
     private def print(on: String, s: String): Unit =
-      message
-        .publish(session, Execute.streamType, Execute.Stream(name = on, text = s), ident = Some(on))
-        .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(ioRuntime)
+      publish {
+        message
+          .publish(
+            session,
+            Execute.streamType,
+            Execute.Stream(name = on, text = s),
+            ident = Some(on)
+          )
+          .enqueueOn0(Channel.Publish, queue)
+      }
 
     def stdout(s: String): Unit =
       print("stdout", s)
@@ -390,17 +413,19 @@ object InterpreterMessageHandlers {
         Execute.DisplayData.Transient(data.idOpt)
       )
 
-      message
-        .publish(session, Execute.displayDataType, content)
-        .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(ioRuntime)
+      publish {
+        message
+          .publish(session, Execute.displayDataType, content)
+          .enqueueOn0(Channel.Publish, queue)
+      }
     }
 
     def clearOutput(waitForNewOutput: Boolean): Unit =
-      message
-        .publish(session, Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
-        .enqueueOn0(Channel.Publish, queue)
-        .unsafeRunSync()(ioRuntime)
+      publish {
+        message
+          .publish(session, Execute.clearOutputType, Execute.ClearOutput(waitForNewOutput))
+          .enqueueOn0(Channel.Publish, queue)
+      }
 
     def updateDisplay(displayData: DisplayData): Unit =
       // Using the commHandler rather than pushing a message through our own queue, so that

@@ -22,10 +22,11 @@ import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.logger.LoggerContext
 import almond.logger.internal.PrintStreamLogger
 import almond.protocol.{Execute => ProtocolExecute}
+import almond.util.SigInt
 import ammonite.compiler.{CodeClassWrapper, Parsers}
 import ammonite.compiler.iface.Preprocessor
 import ammonite.repl.api.History
-import ammonite.repl.{Repl, Signaller}
+import ammonite.repl.Repl
 import ammonite.runtime.Storage
 import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
 import ammonite.util.Util.CodeSource
@@ -275,60 +276,96 @@ final class Execute(
       case Some(p) => capture0(p.stdout, p.stderr)(t)
     }
 
-  private def interruptible[T](jupyterApi: JupyterApi)(t: => T): T = {
-    interruptedStackTraceOpt0 = None
-    currentThreadOpt0 = Some(Thread.currentThread())
-    try
-      Signaller("INT") {
-        currentThreadOpt0 match {
-          case None =>
-            log.warn("Received SIGINT, but no execution is running")
-          case Some(t) =>
-            interruptedStackTraceOpt0 = Some(t.getStackTrace)
-            log.debug {
-              val nl = System.lineSeparator()
-              s"Received SIGINT, stopping thread $t$nl${interruptedStackTraceOpt0.map("  " + _).mkString(nl)}"
-            }
-            if (useThreadInterrupt) {
-              log.debug(s"Calling 'Thread.interrupt'")
-              t.interrupt()
-            }
-            else {
-              log.debug(s"Calling 'Thread.stop'")
-              t.stop()
-            }
+  /** Stops the thread running a cell, with `Thread.stop`, or with `Thread.interrupt` if asked to,
+    * or if `Thread.stop` isn't supported (JDK 20 and later, where it throws an
+    * `UnsupportedOperationException`).
+    */
+  private def stopThread(t: Thread): Unit =
+    if (useThreadInterrupt || Execute.isJdk20OrHigher) {
+      log.debug(s"Calling 'Thread.interrupt'")
+      t.interrupt()
+    }
+    else {
+      log.debug(s"Calling 'Thread.stop'")
+      t.stop()
+    }
 
-            // Run post-interrupt hooks
-            jupyterApi.runPostInterruptHooks()
-        }
-      }.apply {
-        t
-      }
+  /** Guards [[currentThreadOpt0]], so that interrupting the thread running user code and the end of
+    * that code don't race
+    */
+  private val interruptLock = new Object
+
+  /** Runs `t` with a SIGINT handler that interrupts the user code it runs (see
+    * [[interruptibleSection]])
+    *
+    * The handler stays installed while `t` runs, even outside of user code, so that SIGINTs
+    * received while we handle the outputs of a cell only get logged, rather than going to the
+    * handler that was there before.
+    */
+  private def withSigIntHandler[T](jupyterApi: JupyterApi)(t: => T): T =
+    SigInt.scoped { () =>
+      interruptCurrentThread(jupyterApi, "Received SIGINT", fromSignal = true)
+    } {
+      t
+    }
+
+  /** Runs user code, that SIGINT (see [[withSigIntHandler]]) or interrupt requests (see
+    * [[interrupt]]) can interrupt
+    */
+  private def interruptibleSection[T](t: => T): T = {
+    interruptLock.synchronized {
+      interruptedStackTraceOpt0 = None
+      currentThreadOpt0 = Some(Thread.currentThread())
+    }
+    try t
     finally
-      currentThreadOpt0 = None
+      interruptLock.synchronized {
+        currentThreadOpt0 = None
+        // When interrupted with Thread.interrupt, code that doesn't check for interruptions (like
+        // busy loops) runs until its end, and the interrupt flag of the thread is still set
+        // afterwards. Same if the interruption comes right when user code returns. We clear that
+        // flag, so that it doesn't break what we run next on this thread (publishing outputs,
+        // compiling and running the next cells, …).
+        if (Thread.interrupted())
+          log.debug("Cleared interrupt flag of thread after running user code")
+      }
+  }
+
+  private def interruptible[T](jupyterApi: JupyterApi)(t: => T): T =
+    withSigIntHandler(jupyterApi) {
+      interruptibleSection(t)
+    }
+
+  private def interruptCurrentThread(
+    jupyterApi: JupyterApi,
+    reason: String,
+    fromSignal: Boolean
+  ): Unit = {
+    val interrupted = interruptLock.synchronized {
+      currentThreadOpt0 match {
+        case None =>
+          false
+        case Some(t) =>
+          val stackTrace = t.getStackTrace
+          if (fromSignal)
+            interruptedStackTraceOpt0 = Some(stackTrace)
+          log.debug {
+            val nl = System.lineSeparator()
+            s"$reason, stopping thread $t$nl${stackTrace.map("  " + _).mkString(nl)}"
+          }
+          stopThread(t)
+          true
+      }
+    }
+
+    if (interrupted)
+      jupyterApi.runPostInterruptHooks()
+    else
+      log.warn(s"$reason, but no execution is running")
   }
 
   def interrupt(jupyterApi: JupyterApi): Unit =
-    currentThreadOpt0 match {
-      case None =>
-        log.warn("Interrupt asked, but no execution is running")
-      case Some(t) =>
-        log.debug {
-          val nl = System.lineSeparator()
-          s"Interrupt asked, stopping thread $t$nl${t.getStackTrace.map("  " + _).mkString(nl)}"
-        }
-        if (useThreadInterrupt || Execute.isJdk20OrHigher) {
-          log.debug(s"Calling 'Thread.interrupt'")
-          t.interrupt()
-        }
-        else {
-          log.debug(s"Calling 'Thread.stop'")
-          t.stop()
-        }
-
-        // Run post-interrupt hooks
-        jupyterApi.runPostInterruptHooks()
-    }
+    interruptCurrentThread(jupyterApi, "Interrupt asked", fromSignal = false)
 
   private var lastExceptionOpt0 = Option.empty[Throwable]
 
@@ -477,20 +514,22 @@ final class Execute(
               Res.Failure(err)
           }
           _ = log.debug(s"splitted '$code0'")
-          ev <- interruptible(jupyterApi) {
+          ev <- withSigIntHandler(jupyterApi) {
             withInputManager(inputManager, done = false) {
               withClientStdin {
                 capturingOutput {
                   resultOutput.clear()
                   resultVariables.clear()
                   log.debug(s"Compiling / evaluating $code0 ($stmts)")
-                  val r = ammInterp.processLine(
-                    code0,
-                    stmts,
-                    (if (storeHistory) currentLine0 else currentNoHistoryLine0) + 1,
-                    silent = silent(),
-                    incrementLine = () => incrementLine(storeHistory)
-                  )
+                  val r = interruptibleSection {
+                    ammInterp.processLine(
+                      code0,
+                      stmts,
+                      (if (storeHistory) currentLine0 else currentNoHistoryLine0) + 1,
+                      silent = silent(),
+                      incrementLine = () => incrementLine(storeHistory)
+                    )
+                  }
 
                   // Send the updates that the cell triggered and that are still pending,
                   // so that they reach the front-end before the cell is marked as done

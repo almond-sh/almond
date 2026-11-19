@@ -121,7 +121,8 @@ object TestUtil {
   private case class Options(
     predef: List[String] = Nil,
     toreeMagics: Boolean = false,
-    toreeApi: Boolean = false
+    toreeApi: Boolean = false,
+    useThreadInterrupt: Boolean = false
   )
 
   private val optionsParser: caseapp.Parser[Options] = caseapp.Parser.derive
@@ -148,7 +149,8 @@ object TestUtil {
             updateBackgroundVariablesEcOpt = Some(new SequentialExecutionContext),
             predefFiles = opt.predef.map(Paths.get(_)),
             toreeMagics = opt.toreeMagics,
-            toreeApiCompatibility = opt.toreeApi
+            toreeApiCompatibility = opt.toreeApi,
+            useThreadInterrupt = opt.useThreadInterrupt
           )
         },
         logCtx = logCtx
