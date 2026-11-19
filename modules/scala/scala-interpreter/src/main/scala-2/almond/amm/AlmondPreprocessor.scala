@@ -126,6 +126,8 @@ class AlmondPreprocessor(
 
   import AlmondPreprocessor._
 
+  override protected def lazyValuePlaceholder: String = "[lazy]"
+
   val CustomLazyDef = Processor {
     case (_, code, t: G#ValDef)
         if autoUpdateLazyVals &&
@@ -145,7 +147,12 @@ class AlmondPreprocessor(
       }
       DefaultPreprocessor.Expanded(
         code0,
-        Seq(customPprintSignature(Name.backtickWrap(t.name.decoded), Some("[lazy]"), None, modOpt))
+        Seq(customPprintSignature(
+          Name.backtickWrap(t.name.decoded),
+          Some(lazyValuePlaceholder),
+          None,
+          modOpt
+        ))
       )
   }
 
@@ -196,7 +203,7 @@ class AlmondPreprocessor(
            |  .Internal
            |  .declareVariable(${fastparse.internal.Util.literalize(
             ident
-          )}, $ident, "[lazy]")""".stripMargin
+          )}, $ident, "$lazyValuePlaceholder")""".stripMargin
       Some(extraCode0)
     case (_, code, t: G#DefDef) =>
       if (t.tparams.isEmpty && t.vparamss.isEmpty) {

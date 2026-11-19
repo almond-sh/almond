@@ -20,6 +20,8 @@ class AlmondPreprocessor(
   logCode: Boolean // FIXME Respect that
 ) extends Preprocessor(ctx, markGeneratedSections = false) {
 
+  override protected def lazyValuePlaceholder: String = "[lazy]"
+
   // useful when debugging
   // this prints the code after pre-processing, that is the code that is actually passed to scalac for compilation
   private lazy val log = logCtx(getClass)
@@ -171,10 +173,10 @@ class AlmondPreprocessor(
         if (d.paramss.isEmpty) inspectedName(d.mods, d.name).map(_ -> Some("[def]")).toSeq
         else Nil
       case v: untpd.ValDef =>
-        val strValueOpt = if (v.mods.is(Flags.Lazy)) Some("[lazy]") else None
+        val strValueOpt = if (v.mods.is(Flags.Lazy)) Some(lazyValuePlaceholder) else None
         inspectedName(v.mods, v.name).map(_ -> strValueOpt).toSeq
       case p: untpd.PatDef =>
-        val strValueOpt = if (p.mods.is(Flags.Lazy)) Some("[lazy]") else None
+        val strValueOpt = if (p.mods.is(Flags.Lazy)) Some(lazyValuePlaceholder) else None
         p.pats
           .flatMap {
             case untpd.Tuple(trees) => trees
