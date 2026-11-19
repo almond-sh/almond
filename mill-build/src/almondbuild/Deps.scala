@@ -61,7 +61,7 @@ object Deps {
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
   // Version of the cs launcher the integration tests drive, on all platforms
   def csVersion           = Versions.coursier
-  def coursierApi         = mvn"io.get-coursier:interface:1.0.30"
+  def coursierApi         = mvn"io.get-coursier:interface:1.0.31"
   def coursierLauncher    = mvn"io.get-coursier:coursier-launcher_2.13:${Versions.coursier}"
   def coursierExec        = mvn"io.get-coursier:coursier-exec:${Versions.coursier}"
   def coursierJvm         = mvn"io.get-coursier:coursier-jvm_2.13:${Versions.coursier}"
