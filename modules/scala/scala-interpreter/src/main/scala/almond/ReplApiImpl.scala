@@ -339,21 +339,15 @@ final class ReplApiImpl(
         tcolors: TPrintColors,
         classTagT: ClassTag[T]
       ): Iterator[String] = {
-        // The Scala 3 Ammonite preprocessor prints lazy vals as "<lazy>", while the Scala 2 Almond
-        // preprocessor and the variable inspector print them as "[lazy]"
-        val custom0 = custom.map {
-          case "<lazy>" => "[lazy]"
-          case other    => other
-        }
         val printer = printValue {
           // Passing the implicits explicitly - without `using`, that the oldest Scala 2 compilers
           // we're built with don't accept
-          printSpecial(value, ident, custom0, None, None, pprinter, None)(
+          printSpecial(value, ident, custom, None, None, pprinter, None)(
             tprint,
             tcolors,
             classTagT
           ).getOrElse {
-            super.print(value, ident, custom0)(tprint, tcolors, classTagT)
+            super.print(value, ident, custom)(tprint, tcolors, classTagT)
           }
         }
         printer match {
