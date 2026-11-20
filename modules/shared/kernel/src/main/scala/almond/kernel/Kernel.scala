@@ -16,6 +16,7 @@ import almond.interpreter.input.InputHandler
 import almond.interpreter.messagehandlers.{
   CloseExecutionException,
   CommMessageHandlers,
+  DebugMessageHandlers,
   InterpreterMessageHandlers,
   MessageHandler
 }
@@ -82,9 +83,24 @@ final case class Kernel(
             .messageHandler
       }
 
+      val debugMessageHandler = interpreter.debugger match {
+        case None =>
+          MessageHandler.empty
+        case Some(debugger) =>
+          new DebugMessageHandlers(
+            debugger,
+            session,
+            backgroundMessagesQueue,
+            kernelThreads.queueEc,
+            logCtx,
+            kernelThreads.ioRuntime
+          ).handler
+      }
+
       // handlers whose messages are processed straightaway (no queueing to enforce sequential processing)
       val immediateHandlers = inputHandler.messageHandler
         .orElse(interpreterMessageHandler.otherHandlers)
+        .orElse(debugMessageHandler)
         .orElse(commMessageHandler)
         .orElse(extraHandler)
 

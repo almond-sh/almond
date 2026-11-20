@@ -49,7 +49,41 @@ object SourcePath {
   def base(frames: List[Frame], log: Logger): Seq[Path] =
     baseSourcePath(frames.last.classloader.getParent, log)
 
+  /** The class path of a session: the JARs and directories added to it, then those of the class
+    * path the kernel was started with (but for those of the JDK)
+    */
+  def classPath(frames: List[Frame], log: Logger): Seq[Path] =
+    (frames.flatMap(_.classpath).flatMap(classPathEntry(_, log)) ++
+      baseJars(frames.last.classloader.getParent, log)).distinct
+
+  /** The JARs and directories of a class loader and its parents (but for those of the JDK), like
+    * those of the class loader of the kernel itself
+    */
+  def loaderClassPath(loader: ClassLoader, log: Logger): Seq[Path] =
+    baseJars(loader, log)
+
+  /** The source JARs of a class loader and its parents */
+  def loaderSourcePath(loader: ClassLoader, log: Logger): Seq[Path] =
+    baseSourcePath(loader, log)
+
   private def baseSourcePath(loader: ClassLoader, log: Logger): Seq[Path] = {
+    val baseJars0 = baseJars(loader, log)
+
+    log.info {
+      val nl = System.lineSeparator()
+      "Found base JARs:" + nl +
+        baseJars0.map(_.toUri.toString).sorted.map("  " + _).mkString(nl) + nl
+    }
+
+    // When using a "hybrid" launcher, and users decided to end its name with ".jar",
+    // we still want to use it as a source JAR too. So we check if it contains sources here.
+    val checkForSources =
+      baseJars0.exists(_.getFileName.toString.endsWith(".jar")) &&
+      !baseJars0.exists(_.getFileName.toString.endsWith("-sources.jar"))
+    sourcePathFromJars(baseJars0, log, checkForSources = checkForSources)
+  }
+
+  private def baseJars(loader: ClassLoader, log: Logger): Seq[Path] = {
 
     lazy val javaDirs = {
       val l = Seq(sys.props("java.home")) ++
@@ -86,23 +120,10 @@ object SourcePath {
         cp ::: classpath(cl.getParent)
       }
 
-    val baseJars = classpath(loader)
+    classpath(loader)
       // assuming the JDK on the YARN machines already have those
       .filter(u => !isJdkJar(u))
       .flatMap(classPathEntry(_, log))
-
-    log.info {
-      val nl = System.lineSeparator()
-      "Found base JARs:" + nl +
-        baseJars.map(_.toUri.toString).sorted.map("  " + _).mkString(nl) + nl
-    }
-
-    // When using a "hybrid" launcher, and users decided to end its name with ".jar",
-    // we still want to use it as a source JAR too. So we check if it contains sources here.
-    val checkForSources =
-      baseJars.exists(_.getFileName.toString.endsWith(".jar")) &&
-      !baseJars.exists(_.getFileName.toString.endsWith("-sources.jar"))
-    sourcePathFromJars(baseJars, log, checkForSources = checkForSources)
   }
 
   private def sourcePathFromJars(

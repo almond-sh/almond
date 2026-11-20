@@ -377,6 +377,17 @@ final case class Options(
     variableInspector: Option[Boolean] = None,
   @Group(OptionGroups.jupyter)
   @HelpMessage(
+    "Whether to enable support for the JupyterLab debugger (experimental, enabled by default on Java >= 17)",
+    "Whether to enable support for the [JupyterLab debugger](https://jupyterlab.readthedocs.io/en/latest/user/debugger.html) " +
+      "(experimental). Enabled by default when the kernel runs on Java 17 or later, pass " +
+      "`--debugger=false` to disable it. When installing the kernel, this makes the kernel spec " +
+      "run the kernel with a JDWP agent, that the kernel attaches a debugger to, and tells " +
+      "front-ends that the kernel supports debugging. On Java 9 and later, the agent only listens " +
+      "on a (loopback) port when the debugger gets enabled, until the kernel connects to it."
+  )
+    debugger: Option[Boolean] = None,
+  @Group(OptionGroups.jupyter)
+  @HelpMessage(
     "Whether to process format requests with scalafmt",
     """Whether to format cells with [scalafmt](https://scalameta.org/scalafmt) when front-ends ask for it,
       |like the [almond-scalafmt](https://github.com/almond-sh/almond-scalafmt) JupyterLab extension does
@@ -594,6 +605,21 @@ final case class Options(
     .map(_.trim)
     .filter(_.nonEmpty)
     .getOrElse(Properties.almondScalapyVersion)
+
+  /** Whether the debugger is enabled at install time: if asked, else on Java >= 17 */
+  def installDebugger: Boolean =
+    debugger.getOrElse(ammonite.debugger.Jdwp.enabledByDefault)
+
+  /** Whether the debugger is enabled at runtime
+    *
+    * When not specified, it's only enabled if the kernel runs with a JDWP agent, so that kernels
+    * started without one (installed before the debugger was enabled by default, say) don't complain
+    * about it.
+    */
+  def runtimeDebugger: Boolean =
+    debugger.getOrElse {
+      ammonite.debugger.Jdwp.enabledByDefault && ammonite.debugger.Jdwp.agentLoaded()
+    }
 
   def autoDependencyMap(): Map[Module, Seq[Dependency]] = {
 

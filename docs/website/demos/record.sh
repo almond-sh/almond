@@ -11,6 +11,7 @@ repo_root="$(cd "$demos_dir/../../.." && pwd)"
 
 almond_version="${ALMOND_VERSION:-0.15.0}"
 scala_version="${SCALA_VERSION:-2.13.18}"
+scala3_version="${SCALA3_VERSION:-3.10.1}"
 cs="${CS:-cs}"
 themes="${THEMES:-light dark}"
 
@@ -32,6 +33,16 @@ done
   --use-notebook-coursier-logger \
   --jupyter-path "$jupyter_dir/kernels" \
   --env "JDK_JAVA_OPTIONS=${add_opens# }"
+# A Scala 3 kernel with the debugger enabled, for the debugger demo (Scala 3 kernels show nicer
+# names in its call stack). Versions of Almond without debugger support reject --debugger.
+if ! "$cs" launch --use-bootstrap "almond:$almond_version" --scala "$scala3_version" -- \
+  --install --force --id scala3 --display-name "Scala 3" \
+  --use-notebook-coursier-logger \
+  --debugger \
+  --jupyter-path "$jupyter_dir/kernels"; then
+  echo "Couldn't install the scala3 kernel (does Almond $almond_version support the debugger?)," \
+    "the debugger demo can't be recorded" 1>&2
+fi
 # Almond 0.15.0 depends on jvm-repr 0.4.0, that's only published on JitPack (later versions of
 # Almond vendor its sources)
 "$cs" launch --use-bootstrap -r jitpack "sh.almond:echo_3:$almond_version" -- \

@@ -30,6 +30,25 @@ object LineNumbersTests extends TestSuite {
           throw new Exception(s"Unexpected result: $other")
       }
     }
+    // The Scala 3 parser of Ammonite used to drop what precedes the first statement, shifting
+    // the line numbers of the code
+    test("comments and directives before code don't shift lines") {
+      val i = new ScalaInterpreter(params = interpreterParams, logCtx = logCtx)
+      val result = i.execute(
+        """// a comment
+          |//> using option -deprecation
+          |
+          |throw new Exception("THE ERROR")
+          |""".stripMargin
+      )
+      result match {
+        case e: ExecuteResult.Error =>
+          val frame = e.stackTrace.find(_.contains("$Helper.<init>"))
+          assert(frame.exists(_.contains(".sc:4)")))
+        case other =>
+          throw new Exception(s"Unexpected result: $other")
+      }
+    }
     test("vars and lazy vals still auto-updated") {
       val i = new ScalaInterpreter(
         params = interpreterParams.copy(autoUpdateVars = true, autoUpdateLazyVals = true),

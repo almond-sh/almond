@@ -8,7 +8,7 @@ import java.util.jar.{Attributes, Manifest}
 import java.util.zip.ZipFile
 
 import almond.kernel.util.{JupyterPath, OS}
-import almond.protocol.{ActualMap, KernelSpec}
+import almond.protocol.{ActualMap, KernelSpec, RawJson}
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
@@ -392,6 +392,38 @@ object Install {
     interruptMode: Option[String],
     env: Map[String, String],
     extraStartupClassPath: Seq[String]
+  ): Path =
+    install(
+      defaultId,
+      defaultDisplayName,
+      language,
+      options,
+      defaultLogoOpt,
+      connectionFileArgs,
+      interruptMode,
+      env,
+      extraStartupClassPath,
+      Nil,
+      None
+    )
+
+  /** @param javaOptions
+    *   JVM options of the kernel, when its command is that of the current app
+    * @param metadata
+    *   metadata of the kernel spec, like `{"debugger": true}`
+    */
+  def install(
+    defaultId: String,
+    defaultDisplayName: String,
+    language: String,
+    options: Options,
+    defaultLogoOpt: Option[URL],
+    connectionFileArgs: Seq[String],
+    interruptMode: Option[String],
+    env: Map[String, String],
+    extraStartupClassPath: Seq[String],
+    javaOptions: Seq[String],
+    metadata: Option[RawJson]
   ): Path = {
 
     val jupyterCommand = options.jupyterCommand.getOrElse(JupyterDirectories.defaultCommand)
@@ -456,7 +488,9 @@ object Install {
               Install.currentAppCommand0(extraStartupClassPath, withoutInstallArgs).getOrElse {
                 throw new InstallException.CannotGetKernelCommand
               }
-            (cmd0, Map("JAVA_HOME" -> currentJavaHome().toString))
+            // JVM options go right after the java command
+            val cmd1 = cmd0.take(1) ::: javaOptions.toList ::: cmd0.drop(1)
+            (cmd1, Map("JAVA_HOME" -> currentJavaHome().toString))
           }
           else
             (options.arg, Map.empty[String, String])
@@ -480,7 +514,8 @@ object Install {
         language = language,
         interrupt_mode = interruptMode,
         // values passed explicitly, like via --env, win
-        env = ActualMap(defaultEnv ++ env)
+        env = ActualMap(defaultEnv ++ env),
+        metadata = metadata
       ),
       path,
       logo64PngOpt = logoOpt,
@@ -578,6 +613,33 @@ object Install {
     env: Map[String, String],
     extraStartupClassPath: Seq[String]
   ): Either[InstallException, Path] =
+    installOrError(
+      defaultId,
+      defaultDisplayName,
+      language,
+      options,
+      defaultLogoOpt,
+      connectionFileArgs,
+      interruptMode,
+      env,
+      extraStartupClassPath,
+      Nil,
+      None
+    )
+
+  def installOrError(
+    defaultId: String,
+    defaultDisplayName: String,
+    language: String,
+    options: Options,
+    defaultLogoOpt: Option[URL],
+    connectionFileArgs: Seq[String],
+    interruptMode: Option[String],
+    env: Map[String, String],
+    extraStartupClassPath: Seq[String],
+    javaOptions: Seq[String],
+    metadata: Option[RawJson]
+  ): Either[InstallException, Path] =
     try {
       val dir = install(
         defaultId,
@@ -588,7 +650,9 @@ object Install {
         connectionFileArgs,
         interruptMode,
         env,
-        extraStartupClassPath
+        extraStartupClassPath,
+        javaOptions,
+        metadata
       )
       Right(dir)
     }

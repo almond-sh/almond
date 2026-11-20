@@ -11,7 +11,8 @@ final case class KernelInfo(
   language_info: KernelInfo.LanguageInfo,
   banner: String,
   help_links: Option[List[KernelInfo.Link]] = None,
-  supported_features: List[String] = Nil // since protocol 5.5
+  supported_features: List[String] = Nil, // since protocol 5.5
+  debugger: Boolean = false               // since protocol 5.5
 )
 
 object KernelInfo {

@@ -157,6 +157,9 @@ trait Interpreter {
 
   /** Whether this kernel handles custom messages (see [[CommHandler]]).
     */
+  /** Answers the requests of the Jupyter debugger protocol, if this kernel supports it */
+  def debugger: Option[Debugger] = None
+
   def supportComm: Boolean = false
 
   /** Provides a [[CommHandler]] that this kernel can use to send custom messages to the frontend.
