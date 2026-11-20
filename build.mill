@@ -1,4 +1,5 @@
 //| mill-version: 1.3.1
+//| bspScriptIgnore: ["*"]
 
 import almondbuild.*
 import almondbuild.modules.*
