@@ -33,7 +33,7 @@ object MissingReferenceFilterTests extends TestSuite {
   val tests = Tests {
 
     test("compiler output") {
-      // What the Scala 3.3.9 compiler prints with plotly-almond_2.13 on the class path
+      // What the Scala 3.10.1 compiler prints with plotly-almond_2.13 on the class path
       val input =
         text(s"""before
            |***** missing reference, looking for HNil/T in $shapeless
