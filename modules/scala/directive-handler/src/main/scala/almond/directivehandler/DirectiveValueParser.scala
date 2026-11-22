@@ -2,7 +2,7 @@
 
 package almond.directivehandler
 
-import almond.directivehandler.parser.DirectiveValue
+import ammonite.directives.DirectiveValue
 
 abstract class DirectiveValueParser[+T] {
 

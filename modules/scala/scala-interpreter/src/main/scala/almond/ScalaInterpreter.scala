@@ -278,20 +278,15 @@ final class ScalaInterpreter(
       inspections.inspect(code, pos, detailLevel)
     }
 
-  // completes the dependencies of '//> using dep' directives, that the compiler sees as comments
-  private def completeDirectiveDependency(
-    value: DirectiveCompletion.DependencyValue
-  ): (Int, Seq[String]) =
-    if (value.prefix.isEmpty) (value.start, Nil)
-    else {
-      val (from, completions) =
-        try ammInterp.dependencyComplete(value.prefix)
-        catch {
-          case NonFatal(e) =>
-            log.info(s"Ignoring exception while completing dependency ${value.prefix}", e)
-            (0, Nil)
-        }
-      (value.start + from, DirectiveCompletion.sortCompletions(value.prefix, completions))
+  /** Completes the keys and values of directives (`//> using dep org.type…`, `//> using script …`),
+    * that the compiler sees as comments, with the directive hooks of Ammonite (and ours, for keys)
+    */
+  private def completeDirective(code: String, pos: Int): Option[(Int, Seq[String])] =
+    try ammInterp.completeUsingDirective(code, pos, execute0.completionDirectiveHooks)
+    catch {
+      case NonFatal(e) =>
+        log.info("Ignoring exception while completing directive", e)
+        None
     }
 
   /** Removes the completions we don't want to offer, and the duplicates (keeping the first one) */
@@ -338,9 +333,8 @@ final class ScalaInterpreter(
     // items of '_jupyter_types_experimental' with completions by index, and inserts the text
     // of the former
     val (newPos, endPos, completions, typesOpt) =
-      DirectiveCompletion.findDependency(code, pos) match {
-        case Some(value) =>
-          val (start, completions) = completeDirectiveDependency(value)
+      completeDirective(code, pos) match {
+        case Some((start, completions)) =>
           // No types for these: when filtering completions, JupyterLab sorts the ones matching
           // equally well alphabetically by the text that comes with their type, and keeps their
           // order if they have none, which keeps versions sorted (highest first)

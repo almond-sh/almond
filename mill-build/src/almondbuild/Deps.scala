@@ -46,7 +46,8 @@ object Deps {
       "ammonite-repl",
       "ammonite-compiler"
     )
-      .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}")
+      .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}") :+
+      ammoniteDirectives
 
   /** The empty module that Guava depends on, so that it evicts the standalone `listenablefuture`
     * artifacts, whose classes Guava ships. It has no sources JAR, so that installing the kernel
@@ -56,6 +57,9 @@ object Deps {
   private def guavaListenableFuture = ("com.google.guava", "listenablefuture")
 
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
+  // the parser of using directives, that depends on nothing but the Scala standard library
+  def ammoniteDirectives =
+    mvn"sh.almond.ammonite::ammonite-directives:${Versions.ammoniteDirectives}"
   def ammoniteRepl =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))

@@ -383,11 +383,38 @@ object ScalaInterpreterTests extends TestSuite {
         check("// List(1).ma")
         check("// foo")
         check("val n = 2 // n")
-        check("//> using de")
         check("/* Lis")
         // not in comments anymore
         assert(interpreter.complete("// foo\nLis", 10).completions.contains("List"))
         assert(interpreter.complete("/* foo */ Lis", 13).completions.contains("List"))
+      }
+
+      test("using directive keys") {
+        val interpreter = newInterpreter()
+        val res         = interpreter.complete("//> using de", 12)
+        assert(res.from == 10)
+        assert(res.completions.contains("dep"))
+        assert(res.completions.contains("dependencies"))
+        // our own directives, along with those that Ammonite handles
+        val res0 = interpreter.complete("//> using outp", 14)
+        assert(res0.completions.exists(_.startsWith("output")))
+        val res1 = interpreter.complete("//> using scr", 13)
+        assert(res1.completions == Seq("script", "scripts"))
+      }
+
+      test("using script directives") {
+        val interpreter = newInterpreter()
+        val dir         = os.temp.dir(dir = os.pwd, prefix = "almond-completion-tests")
+        try {
+          os.write(dir / "Foo.sc", "val n = 2")
+          os.write(dir / "Other.txt", "")
+          os.makeDir(dir / "sub")
+          val code = s"//> using script ${dir.last}/"
+          val res  = interpreter.complete(code, code.length)
+          assert(res.from == code.length)
+          assert(res.completions == Seq("Foo.sc", "sub/"))
+        }
+        finally os.remove.all(dir)
       }
 
       test("using dep directives") {

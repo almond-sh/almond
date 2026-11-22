@@ -4,7 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
-import almond.amm.AmmInterpreter
+import almond.amm.{AmmInterpreter, ReloadingSourceHook}
 import almond.api.JupyterApi
 import almond.directives.{HasKernelOptions, KernelOptions}
 import almond.directives.HasKernelOptions.ops._
@@ -28,8 +28,9 @@ import ammonite.compiler.{CodeClassWrapper, Parsers}
 import ammonite.compiler.iface.Preprocessor
 import ammonite.repl.api.History
 import ammonite.repl.Repl
-import ammonite.runtime.Storage
-import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
+import ammonite.directives.{DirectiveValue, UsingDirective}
+import ammonite.runtime.{DirectiveHook, ImportHook, Storage}
+import ammonite.util.{Colors, Evaluated, Ex, Imports, Name, Printer, Ref, Res}
 import ammonite.util.Util.CodeSource
 import coursierapi.{Repository, RepositoryParser}
 import dependency.ScalaParameters
@@ -422,13 +423,31 @@ final class Execute(
 
   private var standaloneSourceCount = 0
 
-  /** Loads scripts passed via `//> using script` directives, like `import $file.…` does */
+  /** The hooks loading scripts (`import $file.…`, `//> using script …`), that reload scripts that
+    * changed since they were last loaded
+    */
+  val scriptHooks: ReloadingSourceHook.Hooks = ReloadingSourceHook.hooks()
+
+  /** Directive hooks for completion: Ammonite's ones, along with ours, that have nothing to
+    * complete in their values, but whose keys can be completed
+    */
+  lazy val completionDirectiveHooks: Map[String, DirectiveHook] = {
+    val ourKeys = (HasKernelOptions.handlers.handlers ++ LauncherParameters.handlers.handlers)
+      .flatMap(_.keys)
+    scriptHooks.directiveHooks ++
+      ourKeys.filterNot(scriptHooks.directiveHooks.contains).map(_ -> Execute.NoOpDirectiveHook)
+  }
+
+  /** Loads scripts passed via `//> using script` directives, with the `script` directive hook of
+    * Ammonite (that loads them like `import $file.…` does)
+    */
   private def loadScripts(
     ammInterp: ammonite.interp.Interpreter,
     scripts: Seq[Positioned[String]]
   ): Res[Unit] = {
     // the source the scripts are loaded from - the same as the one Ammonite uses for cells,
-    // so that scripts are loaded exactly like via `import $file.…` from a cell
+    // so that scripts are loaded exactly like via `import $file.…` from a cell (paths are relative
+    // to the working directory)
     val source = CodeSource(
       Name("cell"),
       Nil,
@@ -436,34 +455,26 @@ final class Execute(
       Some((os.pwd / "(console)").toNIO)
     )
     val maybeImports = Res.map(scripts) { script =>
-      val input = script.value
-      for {
-        path <- Res(
-          Try(os.Path(input, os.pwd)),
-          ex => s"Malformed script path '$input': ${ex.getMessage}"
-        )
-        file = if (path.last.endsWith(".sc")) path else path / os.up / (path.last + ".sc")
-        _ <- {
-          if (os.isFile(file)) Res.Success(())
-          else Res.Failure(s"Script not found: $file")
+      val position = script.positions
+        .collectFirst {
+          case f: Position.File =>
+            ammonite.directives.Position(f.startPos._1, f.startPos._2, 0)
         }
-        // The `$file` import hook of Ammonite expects a path relative to the working directory,
-        // where `^` stands for `..`
-        rel = file.relativeTo(os.pwd)
-        tree = ImportTree(
-          Seq("$file") ++
-            Seq.fill(rel.ups)(Util.upPathSegment) ++
-            rel.segments.init ++
-            Seq(rel.segments.last.stripSuffix(".sc")),
-          None,
-          0,
-          0
-        )
-        imports <- ammInterp.resolveSingleImportHook(source, tree, wrapperPath)
-      } yield imports
+        .getOrElse(ammonite.directives.Position(0, 0, 0))
+      val directive = UsingDirective(
+        "script",
+        Seq(DirectiveValue.StringVal(script.value, isQuoted = false, position)),
+        position
+      )
+      ammInterp.resolveUsingDirective(
+        source,
+        directive,
+        wrapperPath,
+        hooks = scriptHooks.directiveHooks
+      )
     }
     maybeImports.map { imports =>
-      ammInterp.handleImports(Imports(imports.flatten.flatMap(_.value)))
+      ammInterp.handleImports(imports.foldLeft(Imports())(_ ++ _))
     }
   }
 
@@ -885,6 +896,17 @@ final class Execute(
 }
 
 object Execute {
+
+  /** Hook of directives that we handle ourselves (see [[Execute.completionDirectiveHooks]]) */
+  private[almond] object NoOpDirectiveHook extends DirectiveHook {
+    def handle(
+      source: CodeSource,
+      directive: UsingDirective,
+      interp: ImportHook.InterpreterInterface,
+      wrapperPath: Seq[Name]
+    ): Either[String, Seq[ImportHook.Result]] =
+      Right(Nil)
+  }
 
   def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error(), colors.literal(), exOpt, msg)

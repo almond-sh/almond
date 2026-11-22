@@ -160,7 +160,10 @@ object AmmInterpreter {
         wrapperNamePrefix = wrapperNamePrefix,
         pkgName = pkgName.map(Name(_)),
         // like the Ammonite ones, but reloading scripts that changed since they were last loaded
-        importHooks = ReloadingSourceHook.importHooks
+        importHooks = execute0.scriptHooks.importHooks,
+        // Execute handles the directives of cells itself, before passing them to Ammonite (it
+        // relies on Ammonite's directive hooks for some of them, like '//> using script')
+        directiveHooks = Map.empty
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)

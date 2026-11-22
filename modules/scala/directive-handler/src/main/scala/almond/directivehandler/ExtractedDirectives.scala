@@ -2,7 +2,7 @@
 
 package almond.directivehandler
 
-import almond.directivehandler.parser.{DiagnosticSeverity, DirectiveValue, UsingDirectivesParser}
+import ammonite.directives.{DiagnosticSeverity, DirectiveValue, UsingDirectivesParser}
 
 final case class ExtractedDirectives(
   directives: Seq[StrictDirective],

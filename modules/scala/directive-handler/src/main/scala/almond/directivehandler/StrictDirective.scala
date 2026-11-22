@@ -2,7 +2,7 @@
 
 package almond.directivehandler
 
-import almond.directivehandler.parser.DirectiveValue
+import ammonite.directives.DirectiveValue
 
 /** A directive with a key and a sequence of values.
   *
