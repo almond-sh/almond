@@ -11,7 +11,8 @@ final case class KernelInfo(
   language_info: KernelInfo.LanguageInfo,
   banner: String,
   help_links: Option[List[KernelInfo.Link]] = None,
-  supported_features: List[String] = Nil // since protocol 5.5
+  supported_features: List[String] = Nil, // since protocol 5.5
+  lsp: Option[KernelInfo.Lsp] = None      // not in the protocol, see Lsp
 )
 
 object KernelInfo {
@@ -61,6 +62,24 @@ object KernelInfo {
   )
 
   final case class Link(text: String, url: String)
+
+  /** How the frontend should send notebooks to the language server of the kernel
+    *
+    * Not part of the Jupyter protocol: read by JupyterLab, for kernels listing `lsp` in
+    * `supported_features`.
+    *
+    * @param cell_separator_prefix
+    *   prefix of the lines that the frontend should put before each cell, in the single document it
+    *   makes of the cells of a notebook, followed by a space and a JSON object with details about
+    *   the cell
+    * @param document_roots
+    *   directories whose files (other than notebooks) the language server of the kernel handles
+    *   too, like the sources of dependencies that definitions lead to
+    */
+  final case class Lsp(
+    cell_separator_prefix: Option[String] = None,
+    document_roots: List[String] = Nil
+  )
 
   def requestType = MessageType[Unit]("kernel_info_request")
   def replyType   = MessageType[KernelInfo]("kernel_info_reply")

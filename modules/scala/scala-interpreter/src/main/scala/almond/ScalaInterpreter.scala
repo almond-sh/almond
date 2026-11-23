@@ -10,7 +10,10 @@ import almond.interpreter.lsp.{LanguageServer, LspCommTarget}
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
 import almond.lsp.{
+  JupyterLabDocumentModel,
   Lsp4jLanguageServer,
+  AlmondLspFeatures,
+  AlmondLanguageServer,
   SessionSources,
   SourceLayout
 }
@@ -214,7 +217,13 @@ final class ScalaInterpreter(
     if (params.lsp)
       LspCommTarget.register(
         new Lsp4jLanguageServer(
-          () => ???,
+          () =>
+            new AlmondLanguageServer(
+              lspSources,
+              AlmondLspFeatures.Unimplemented,
+              Seq(new JupyterLabDocumentModel),
+              logCtx
+            ),
           logCtx
         ),
         commHandler0,
@@ -490,7 +499,13 @@ final class ScalaInterpreter(
     ).copy(
       supported_features =
         if (params.lsp) List(LanguageServer.supportedFeature)
-        else Nil
+        else Nil,
+      lsp =
+        if (params.lsp)
+          Some(KernelInfo.Lsp(cell_separator_prefix =
+            Some(JupyterLabDocumentModel.cellSeparatorPrefix)
+          ))
+        else None
     )
   }
 
