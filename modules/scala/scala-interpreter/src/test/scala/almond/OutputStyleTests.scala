@@ -5,6 +5,7 @@ import almond.directives.KernelOptions
 import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.testkit.TestLogging.logCtx
 import almond.TestUtil._
+import com.github.plokhotnyuk.jsoniter_scala.core._
 import utest._
 
 object OutputStyleTests extends TestSuite {
@@ -109,16 +110,31 @@ object OutputStyleTests extends TestSuite {
       assert(i.execute("val b = 2") == text("b: Int = 2"))
     }
     test("kernel options JSON") {
-      val options = KernelOptions.AsJson(outputStyle = Some("python")).toKernelOptions
-      assert(options == Right(KernelOptions(outputStyle = Some(OutputStyle.Python))))
-      val asJson = KernelOptions.AsJson(KernelOptions(outputStyle = Some(OutputStyle.Last)))
-      assert(asJson.outputStyle == Some("last"))
-      assert(KernelOptions.AsJson(outputStyle = Some("foo")).toKernelOptions.isLeft)
+      val options = KernelOptions(scalacOptions = Seq("-deprecation"), outputStyle = Some("last"))
+      val json    = writeToString(options)(KernelOptions.codec)
+      assert(readFromString(json)(KernelOptions.codec) == options)
+      assert(options.directives == Seq(
+        "option"      -> Seq("-deprecation"),
+        "outputStyle" -> Seq("last")
+      ))
+    }
+    test("invalid upfront kernel options") {
+      val i = new ScalaInterpreter(
+        params = interpreterParams.copy(
+          upfrontKernelOptions = KernelOptions(outputStyle = Some("foo"))
+        ),
+        logCtx = logCtx
+      )
+      // reported in the first cell, that isn't run
+      val res = i.execute("val a = 1")
+      assert(!res.success)
+      assert(res.asError.exists(_.message.contains("Invalid output style 'foo'")))
+      assert(i.execute("val b = 2") == text("b: Int = 2"))
     }
     test("upfront kernel options") {
       val i = new ScalaInterpreter(
         params = interpreterParams.copy(
-          upfrontKernelOptions = KernelOptions(outputStyle = Some(OutputStyle.Python))
+          upfrontKernelOptions = KernelOptions(outputStyle = Some("python"))
         ),
         logCtx = logCtx
       )

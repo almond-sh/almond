@@ -6,8 +6,10 @@ import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.cslogger.NotebookCacheLogger
 import almond.logger.LoggerContext
 import ammonite.compiler.iface.CodeWrapper
-import ammonite.runtime.{Evaluator, Frame, Storage}
+import ammonite.directives.UsingDirective
+import ammonite.runtime.{DirectiveHook, Evaluator, Frame, Storage}
 import ammonite.util.{ImportData, Imports, Name, PredefInfo, Ref, Res}
+import ammonite.util.Util.CodeSource
 import coursierapi.{Dependency, Module}
 import dependency.ModuleMatcher
 
@@ -161,9 +163,8 @@ object AmmInterpreter {
         pkgName = pkgName.map(Name(_)),
         // like the Ammonite ones, but reloading scripts that changed since they were last loaded
         importHooks = execute0.scriptHooks.importHooks,
-        // Execute handles the directives of cells itself, before passing them to Ammonite (it
-        // relies on Ammonite's directive hooks for some of them, like '//> using script')
-        directiveHooks = Map.empty
+        // Ammonite's ones, along with ours (and here too, reloading scripts that changed)
+        directiveHooks = execute0.directiveHooks
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)
@@ -184,6 +185,22 @@ object AmmInterpreter {
           scriptCodeWrapper = codeWrapper,
           parameters = interpParams
         ) {
+          // for the directives whose keys we don't know in advance (see
+          // Execute.extraDirectiveHook)
+          override def resolveUsingDirective(
+            source: CodeSource,
+            directive: UsingDirective,
+            wrapperPath: Seq[Name],
+            hooks: Map[String, DirectiveHook]
+          ): Res[Imports] = {
+            val hooks0 =
+              if (hooks.contains(directive.key)) hooks
+              else
+                execute0.extraDirectiveHook(directive.key)
+                  .fold(hooks)(hook => hooks + (directive.key -> hook))
+            super.resolveUsingDirective(source, directive, wrapperPath, hooks0)
+          }
+
           override val compilerManager = new AlmondCompilerLifecycleManager(
             headFrame,
             Some(dependencyComplete),

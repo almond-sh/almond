@@ -162,20 +162,8 @@ object ScalaKernel extends CaseApp[Options] {
 
     log.debug("Creating interpreter")
 
-    val kernelOptionsFromJson = options.readKernelOptions() match {
-      case Some(asJson) =>
-        asJson.toKernelOptions match {
-          case Left(errors) =>
-            log.warn(
-              s"Got errors when trying to read options from ${options.kernelOptions.getOrElse("???")}: ${errors.mkString(", ")}"
-            )
-            KernelOptions()
-          case Right(options) =>
-            options
-        }
-      case None =>
-        KernelOptions()
-    }
+    // their values are validated when they're loaded, in the first cell
+    val kernelOptionsFromJson = options.readKernelOptions().getOrElse(KernelOptions())
 
     val threads = {
       val threads0 = ScalaKernelThreads.create("scala-kernel")

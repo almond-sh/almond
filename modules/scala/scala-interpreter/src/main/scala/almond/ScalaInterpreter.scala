@@ -279,10 +279,10 @@ final class ScalaInterpreter(
     }
 
   /** Completes the keys and values of directives (`//> using dep org.type…`, `//> using script …`),
-    * that the compiler sees as comments, with the directive hooks of Ammonite (and ours, for keys)
+    * that the compiler sees as comments, with the directive hooks of the Ammonite interpreter
     */
   private def completeDirective(code: String, pos: Int): Option[(Int, Seq[String])] =
-    try ammInterp.completeUsingDirective(code, pos, execute0.completionDirectiveHooks)
+    try ammInterp.completeUsingDirective(code, pos)
     catch {
       case NonFatal(e) =>
         log.info("Ignoring exception while completing directive", e)

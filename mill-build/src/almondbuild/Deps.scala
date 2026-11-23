@@ -68,7 +68,6 @@ object Deps {
   def ammoniteSpark      = mvn"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = mvn"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = mvn"com.github.alexarchambault::case-app:${Versions.caseApp}"
-  def caseAppUtil        = mvn"com.github.alexarchambault::case-app-util:${Versions.caseApp}"
   def classPathUtil      = mvn"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
   // Version of the cs launcher the integration tests drive, on all platforms

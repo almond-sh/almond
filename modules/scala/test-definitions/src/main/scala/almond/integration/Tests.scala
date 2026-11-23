@@ -2913,9 +2913,11 @@ object Tests {
             |""".stripMargin,
           stdout = "",
           stderr = "",
-          errors = Seq(
-            ("", "bad option: '-Xnot-an-option'", List("bad option: '-Xnot-an-option'"))
-          )
+          errors = {
+            // prefixed with the position of the directive, by Ammonite
+            val msg = "(console):1:11: bad option: '-Xnot-an-option'"
+            Seq(("", msg, List(msg)))
+          }
         )
       else
         execute(

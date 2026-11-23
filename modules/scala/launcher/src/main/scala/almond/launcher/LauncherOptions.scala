@@ -6,7 +6,6 @@ import almond.kernel.install.{OptionGroups, Options => InstallOptions}
 import almond.launcher.directives.CustomGroup
 import caseapp._
 
-import almond.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationInt}
 
@@ -250,16 +249,14 @@ final case class LauncherOptions(
             Left(s"Malformed custom directive group argument, expected 'prefix:command': '$input'")
         }
       }
-      .sequence
 
-    maybeGroups match {
-      case Left(errors) =>
-        for (err <- errors)
-          System.err.println(err)
-        sys.exit(1)
-      case Right(groups) =>
-        groups
+    val errors = maybeGroups.collect { case Left(err) => err }
+    if (errors.nonEmpty) {
+      for (err <- errors)
+        System.err.println(err)
+      sys.exit(1)
     }
+    maybeGroups.collect { case Right(group) => group }
   }
 
   lazy val lingerDuration = linger

@@ -1,13 +1,17 @@
 package almond.directives
 
-import almond.OutputStyle
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
-import dependency.parser.DependencyParser
 
-import almond.directivehandler._
-import almond.directivehandler.EitherSequence._
-
+/** Values of kernel directives (like `//> using dep …`), that the launcher passes to the kernel, as
+  * JSON
+  *
+  * Values are passed as is: the kernel validates them when it loads them, with the same directive
+  * hooks as those handling the directives of cells (see `almond.Execute.loadOptions`).
+  *
+  * Its JSON format is also the one of the kernel parameters that the commands of custom directive
+  * groups get and return.
+  */
 // other directives that could be imported from Scala CLI:
 // - exclude
 // - objectWrapper
@@ -16,87 +20,49 @@ import almond.directivehandler.EitherSequence._
 // - resources
 // - toolkit
 final case class KernelOptions(
-  dependencies: Seq[dependency.AnyDependency] = Nil,
-  scalacOptions: ShadowingSeq[Positioned[ScalacOpt]] = ShadowingSeq.empty,
+  dependencies: Seq[String] = Nil,
+  scalacOptions: Seq[String] = Nil,
   extraRepositories: Seq[String] = Nil,
-  ignoredDirectives: Seq[IgnoredDirective] = Nil,
-  scripts: Seq[Positioned[String]] = Nil,
-  outputStyle: Option[OutputStyle] = None
+  scripts: Seq[String] = Nil,
+  outputStyle: Option[String] = None
 ) {
   def isEmpty: Boolean =
     this == KernelOptions()
   def +(other: KernelOptions): KernelOptions =
-    copy(
+    KernelOptions(
       dependencies = dependencies ++ other.dependencies,
-      scalacOptions = scalacOptions ++ other.scalacOptions.toSeq,
+      scalacOptions = scalacOptions ++ other.scalacOptions,
       extraRepositories = extraRepositories ++ other.extraRepositories,
-      ignoredDirectives = ignoredDirectives ++ other.ignoredDirectives,
       scripts = scripts ++ other.scripts,
       outputStyle = other.outputStyle.orElse(outputStyle)
     )
+
+  /** These options, as directives (key and values), in the order they should be loaded in */
+  def directives: Seq[(String, Seq[String])] =
+    Seq(
+      // repositories first, for dependencies to be resolved from them
+      DirectiveKeys.repository   -> extraRepositories,
+      DirectiveKeys.dependency   -> dependencies,
+      DirectiveKeys.scalacOption -> scalacOptions,
+      DirectiveKeys.outputStyle  -> outputStyle.toSeq,
+      DirectiveKeys.script       -> scripts
+    ).collect {
+      case (keys, values) if values.nonEmpty =>
+        (keys.head, values)
+    }
 }
 
 object KernelOptions {
 
-  final case class AsJson(
-    dependencies: Seq[String] = Nil,
-    scalacOptions: Seq[String] = Nil,
-    extraRepositories: Seq[String] = Nil,
-    scripts: Seq[String] = Nil,
-    outputStyle: Option[String] = None
-  ) {
-    def +(other: AsJson): AsJson =
-      AsJson(
-        dependencies = dependencies ++ other.dependencies,
-        scalacOptions = scalacOptions ++ other.scalacOptions,
-        extraRepositories = extraRepositories ++ other.extraRepositories,
-        scripts = scripts ++ other.scripts,
-        outputStyle = other.outputStyle.orElse(outputStyle)
-      )
-    def toKernelOptions: Either[::[String], KernelOptions] = {
-      val maybeDependencies = dependencies
-        .map { dep =>
-          DependencyParser.parse(dep)
-        }
-        .sequence
-        .left.map(errors => ::(errors.head, errors.tail.toList))
-      val maybeOutputStyle = outputStyle
-        .map(OutputStyle.parse)
-        .toSeq
-        .sequence
-        .left.map(errors => ::(errors.head, errors.tail.toList))
-      (maybeDependencies, maybeOutputStyle) match {
-        case (Right(dependencies0), Right(outputStyle0)) =>
-          Right(
-            KernelOptions(
-              dependencies = dependencies0,
-              scalacOptions =
-                ShadowingSeq.from(scalacOptions.map(opt => Positioned.none(ScalacOpt(opt)))),
-              extraRepositories = extraRepositories,
-              scripts = scripts.map(Positioned.none(_)),
-              outputStyle = outputStyle0.headOption
-            )
-          )
-        case (maybeDependencies0, maybeOutputStyle0) =>
-          val errors =
-            maybeDependencies0.left.toSeq.flatten ++ maybeOutputStyle0.left.toSeq.flatten
-          Left(::(errors.head, errors.tail.toList))
-      }
-    }
-  }
+  implicit val codec: JsonValueCodec[KernelOptions] =
+    JsonCodecMaker.makeWithRequiredCollectionFields
 
-  object AsJson {
-    def empty: AsJson                          = AsJson()
-    implicit val codec: JsonValueCodec[AsJson] = JsonCodecMaker.makeWithRequiredCollectionFields
-
-    def apply(options: KernelOptions): AsJson =
-      AsJson(
-        dependencies = options.dependencies.map(_.render),
-        scalacOptions = options.scalacOptions.toSeq.map(_.value.value),
-        extraRepositories = options.extraRepositories,
-        scripts = options.scripts.map(_.value),
-        outputStyle = options.outputStyle.map(_.name)
-      )
-  }
-
+  /** Adds the values of a kernel directive (one whose key is in [[DirectiveKeys.kernel]]) */
+  def fromDirective(key: String, values: Seq[String]): KernelOptions =
+    if (DirectiveKeys.dependency.contains(key)) KernelOptions(dependencies = values)
+    else if (DirectiveKeys.repository.contains(key)) KernelOptions(extraRepositories = values)
+    else if (DirectiveKeys.scalacOption.contains(key)) KernelOptions(scalacOptions = values)
+    else if (DirectiveKeys.script.contains(key)) KernelOptions(scripts = values)
+    else if (DirectiveKeys.outputStyle.contains(key)) KernelOptions(outputStyle = values.lastOption)
+    else KernelOptions()
 }

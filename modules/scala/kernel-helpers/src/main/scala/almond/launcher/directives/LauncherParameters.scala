@@ -4,8 +4,6 @@ import almond.directives.KernelOptions
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 
-import almond.directivehandler.{DirectiveHandler, DirectiveHandlers}
-
 final case class LauncherParameters(
   jvm: Option[String] = None,
   javaOptions: Seq[String] = Nil,
@@ -55,7 +53,7 @@ final case class LauncherParameters(
               val input = CustomGroupInput(
                 entries,
                 LauncherParameters.AsJson.from(this),
-                KernelOptions.AsJson(options)
+                options
               )
               os.write.over(tmpFile, writeToArray(input)(CustomGroupInput.codec))
               val res = os.proc(group.command, tmpFile)
@@ -73,28 +71,19 @@ final case class LauncherParameters(
 
     (
       this + updates.launcherParameters.params,
-      options + updates.kernelParameters.toKernelOptions.fold(_ => ???, identity)
+      options + updates.kernelParameters
     )
   }
 }
 
 object LauncherParameters {
 
-  val handlers = DirectiveHandlers(
-    Seq[DirectiveHandler[HasLauncherParameters]](
-      JavaOptions.handler,
-      Jvm.handler,
-      ScalaVersion.handler,
-      JavaCommand.handler
-    )
-  )
-
   private case class Entry(key: String, values: List[String])
 
   private case class CustomGroupInput(
     entries: List[Entry] = Nil,
     currentLauncherParameters: AsJson,
-    currentKernelParameters: KernelOptions.AsJson
+    currentKernelParameters: KernelOptions
   )
 
   private object CustomGroupInput {
@@ -104,7 +93,7 @@ object LauncherParameters {
 
   private case class CustomGroupOutput(
     launcherParameters: AsJson = AsJson(),
-    kernelParameters: KernelOptions.AsJson = KernelOptions.AsJson()
+    kernelParameters: KernelOptions = KernelOptions()
   ) {
     def +(other: CustomGroupOutput): CustomGroupOutput =
       CustomGroupOutput(
@@ -114,7 +103,7 @@ object LauncherParameters {
   }
 
   private object CustomGroupOutput {
-    def empty: CustomGroupOutput = CustomGroupOutput(AsJson.empty, KernelOptions.AsJson.empty)
+    def empty: CustomGroupOutput = CustomGroupOutput(AsJson.empty, KernelOptions())
     val codec: JsonValueCodec[CustomGroupOutput] =
       JsonCodecMaker.makeWithRequiredCollectionFields
   }
