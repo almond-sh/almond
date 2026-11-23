@@ -250,7 +250,11 @@ object ScalaKernel extends CaseApp[Options] {
           .map(_.split('.').filter(_.nonEmpty).toSeq)
           .getOrElse(AmmInterpreter.defaultPkgName),
         logCode = options.logCode,
-        lsp = options.lsp
+        lsp = options.lsp,
+        sessionDirectory = options.sessionDirectory
+          .filter(_.trim.nonEmpty)
+          .map(os.Path(_, os.pwd)),
+        bspSocket = options.bspSocket.filter(_.trim.nonEmpty).map(os.Path(_, os.pwd))
       ),
       logCtx = logCtx
     )

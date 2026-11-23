@@ -6,7 +6,7 @@ import almond.{Execute, JupyterApiImpl, ReplApiImpl, ScalaInterpreter}
 import almond.cslogger.NotebookCacheLogger
 import almond.logger.LoggerContext
 import ammonite.compiler.iface.CodeWrapper
-import ammonite.runtime.{Evaluator, Frame, Storage}
+import ammonite.runtime.{Evaluator, Frame, FrameOutputs, Storage}
 import ammonite.util.{ImportData, Imports, Name, PredefInfo, Ref, Res}
 import coursierapi.{Dependency, Module}
 import dependency.ModuleMatcher
@@ -95,7 +95,8 @@ object AmmInterpreter {
     wrapperNamePrefix: String,
     pkgName: Seq[String],
     evaluatorHookOpt: Option[HookEvaluator.Hook],
-    logCode: Boolean
+    logCode: Boolean,
+    frameOutputs: Option[FrameOutputs]
   ): ammonite.interp.Interpreter = {
 
     val automaticDependenciesMatchers = automaticDependencies
@@ -160,7 +161,8 @@ object AmmInterpreter {
         wrapperNamePrefix = wrapperNamePrefix,
         pkgName = pkgName.map(Name(_)),
         // like the Ammonite ones, but reloading scripts that changed since they were last loaded
-        importHooks = ReloadingSourceHook.importHooks
+        importHooks = ReloadingSourceHook.importHooks,
+        frameOutputs = frameOutputs
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)
@@ -175,7 +177,10 @@ object AmmInterpreter {
           () => ammonite.compiler.Parsers,
           getFrame = () => frames0().head,
           createFrame = () => {
-            val f = replApi.sess.childFrame(frames0().head); frames0() = f :: frames0(); f
+            val f = replApi.sess.childFrame(frames0().head)
+            frames0() = f :: frames0()
+            frameOutputs.foreach(_.register(f))
+            f
           },
           replCodeWrapper = codeWrapper,
           scriptCodeWrapper = codeWrapper,

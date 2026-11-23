@@ -15,10 +15,13 @@ import almond.lsp.{
   AlmondLspFeatures,
   AlmondLanguageServer,
   SessionSources,
-  SourceLayout
+  SourceFile,
+  SourceLayout,
+  WrappedSource
 }
 import almond.protocol.{Execute => ProtocolExecute, KernelInfo, RawJson}
 import almond.toree.{CellMagicHook, LineMagicHook}
+import ammonite.repl.bsp.{ReplBspServer, ReplBspSession}
 import ammonite.compiler.Parsers
 import ammonite.repl.{ReplApiImpl => _, _}
 import ammonite.runtime._
@@ -52,6 +55,30 @@ final class ScalaInterpreter(
   if (params.extraClassPath.nonEmpty)
     frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
 
+  /** The UNIX domain socket the BSP server of the session listens on, if any */
+  private val bspSocket: Option[os.Path] =
+    params.bspSocket.orElse {
+      if (params.lsp)
+        // short path, as socket paths can't be longer than about 100 characters
+        Some(os.temp.dir(prefix = "almond-bsp") / "bsp.sock")
+      else
+        None
+    }
+
+  /** Where the code of each cell, and its byte code, are written, if needed */
+  private val frameOutputs: Option[FrameOutputs] =
+    params.sessionDirectory
+      .orElse(bspSocket.map(_ => os.temp.dir(prefix = "almond-session")))
+      .map { dir =>
+        // BSP clients want SemanticDB files to refer to the sources we report, the .sc files
+        val outputs = new FrameOutputs(dir, false, bspSocket.nonEmpty)
+        for (frame <- frames0())
+          outputs.register(frame)
+        outputs
+      }
+
+  @volatile private var bspServer = Option.empty[ReplBspServer]
+
   private var inspectionsInitialized = false
   private lazy val inspections = {
     val value = new ScalaInterpreterInspections(
@@ -82,9 +109,11 @@ final class ScalaInterpreter(
   private var commHandlerOpt = Option.empty[CommHandler]
 
   private lazy val lspSources = {
-    val root = params.outputDir match {
-      case Left(dir) => dir / "lsp"
-      case Right(_)  => os.temp.dir(prefix = "almond-lsp")
+    val root = frameOutputs.map(_.directory / "lsp").getOrElse {
+      params.outputDir match {
+        case Left(dir) => dir / "lsp"
+        case Right(_)  => os.temp.dir(prefix = "almond-lsp")
+      }
     }
     new SessionSources(SourceLayout(root, params.pkgName))
   }
@@ -193,8 +222,25 @@ final class ScalaInterpreter(
       wrapperNamePrefix = params.wrapperNamePrefix,
       pkgName = params.pkgName,
       evaluatorHookOpt = params.evaluatorHookOpt,
-      logCode = params.logCode
+      logCode = params.logCode,
+      frameOutputs = frameOutputs
     )
+
+    for (socket <- bspSocket; outputs <- frameOutputs)
+      if (ammonite.util.Util.javaMajorVersion < 17)
+        log.warn(s"Not starting a BSP server on $socket, as it requires Java 17 or later")
+      else {
+        val session = new ReplBspSession(
+          () => sessApi.liveFrames,
+          outputs,
+          interp.scalaVersion,
+          interp.scalacOptions ++ interp.bspSemanticDbOptions,
+          ammonite.util.Classpath.classpath(params.initialClassLoader)
+        )
+        val server = ReplBspServer.start(socket.toString, session, msg => log.error(msg))
+        log.info(s"BSP server listening on ${server.socketPath}")
+        bspServer = Some(server)
+      }
 
     interp
   }
@@ -281,13 +327,16 @@ final class ScalaInterpreter(
           jupyterApi
         )
         // the line only changes if the code was compiled
-        if (params.lsp && currentLine() > lineBefore)
+        if (params.lsp && currentLine() > lineBefore) {
+          val wrapperName = params.wrapperNamePrefix + currentLine()
           lspSources.add(
             currentLine(),
-            params.wrapperNamePrefix + currentLine(),
+            wrapperName,
             code,
-            messageOpt.flatMap(ScalaInterpreter.cellId)
+            messageOpt.flatMap(ScalaInterpreter.cellId),
+            inputSource(wrapperName, code)
           )
+        }
         res
       }
     }
@@ -299,6 +348,84 @@ final class ScalaInterpreter(
 
   def currentLine(): Int =
     execute0.currentLine
+
+  /** Registers the code of a cell that wasn't run as a source of the current frame of the session
+    * outputs, wrapped like the next input would be, and returns its file
+    *
+    * BSP clients then see it as a source of the current frame, alongside the inputs run so far, so
+    * that they can offer completions, say, in cells that weren't run yet. The file of each cell is
+    * overwritten when its code changes.
+    */
+  def registerPendingSource(notebookUri: String, cell: Int, code: String): Option[SourceFile] =
+    frameOutputs.flatMap { outputs =>
+      // empty code gets skipped when preprocessing, which would leave the former code in place
+      val code0 = if (code.trim.isEmpty) "()" else code
+      val stmts = Parsers.split(code0, ignoreIncomplete = true, "(notebook)") match {
+        case Some(Right(stmts)) => stmts
+        case _                  => Seq(code0)
+      }
+      val name   = s"pending_${SourceLayout.hash(notebookUri)}_cell$cell"
+      val interp = ammInterp
+      withCompilerLock {
+        val codeSource = ammonite.util.Util.CodeSource(
+          Name(name),
+          Nil,
+          params.pkgName.map(Name(_)),
+          Some((os.pwd / "(notebook)").toNIO)
+        )
+        val res = interp.compilerManager.preprocess("(notebook)").transform(
+          stmts,
+          "0",
+          "",
+          codeSource,
+          Name(name),
+          interp.predefImports ++ interp.frameImports,
+          // nothing gets printed, the code is only meant to be type checked
+          _ => "()",
+          "",
+          true,
+          false,
+          params.codeWrapper
+        )
+        res match {
+          case Res.Success(processed) =>
+            val pending = outputs.prepare(
+              interp.headFrame,
+              os.sub / "pending" / SourceLayout.hash(notebookUri) / s"cell$cell",
+              processed
+            )
+            outputs.commit(pending, Vector.empty)
+            inputSource(pending.sourceFile, code)
+          case other =>
+            log.debug(s"Could not preprocess cell $cell of $notebookUri: $other")
+            None
+        }
+      }
+    }
+
+  /** The file Ammonite wrote the code of input `wrapperName` to, if it wrote it somewhere */
+  private def inputSource(wrapperName: String, code: String): Option[SourceFile] =
+    frameOutputs.flatMap { outputs =>
+      outputs.sources(frames0().head)
+        .find(_.path.last == s"$wrapperName.sc")
+        .flatMap(source => inputSource(source.path, code))
+    }
+
+  /** The file of a source of the current frame, along with how it was wrapped */
+  private def inputSource(path: os.Path, code: String): Option[SourceFile] =
+    for {
+      outputs <- frameOutputs
+      source  <- outputs.sources(frames0().head).find(_.path == path)
+    } yield SourceFile(
+      source.path.toNIO.toUri.toASCIIString,
+      source.wrapped.map { wrapped =>
+        WrappedSource(
+          wrapped.path.toNIO.toUri.toASCIIString,
+          wrapped.topWrapper.count(_ == '\n'),
+          code.count(_ == '\n') + 1
+        )
+      }
+    )
 
   override def isComplete(code: String): Option[IsCompleteResult] = {
 
@@ -520,6 +647,9 @@ final class ScalaInterpreter(
       inspections.shutdown()
 
     AlmondCompilerLifecycleManager.closeCompiler(ammInterp.compilerManager.compiler)
+
+    for (server <- bspServer)
+      server.close()
 
     for (frame <- frames0()) {
       frame.pluginClassloader.close()

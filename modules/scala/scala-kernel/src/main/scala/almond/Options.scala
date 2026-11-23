@@ -567,7 +567,17 @@ final case class Options(
 
   @HelpMessage("Experimental: accept Language Server Protocol sessions from frontends, via comms")
   @Hidden
-    lsp: Boolean = false
+    lsp: Boolean = false,
+
+  @HelpMessage("Experimental: write the code of each cell, and its byte code, under this directory")
+  @Hidden
+  @ValueDescription("/path/to/directory")
+    sessionDirectory: Option[String] = None,
+
+  @HelpMessage("Experimental: start a BSP server for the session, listening on this UNIX domain socket (requires Java 17 or later)")
+  @Hidden
+  @ValueDescription("/path/to/socket")
+    bspSocket: Option[String] = None
 ) {
   // format: on
 
