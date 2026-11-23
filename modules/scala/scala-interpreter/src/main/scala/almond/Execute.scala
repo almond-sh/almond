@@ -369,50 +369,18 @@ final class Execute(
 
   /** The hooks handling the using directives of cells (`//> using …`), by directive key
     *
-    * Ammonite's ones (dependencies, repositories, scripts), along with ours, for compiler options
-    * (that we check before passing them to the compiler), the output style, and the directives of
-    * the launcher (that we ignore). Ammonite handles the directives of cells before compiling them,
-    * and offers completions for their keys and values.
+    * Ammonite's ones (dependencies, repositories, compiler options, scripts), along with ours, for
+    * the output style, and the directives of the launcher (that we ignore), including those of its
+    * custom groups (like `//> using spark.version …`, handled by the `spark.*` key prefix).
+    * Ammonite handles the directives of cells before compiling them, and offers completions for
+    * their keys and values.
     */
-  lazy val directiveHooks: Map[String, DirectiveHook] =
+  lazy val directiveHooks: Map[String, DirectiveHook] = {
+    val launcherKeys = DirectiveKeys.launcher ++
+      launcherDirectiveGroups.flatMap(group => Seq(group.prefix, group.prefix + ".*"))
     scriptHooks.directiveHooks ++
-      DirectiveKeys.scalacOption.map(_ -> ScalacOptionsHook) ++
       DirectiveKeys.outputStyle.map(_ -> OutputStyleHook) ++
-      (DirectiveKeys.launcher ++ launcherDirectiveGroups.map(_.prefix))
-        .map(_ -> LauncherDirectiveHook)
-
-  /** The hook of a directive whose key we don't know in advance, if any (like those of the custom
-    * directive groups of the launcher, such as `//> using spark.version …`)
-    */
-  def extraDirectiveHook(key: String): Option[DirectiveHook] =
-    if (launcherDirectiveGroups.exists(_.matches(key))) Some(LauncherDirectiveHook)
-    else None
-
-  /** Handles compiler options (`//> using option …`)
-    *
-    * Unlike Ammonite's hook, this checks the options before passing them to the compiler, so that
-    * invalid ones are reported right away (and not upon each later compilation)
-    */
-  private object ScalacOptionsHook extends DirectiveHook {
-    def handle(
-      source: CodeSource,
-      directive: UsingDirective,
-      interp: ImportHook.InterpreterInterface,
-      wrapperPath: Seq[Name]
-    ): Either[String, Seq[ImportHook.Result]] =
-      interp match {
-        case ammInterp: ammonite.interp.Interpreter =>
-          for {
-            options  <- DirectiveHook.values(directive)
-            warnings <- almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(options)
-          } yield {
-            for (warning <- warnings)
-              printer0.warning(s"Warning: $warning")
-            Nil
-          }
-        case _ =>
-          DirectiveHook.ScalacOptions.handle(source, directive, interp, wrapperPath)
-      }
+      launcherKeys.map(_ -> LauncherDirectiveHook)
   }
 
   /** Changes how the results of the next cells are displayed (`//> using outputStyle python`) */

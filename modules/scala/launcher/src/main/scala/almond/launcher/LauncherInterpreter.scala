@@ -72,14 +72,8 @@ class LauncherInterpreter(
     outputHandler: Option[OutputHandler],
     messageOpt: Option[Message[Execute.Request]]
   ): ExecuteResult = {
-    val hasActualCode = ScalaParser.hasActualCode(code)
-    val directives = LauncherInterpreter.directives(
-      code,
-      s"cell$lineCount0.sc",
-      customDirectiveGroups,
-      // the kernel runs the cell with code too, and warns about these itself
-      warnAboutUnrecognized = !hasActualCode
-    )
+    val directives =
+      LauncherInterpreter.directives(code, s"cell$lineCount0.sc", customDirectiveGroups)
     directives match {
       case Left(errors) =>
         LauncherInterpreter.error(
@@ -97,7 +91,7 @@ class LauncherInterpreter(
         }
         val newParams        = LauncherInterpreter.update(params, paramsUpdate)
         val newKernelOptions = kernelOptions + kernelOptionsUpdate
-        if (hasActualCode)
+        if (ScalaParser.hasActualCode(code))
           prepare(newParams, newKernelOptions, messageOpt, outputHandler) match {
             case Right(kernelCommand) =>
               params = newParams
@@ -180,7 +174,7 @@ object LauncherInterpreter {
     * Like Ammonite does in the kernel (see `ammonite.runtime.DirectiveHook`), directives are
     * handled by key: we handle the launcher ones (`//> using scala`, …) and those of custom groups,
     * and pass kernel ones (`//> using dep`, …) to the kernel, that validates their values.
-    * Unrecognized directives are ignored, with a warning.
+    * Unrecognized directives are errors, like in the kernel.
     *
     * @param path
     *   how to refer to the cell in messages
@@ -190,8 +184,7 @@ object LauncherInterpreter {
   private def directives(
     code: String,
     path: String,
-    customGroups: Seq[CustomGroup],
-    warnAboutUnrecognized: Boolean
+    customGroups: Seq[CustomGroup]
   ): Either[Seq[String], Directives] = {
 
     def at(position: Position, message: String): String =
@@ -220,28 +213,25 @@ object LauncherInterpreter {
     val results = parsed.directives.map { directive =>
       val key = directive.key
       if (DirectiveKeys.scala.contains(key))
-        singleValue(directive).map(v => (LauncherParameters(scala = v), KernelOptions(), None))
+        singleValue(directive).map(v => (LauncherParameters(scala = v), KernelOptions()))
       else if (DirectiveKeys.jvm.contains(key))
-        singleValue(directive).map(v => (LauncherParameters(jvm = v), KernelOptions(), None))
+        singleValue(directive).map(v => (LauncherParameters(jvm = v), KernelOptions()))
       else if (DirectiveKeys.javaOpt.contains(key))
-        Right((LauncherParameters(javaOptions = values(directive)), KernelOptions(), None))
+        Right((LauncherParameters(javaOptions = values(directive)), KernelOptions()))
       else if (DirectiveKeys.javaCmd.contains(key)) {
         val cmd = Some(values(directive)).filter(_.exists(_.nonEmpty))
-        Right((LauncherParameters(javaCmd = cmd), KernelOptions(), None))
+        Right((LauncherParameters(javaCmd = cmd), KernelOptions()))
       }
       else if (DirectiveKeys.kernel.contains(key))
-        Right((LauncherParameters(), KernelOptions.fromDirective(key, values(directive)), None))
+        Right((LauncherParameters(), KernelOptions.fromDirective(key, values(directive))))
       else
         customGroups.find(_.matches(key)) match {
           case Some(group) =>
             val params =
               LauncherParameters(customDirectives = Seq((group, key, values(directive))))
-            Right((params, KernelOptions(), None))
+            Right((params, KernelOptions()))
           case None =>
-            val warningOpt = Some(
-              at(directive.keyPosition, s"ignoring unrecognized directive '//> using $key'")
-            ).filter(_ => warnAboutUnrecognized)
-            Right((LauncherParameters(), KernelOptions(), warningOpt))
+            Left(at(directive.keyPosition, s"unrecognized directive '//> using $key'"))
         }
     }
 
@@ -253,7 +243,7 @@ object LauncherInterpreter {
         Directives(
           results0.map(_._1).foldLeft(LauncherParameters())(_ + _),
           results0.map(_._2).foldLeft(KernelOptions())(_ + _),
-          parseWarnings.map(diag => at(diag.position, diag.message)) ++ results0.flatMap(_._3)
+          parseWarnings.map(diag => at(diag.position, diag.message))
         )
       )
     }

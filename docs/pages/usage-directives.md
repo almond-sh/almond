@@ -13,7 +13,7 @@ os.list(os.pwd)
 
 Values can be quoted or not, and directives accepting several values accept them separated
 by commas, like `//> using options "-unchecked", "-Wunused:imports"`. Unrecognized directives
-are ignored, with a warning.
+are errors.
 
 ## Kernel directives
 
