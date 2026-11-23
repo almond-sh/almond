@@ -7,12 +7,14 @@ import almond.api.JupyterApi
 import almond.channels.relay.{RelayConnection, RelayFile}
 import almond.channels.zeromq.ZeromqThreads
 import almond.directives.KernelOptions
+import almond.internal.Constants
 import almond.interpreter.KernelSession
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.{Install, OptionGroups}
 import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
+import almond.lsp.PlasmonLauncher
 import almond.util.{ParentProcessWatcher, SigInt}
 import almond.util.ThreadUtil.{daemonThreadFactory, singleThreadedExecutionContextExecutorService}
 import caseapp._
@@ -254,7 +256,14 @@ object ScalaKernel extends CaseApp[Options] {
         sessionDirectory = options.sessionDirectory
           .filter(_.trim.nonEmpty)
           .map(os.Path(_, os.pwd)),
-        bspSocket = options.bspSocket.filter(_.trim.nonEmpty).map(os.Path(_, os.pwd))
+        bspSocket = options.bspSocket.filter(_.trim.nonEmpty).map(os.Path(_, os.pwd)),
+        plasmon = options.plasmon.filter(_.trim.nonEmpty) match {
+          case Some(launcher) => Some(PlasmonLauncher.Command(launcher))
+          case None =>
+            if (options.lsp)
+              Some(PlasmonLauncher.Tag(Constants.plasmonTag, Constants.plasmonTagChanging))
+            else None
+        }
       ),
       logCtx = logCtx
     )

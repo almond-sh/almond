@@ -577,7 +577,12 @@ final case class Options(
   @HelpMessage("Experimental: start a BSP server for the session, listening on this UNIX domain socket (requires Java 17 or later)")
   @Hidden
   @ValueDescription("/path/to/socket")
-    bspSocket: Option[String] = None
+    bspSocket: Option[String] = None,
+
+  @HelpMessage("Experimental: command running the Plasmon language server, that answers the LSP requests of frontends (with --lsp), via a BSP server for the session - defaults to the native launcher of Plasmon from one of its GitHub releases (the nightly one for now), downloaded via the coursier cache")
+  @Hidden
+  @ValueDescription("/path/to/plasmon")
+    plasmon: Option[String] = None
 ) {
   // format: on
 

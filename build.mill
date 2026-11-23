@@ -433,6 +433,8 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
          |object Constants {
          |  def almondVersion = "${publishVersion()}"
          |  def actualScalaVersion = "${scalaVersion()}"
+         |  def plasmonTag = "${Versions.plasmonTag}"
+         |  def plasmonTagChanging = ${Versions.plasmonTagChanging}
          |}
          |""".stripMargin
     os.write(Task.dest / "Constants.scala", constantsFileContent)

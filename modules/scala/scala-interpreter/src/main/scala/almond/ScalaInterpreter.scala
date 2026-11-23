@@ -12,6 +12,7 @@ import almond.logger.LoggerContext
 import almond.lsp.{
   JupyterLabDocumentModel,
   Lsp4jLanguageServer,
+  PlasmonFeatures,
   AlmondLspFeatures,
   AlmondLanguageServer,
   SessionSources,
@@ -55,10 +56,13 @@ final class ScalaInterpreter(
   if (params.extraClassPath.nonEmpty)
     frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
 
-  /** The UNIX domain socket the BSP server of the session listens on, if any */
+  /** The UNIX domain socket the BSP server of the session listens on, if any: the one we're asked
+    * to use, else one in a directory of our own if Plasmon answers LSP requests, as it gets the
+    * session from that server
+    */
   private val bspSocket: Option[os.Path] =
     params.bspSocket.orElse {
-      if (params.lsp)
+      if (params.lsp && params.plasmon.nonEmpty)
         // short path, as socket paths can't be longer than about 100 characters
         Some(os.temp.dir(prefix = "almond-bsp") / "bsp.sock")
       else
@@ -78,6 +82,35 @@ final class ScalaInterpreter(
       }
 
   @volatile private var bspServer = Option.empty[ReplBspServer]
+
+  /** What computes the results of LSP requests: Plasmon, if we were asked to use it */
+  private lazy val lspFeatures: AlmondLspFeatures = {
+    val plasmonFeatures = for {
+      plasmon <- params.plasmon
+      socket  <- bspSocket
+      outputs <- frameOutputs
+    } yield {
+      val features = new PlasmonFeatures(
+        plasmon,
+        socket,
+        outputs.directory,
+        lspSources,
+        (pending, fileCode) =>
+          registerPendingSource(pending.notebookUri, pending.cell, pending.code, fileCode),
+        code => Parsers.split(code, ignoreIncomplete = true, "(notebook)").exists(_.isRight),
+        logCtx
+      )
+      // the BSP server tells its clients that build targets changed upon these same events
+      outputs.addListener(
+        new FrameOutputs.Listener {
+          def frameCreated(frame: Frame): Unit = features.sessionChanged()
+          def frameChanged(frame: Frame): Unit = features.sessionChanged()
+        }
+      )
+      features
+    }
+    plasmonFeatures.getOrElse(AlmondLspFeatures.Unimplemented)
+  }
 
   private var inspectionsInitialized = false
   private lazy val inspections = {
@@ -266,7 +299,7 @@ final class ScalaInterpreter(
           () =>
             new AlmondLanguageServer(
               lspSources,
-              AlmondLspFeatures.Unimplemented,
+              lspFeatures,
               Seq(new JupyterLabDocumentModel),
               logCtx
             ),
@@ -355,8 +388,19 @@ final class ScalaInterpreter(
     * BSP clients then see it as a source of the current frame, alongside the inputs run so far, so
     * that they can offer completions, say, in cells that weren't run yet. The file of each cell is
     * overwritten when its code changes.
+    *
+    * @param code
+    *   the code of the cell, that the wrapper is computed for
+    * @param fileCode
+    *   the code written in the file of the cell, which may have more code around that of the cell
+    *   (see [[almond.lsp.UnitText]])
     */
-  def registerPendingSource(notebookUri: String, cell: Int, code: String): Option[SourceFile] =
+  def registerPendingSource(
+    notebookUri: String,
+    cell: Int,
+    code: String,
+    fileCode: String
+  ): Option[SourceFile] =
     frameOutputs.flatMap { outputs =>
       // empty code gets skipped when preprocessing, which would leave the former code in place
       val code0 = if (code.trim.isEmpty) "()" else code
@@ -373,29 +417,60 @@ final class ScalaInterpreter(
           params.pkgName.map(Name(_)),
           Some((os.pwd / "(notebook)").toNIO)
         )
-        val res = interp.compilerManager.preprocess("(notebook)").transform(
-          stmts,
-          "0",
-          "",
-          codeSource,
-          Name(name),
-          interp.predefImports ++ interp.frameImports,
-          // nothing gets printed, the code is only meant to be type checked
-          _ => "()",
-          "",
-          true,
-          false,
-          params.codeWrapper
-        )
+        def preprocess(stmts: Seq[String]) =
+          interp.compilerManager.preprocess("(notebook)").transform(
+            stmts,
+            "0",
+            "",
+            codeSource,
+            Name(name),
+            interp.predefImports ++ interp.frameImports,
+            // nothing gets printed, the code is only meant to be type checked
+            _ => "()",
+            "",
+            true,
+            false,
+            params.codeWrapper
+          )
+        val res = preprocess(stmts) match {
+          case success @ Res.Success(_) => success
+          case other                    =>
+            // Code that doesn't parse, like the incomplete code of a cell being edited
+            // (`foo.`). The presentation compiler of Plasmon still makes sense of it, so we
+            // register it anyway, with the wrapper of code that parses.
+            log.debug(
+              s"Could not preprocess cell $cell of $notebookUri ($other), wrapping it as is"
+            )
+            preprocess(Seq("()"))
+        }
         res match {
-          case Res.Success(processed) =>
+          case Res.Success(processed0) =>
+            // The code Plasmon gets for the cell as is, rather than as rewritten by Ammonite
+            // (which adds `val res… = ` before expressions, say): positions in both should
+            // match, as Plasmon also reads the files written here
+            val processed =
+              processed0.copy(code = processed0.topWrapper + fileCode + processed0.bottomWrapper)
             val pending = outputs.prepare(
               interp.headFrame,
               os.sub / "pending" / SourceLayout.hash(notebookUri) / s"cell$cell",
               processed
             )
-            outputs.commit(pending, Vector.empty)
-            inputSource(pending.sourceFile, code)
+            val sameWrapper = pending.isWrapped &&
+              outputs.sources(pending.frame).exists { source =>
+                source.path == pending.sourceFile &&
+                source.wrapped.exists { wrapped =>
+                  wrapped.topWrapper == processed.topWrapper &&
+                  wrapped.bottomWrapper == processed.bottomWrapper
+                }
+              }
+            // Committing makes Plasmon re-index the session, which takes a while, and is only
+            // needed if the wrapper changed: Plasmon gets the user code itself from us, via
+            // didOpen / didChange. Without that, each key stroke in a cell would re-index.
+            if (sameWrapper)
+              os.write.over(pending.sourceFile, processed.userCode, createFolders = true)
+            else
+              outputs.commit(pending, Vector.empty)
+            inputSource(pending.sourceFile, fileCode)
           case other =>
             log.debug(s"Could not preprocess cell $cell of $notebookUri: $other")
             None
@@ -629,8 +704,11 @@ final class ScalaInterpreter(
         else Nil,
       lsp =
         if (params.lsp)
-          Some(KernelInfo.Lsp(cell_separator_prefix =
-            Some(JupyterLabDocumentModel.cellSeparatorPrefix)
+          Some(KernelInfo.Lsp(
+            cell_separator_prefix = Some(JupyterLabDocumentModel.cellSeparatorPrefix),
+            // where the sources of dependencies that definitions lead to are, that the
+            // language server handles too
+            document_roots = lspFeatures.files.toList.flatMap(_.roots).map(_.toString)
           ))
         else None
     )
@@ -648,6 +726,10 @@ final class ScalaInterpreter(
 
     AlmondCompilerLifecycleManager.closeCompiler(ammInterp.compilerManager.compiler)
 
+    lspFeatures match {
+      case p: PlasmonFeatures => p.close()
+      case _                  =>
+    }
     for (server <- bspServer)
       server.close()
 
