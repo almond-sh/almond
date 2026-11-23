@@ -357,8 +357,11 @@ object JupyterServer {
     }
     else
       Seq(
-        // Python literals, as traitlets parses dict and list options with ast.literal_eval
-        "--ServerApp.jpserver_extensions={'jupyter_server_mcp': False}",
+        // key=value rather than a Python dict literal, so that traitlets merges it with the other
+        // --ServerApp.jpserver_extensions options (see baseAddressOptions): mixing both syntaxes
+        // makes it collect them in a list, and fail
+        "--ServerApp.jpserver_extensions=jupyter_server_mcp=False",
+        // a Python literal, as traitlets parses list options with ast.literal_eval
         "--PersonaManager.builtin_mcp_servers=[]"
       )
 
@@ -379,10 +382,46 @@ object JupyterServer {
     }
   }
 
+  /** The path of the passed base address, without trailing `/`, if it's not empty */
+  private def baseAddressPath(baseAddress: String): Option[String] =
+    Option(new java.net.URI(baseAddress).getPath).map(_.stripSuffix("/")).filter(_.nonEmpty)
+
+  /** Name of the Jupyter server extension redirecting `/` to the base URL of the server, see
+    * [[writeRootRedirectExtension]]
+    */
+  private def rootRedirectExtension = "almond_dev_root_redirect"
+
+  /** Writes, under `dir`, the Python module of the Jupyter server extension redirecting `/` to the
+    * base URL of the server, and returns `dir`, to put in `PYTHONPATH`
+    *
+    * When it has a base URL, Jupyter only serves things under it, and answers `/` with a 404:
+    * whatever checks if the server is up by requesting `/` (like the service runners starting the
+    * server behind a reverse proxy) would think it isn't.
+    */
+  private def writeRootRedirectExtension(dir: os.Path): os.Path = {
+    val content =
+      """from tornado import web
+        |
+        |
+        |def _jupyter_server_extension_points():
+        |    return [{"module": __name__}]
+        |
+        |
+        |def _load_jupyter_server_extension(serverapp):
+        |    if serverapp.base_url != "/":
+        |        options = {"url": serverapp.base_url, "permanent": False}
+        |        serverapp.web_app.add_handlers(".*$", [(r"/", web.RedirectHandler, options)])
+        |""".stripMargin
+    os.write.over(dir / s"$rootRedirectExtension.py", content, createFolders = true)
+    dir
+  }
+
   /** JupyterLab options making it assume it's reached at the passed address, typically via a
     * reverse proxy handling TLS (Tailscale serve, …): URLs are displayed with that address, its
     * origin is accepted for CORS / websocket connections, non-local `Host` headers are accepted,
-    * and the `X-Forwarded-*` headers set by the proxy are trusted.
+    * and the `X-Forwarded-*` headers set by the proxy are trusted. If the address has a path, it
+    * becomes the base URL of the server, and `/` redirects to it (see
+    * [[writeRootRedirectExtension]]).
     */
   private def baseAddressOptions(baseAddress: String): Seq[String] = {
     val uri = new java.net.URI(baseAddress)
@@ -392,8 +431,12 @@ object JupyterServer {
       val port = if (uri.getPort == -1) "" else s":${uri.getPort}"
       s"${uri.getScheme}://${uri.getHost}$port"
     }
-    val basePath   = Option(uri.getPath).map(_.stripSuffix("/")).filter(_.nonEmpty)
-    val baseUrlOpt = basePath.map(path => s"--ServerApp.base_url=$path/").toSeq
+    val baseUrlOpt = baseAddressPath(baseAddress).toSeq.flatMap { path =>
+      Seq(
+        s"--ServerApp.base_url=$path/",
+        s"--ServerApp.jpserver_extensions=$rootRedirectExtension=True"
+      )
+    }
     Seq(
       s"--ServerApp.custom_display_url=$baseAddress",
       s"--ServerApp.allow_origin=$origin",
@@ -649,9 +692,13 @@ object JupyterServer {
         (if (classic) classicOptions else Nil) ++
         mcpOptions(mcp, args2) ++
         args2
+    val rootRedirectEnv = baseAddressOpt.flatMap(baseAddressPath).map { _ =>
+      val dir = writeRootRedirectExtension(jupyterDir / "python")
+      "PYTHONPATH" -> (dir.toString +: sys.env.get("PYTHONPATH").toSeq).mkString(File.pathSeparator)
+    }
     Command(
       workspace,
-      jupyterEnvironment(javaHome, jupyterDir, acpAgentsBin.toSeq),
+      jupyterEnvironment(javaHome, jupyterDir, acpAgentsBin.toSeq) ++ rootRedirectEnv,
       command
     )
   }
