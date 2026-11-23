@@ -88,7 +88,9 @@ object Deps {
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${Versions.jsoniterScala}"
   def jsoniterScalaMacros =
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${Versions.jsoniterScala}"
-  def mdoc = mvn"org.scalameta::mdoc:2.9.3"
+  // same version as the one mtags depends on
+  def lsp4j = mvn"org.eclipse.lsp4j:org.eclipse.lsp4j:0.24.0"
+  def mdoc  = mvn"org.scalameta::mdoc:2.9.3"
   // mtags is cross-published for full Scala versions, but only for the latest ones of each
   // binary version, while the modules we publish are built with the oldest full Scala version
   // we support (2.12.8, 2.13.3, …). For those, we depend on the mtags of the oldest full Scala

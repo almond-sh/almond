@@ -132,6 +132,9 @@ object ScalaKernel extends CaseApp[Options] {
     // Exit if the Jupyter client that started us goes away without shutting us down
     ParentProcessWatcher.watchFromEnv(logCtx)
 
+    // Keep lsp4j from logging to stderr, that ends up in cell outputs
+    almond.lsp.Lsp4jLanguageServer.redirectLogging(logCtx)
+
     val autoDependencies = options.autoDependencyMap()
     val autoVersions     = options.autoVersionsMap()
     val forceProperties  = options.forceProperties()
@@ -246,7 +249,8 @@ object ScalaKernel extends CaseApp[Options] {
           .filter(_.nonEmpty)
           .map(_.split('.').filter(_.nonEmpty).toSeq)
           .getOrElse(AmmInterpreter.defaultPkgName),
-        logCode = options.logCode
+        logCode = options.logCode,
+        lsp = options.lsp
       ),
       logCtx = logCtx
     )

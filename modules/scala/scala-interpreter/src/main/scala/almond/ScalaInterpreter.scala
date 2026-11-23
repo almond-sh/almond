@@ -6,8 +6,14 @@ import almond.internals._
 import almond.interpreter._
 import almond.interpreter.api.{CommHandler, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
+import almond.interpreter.lsp.{LanguageServer, LspCommTarget}
 import almond.interpreter.util.AsyncInterpreterOps
 import almond.logger.LoggerContext
+import almond.lsp.{
+  Lsp4jLanguageServer,
+  SessionSources,
+  SourceLayout
+}
 import almond.protocol.{Execute => ProtocolExecute, KernelInfo, RawJson}
 import almond.toree.{CellMagicHook, LineMagicHook}
 import ammonite.compiler.Parsers
@@ -17,6 +23,12 @@ import ammonite.util.{Frame => _, _}
 import coursier.paths.shaded.dirs.ProjectDirectories
 import coursier.paths.shaded.dirs.impl.Windows
 import coursier.paths.shaded.dirs.jni.WindowsJni
+import com.github.plokhotnyuk.jsoniter_scala.core.{
+  JsonReaderException,
+  JsonValueCodec,
+  readFromArray
+}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import fastparse.Parsed
 
 import java.nio.charset.StandardCharsets
@@ -65,6 +77,14 @@ final class ScalaInterpreter(
   )
 
   private var commHandlerOpt = Option.empty[CommHandler]
+
+  private lazy val lspSources = {
+    val root = params.outputDir match {
+      case Left(dir) => dir / "lsp"
+      case Right(_)  => os.temp.dir(prefix = "almond-lsp")
+    }
+    new SessionSources(SourceLayout(root, params.pkgName))
+  }
 
   private val storage =
     if (params.disableCache)
@@ -189,8 +209,18 @@ final class ScalaInterpreter(
     execute0.interrupt(jupyterApi)
 
   override def supportComm: Boolean = true
-  override def setCommHandler(commHandler0: CommHandler): Unit =
+  override def setCommHandler(commHandler0: CommHandler): Unit = {
     commHandlerOpt = Some(commHandler0)
+    if (params.lsp)
+      LspCommTarget.register(
+        new Lsp4jLanguageServer(
+          () => ???,
+          logCtx
+        ),
+        commHandler0,
+        logCtx
+      )
+  }
 
   private var upfrontOptionsLoaded = false
 
@@ -225,7 +255,8 @@ final class ScalaInterpreter(
       // when the directives of a cell can't be loaded). Users can then run the cell holding
       // the faulty directives again, once fixed.
       loadUpfrontOptions(ammInterp0, outputHandler).getOrElse {
-        execute0(
+        val lineBefore = currentLine()
+        val res = execute0(
           ammInterp0,
           code,
           inputManager,
@@ -240,6 +271,15 @@ final class ScalaInterpreter(
           jupyterApi.postRunHooks(),
           jupyterApi
         )
+        // the line only changes if the code was compiled
+        if (params.lsp && currentLine() > lineBefore)
+          lspSources.add(
+            currentLine(),
+            params.wrapperNamePrefix + currentLine(),
+            code,
+            messageOpt.flatMap(ScalaInterpreter.cellId)
+          )
+        res
       }
     }
     finally {
@@ -447,6 +487,10 @@ final class ScalaInterpreter(
          |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin +
         params.extraBannerOpt.fold("")(nl + nl + _),
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
+    ).copy(
+      supported_features =
+        if (params.lsp) List(LanguageServer.supportedFeature)
+        else Nil
     )
   }
 
@@ -468,4 +512,19 @@ final class ScalaInterpreter(
     }
   }
 
+}
+
+object ScalaInterpreter {
+
+  private final case class ExecuteMetadata(cellId: Option[String] = None)
+
+  private implicit val executeMetadataCodec: JsonValueCodec[ExecuteMetadata] =
+    JsonCodecMaker.make
+
+  /** Id of the cell of an execute request, that JupyterLab sends in its metadata */
+  private def cellId(message: Message[ProtocolExecute.Request]): Option[String] =
+    try readFromArray[ExecuteMetadata](message.metadata.value).cellId
+    catch {
+      case _: JsonReaderException => None
+    }
 }

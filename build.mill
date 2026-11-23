@@ -234,6 +234,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
       Deps.dependency,
       Deps.dependencyInterface,
       Deps.jansi,
+      Deps.lsp4j,
       Deps.ammoniteCompiler.exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna")),
       Deps.scalaCompiler(crossScalaVersion)

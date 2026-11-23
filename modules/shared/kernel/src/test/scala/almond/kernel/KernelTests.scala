@@ -5,6 +5,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import almond.channels.Channel
+import almond.interpreter.lsp.LanguageServer
 import almond.interpreter.messagehandlers.MessageHandler
 import almond.interpreter.{KernelSession, Message, TestInterpreter}
 import almond.interpreter.TestInterpreter.StringBOps
@@ -249,6 +250,42 @@ object KernelTests extends TestSuite {
       val close = streams.singleReply(Channel.Publish, Comm.closeType)
       assert(close.content.comm_id == commId)
       assert(close.parent_header.exists(_.msg_type == Comm.openType.messageType))
+    }
+
+    test("LSP messages over comms") {
+
+      val stopWhen: (Channel, Message[RawJson]) => IO[Boolean] =
+        (channel, m) =>
+          IO.pure(
+            channel == Channel.Publish &&
+            m.header.msg_type == Comm.messageType.messageType
+          )
+
+      val sessionId  = UUID.randomUUID().toString
+      val commId     = UUID.randomUUID().toString
+      val lspMessage = """{"jsonrpc":"2.0","id":1,"method":"initialize"}"""
+      val input = Stream(
+        Message(
+          Header.random("test", Comm.openType, sessionId),
+          Comm.Open(commId, LanguageServer.commTarget, RawJson.emptyObj)
+        ).on(Channel.Requests),
+        Message(
+          Header.random("test", Comm.messageType, sessionId),
+          Comm.Message(commId, RawJson(s"""{"message":$lspMessage}""".bytes))
+        ).on(Channel.Requests)
+      )
+
+      val streams = ClientStreams.create(input, stopWhen, ioRuntime = threads.ioRuntime)
+
+      val t = Kernel.create(new TestInterpreter, interpreterEc, threads, cancellablesEc, logCtx)
+        .flatMap(_.run(streams.source, streams.sink, Nil))
+
+      val res = t.unsafeRunTimed(10.seconds)(threads.ioRuntime)
+      assert(res.nonEmpty)
+
+      val reply = streams.singleReply(Channel.Publish, Comm.messageType)
+      assert(reply.content.comm_id == commId)
+      assert(reply.content.data.toString == s"""{"message":$lspMessage}""")
     }
 
     test("stop on error") {

@@ -563,7 +563,11 @@ final case class Options(
 
   @HelpMessage("Log raw code about to be compiled (after post-processing, raw code passed to the compiler)")
   @Hidden
-    logCode: Boolean = false
+    logCode: Boolean = false,
+
+  @HelpMessage("Experimental: accept Language Server Protocol sessions from frontends, via comms")
+  @Hidden
+    lsp: Boolean = false
 ) {
   // format: on
 
