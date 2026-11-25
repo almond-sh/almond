@@ -26,7 +26,7 @@ dependencies = [
 lab = [
   "almond-scalafmt>=0.2.0",
   "lckr-jupyterlab-variableinspector>=3.2",
-  "plotly>=5.24,<6",
+  "plotly>=5.24,<8",
 ]
 ai = [
   "jupyter-ai>=3",
