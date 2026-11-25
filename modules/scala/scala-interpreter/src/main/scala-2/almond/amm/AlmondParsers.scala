@@ -14,7 +14,8 @@ object AlmondParsers {
     def Prefixes       = P(Prelude ~ (`var` | `val`))
     def Lhs            = P(Prefixes ~/ VarId)
     def TypeAnnotation = P((`:` ~/ Type.!).?)
-    P(Lhs.! ~ TypeAnnotation ~ (`=` ~/ WL ~ StatCtx.Expr.!) ~ End)
+    // also returns the index of the RHS in the input
+    P(Lhs.! ~ TypeAnnotation ~ (`=` ~/ WL ~ Index ~ StatCtx.Expr.!) ~ End)
   }
 
 }

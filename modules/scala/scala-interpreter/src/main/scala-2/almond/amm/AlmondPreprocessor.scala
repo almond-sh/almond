@@ -9,6 +9,34 @@ import scala.tools.nsc.{Global => G}
 
 object AlmondPreprocessor {
 
+  /** Code replacing a definition, `before + rhs + after`, with `rhs` on the same lines as in the
+    * definition
+    *
+    * That way, the lines of the code that follows (and of `rhs`) are the same as in the user code,
+    * in the byte code (where debuggers look for them) and in compilation errors.
+    *
+    * @param code
+    *   the definition, like `var n = 0`
+    * @param rhsIdx
+    *   index in `code` from which `rhs` starts, maybe after whitespace or comments
+    * @param rhs
+    *   the right-hand side of the definition
+    */
+  def sameLines(code: String, rhsIdx: Int, rhs: String)(before: String, after: String): String = {
+    // the RHS the parser captures can end with whitespace and new lines (statements in cells
+    // aren't followed by separators), that we keep after `after`
+    val rhs0     = rhs.reverse.dropWhile(_.isWhitespace).reverse
+    val trailing = rhs.substring(rhs0.length)
+    val start    = code.indexOf(rhs, rhsIdx)
+    val newLinesBefore =
+      if (start < 0) 0
+      else code.substring(0, start).count(_ == '\n')
+    val rest =
+      if (start < 0) "\n"
+      else code.substring(start + rhs.length)
+    before + "\n" * newLinesBefore + rhs0 + after + trailing + rest
+  }
+
   def customPprintSignature(
     ident: String,
     customMsg: Option[String],
@@ -135,12 +163,13 @@ class AlmondPreprocessor(
         !t.name.decoded.contains("$") &&
         t.mods.hasFlag(Flags.LAZY) =>
       val (code0, modOpt) = fastparse.parse(code, AlmondParsers.PatVarSplitter(_)) match {
-        case Parsed.Success((lhs, tpeOpt, rhs), _) if lhs.startsWith("lazy val ") =>
+        case Parsed.Success((lhs, tpeOpt, (rhsIdx, rhs)), _) if lhs.startsWith("lazy val ") =>
           val mod     = Name.backtickWrap(t.name.decoded + "$value")
           val tpePart = tpeOpt.fold("")(t => "[" + t + "]")
-          val c = s"""val $mod = new _root_.almond.api.internal.Lazy$tpePart(() => $rhs)
-                     |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
-                     |""".stripMargin
+          val c = sameLines(code, rhsIdx, rhs)(
+            s"val $mod = new _root_.almond.api.internal.Lazy$tpePart(() => ",
+            s"); import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}"
+          )
           (c, Some(mod + ".onChange"))
         case _ =>
           (code, None)
@@ -165,12 +194,13 @@ class AlmondPreprocessor(
         !t.name.decoded.contains("$") &&
         !t.mods.hasFlag(Flags.LAZY) =>
       val (code0, modOpt) = fastparse.parse(code, AlmondParsers.PatVarSplitter(_)) match {
-        case Parsed.Success((lhs, tpeOpt, rhs), _) if lhs.startsWith("var ") =>
+        case Parsed.Success((lhs, tpeOpt, (rhsIdx, rhs)), _) if lhs.startsWith("var ") =>
           val mod     = Name.backtickWrap(t.name.decoded + "$value")
           val tpePart = tpeOpt.fold("")(t => "[" + t + "]")
-          val c = s"""val $mod = new _root_.almond.api.internal.Modifiable$tpePart($rhs)
-                     |import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}
-                     |""".stripMargin
+          val c = sameLines(code, rhsIdx, rhs)(
+            s"val $mod = new _root_.almond.api.internal.Modifiable$tpePart(",
+            s"); import $mod.{value => ${Name.backtickWrap(t.name.decoded)}}"
+          )
           (c, Some(mod + ".onChange"))
         case _ =>
           (code, None)
