@@ -9,7 +9,7 @@ ARG LOCAL_IVY=no
 
 # Pinned by digest, so that rebuilding an almond version gives the same base image, and that a tag
 # moved on quay.io can't change what ends up in the images (Dependabot updates it)
-FROM quay.io/jupyter/base-notebook:lab-4.6.6@sha256:21eeabb12e91285915285c112ba8084dca64a363b8464cb910808448b7d20cd5 as coursier_base
+FROM quay.io/jupyter/base-notebook:lab-4.6.6@sha256:c69a400501596f10e77e07191616e4fd7659e560fffc64c1be676ed28e24ddf8 as coursier_base
 
 USER root
 
