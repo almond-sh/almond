@@ -59,12 +59,13 @@ const features = [
   {
     title: 'Plotting libraries',
     video: 'frontpage/plotly',
-    imageAlt: 'Plots',
+    imageAlt: '3D surface plot',
     content: (
       <p>
         Plot things from notebooks with{' '}
         <a href="https://github.com/alexarchambault/plotly-scala">plotly-scala</a>,
-        Vega and Vega-Lite, or any library rendering images or HTML.
+        Vega and Vega-Lite, or any library rendering images or HTML. Plots can be interactive,
+        like this 3D surface, computed in Scala, that you can rotate, zoom, and hover.
       </p>
     ),
   },
