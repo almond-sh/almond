@@ -1289,12 +1289,17 @@ object Tests {
             |No warnings can be incurred under -Werror
             |""".stripMargin
 
+      // -Xfatal-warnings is a deprecated alias of -Werror from Scala 3.8 on
+      val fatalWarningsOption =
+        if (scalaVersion.startsWith("2.") || scalaVersion0 < Version("3.8.0")) "-Xfatal-warnings"
+        else "-Werror"
+
       execute(
-        """//> using option "-Xfatal-warnings" "-deprecation"
-          |@deprecated("foo", "0.1")
-          |def getValue(): Int = 2
-          |val n = getValue()
-          |""".stripMargin,
+        s"""//> using option "$fatalWarningsOption" "-deprecation"
+           |@deprecated("foo", "0.1")
+           |def getValue(): Int = 2
+           |val n = getValue()
+           |""".stripMargin,
         expectError = true,
         stderr = errorMessage,
         errors = Seq(
@@ -2913,9 +2918,11 @@ object Tests {
             |""".stripMargin,
           stdout = "",
           stderr = "",
-          errors = Seq(
-            ("", "bad option: '-Xnot-an-option'", List("bad option: '-Xnot-an-option'"))
-          )
+          errors = {
+            // prefixed with the position of the directive, by Ammonite
+            val msg = "(console):1:11: bad option: '-Xnot-an-option'"
+            Seq(("", msg, List(msg)))
+          }
         )
       else
         execute(
@@ -2923,7 +2930,9 @@ object Tests {
             |1
             |""".stripMargin,
           "res1: Int = 1",
-          stderr = "Warning: bad option '-Xnot-an-option' was ignored" + System.lineSeparator()
+          // prefixed with the position of the directive, by Ammonite
+          stderr =
+            "(console):1:11: bad option '-Xnot-an-option' was ignored" + System.lineSeparator()
         )
       execute(
         "val n = 1 + 1",

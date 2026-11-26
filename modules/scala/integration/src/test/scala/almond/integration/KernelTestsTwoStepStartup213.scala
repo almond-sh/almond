@@ -213,8 +213,7 @@ class KernelTestsTwoStepStartup213 extends KernelTestsDefinitions {
           s"""//> using scala "${KernelLauncher.testScala213Version}"""",
           "",
           stderr =
-            """Warning: ignoring 1 directive(s) that can only be used prior to any code:
-              |  //> using scala
+            """Warning: ignoring '//> using scala', that can only be used prior to any code
               |""".stripMargin
         )
       }

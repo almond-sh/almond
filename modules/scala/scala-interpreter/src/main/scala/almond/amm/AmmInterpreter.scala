@@ -160,7 +160,9 @@ object AmmInterpreter {
         wrapperNamePrefix = wrapperNamePrefix,
         pkgName = pkgName.map(Name(_)),
         // like the Ammonite ones, but reloading scripts that changed since they were last loaded
-        importHooks = ReloadingSourceHook.importHooks
+        importHooks = execute0.scriptHooks.importHooks,
+        // Ammonite's ones, along with ours (and here too, reloading scripts that changed)
+        directiveHooks = execute0.directiveHooks
       )
       val outputDir0 = outputDir match {
         case Left(path)   => Some(path.toNIO)

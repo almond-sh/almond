@@ -4,10 +4,9 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
 
-import almond.amm.AmmInterpreter
+import almond.amm.{AmmInterpreter, ReloadingSourceHook}
 import almond.api.JupyterApi
-import almond.directives.{HasKernelOptions, KernelOptions}
-import almond.directives.HasKernelOptions.ops._
+import almond.directives.{DirectiveKeys, KernelOptions}
 import almond.internals.{
   Capture,
   DisplayIdTracker,
@@ -19,7 +18,7 @@ import almond.internals.{
 import almond.interpreter.{ExecuteError, Message}
 import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
-import almond.launcher.directives.{CustomGroup, LauncherParameters}
+import almond.launcher.directives.CustomGroup
 import almond.logger.LoggerContext
 import almond.logger.internal.PrintStreamLogger
 import almond.protocol.{Execute => ProtocolExecute}
@@ -28,16 +27,15 @@ import ammonite.compiler.{CodeClassWrapper, Parsers}
 import ammonite.compiler.iface.Preprocessor
 import ammonite.repl.api.History
 import ammonite.repl.Repl
-import ammonite.runtime.Storage
-import ammonite.util.{Colors, Evaluated, Ex, ImportTree, Imports, Name, Printer, Ref, Res, Util}
+import ammonite.directives.{DirectiveValue, Position, UsingDirective}
+import ammonite.runtime.{DirectiveHook, ImportHook, Storage}
+import ammonite.util.{Colors, Evaluated, Ex, Imports, Name, Printer, Ref, Res}
 import ammonite.util.Util.CodeSource
 import coursierapi.{Repository, RepositoryParser}
 import dependency.ScalaParameters
 import dependency.api.ops._
 import fastparse.Parsed
 
-import almond.directivehandler._
-import almond.directivehandler.EitherSequence._
 import scala.collection.mutable
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -64,24 +62,6 @@ final class Execute(
   pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
   wrapperPath: Seq[Name] = CodeClassWrapper.wrapperPath
 ) {
-
-  private val handlers = HasKernelOptions.handlers ++
-    LauncherParameters.handlers.mapDirectives(_.ignoredDirective).addCustomHandler { key =>
-      launcherDirectiveGroups.find(_.matches(key)).map { group =>
-        new DirectiveHandler[HasKernelOptions] {
-          def name        = s"custom group ${group.prefix}"
-          def description = s"custom group ${group.prefix}"
-          def usage       = s"//> ${group.prefix}..."
-          def keys        = Seq(key)
-          def handleValues(scopedDirective: ScopedDirective)
-            : Either[DirectiveException, ProcessedDirective[HasKernelOptions]] =
-            Right(ProcessedDirective(
-              Some(HasKernelOptions.IgnoredDirectives(Seq(IgnoredDirective(scopedDirective)))),
-              Nil
-            ))
-        }
-      }
-    }
 
   private val log = logCtx(getClass)
 
@@ -163,51 +143,6 @@ final class Execute(
       // but stderr in the console, not to pollute stdout
       doPrint(_, toClientStdout = true)
     )
-  }
-
-  private def useOptions(
-    ammInterp: ammonite.interp.Interpreter,
-    options: KernelOptions
-  ): Either[String, Unit] = {
-
-    val maybeRepositories = options.extraRepositories
-      .foldLeft[Either[String, Seq[Repository]]](Right(Nil)) {
-        case (Left(err), _)      => Left(err)
-        case (Right(acc), input) => Execute.parseRepository(input).map(acc :+ _)
-      }
-
-    maybeRepositories.flatMap { repositories =>
-      ammInterp.repositories.update(ammInterp.repositories() ++ repositories)
-      useOptions0(ammInterp, options)
-    }
-  }
-
-  private def useOptions0(
-    ammInterp: ammonite.interp.Interpreter,
-    options: KernelOptions
-  ): Either[String, Unit] = {
-
-    val maybeOptionWarnings = almond.internals.ConfigureCompiler.addOptions(ammInterp.interpApi)(
-      options.scalacOptions.toSeq.map(_.value.value)
-    )
-
-    maybeOptionWarnings.flatMap { optionWarnings =>
-      for (warning <- optionWarnings)
-        printer0.warning(s"Warning: $warning")
-
-      for (value <- options.outputStyle)
-        outputStyle() = value
-
-      val deps = Execute.toCoursierDependencies(ammInterp.scalaVersion, options.dependencies)
-      val loadDepsRes =
-        if (deps.isEmpty) Right(Nil)
-        else ammInterp.loadIvy(deps: _*)
-      loadDepsRes.map { loaded =>
-        if (loaded.nonEmpty)
-          ammInterp.headFrame.addClasspath(loaded.map(_.toURI.toURL))
-        ()
-      }
-    }
   }
 
   def history: History =
@@ -411,59 +346,120 @@ final class Execute(
   ): Option[ExecuteResult.Error] =
     // with the output handler set, so that the notebook coursier logger can show the downloads of
     // the dependencies of these options
-    withOutputHandler(outputHandler)(useOptions(ammInterp, options)) match {
-      case Left(err) =>
+    withOutputHandler(outputHandler)(loadDirectives(ammInterp, options.directives)) match {
+      case Res.Success(_) | Res.Skip =>
+        None
+      case Res.Failure(err) =>
         log.warn(s"Error loading initial kernel options: $err")
-        // same error as when loading the options of a cell fails
-        Some(Execute.error(colors, Some(new Exception(err)), ""))
-      case Right(()) =>
+        // same error as when loading the directives of a cell fails
+        Some(Execute.error(colors, None, err))
+      case Res.Exception(ex, msg) =>
+        log.warn(s"Error loading initial kernel options: $msg", ex)
+        Some(Execute.error(colors, Some(ex), msg))
+      case Res.Exit(_) =>
         None
     }
 
   private var standaloneSourceCount = 0
 
-  /** Loads scripts passed via `//> using script` directives, like `import $file.…` does */
-  private def loadScripts(
+  /** The hooks loading scripts (`import $file.…`, `//> using script …`), that reload scripts that
+    * changed since they were last loaded
+    */
+  val scriptHooks: ReloadingSourceHook.Hooks = ReloadingSourceHook.hooks()
+
+  /** The hooks handling the using directives of cells (`//> using …`), by directive key
+    *
+    * Ammonite's ones (dependencies, repositories, compiler options, scripts), along with ours, for
+    * the output style, and the directives of the launcher (that we ignore), including those of its
+    * custom groups (like `//> using spark.version …`, handled by the `spark.*` key prefix).
+    * Ammonite handles the directives of cells before compiling them, and offers completions for
+    * their keys and values.
+    */
+  lazy val directiveHooks: Map[String, DirectiveHook] = {
+    val launcherKeys = DirectiveKeys.launcher ++
+      launcherDirectiveGroups.flatMap(group => Seq(group.prefix, group.prefix + ".*"))
+    scriptHooks.directiveHooks ++
+      DirectiveKeys.outputStyle.map(_ -> OutputStyleHook) ++
+      launcherKeys.map(_ -> LauncherDirectiveHook)
+  }
+
+  /** Changes how the results of the next cells are displayed (`//> using outputStyle python`) */
+  private object OutputStyleHook extends DirectiveHook {
+    def handle(
+      source: CodeSource,
+      directive: UsingDirective,
+      interp: ImportHook.InterpreterInterface,
+      wrapperPath: Seq[Name]
+    ): Either[String, Seq[ImportHook.Result]] =
+      for {
+        values <- DirectiveHook.values(directive)
+        style  <- OutputStyle.parse(values.last)
+      } yield {
+        outputStyle() = style
+        Nil
+      }
+    override def complete(
+      interp: ammonite.interp.Interpreter,
+      directory: os.Path,
+      prefix: String
+    ): (Int, Seq[String]) =
+      (0, OutputStyle.all.map(_.name).filter(_.startsWith(prefix)))
+  }
+
+  /** Ignores the directives of the launcher (`//> using scala …`, `//> using spark.version …` for a
+    * custom `spark` group, …), that can only be used before the kernel is started
+    *
+    * Unless the launcher already handled them (in the first cell with code, that both it and us
+    * run), users are warned about them.
+    */
+  private object LauncherDirectiveHook extends DirectiveHook {
+    def handle(
+      source: CodeSource,
+      directive: UsingDirective,
+      interp: ImportHook.InterpreterInterface,
+      wrapperPath: Seq[Name]
+    ): Either[String, Seq[ImportHook.Result]] = {
+      val handledByLauncher = currentPublishOpt0
+        .flatMap(_.messageIdOpt)
+        .exists(ignoreLauncherDirectivesIn.contains)
+      if (!handledByLauncher)
+        printer0.warning(
+          s"Warning: ignoring '//> using ${directive.key}', " +
+            "that can only be used prior to any code"
+        )
+      Right(Nil)
+    }
+  }
+
+  /** Loads directives, like those of the kernel options the launcher passes us
+    *
+    * These are handled with the same hooks as those of cells, as if they were in a cell.
+    */
+  private def loadDirectives(
     ammInterp: ammonite.interp.Interpreter,
-    scripts: Seq[Positioned[String]]
+    directives: Seq[(String, Seq[String])]
   ): Res[Unit] = {
     // the source the scripts are loaded from - the same as the one Ammonite uses for cells,
-    // so that scripts are loaded exactly like via `import $file.…` from a cell
+    // so that scripts are loaded exactly like via `import $file.…` from a cell (paths are relative
+    // to the working directory)
     val source = CodeSource(
       Name("cell"),
       Nil,
       pkgName.map(Name(_)),
       Some((os.pwd / "(console)").toNIO)
     )
-    val maybeImports = Res.map(scripts) { script =>
-      val input = script.value
-      for {
-        path <- Res(
-          Try(os.Path(input, os.pwd)),
-          ex => s"Malformed script path '$input': ${ex.getMessage}"
+    val position = Position(0, 0, 0)
+    val maybeImports = Res.map(directives) {
+      case (key, values) =>
+        val directive = UsingDirective(
+          key,
+          values.map(DirectiveValue.StringVal(_, isQuoted = false, position)),
+          position
         )
-        file = if (path.last.endsWith(".sc")) path else path / os.up / (path.last + ".sc")
-        _ <- {
-          if (os.isFile(file)) Res.Success(())
-          else Res.Failure(s"Script not found: $file")
-        }
-        // The `$file` import hook of Ammonite expects a path relative to the working directory,
-        // where `^` stands for `..`
-        rel = file.relativeTo(os.pwd)
-        tree = ImportTree(
-          Seq("$file") ++
-            Seq.fill(rel.ups)(Util.upPathSegment) ++
-            rel.segments.init ++
-            Seq(rel.segments.last.stripSuffix(".sc")),
-          None,
-          0,
-          0
-        )
-        imports <- ammInterp.resolveSingleImportHook(source, tree, wrapperPath)
-      } yield imports
+        ammInterp.resolveUsingDirective(source, directive, wrapperPath)
     }
     maybeImports.map { imports =>
-      ammInterp.handleImports(Imports(imports.flatten.flatMap(_.value)))
+      ammInterp.handleImports(imports.foldLeft(Imports())(_ ++ _))
     }
   }
 
@@ -473,8 +469,7 @@ final class Execute(
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler],
     storeHistory: Boolean,
-    jupyterApi: JupyterApi,
-    scripts: Seq[Positioned[String]]
+    jupyterApi: JupyterApi
   ): Res[DisplayData] =
     withOutputHandler(outputHandler) {
       val code0 = {
@@ -485,29 +480,12 @@ final class Execute(
           code + ls
       }
       // TODO Ignore comments before any package directive too
+      // (standalone sources can't have directives then, as these need to be at the very beginning)
       val isStandaloneSource = code.startsWith("package ")
-      val scriptsRes =
-        if (scripts.isEmpty) Res.Success(())
-        else
-          interruptible(jupyterApi) {
-            withInputManager(inputManager, done = false) {
-              withClientStdin {
-                capturingOutput {
-                  loadScripts(ammInterp, scripts)
-                }
-              }
-            }
-          }
-      scriptsRes match {
-        case Res.Exception(ex, _) =>
-          lastExceptionOpt0 = Some(ex)
-        case _ =>
-      }
       if (isStandaloneSource) {
         val count = standaloneSourceCount
         standaloneSourceCount = standaloneSourceCount + 1
         for {
-          _ <- scriptsRes
           output <- interruptible(jupyterApi) {
             capturingOutput {
               Res(
@@ -530,8 +508,9 @@ final class Execute(
         } yield DisplayData.empty
       }
       else
+        // Directives (`//> using …`) are handled by Ammonite, in processLine, before compiling
+        // the cell (see directiveHooks)
         for {
-          _ <- scriptsRes
           stmts <- ammonite.compiler.Parsers.split(code0, ignoreIncomplete = false) match {
             case None =>
               // In Scala 2? cannot happen with ignoreIncomplete = false.
@@ -740,106 +719,56 @@ final class Execute(
         ExecuteResult.Success()
 
       case Success(Right(finalCode)) =>
-        val path      = Left(s"cell$currentLine0.sc")
-        val scopePath = ScopePath(Left("."), os.sub)
-        Try(handlers.parse(finalCode, path, scopePath)) match {
-          case Failure(err) =>
-            log.error(s"Unexpected exception while processing directives (${err.getMessage})", err)
-            Execute.error(colors0(), Some(err), err.getMessage)
-          case Success(Left(err)) =>
-            log.error(s"Exception while processing directives (${err.getMessage})", err)
-            Execute.error(colors0(), Some(err), err.getMessage)
-          case Success(Right(res)) =>
-            val maybeOptions = res
-              .flatMap(_.global.map(_.kernelOptions).toSeq)
-              .sequence
-              .map(_.foldLeft(KernelOptions())(_ + _))
-            maybeOptions match {
-              case Left(err) =>
-                // FIXME Use positions in the exception to report errors as diagnostics
-                // FIXME This discards all errors but the first
-                Execute.error(colors0(), Some(err.head), "")
-              case Right(options) =>
-                // with the output handler set, so that the notebook coursier logger can show the
-                // downloads of the dependencies of '//> using dep' directives
-                val optionsRes = withOutputHandler(outputHandler)(useOptions(ammInterp, options))
+        ammResult(
+          ammInterp,
+          finalCode,
+          inputManager,
+          outputHandler,
+          storeHistory,
+          jupyterApi
+        ) match {
+          case Res.Success(data) =>
+            ExecuteResult.Success(data)
+          case Res.Failure(msg) =>
+            interruptedStackTraceOpt0 match {
+              case None =>
+                // Not printed to stderr: the error output that the kernel publishes
+                // for this result already shows the message (L4). This includes the errors of
+                // directives, like invalid compiler options, or dependency resolution errors -
+                // no stack trace for those, which would only point at the kernel code reporting
+                // the error (L9).
+                Execute.error(colors0(), None, msg)
+              case Some(st) =>
+                val cutoff = Set("$main", "evaluatorRunPrinter")
 
-                if (
-                  options.ignoredDirectives.nonEmpty &&
-                  outputHandler
-                    .flatMap(_.messageIdOpt)
-                    .forall(id => !ignoreLauncherDirectivesIn.contains(id))
-                ) {
-                  def printErr(s: String): Unit =
-                    outputHandler match {
-                      case Some(h) => h.stderr(s + System.lineSeparator())
-                      case None    => System.err.println(s)
-                    }
-                  printErr(
-                    s"Warning: ignoring ${options.ignoredDirectives.length} directive(s) that can only be used prior to any code:"
-                  )
-                  for (dir <- options.ignoredDirectives.map(_.directive))
-                    printErr(s"  //> using ${dir.directive.key}")
-                }
-
-                optionsRes match {
-                  case Left(failureMsg) =>
-                    // invalid compiler options, dependency resolution errors, … - no stack
-                    // trace, which would only point at the kernel code reporting the error (L9)
-                    Execute.error(colors0(), None, failureMsg)
-                  case Right(()) =>
-                    ammResult(
-                      ammInterp,
-                      finalCode,
-                      inputManager,
-                      outputHandler,
-                      storeHistory,
-                      jupyterApi,
-                      options.scripts
-                    ) match {
-                      case Res.Success(data) =>
-                        ExecuteResult.Success(data)
-                      case Res.Failure(msg) =>
-                        interruptedStackTraceOpt0 match {
-                          case None =>
-                            // Not printed to stderr: the error output that the kernel publishes
-                            // for this result already shows the message (L4)
-                            Execute.error(colors0(), None, msg)
-                          case Some(st) =>
-                            val cutoff = Set("$main", "evaluatorRunPrinter")
-
-                            ExecuteResult.Error(
-                              "Interrupted!",
-                              "",
-                              List("Interrupted!") ++ st
-                                .takeWhile(x => !cutoff(x.getMethodName))
-                                .map(ExecuteError.highlightFrame(
-                                  _,
-                                  fansi.Attr.Reset,
-                                  colors0().literal()
-                                ))
-                                .map(_.render)
-                                .toList
-                            )
-                        }
-
-                      case Res.Exception(ex, msg) =>
-                        log.error(
-                          s"exception in user code (${PrintStreamLogger.exceptionString(ex)})",
-                          ex
-                        )
-                        Execute.error(colors0(), Some(ex), msg)
-
-                      case Res.Skip =>
-                        if (!options.isEmpty)
-                          incrementLine(storeHistory)
-                        ExecuteResult.Success()
-
-                      case Res.Exit(_) =>
-                        ExecuteResult.Exit
-                    }
-                }
+                ExecuteResult.Error(
+                  "Interrupted!",
+                  "",
+                  List("Interrupted!") ++ st
+                    .takeWhile(x => !cutoff(x.getMethodName))
+                    .map(ExecuteError.highlightFrame(
+                      _,
+                      fansi.Attr.Reset,
+                      colors0().literal()
+                    ))
+                    .map(_.render)
+                    .toList
+                )
             }
+
+          case Res.Exception(ex, msg) =>
+            log.error(
+              s"exception in user code (${PrintStreamLogger.exceptionString(ex)})",
+              ex
+            )
+            Execute.error(colors0(), Some(ex), msg)
+
+          case Res.Skip =>
+            // cells with only comments, or directives that bring nothing in scope
+            ExecuteResult.Success()
+
+          case Res.Exit(_) =>
+            ExecuteResult.Exit
         }
     }
 

@@ -220,8 +220,7 @@ object Launcher extends CaseApp[LauncherOptions] {
     val optionsFileOpt =
       if (kernelOptions.isEmpty) None
       else {
-        val asJson = KernelOptions.AsJson(kernelOptions)
-        val bytes  = writeToArray(asJson)(KernelOptions.AsJson.codec)
+        val bytes = writeToArray(kernelOptions)(KernelOptions.codec)
         Some(os.temp(bytes, prefix = "almond-options-", suffix = ".json", deleteOnExit = false))
       }
     val optionsArgs = optionsFileOpt.toSeq.flatMap { optionsFile =>

@@ -1,21 +1,21 @@
 package almond.launcher
 
-import almond.directives.{HasKernelOptions, KernelOptions}
-import almond.directives.HasKernelOptions.ops._
+import almond.directives.{DirectiveKeys, KernelOptions}
 import almond.interpreter.api.OutputHandler
 import almond.interpreter.{ExecuteError, Interpreter, Message}
 import almond.interpreter.api.{DisplayData, ExecuteResult}
 import almond.interpreter.input.InputManager
-import almond.launcher.directives.{HasLauncherParameters, LauncherParameters}
+import almond.launcher.directives.{CustomGroup, LauncherParameters}
 import almond.protocol.{Execute, KernelInfo}
-
-import java.io.File
+import ammonite.directives.{
+  DiagnosticSeverity,
+  DirectiveValue,
+  Position,
+  UsingDirective,
+  UsingDirectivesParser
+}
 
 import scala.util.control.NonFatal
-
-import almond.directivehandler._
-import almond.directivehandler.DirectiveValueParser.DirectiveValueParserValueOps
-import almond.directivehandler.EitherSequence._
 
 /** Interpreter of the launcher, handling the cells with only directives before the actual kernel
   * starts
@@ -64,60 +64,6 @@ class LauncherInterpreter(
   var params        = LauncherParameters()
 
   val customDirectiveGroups = options.customDirectiveGroupsOrExit()
-  val launcherParametersHandlers =
-    LauncherInterpreter.launcherParametersHandlers.addCustomHandler { key =>
-      customDirectiveGroups.find(_.matches(key)).map { group =>
-        new DirectiveHandler[HasLauncherParameters] {
-          def name        = s"custom group ${group.prefix}"
-          def description = s"custom group ${group.prefix}"
-          def usage       = s"//> ${group.prefix}..."
-
-          def keys = Seq(key)
-          def handleValues(scopedDirective: ScopedDirective)
-            : Either[DirectiveException, ProcessedDirective[HasLauncherParameters]] = {
-            assert(scopedDirective.directive.key == key)
-            val maybeValues = scopedDirective.directive.values
-              .filter(!_.isEmpty)
-              .map { value =>
-                value.asString.toRight {
-                  new MalformedDirectiveError(
-                    s"Expected a string, got '${value.rawText}'",
-                    Seq(value.position(scopedDirective.maybePath))
-                  )
-                }
-              }
-              .sequence
-              .left.map(CompositeDirectiveException(_))
-            maybeValues.map { values =>
-              ProcessedDirective(
-                Some(
-                  new HasLauncherParameters {
-                    def launcherParameters =
-                      LauncherParameters(customDirectives =
-                        Seq((group, scopedDirective.directive.key, values))
-                      )
-                  }
-                ),
-                Nil
-              )
-            }
-          }
-        }
-      }
-    }
-  val kernelOptionsHandlers = LauncherInterpreter.kernelOptionsHandlers.addCustomHandler { key =>
-    customDirectiveGroups.find(_.matches(key)).map { group =>
-      new DirectiveHandler[HasKernelOptions] {
-        def name        = s"custom group ${group.prefix}"
-        def description = s"custom group ${group.prefix}"
-        def usage       = s"//> ${group.prefix}..."
-        def keys        = Seq(key)
-        def handleValues(scopedDirective: ScopedDirective)
-          : Either[DirectiveException, ProcessedDirective[HasKernelOptions]] =
-          Right(ProcessedDirective(Some(HasKernelOptions.Ignore), Nil))
-      }
-    }
-  }
 
   def execute(
     code: String,
@@ -126,42 +72,23 @@ class LauncherInterpreter(
     outputHandler: Option[OutputHandler],
     messageOpt: Option[Message[Execute.Request]]
   ): ExecuteResult = {
-    val path      = Left(s"cell$lineCount0.sc")
-    val scopePath = ScopePath(Left("."), os.sub)
-    val maybeParamsUpdate =
-      launcherParametersHandlers.parse(code, path, scopePath)
-        .map { res =>
-          res
-            .flatMap(_.global.map(_.launcherParameters).toSeq)
-            .foldLeft(LauncherParameters())(_ + _)
-        }
-    val maybeKernelOptionsUpdate =
-      kernelOptionsHandlers.parse(code, path, scopePath)
-        .flatMap { res =>
-          res
-            .flatMap(_.global.map(_.kernelOptions).toSeq)
-            .sequence
-            .map(_.foldLeft(KernelOptions())(_ + _))
-            .left.map(CompositeDirectiveException(_))
-        }
-    val maybeUpdates = (maybeParamsUpdate, maybeKernelOptionsUpdate) match {
-      case (Left(err1), Left(err2)) =>
-        Left(CompositeDirectiveException(Seq(err1, err2)))
-      case (Left(err1), Right(_)) =>
-        Left(err1)
-      case (Right(_), Left(err2)) =>
-        Left(err2)
-      case (Right(paramsUpdate), Right(kernelUpdate)) =>
-        Right((paramsUpdate, kernelUpdate))
-    }
-    maybeUpdates match {
-      case Left(ex) =>
+    val directives =
+      LauncherInterpreter.directives(code, s"cell$lineCount0.sc", customDirectiveGroups)
+    directives match {
+      case Left(errors) =>
         LauncherInterpreter.error(
           LauncherInterpreter.Colors.default,
-          Some(ex),
-          "Error while processing using directives"
+          None,
+          ("Error while processing using directives:" +: errors).mkString(System.lineSeparator())
         )
-      case Right((paramsUpdate, kernelOptionsUpdate)) =>
+      case Right(LauncherInterpreter.Directives(paramsUpdate, kernelOptionsUpdate, warnings)) =>
+        for (warning <- warnings) {
+          val line = s"Warning: $warning" + System.lineSeparator()
+          outputHandler match {
+            case Some(h) => h.stderr(line)
+            case None    => System.err.print(line)
+          }
+        }
         val newParams        = LauncherInterpreter.update(params, paramsUpdate)
         val newKernelOptions = kernelOptions + kernelOptionsUpdate
         if (ScalaParser.hasActualCode(code))
@@ -231,12 +158,98 @@ class LauncherInterpreter(
 
 object LauncherInterpreter {
 
-  private val launcherParametersHandlers =
-    LauncherParameters.handlers ++
-      HasKernelOptions.handlers.map(_ => HasLauncherParameters.Ignore)
-  private val kernelOptionsHandlers =
-    HasKernelOptions.handlers ++
-      LauncherParameters.handlers.map(_ => HasKernelOptions.Ignore)
+  /** What the directives of a cell change
+    *
+    * @param warnings
+    *   warnings to print (without a "Warning: " prefix)
+    */
+  private final case class Directives(
+    launcherParameters: LauncherParameters,
+    kernelOptions: KernelOptions,
+    warnings: Seq[String]
+  )
+
+  /** Parses and handles the using directives of a cell
+    *
+    * Like Ammonite does in the kernel (see `ammonite.runtime.DirectiveHook`), directives are
+    * handled by key: we handle the launcher ones (`//> using scala`, …) and those of custom groups,
+    * and pass kernel ones (`//> using dep`, …) to the kernel, that validates their values.
+    * Unrecognized directives are errors, like in the kernel.
+    *
+    * @param path
+    *   how to refer to the cell in messages
+    * @return
+    *   errors, or what the directives change
+    */
+  private def directives(
+    code: String,
+    path: String,
+    customGroups: Seq[CustomGroup]
+  ): Either[Seq[String], Directives] = {
+
+    def at(position: Position, message: String): String =
+      s"$path:${position.line + 1}:${position.column + 1}: $message"
+
+    val parsed = UsingDirectivesParser.parse(code)
+    val (parseErrors, parseWarnings) =
+      parsed.diagnostics.partition(_.severity == DiagnosticSeverity.Error)
+
+    // the values of a directive, without the empty ones (of '//> using scala', with no value)
+    def values(directive: UsingDirective): Seq[String] =
+      directive.values.collect {
+        case value if !value.isInstanceOf[DirectiveValue.EmptyVal] => value.stringValue
+      }
+    def singleValue(directive: UsingDirective): Either[String, Option[String]] =
+      values(directive) match {
+        case Seq()      => Right(None)
+        case Seq(value) => Right(Some(value).filter(_.trim.nonEmpty))
+        case _ =>
+          Left(at(
+            directive.keyPosition,
+            s"Expected a single value after '//> using ${directive.key}'"
+          ))
+      }
+
+    val results = parsed.directives.map { directive =>
+      val key = directive.key
+      if (DirectiveKeys.scala.contains(key))
+        singleValue(directive).map(v => (LauncherParameters(scala = v), KernelOptions()))
+      else if (DirectiveKeys.jvm.contains(key))
+        singleValue(directive).map(v => (LauncherParameters(jvm = v), KernelOptions()))
+      else if (DirectiveKeys.javaOpt.contains(key))
+        Right((LauncherParameters(javaOptions = values(directive)), KernelOptions()))
+      else if (DirectiveKeys.javaCmd.contains(key)) {
+        val cmd = Some(values(directive)).filter(_.exists(_.nonEmpty))
+        Right((LauncherParameters(javaCmd = cmd), KernelOptions()))
+      }
+      else if (DirectiveKeys.kernel.contains(key))
+        Right((LauncherParameters(), KernelOptions.fromDirective(key, values(directive))))
+      else
+        customGroups.find(_.matches(key)) match {
+          case Some(group) =>
+            val params =
+              LauncherParameters(customDirectives = Seq((group, key, values(directive))))
+            Right((params, KernelOptions()))
+          case None =>
+            Left(at(directive.keyPosition, s"unrecognized directive '//> using $key'"))
+        }
+    }
+
+    val errors = parseErrors.map(diag => at(diag.position, diag.message)) ++
+      results.collect { case Left(err) => err }
+    if (errors.isEmpty) {
+      val results0 = results.collect { case Right(res) => res }
+      Right(
+        Directives(
+          results0.map(_._1).foldLeft(LauncherParameters())(_ + _),
+          results0.map(_._2).foldLeft(KernelOptions())(_ + _),
+          parseWarnings.map(diag => at(diag.position, diag.message))
+        )
+      )
+    }
+    else
+      Left(errors)
+  }
 
   private def error(colors: Colors, exOpt: Option[Throwable], msg: String) =
     ExecuteError.error(colors.error, colors.literal, exOpt, msg)

@@ -784,11 +784,11 @@ final case class Options(
       msgFile.parsedMessages
     }
 
-  def readKernelOptions(): Option[KernelOptions.AsJson] =
+  def readKernelOptions(): Option[KernelOptions] =
     kernelOptions.map { strPath =>
       val path  = os.Path(strPath, os.pwd)
       val bytes = os.read.bytes(path)
-      readFromArray(bytes)(KernelOptions.AsJson.codec)
+      readFromArray(bytes)(KernelOptions.codec)
     }
 
   lazy val lingerDuration = linger

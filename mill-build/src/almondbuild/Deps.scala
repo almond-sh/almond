@@ -46,7 +46,8 @@ object Deps {
       "ammonite-repl",
       "ammonite-compiler"
     )
-      .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}")
+      .map(name => mvn"sh.almond.ammonite::$name:${Versions.ammonite}") :+
+      ammoniteDirectives
 
   /** The empty module that Guava depends on, so that it evicts the standalone `listenablefuture`
     * artifacts, whose classes Guava ships. It has no sources JAR, so that installing the kernel
@@ -56,6 +57,9 @@ object Deps {
   private def guavaListenableFuture = ("com.google.guava", "listenablefuture")
 
   def ammoniteCompiler = mvn"sh.almond.ammonite::ammonite-compiler:${Versions.ammonite}"
+  // the parser of using directives, that depends on nothing but the Scala standard library
+  def ammoniteDirectives =
+    mvn"sh.almond.ammonite::ammonite-directives:${Versions.ammoniteDirectives}"
   def ammoniteRepl =
     mvn"sh.almond.ammonite::ammonite-repl:${Versions.ammonite}"
       .exclude(("org.scalameta", "semanticdb-shared_*"))
@@ -64,7 +68,6 @@ object Deps {
   def ammoniteSpark      = mvn"sh.almond::ammonite-spark:0.14.0-RC8"
   def caseAppAnnotations = mvn"com.github.alexarchambault::case-app-annotations:${Versions.caseApp}"
   def caseApp            = mvn"com.github.alexarchambault::case-app:${Versions.caseApp}"
-  def caseAppUtil        = mvn"com.github.alexarchambault::case-app-util:${Versions.caseApp}"
   def classPathUtil      = mvn"io.get-coursier::class-path-util:0.1.4"
   def collectionCompat   = mvn"org.scala-lang.modules::scala-collection-compat:2.14.0"
   // Version of the cs launcher the integration tests drive, on all platforms
