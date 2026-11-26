@@ -14,5 +14,12 @@
   "@jupyterlab/completer-extension:manager": {
     "autoCompletion": true,
     "providerTimeout": 3000
+  },
+  "@jupyter-lsp/jupyterlab-lsp:hover": {
+    "autoActivate": true,
+    "delay": 150
+  },
+  "@jupyter-lsp/jupyterlab-lsp:completion": {
+    "continuousHinting": true
   }
 }

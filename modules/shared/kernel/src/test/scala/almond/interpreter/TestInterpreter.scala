@@ -4,7 +4,9 @@ import java.nio.charset.StandardCharsets
 
 import almond.interpreter.api.{CommHandler, DisplayData, ExecuteResult, OutputHandler}
 import almond.interpreter.input.InputManager
+import almond.interpreter.lsp.{LanguageServer, LspCommTarget}
 import almond.interpreter.util.CancellableFuture
+import almond.logger.LoggerContext
 import almond.protocol.{Execute, KernelInfo, RawJson}
 
 import scala.concurrent.{Await, Future, Promise}
@@ -208,8 +210,10 @@ final class TestInterpreter extends Interpreter {
 
   private var commHandlerOpt0 = Option.empty[CommHandler]
   override def supportComm    = true
-  override def setCommHandler(commHandler: CommHandler): Unit =
+  override def setCommHandler(commHandler: CommHandler): Unit = {
     commHandlerOpt0 = Some(commHandler)
+    LspCommTarget.register(echoLanguageServer, commHandler, LoggerContext.nop)
+  }
 
   private var shutdownCalled0 = false
 
@@ -226,5 +230,15 @@ object TestInterpreter {
     def bytes: Array[Byte] =
       s.getBytes(StandardCharsets.UTF_8)
   }
+
+  /** Language server sending back the messages it receives */
+  val echoLanguageServer: LanguageServer =
+    new LanguageServer {
+      def session(client: LanguageServer.Client): LanguageServer.Session =
+        new LanguageServer.Session {
+          def message(message: RawJson): Unit = client.send(message)
+          def close(): Unit                   = ()
+        }
+    }
 
 }

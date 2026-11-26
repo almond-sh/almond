@@ -64,7 +64,14 @@ final case class ScalaInterpreterParams(
   wrapperNamePrefix: String = ScalaInterpreterParams.defaultWrapperNamePrefix,
   pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
   evaluatorHookOpt: Option[HookEvaluator.Hook] = None,
-  logCode: Boolean = false
+  logCode: Boolean = false,
+  lsp: Boolean = false,
+  // where the code of each cell, and its byte code, are written, like Ammonite session directories
+  sessionDirectory: Option[os.Path] = None,
+  // UNIX domain socket a BSP server for the session listens on (requires a session directory)
+  bspSocket: Option[os.Path] = None,
+  // how Plasmon is run, if it answers LSP requests, via the BSP server
+  plasmon: Option[almond.lsp.PlasmonLauncher] = None
 )
 
 object ScalaInterpreterParams {

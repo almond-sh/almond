@@ -162,15 +162,19 @@ object Install {
   }
 
   private def mainClass(jar: String): String = {
-    val zf  = new ZipFile(new File(jar))
-    val ent = zf.getEntry("META-INF/MANIFEST.MF")
-    if (ent == null)
-      sys.error(s"No manifest found in $jar")
-    val mf   = new Manifest(zf.getInputStream(ent))
-    val attr = mf.getMainAttributes()
-    Option(attr.getValue(Attributes.Name.MAIN_CLASS)).getOrElse {
-      sys.error(s"No main class found in $jar")
+    // closing the zip file matters on Windows, where open files can't be deleted
+    val zf = new ZipFile(new File(jar))
+    try {
+      val ent = zf.getEntry("META-INF/MANIFEST.MF")
+      if (ent == null)
+        sys.error(s"No manifest found in $jar")
+      val mf   = new Manifest(zf.getInputStream(ent))
+      val attr = mf.getMainAttributes()
+      Option(attr.getValue(Attributes.Name.MAIN_CLASS)).getOrElse {
+        sys.error(s"No main class found in $jar")
+      }
     }
+    finally zf.close()
   }
 
   /** Normalizes the value of the `coursier.mainJar` property to a path.

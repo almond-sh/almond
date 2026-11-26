@@ -87,8 +87,10 @@ Almond and xeus kernels behave. `dev.jupyterConsole` can run it too, with
 ARM64, so it isn't installed there.)
 
 JupyterLab starts with a few settings changed from its defaults: its theme follows
-the system one (light or dark), editors indent with 2 spaces, and
-[completions are shown while typing](usage-completion.md). These are listed in
+the system one (light or dark), editors indent with 2 spaces,
+[completions are shown while typing](usage-completion.md) (including those of
+jupyterlab-lsp), and the hover boxes of jupyterlab-lsp show up without holding Ctrl,
+after 150 ms. These are listed in
 `examples/jupyterlab-overrides.json`. Anything you change in the settings still takes
 precedence.
 

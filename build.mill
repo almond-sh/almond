@@ -234,6 +234,7 @@ trait ScalaInterpreter extends Cross.Module[String] with AlmondModule with Folde
       Deps.dependency,
       Deps.dependencyInterface,
       Deps.jansi,
+      Deps.lsp4j,
       Deps.ammoniteCompiler.exclude(("net.java.dev.jna", "jna")),
       Deps.ammoniteRepl.exclude(("net.java.dev.jna", "jna")),
       Deps.scalaCompiler(crossScalaVersion)
@@ -432,6 +433,8 @@ trait ScalaKernel extends Cross.Module[String] with AlmondModule with ExternalSo
          |object Constants {
          |  def almondVersion = "${publishVersion()}"
          |  def actualScalaVersion = "${scalaVersion()}"
+         |  def plasmonTag = "${Versions.plasmonTag}"
+         |  def plasmonTagChanging = ${Versions.plasmonTagChanging}
          |}
          |""".stripMargin
     os.write(Task.dest / "Constants.scala", constantsFileContent)

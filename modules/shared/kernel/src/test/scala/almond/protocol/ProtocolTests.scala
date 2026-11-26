@@ -163,6 +163,23 @@ object ProtocolTests extends TestSuite {
         val decoded = readFromString(json0)(KernelInfo.codec)
         assert(decoded == info)
       }
+      test("lsp") {
+        assert(!json.contains("lsp"))
+        val info0 = info.copy(
+          supported_features = List("lsp"),
+          lsp = Some(KernelInfo.Lsp(
+            cell_separator_prefix = Some("//!!"),
+            document_roots = List("/tmp/session")
+          ))
+        )
+        val json0 = writeToString(info0)
+        assert(
+          json0.contains(
+            """"lsp":{"cell_separator_prefix":"//!!","document_roots":["/tmp/session"]}"""
+          )
+        )
+        assert(readFromString(json0)(KernelInfo.codec) == info0)
+      }
     }
   }
 

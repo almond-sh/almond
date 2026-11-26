@@ -563,7 +563,26 @@ final case class Options(
 
   @HelpMessage("Log raw code about to be compiled (after post-processing, raw code passed to the compiler)")
   @Hidden
-    logCode: Boolean = false
+    logCode: Boolean = false,
+
+  @HelpMessage("Experimental: accept Language Server Protocol sessions from frontends, via comms")
+  @Hidden
+    lsp: Boolean = false,
+
+  @HelpMessage("Experimental: write the code of each cell, and its byte code, under this directory")
+  @Hidden
+  @ValueDescription("/path/to/directory")
+    sessionDirectory: Option[String] = None,
+
+  @HelpMessage("Experimental: start a BSP server for the session, listening on this UNIX domain socket (requires Java 17 or later)")
+  @Hidden
+  @ValueDescription("/path/to/socket")
+    bspSocket: Option[String] = None,
+
+  @HelpMessage("Experimental: command running the Plasmon language server, that answers the LSP requests of frontends (with --lsp), via a BSP server for the session - defaults to the native launcher of Plasmon from one of its GitHub releases (the nightly one for now), downloaded via the coursier cache")
+  @Hidden
+  @ValueDescription("/path/to/plasmon")
+    plasmon: Option[String] = None
 ) {
   // format: on
 
