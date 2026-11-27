@@ -13,7 +13,9 @@ cells, and can be followed by options:
   asynchronously, like plots loading their JavaScript library,
 - `drag=.noUi-handle:165,-95`: once the cell ran, drag the first element matching a CSS selector
   in the cell (here, the handle of a slider widget) horizontally, by each of the comma-separated
-  offsets in turn (in CSS pixels), with a mouse pointer drawn in the page.
+  offsets in turn (in CSS pixels), with a mouse pointer drawn in the page (like in the widgets
+  demo, or in the plotly one, where dragging rotates a 3D plot). The mouse is then moved out of
+  the output, so that hover effects, like plot tooltips, don't stay in the recording.
 
 Before the first cell, a `// %demo` line can set options for the whole demo:
 - `kernel=echo`: the kernel to run the demo with (the Scala kernel passed via `--kernel` by default),

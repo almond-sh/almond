@@ -615,6 +615,11 @@ async function drag(page, rec, idx, spec) {
     notebook.mode = 'edit';
     notebook.activeCell.editor.focus();
   }, idx);
+  // once the pointer faded out, remove it, and move the mouse out of the output, so that it
+  // doesn't keep hover effects there, like the tooltips of plots
+  await sleep(300);
+  await page.evaluate(() => document.getElementById('demo-pointer').remove());
+  await page.mouse.move(0, 0);
 }
 
 /** Types code like a human would, while working around the auto-indentation of the editor:
