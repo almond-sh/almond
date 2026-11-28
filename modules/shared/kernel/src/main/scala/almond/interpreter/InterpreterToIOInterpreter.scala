@@ -27,6 +27,9 @@ final class InterpreterToIOInterpreter(
 
   override def supportComm: Boolean = true
 
+  override def debugger: Option[Debugger] =
+    interpreter.debugger
+
   override def setCommHandler(commHandler0: CommHandler): Unit =
     interpreter.setCommHandler(commHandler0)
 

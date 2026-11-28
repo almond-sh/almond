@@ -64,7 +64,9 @@ final case class ScalaInterpreterParams(
   wrapperNamePrefix: String = ScalaInterpreterParams.defaultWrapperNamePrefix,
   pkgName: Seq[String] = AmmInterpreter.defaultPkgName,
   evaluatorHookOpt: Option[HookEvaluator.Hook] = None,
-  logCode: Boolean = false
+  logCode: Boolean = false,
+  // whether to support the JupyterLab debugger (requires the kernel to run with a JDWP agent)
+  debugger: Boolean = false
 )
 
 object ScalaInterpreterParams {

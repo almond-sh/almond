@@ -103,6 +103,9 @@ function parseDemo(file) {
     // run the demo once before recording it, so that things like dependency downloads don't show
     // (like the many and large ones of Spark)
     warmUp: options.warmup === 'true',
+    // record the JupyterLab debugger: its button in the notebook toolbar gets clicked before the
+    // first cell, and its sidebar is shown along with the notebook
+    debugger: options.debugger === 'true',
     cells,
   };
 }
@@ -397,6 +400,11 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
   const nbPath = `${demo.name}.ipynb`;
   const spec = (await api('GET', 'kernelspecs')).kernelspecs[demo.kernel]?.spec;
   if (!spec) throw new Error(`Kernel ${demo.kernel} of ${demo.name} not found`);
+  if (demo.debugger && !spec.metadata?.debugger)
+    throw new Error(
+      `Kernel ${demo.kernel} of ${demo.name} doesn't support the debugger ` +
+        '(it needs a version of Almond supporting it, installed with --debugger)'
+    );
   const kernelspec = { name: demo.kernel, display_name: spec.display_name, language: spec.language };
   await api('PUT', `contents/${nbPath}`, {
     type: 'notebook',
@@ -428,7 +436,7 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
     );
 
     // only keep the notebook itself on screen
-    await page.evaluate(async () => {
+    await page.evaluate(async (debug) => {
       const app = window.jupyterapp;
       app.shell.mode = 'single-document';
       app.shell.collapseLeft();
@@ -438,32 +446,52 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
         if (app.shell.isSideTabBarVisible(side)) app.shell.toggleSideTabBarVisibility(side);
       if (app.commands.isToggled('statusbar:toggle')) await app.commands.execute('statusbar:toggle');
       const w = app.shell.currentWidget;
-      // keep track of execute replies, to check that cells ran fine
+      // keep track of execute replies, to check that cells ran fine, and of the times the
+      // debugger stopped
       window.demoExecuteReplies = [];
+      window.demoDebuggerStops = 0;
       const listen = (kernel) =>
         kernel?.anyMessage.connect((_, { msg, direction }) => {
-          if (direction === 'recv' && msg.header.msg_type === 'execute_reply')
-            window.demoExecuteReplies.push(msg.content);
+          if (direction !== 'recv') return;
+          if (msg.header.msg_type === 'execute_reply') window.demoExecuteReplies.push(msg.content);
+          if (msg.header.msg_type === 'debug_event' && msg.content.event === 'stopped')
+            window.demoDebuggerStops++;
         });
       listen(w.sessionContext.session.kernel);
       w.sessionContext.kernelChanged.connect((_, change) => listen(change.newValue));
-      w.toolbar.setHidden(true);
+      // the toolbar has the button enabling the debugger
+      if (debug) {
+        // collapse the kernel sources of the debugger sidebar, to leave more room to the rest
+        for (const title of document.querySelectorAll('#jp-debugger-sidebar .jp-AccordionPanel-title'))
+          if (/kernel sources/i.test(title.innerText) && title.classList.contains('lm-mod-expanded'))
+            title.click();
+      } else w.toolbar.setHidden(true);
       w.content.activeCellIndex = 0;
       w.content.mode = 'edit';
       w.content.activeCell.editor.focus();
-    });
+    }, demo.debugger);
     await page.addStyleTag({
       content: `
         .cm-cursorLayer { animation: none !important; }
         .jp-cell-toolbar, .jp-Notebook-footer, .lm-DockPanel-tabBar, .jp-toast-container,
         .jp-Notebook-cellPlaceholder { display: none !important; }
+        /* debugger demos: only keep the debugger button, the kernel name and status */
+        .jp-NotebookPanel-toolbar > .jp-Toolbar-item:not([data-jp-item-name="spacer"],
+            [data-jp-item-name="debugger-icon"], [data-jp-item-name="kernelName"],
+            [data-jp-item-name="executionProgress"]) {
+          display: none !important;
+        }
       `,
     });
     await sleep(500);
-    const box = await page.evaluate(() => {
-      const r = window.jupyterapp.shell.currentWidget.content.node.getBoundingClientRect();
+    // the notebook, or the notebook and its toolbar, along with the debugger sidebar, once shown
+    const box = await page.evaluate((debug) => {
+      const node = debug
+        ? document.getElementById('jp-main-content-panel')
+        : window.jupyterapp.shell.currentWidget.content.node;
+      const r = node.getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height };
-    });
+    }, demo.debugger);
     const even = (v) => 2 * Math.floor((v * scale) / 2);
     const crop = { x: even(box.x), y: even(box.y), w: even(box.w), h: even(box.h) };
 
@@ -471,6 +499,9 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
     const rec = new Recorder(cdp);
     await rec.start();
     await sleep(800);
+
+    const pointer = new Pointer(page);
+    if (demo.debugger) await enableDebugger(page, rec, pointer);
 
     for (const [idx, cell] of demo.cells.entries()) {
       await typeCell(page, cell.source);
@@ -489,8 +520,13 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
         throw new Error(
           `Cell ${idx} of ${demo.name} is ${overflow} pixels too wide for the viewport, shorten its lines`
         );
+      if (cell.options.breakpoints)
+        await setBreakpoints(page, pointer, idx, cell.options.breakpoints.split(',').map(Number));
       await sleep(300);
+      const stops = await page.evaluate(() => window.demoDebuggerStops);
       await page.keyboard.press('Shift+Enter');
+      if (cell.options.debug)
+        await debugCell(page, rec, pointer, idx, stops, cell.options.debug.split(','));
       await rec.idle(async () => {
         await page.waitForFunction(
           (idx) => {
@@ -516,7 +552,7 @@ async function recordDemo(browser, demo, workDir, { warmUp = false } = {}) {
           );
         await rec.waitForQuiet(250, 10_000);
       });
-      if (cell.options.drag) await drag(page, rec, idx, cell.options.drag);
+      if (cell.options.drag) await drag(page, rec, pointer, idx, cell.options.drag);
       await sleep(Number(cell.options.pause ?? 1200));
     }
     await sleep(2500);
@@ -550,10 +586,89 @@ const pointerSvg =
   '<path d="M1 1 L1 20 L6 15.5 L9.5 23.5 L12.5 22.2 L9 14.5 L15.5 14.5 Z" ' +
   'fill="black" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 
-/** Drags an element of the output of a cell, like the handle of a slider, with a pointer drawn in
- * the page. `spec` is "<CSS selector>:<dx>,<dx>,…": the element is moved by each dx in turn,
- * horizontally, in CSS pixels, without being released in between. */
-async function drag(page, rec, idx, spec) {
+/** A mouse pointer drawn in the page, that follows the mouse of Playwright. It appears next to
+ * where it's first moved to, and moves at about 200 pixels per second, easing in and out. */
+class Pointer {
+  constructor(page) {
+    this.page = page;
+    this.pos = null; // null when hidden
+  }
+  async moveTo(x, y) {
+    if (!this.pos) {
+      await this.page.evaluate((svg) => {
+        if (document.getElementById('demo-pointer')) return;
+        const pointer = document.createElement('div');
+        pointer.id = 'demo-pointer';
+        pointer.innerHTML = svg;
+        pointer.style.cssText =
+          'position: fixed; left: 0; top: 0; z-index: 100000; pointer-events: none; ' +
+          'opacity: 0; transition: opacity 300ms; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));';
+        document.body.appendChild(pointer);
+        const follow = (e) => {
+          pointer.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+          pointer.style.opacity = '1';
+        };
+        window.addEventListener('pointermove', follow, true);
+        window.addEventListener('mousemove', follow, true);
+        window.demoPointerRemove = () => {
+          window.removeEventListener('pointermove', follow, true);
+          window.removeEventListener('mousemove', follow, true);
+          pointer.remove();
+        };
+      }, pointerSvg);
+      this.pos = { x: x + 60, y: y + 70 };
+      await this.page.mouse.move(this.pos.x, this.pos.y);
+      await sleep(400);
+    }
+    const from = this.pos;
+    const steps = Math.max(2, Math.round(Math.hypot(x - from.x, y - from.y) / 3.5));
+    for (let i = 1; i <= steps; i++) {
+      const t = (1 - Math.cos((Math.PI * i) / steps)) / 2;
+      await this.page.mouse.move(from.x + (x - from.x) * t, from.y + (y - from.y) * t);
+      await sleep(16);
+    }
+    this.pos = { x, y };
+  }
+  async click(x, y) {
+    await this.moveTo(x, y);
+    await sleep(300);
+    await this.page.mouse.down();
+    await sleep(100);
+    await this.page.mouse.up();
+  }
+  /** Clicks the center of the first element matching a selector */
+  async clickOn(selector) {
+    const box = await this.page.locator(selector).first().boundingBox();
+    if (!box) throw new Error(`No ${selector} element to click`);
+    await this.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
+  /** Moves the pointer away, then hides it. Once it faded out, it's removed, and the mouse is
+   * moved out of the way, so that it doesn't keep hover effects, like the tooltips of plots. */
+  async hide() {
+    if (!this.pos) return;
+    await this.moveTo(this.pos.x + 40, this.pos.y + 60);
+    await this.page.evaluate(() => (document.getElementById('demo-pointer').style.opacity = '0'));
+    this.pos = null;
+    await sleep(300);
+    await this.page.evaluate(() => window.demoPointerRemove());
+    await this.page.mouse.move(0, 0);
+  }
+}
+
+/** Makes a cell the active one, and gives the focus to its editor, after clicks elsewhere */
+async function focusCell(page, idx) {
+  await page.evaluate((idx) => {
+    const notebook = window.jupyterapp.shell.currentWidget.content;
+    notebook.activeCellIndex = idx;
+    notebook.mode = 'edit';
+    notebook.activeCell.editor.focus();
+  }, idx);
+}
+
+/** Drags an element of the output of a cell, like the handle of a slider. `spec` is
+ * "<CSS selector>:<dx>,<dx>,…": the element is moved by each dx in turn, horizontally, in CSS
+ * pixels, without being released in between. */
+async function drag(page, rec, pointer, idx, spec) {
   const sep = spec.lastIndexOf(':');
   const [selector, moves] = [spec.slice(0, sep), spec.slice(sep + 1).split(',').map(Number)];
   const handle = await page.evaluateHandle(
@@ -562,64 +677,151 @@ async function drag(page, rec, idx, spec) {
   );
   const box = await handle.asElement()?.boundingBox();
   if (!box) throw new Error(`No ${selector} element to drag in cell ${idx}`);
-  await page.evaluate((svg) => {
-    const pointer = document.createElement('div');
-    pointer.id = 'demo-pointer';
-    pointer.innerHTML = svg;
-    pointer.style.cssText =
-      'position: fixed; left: 0; top: 0; z-index: 100000; pointer-events: none; ' +
-      'opacity: 0; transition: opacity 300ms; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));';
-    document.body.appendChild(pointer);
-    const follow = (e) => {
-      pointer.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-      pointer.style.opacity = '1';
-    };
-    window.addEventListener('pointermove', follow, true);
-    window.addEventListener('mousemove', follow, true);
-  }, pointerSvg);
-  // moves at about 200 pixels per second, easing in and out
-  const move = async (x, y, from) => {
-    const steps = Math.max(2, Math.round(Math.hypot(x - from.x, y - from.y) / 3.5));
-    for (let i = 1; i <= steps; i++) {
-      const t = (1 - Math.cos((Math.PI * i) / steps)) / 2;
-      await page.mouse.move(from.x + (x - from.x) * t, from.y + (y - from.y) * t);
-      await sleep(16);
-    }
-  };
-  let pos = { x: box.x + box.width / 2 + 60, y: box.y + box.height / 2 + 70 };
-  await page.mouse.move(pos.x, pos.y);
-  await sleep(400);
-  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  await move(start.x, start.y, pos);
-  pos = start;
+  let pos = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await pointer.moveTo(pos.x, pos.y);
   await sleep(300);
   await page.mouse.down();
   for (const dx of moves) {
-    const next = { x: pos.x + dx, y: pos.y };
-    await move(next.x, next.y, pos);
-    pos = next;
+    pos = { x: pos.x + dx, y: pos.y };
+    await pointer.moveTo(pos.x, pos.y);
     await sleep(500);
   }
   await page.mouse.up();
   // let the kernel process the last changes
   await rec.waitForQuiet(250, 5000);
   await sleep(300);
-  // move the pointer away, then hide it
-  await move(pos.x + 40, pos.y + 60, pos);
-  await page.evaluate((idx) => {
-    document.getElementById('demo-pointer').style.opacity = '0';
-    // clicking in the output made its cell the active one, and the widget got the focus: give
-    // them back to the next cell, where the next cell of the demo gets typed
-    const notebook = window.jupyterapp.shell.currentWidget.content;
-    notebook.activeCellIndex = idx + 1;
-    notebook.mode = 'edit';
-    notebook.activeCell.editor.focus();
-  }, idx);
-  // once the pointer faded out, remove it, and move the mouse out of the output, so that it
-  // doesn't keep hover effects there, like the tooltips of plots
-  await sleep(300);
-  await page.evaluate(() => document.getElementById('demo-pointer').remove());
-  await page.mouse.move(0, 0);
+  await pointer.hide();
+  // clicking in the output made its cell the active one, and the widget got the focus: give
+  // them back to the next cell, where the next cell of the demo gets typed
+  await focusCell(page, idx + 1);
+}
+
+// Debugger
+
+/** Enables the debugger of the notebook, by clicking its button in the notebook toolbar, then
+ * shows the debugger sidebar */
+async function enableDebugger(page, rec, pointer) {
+  const button = '.jp-DebuggerBugButton';
+  await page.waitForSelector(`${button}[aria-disabled="false"]`, { timeout: 120_000 });
+  await pointer.clickOn(button);
+  // the kernel may have to fetch the debug adapter first, and the debugger is ready once the
+  // editors of cells get a gutter for breakpoints
+  await rec.idle(async () => {
+    await page.waitForSelector(`${button}[aria-pressed="true"]`, { timeout: 600_000 });
+    await page.waitForSelector('.jp-Notebook .jp-Cell .cm-breakpoint-gutter', { timeout: 600_000 });
+  });
+  await page.evaluate(() => {
+    const app = window.jupyterapp;
+    app.shell.activateById('jp-debugger-sidebar');
+    // more room for the call stack, less for the breakpoints (kernel sources are collapsed)
+    const sidebar = Array.from(app.shell.widgets('right')).find((w) => w.id === 'jp-debugger-sidebar');
+    sidebar?.content?.setRelativeSizes?.([3, 4, 2, 1]);
+  });
+  await rec.waitForQuiet(250, 5000);
+  await sleep(600);
+  await pointer.hide();
+  await focusCell(page, 0);
+}
+
+/** Sets breakpoints on lines of a cell (starting from 1), by clicking in the gutter of its editor */
+async function setBreakpoints(page, pointer, idx, lines) {
+  for (const line of lines) {
+    const pos = await page.evaluate(
+      ([idx, line]) => {
+        const node = window.jupyterapp.shell.currentWidget.content.widgets[idx].node;
+        const gutter = node.querySelector('.cm-breakpoint-gutter')?.getBoundingClientRect();
+        const lineBox = node.querySelectorAll('.cm-line')[line - 1]?.getBoundingClientRect();
+        return gutter && lineBox
+          ? { x: gutter.x + gutter.width / 2, y: lineBox.y + lineBox.height / 2 }
+          : null;
+      },
+      [idx, line]
+    );
+    if (!pos)
+      throw new Error(
+        `Can't set a breakpoint on line ${line} of cell ${idx} (is the debugger enabled?)`
+      );
+    await pointer.click(pos.x, pos.y);
+    await sleep(500);
+  }
+  // the gutter has a hidden spacer, holding a breakpoint marker too
+  const count = await page.evaluate(
+    (idx) =>
+      [
+        ...window.jupyterapp.shell.currentWidget.content.widgets[idx].node.querySelectorAll(
+          '.cm-breakpoint-gutter .cm-gutterElement .cm-breakpoint-icon'
+        ),
+      ].filter((icon) => getComputedStyle(icon).visibility !== 'hidden').length,
+    idx
+  );
+  if (count !== lines.length)
+    throw new Error(`Cell ${idx} has ${count} breakpoints, expected ${lines.length}`);
+  await pointer.hide();
+  await focusCell(page, idx);
+}
+
+// Debugger actions of the "debug" cell option, along with the toolbar items of the call stack
+// panel of the debugger sidebar they click
+const debuggerCommands = {
+  continue: 'continue',
+  next: 'step-over',
+  stepIn: 'step-in',
+  stepOut: 'step-out',
+};
+
+/** Once a cell started running, waits for the debugger to stop in it, then runs debugger actions
+ * in turn: `continue`, `next`, `stepIn`, `stepOut` click the buttons of the call stack panel, and
+ * `expand:<name>` expands a variable of the variables panel. `stops` is the number of times the
+ * debugger stopped before the cell started running. */
+async function debugCell(page, rec, pointer, idx, stops, actions) {
+  /** Waits for the debugger to stop, or for the cell to be done running */
+  const next = () =>
+    rec.idle(async () => {
+      const state = await (
+        await page.waitForFunction(
+          ([idx, stops]) => {
+            if (window.demoDebuggerStops > stops) return 'stopped';
+            const cell = window.jupyterapp.shell.currentWidget.content.widgets[idx];
+            return cell.model.executionCount !== null && cell.model.executionState !== 'running'
+              ? 'done'
+              : false;
+          },
+          [idx, stops],
+          { timeout: 600_000, polling: 50 }
+        )
+      ).jsonValue();
+      if (state === 'stopped') {
+        stops++;
+        await page.waitForSelector('.jp-DebuggerCallstackFrame', { timeout: 60_000 });
+      }
+      await rec.waitForQuiet(250, 10_000);
+      return state;
+    });
+
+  let state = await next();
+  for (const action of actions) {
+    if (state !== 'stopped')
+      throw new Error(`Cell ${idx} is done running, but debugger actions are left (${action}, …)`);
+    await sleep(1500);
+    const [name, arg] = action.split(':', 2);
+    if (name === 'expand') {
+      const item = page
+        .locator('.jp-DebuggerVariables-body:not(.lm-mod-hidden) .jp-DebuggerVariables-name')
+        .filter({ hasText: new RegExp(`^${arg}$`) });
+      const box = await item.first().boundingBox();
+      if (!box) throw new Error(`No variable ${arg} to expand in cell ${idx}`);
+      await pointer.click(box.x + box.width / 2, box.y + box.height / 2);
+      await rec.waitForQuiet(250, 5000);
+    } else if (debuggerCommands[name]) {
+      const item = debuggerCommands[name];
+      await pointer.clickOn(`#jp-debugger-sidebar [data-jp-item-name="${item}"] jp-button`);
+      state = await next();
+    } else throw new Error(`Unknown debugger action in cell ${idx}: ${action}`);
+  }
+  if (state === 'stopped')
+    throw new Error(`The debugger is still stopped in cell ${idx}, end its actions with continue`);
+  await pointer.hide();
+  await focusCell(page, idx + 1);
 }
 
 /** Types code like a human would, while working around the auto-indentation of the editor:
@@ -664,13 +866,18 @@ let failed = false;
 try {
   const demos = demoFiles.map(parseDemo);
   // run some code once with each kernel, so that the coursier cache has what kernels need to start
-  // and run code, like the actual Scala kernel the Almond launcher loads when a notebook starts
+  // and run code, like the actual Scala kernel the Almond launcher loads when a notebook starts, or
+  // the debug adapter the kernel loads when the debugger gets enabled
   for (const kernel of new Set(demos.map((demo) => demo.kernel))) {
     console.error(`Starting kernel ${kernel} once`);
     const cells = [{ source: '1', options: { pause: '0' } }];
-    await recordDemo(browser, { name: `prime-${kernel}`, kernel, width, height, cells }, workDir, {
-      warmUp: true,
-    });
+    const debug = demos.some((demo) => demo.kernel === kernel && demo.debugger);
+    await recordDemo(
+      browser,
+      { name: `prime-${kernel}`, kernel, width, height, debugger: debug, cells },
+      workDir,
+      { warmUp: true }
+    );
   }
   coursierCache.keep();
   for (const demo of demos) {

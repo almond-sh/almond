@@ -1,6 +1,8 @@
 package almond
 
 import almond.amm.{AlmondCompilerLifecycleManager, AmmInterpreter}
+import almond.debugger.KernelDebugger
+import ammonite.debugger.{DebugAdapter, Jdwp}
 import almond.api.JupyterApi
 import almond.internals._
 import almond.interpreter._
@@ -36,6 +38,88 @@ final class ScalaInterpreter(
 
   if (params.extraClassPath.nonEmpty)
     frames0().head.addClasspath(params.extraClassPath.map(_.toNIO.toUri.toURL))
+
+  /** Answers the requests of the JupyterLab debugger, if it's enabled */
+  private val debugger0: Option[(KernelDebugger, FrameOutputs)] =
+    if (params.debugger)
+      if (!Jdwp.agentLoaded()) {
+        log.warn(
+          "Debugger support requested, but the kernel doesn't run with a JDWP agent, " +
+            "disabling it (re-install the kernel with --debugger)"
+        )
+        None
+      }
+      else if (!DebugAdapter.jdiAvailable) {
+        log.warn("Debugger support requested, but JDI isn't available (not running on a JDK?)")
+        None
+      }
+      else {
+        val workDir = os.temp.dir(prefix = "almond-debugger")
+        log.debug(s"Debugger enabled, files under $workDir")
+        // Ammonite writes there the byte code of cells, that the debug adapter reads (to
+        // recognize synthetic methods, say)
+        val outputs = new FrameOutputs(workDir / "frames")
+        for (frame <- frames0())
+          outputs.register(frame)
+        val debugger = new KernelDebugger(
+          () => Jdwp.ensureListening(),
+          params.pkgName,
+          workDir,
+          suspendable => {
+            val classPath = DebugAdapter.classPath(ammonite.Constants.version, Nil)
+            log.debug(
+              s"Debug adapter class path: ${classPath.mkString(java.io.File.pathSeparator)}"
+            )
+            val frames = frames0()
+            def pathString(paths: Seq[java.nio.file.Path]): String =
+              paths
+                .map(SourcePath.localFile(_).toString)
+                .distinct
+                .mkString(java.io.File.pathSeparator)
+            // the byte code of cells, with their code (with the same line numbers as the byte
+            // code), see KernelDebugger.beforeRun
+            val modules = frames.reverse.map { frame =>
+              s"${outputs.classesDirectory(frame)}|${KernelDebugger.wrappersDir(workDir)}"
+            }
+            DebugAdapter.start(
+              classPath,
+              Map(
+                // the class path of the session, then the one of the kernel itself (with the
+                // classes of Almond and Ammonite that the APIs of the session call, but that
+                // aren't in the class path of the session)
+                "class-path" -> pathString(
+                  SourcePath.classPath(frames, log) ++
+                    SourcePath.loaderClassPath(kernelClassLoader, log)
+                ),
+                "source-path" -> pathString(
+                  SourcePath.sourcePath(frames, log) ++
+                    SourcePath.loaderSourcePath(kernelClassLoader, log)
+                ),
+                "modules"       -> modules.mkString(java.io.File.pathSeparator),
+                "scala.version" -> AlmondCompilerLifecycleManager.compilerVersion,
+                "java.home"     -> sys.props("java.home"),
+                "verbose" -> Option(System.getenv("ALMOND_DEBUG_ADAPTER_VERBOSE"))
+                  .getOrElse("false")
+              ),
+              suspendable,
+              KernelDebugger.logger(logCtx)
+            )
+          },
+          logCtx
+        )
+        Some((debugger, outputs))
+      }
+    else
+      None
+
+  private def kernelClassLoader: ClassLoader =
+    classOf[ScalaInterpreter].getClassLoader
+
+  /** The code of the cell being run, as front-ends see it */
+  @volatile private var currentCellCode = Option.empty[String]
+
+  override def debugger: Option[almond.interpreter.Debugger] =
+    debugger0.map(_._1)
 
   private var inspectionsInitialized = false
   private lazy val inspections = {
@@ -170,7 +254,23 @@ final class ScalaInterpreter(
       wrapperNamePrefix = params.wrapperNamePrefix,
       pkgName = params.pkgName,
       evaluatorHookOpt = params.evaluatorHookOpt,
-      logCode = params.logCode
+      logCode = params.logCode,
+      frameOutputs = debugger0.map(_._2),
+      beforeProcessLine = debugger0.map {
+        case (debugger, outputs) =>
+          (wrapperName: String, classNames: Seq[String]) =>
+            // Ammonite shifts the line numbers of the byte code of cells by the number of lines
+            // of the code it wraps them in (the TASTy files keep the line numbers of the wrapped
+            // code)
+            val lineShift = frames0().headOption.toSeq
+              .flatMap(outputs.sources)
+              .reverseIterator
+              .find(_.path.last == s"$wrapperName.sc")
+              .flatMap(_.wrapped)
+              .map(_.topWrapper.count(_ == '\n'))
+            for (code <- currentCellCode)
+              debugger.beforeRun(wrapperName, code, classNames, lineShift)
+      }
     )
 
     interp
@@ -220,6 +320,7 @@ final class ScalaInterpreter(
   ): ExecuteResult =
     try {
       currentExecuteRequestOpt0 = messageOpt
+      currentCellCode = Some(code)
       val ammInterp0 = ammInterp
       // If the upfront options can't be loaded, we report it in the cell and don't run it (like
       // when the directives of a cell can't be loaded). Users can then run the cell holding
@@ -244,6 +345,7 @@ final class ScalaInterpreter(
     }
     finally {
       currentExecuteRequestOpt0 = None
+      currentCellCode = None
       // index the source JARs of the dependencies the cell added, if any
       inspections.updateSourceIndex()
     }
@@ -441,6 +543,9 @@ final class ScalaInterpreter(
          |Java ${sys.props.getOrElse("java.version", "[unknown]")}""".stripMargin +
         params.extraBannerOpt.fold("")(nl + nl + _),
       help_links = Some(params.extraLinks.toList).filter(_.nonEmpty)
+    ).copy(
+      supported_features = if (debugger0.nonEmpty) List("debugger") else Nil,
+      debugger = debugger0.nonEmpty
     )
   }
 
@@ -455,6 +560,9 @@ final class ScalaInterpreter(
       inspections.shutdown()
 
     AlmondCompilerLifecycleManager.closeCompiler(ammInterp.compilerManager.compiler)
+
+    for ((debugger, _) <- debugger0)
+      debugger.shutdown()
 
     for (frame <- frames0()) {
       frame.pluginClassloader.close()

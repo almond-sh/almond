@@ -1266,24 +1266,21 @@ object Tests {
             |No warnings can be incurred under -Xfatal-warnings.
             |""".stripMargin
         else if (scalaVersion.startsWith("3.3."))
-          // FIXME The line number is wrong here
-          """-- Error: cmd2.sc:3:8 ----------------------------------------------------------
-            |3 |val n = getValue()
+          """-- Error: cmd2.sc:4:8 ----------------------------------------------------------
+            |4 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |""".stripMargin
         else if (scalaVersion0 < Version("3.8.0"))
-          // FIXME The line number is wrong here
-          """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
-            |3 |val n = getValue()
+          """-- Warning: cmd2.sc:4:8 --------------------------------------------------------
+            |4 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |No warnings can be incurred under -Werror (or -Xfatal-warnings)
             |""".stripMargin
         else
-          // FIXME The line number is wrong here
-          """-- Warning: cmd2.sc:3:8 --------------------------------------------------------
-            |3 |val n = getValue()
+          """-- Warning: cmd2.sc:4:8 --------------------------------------------------------
+            |4 |val n = getValue()
             |  |        ^^^^^^^^
             |  |        method getValue in class Helper is deprecated since 0.1: foo
             |No warnings can be incurred under -Werror

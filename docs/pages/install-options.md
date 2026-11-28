@@ -544,6 +544,12 @@ JupyterLab extension. By default, it gets enabled when the extension asks for it
 the variables of the cells run after that. Pass `--variable-inspector=true` to keep track of
 variables from the start, or `--variable-inspector=false` to disable it.
 
+#### `--debugger`
+
+Whether to enable support for the [JupyterLab debugger](https://jupyterlab.readthedocs.io/en/latest/user/debugger.html) (experimental). Enabled by default when the kernel runs on Java 17 or later, pass `--debugger=false` to disable it. When installing the kernel, this makes the kernel spec run the kernel with a JDWP agent, that the kernel attaches a debugger to, and tells front-ends that the kernel supports debugging. On Java 9 and later, the agent only listens on a (loopback) port when the debugger gets enabled, until the kernel connects to it.
+
+Pass it after an extra `--` to the [newer launcher](#newer-launcher-options).
+
 #### `--scalafmt`
 
 Whether to format cells with [scalafmt](https://scalameta.org/scalafmt) when front-ends ask for it,

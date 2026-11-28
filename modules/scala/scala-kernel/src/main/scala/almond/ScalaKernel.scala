@@ -13,6 +13,7 @@ import almond.kernel.{Kernel, KernelThreads}
 import almond.kernel.install.{Install, OptionGroups}
 import almond.launcher.directives.CustomGroup
 import almond.logger.{Level, LoggerContext}
+import almond.protocol.RawJson
 import almond.util.{ParentProcessWatcher, SigInt}
 import almond.util.ThreadUtil.{daemonThreadFactory, singleThreadedExecutionContextExecutorService}
 import caseapp._
@@ -20,6 +21,7 @@ import caseapp.core.Scala3Helpers._
 import caseapp.core.help.HelpFormat
 import coursier.cputil.ClassPathUtil
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
@@ -99,7 +101,14 @@ object ScalaKernel extends CaseApp[Options] {
           else
             None,
         env = options.installOptions.envMap(),
-        extraStartupClassPath = options.extraStartupClassPath
+        extraStartupClassPath = options.extraStartupClassPath,
+        javaOptions =
+          if (options.installDebugger) ammonite.debugger.Jdwp.javaOptions
+          else Nil,
+        metadata =
+          if (options.installDebugger)
+            Some(RawJson("""{"debugger":true}""".getBytes(StandardCharsets.UTF_8)))
+          else None
       ) match {
         case Left(e) =>
           log.debug("Cannot install kernel", e)
@@ -234,7 +243,8 @@ object ScalaKernel extends CaseApp[Options] {
           .filter(_.nonEmpty)
           .map(_.split('.').filter(_.nonEmpty).toSeq)
           .getOrElse(AmmInterpreter.defaultPkgName),
-        logCode = options.logCode
+        logCode = options.logCode,
+        debugger = options.runtimeDebugger
       ),
       logCtx = logCtx
     )

@@ -57,6 +57,21 @@ const features = [
     ),
   },
   {
+    title: 'Debugger',
+    video: 'frontpage/debugger',
+    imageAlt: 'Debugger',
+    // the recording shows the notebook along with the debugger sidebar, give it more room
+    wide: true,
+    content: (
+      <p>
+        Debug the code of your cells with the{' '}
+        <a href="https://jupyterlab.readthedocs.io/en/latest/user/debugger.html">JupyterLab debugger</a>:
+        set breakpoints, step through code, and look at the call stack and at the values of
+        variables (<Link to="/docs/usage-extensions#debugger-experimental">experimental</Link>).
+      </p>
+    ),
+  },
+  {
     title: 'Plotting libraries',
     video: 'frontpage/plotly',
     imageAlt: '3D surface plot',
@@ -146,16 +161,16 @@ function FeatureVideo({video: name, alt}) {
   );
 }
 
-function Feature({title, image, video, imageAlt, content, imageLeft}) {
+function Feature({title, image, video, imageAlt, content, imageLeft, wide}) {
   return (
     <section className={styles.feature}>
       <div className="container">
         <div className={clsx('row', styles.featureRow, imageLeft && styles.featureRowReverse)}>
-          <div className="col col--6">
+          <div className={clsx('col', wide ? 'col--4' : 'col--6')}>
             <h2>{title}</h2>
             {content}
           </div>
-          <div className="col col--6">
+          <div className={clsx('col', wide ? 'col--8' : 'col--6')}>
             {video ? (
               <FeatureVideo video={video} alt={imageAlt} />
             ) : (

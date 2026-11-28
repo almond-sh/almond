@@ -15,13 +15,25 @@ cells, and can be followed by options:
   in the cell (here, the handle of a slider widget) horizontally, by each of the comma-separated
   offsets in turn (in CSS pixels), with a mouse pointer drawn in the page (like in the widgets
   demo, or in the plotly one, where dragging rotates a 3D plot). The mouse is then moved out of
-  the output, so that hover effects, like plot tooltips, don't stay in the recording.
+  the output, so that hover effects, like plot tooltips, don't stay in the recording,
+- `breakpoints=2,4`: in demos with `debugger=true`, set breakpoints on these lines of the cell
+  (starting from 1), by clicking in the gutter of its editor, before running it,
+- `debug=next,expand:xs,continue`: in demos with `debugger=true`, wait for the debugger to stop in
+  the cell once it runs, then run these debugger actions in turn: `continue`, `next`, `stepIn`, and
+  `stepOut` click the buttons of the call stack panel of the debugger sidebar (and wait for the
+  debugger to stop again, or for the cell to be done running), and `expand:<name>` expands a
+  variable in the variables panel. The last action needs to let the cell run until its end.
 
 Before the first cell, a `// %demo` line can set options for the whole demo:
 - `kernel=echo`: the kernel to run the demo with (the Scala kernel passed via `--kernel` by default),
 - `width=640` / `height=600`: size of the browser viewport, in CSS pixels (640 x 520 by default),
 - `warmup=true`: run the demo once before recording it, so that things like dependency downloads
-  don't show up in the recording (dependency downloads, and their progress, show up otherwise).
+  don't show up in the recording (dependency downloads, and their progress, show up otherwise),
+- `debugger=true`: record the [JupyterLab debugger](https://jupyterlab.readthedocs.io/en/latest/user/debugger.html):
+  the notebook toolbar is kept (with only the button enabling the debugger and the kernel name and
+  status in it), the debugger gets enabled with that button before the first cell, and the
+  recording shows the debugger sidebar along with the notebook. The kernel needs to support the
+  debugger.
 
 Other lines before the first cell are ignored.
 
@@ -50,7 +62,10 @@ $ docs/website/demos/record.sh
 ```
 The widgets demo needs Almond 0.16.0 or later, and the 0.1.0 release of
 [almond-widgets](https://github.com/almond-sh/almond-widgets) (its current recording was made with
-both built from sources, before they were released).
+both built from sources, before they were released). The debugger demo runs on a Scala 3 kernel
+(`SCALA3_VERSION`, 3.10.1 by default), that `record.sh` installs with `--debugger`, which needs a
+version of Almond supporting the debugger (its current recording was made with Almond built from
+sources, before its release).
 
 Pass it the paths of some demos to only record those, and [`record.mjs`](record.mjs) options
 (see below), like

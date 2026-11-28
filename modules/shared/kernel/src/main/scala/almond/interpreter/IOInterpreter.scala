@@ -26,6 +26,9 @@ trait IOInterpreter {
 
   def shutdown: IO[Unit]
 
+  /** Answers the requests of the Jupyter debugger protocol, if this kernel supports it */
+  def debugger: Option[Debugger] = None
+
   def supportComm: Boolean                           = false
   def setCommHandler(commHandler: CommHandler): Unit = {}
 
